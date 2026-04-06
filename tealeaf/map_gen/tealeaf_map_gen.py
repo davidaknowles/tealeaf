@@ -1,10 +1,17 @@
+"""tealeaf map-generation pipeline.
+
+Parses a GTF transcriptome annotation and produces the isoform→intron and
+isoform→exon mapping files consumed by ``tealeaf-cluster`` and ``tealeaf-sc``.
+Only needs to be run once per annotation file.
+"""
+
 import pyranges as pr
 import numpy as np
 import pandas as pd
 import sys
 import warnings
-import tealeaf.utils
-from tealeaf.utils import timing_decorator,write_options_to_file
+
+from tealeaf.utils import timing_decorator, write_options_to_file
 import scipy
 import scipy.sparse
 from scipy.sparse import csr_matrix, save_npz, load_npz
@@ -543,13 +550,12 @@ def tealeaf_map_generation(options):
     if options.annot_source == 'gencode':
         intron_source_generation(f'{out_prefix}isoform_intron_map.tsv',out_prefix)
         
-    if options.virtual_intron == True:
-        
-        f'{out_prefix}intron_exon_connectivity.tsv'
-        f'{out_prefix}isoform_intron_map.tsv'
-
-        add_virtual_first_last_introns(f'{out_prefix}isoform_intron_map.tsv', f'{out_prefix}intron_exon_connectivity.tsv',\
-                                        out_prefix)
+    if options.virtual_intron:
+        add_virtual_first_last_introns(
+            f'{out_prefix}isoform_intron_map.tsv',
+            f'{out_prefix}intron_exon_connectivity.tsv',
+            out_prefix,
+        )
 
 
 
@@ -559,67 +565,55 @@ if __name__ == "__main__":
 
     parser = OptionParser()
 
-    parser.add_option('-a',"--annot", dest="annot", default = None,
-              help="annotation source, support gencode, Stringtie \
-                  (in progress, will add support to ref_seq, ensembl)")    
-                  
-    parser.add_option("--annot_source", dest="annot_source", default = 'gencode',
-              help="annotation source, support gencode, Stringtie \
-                  (in progress, will add support to ref_seq, ensembl)")    
-                 
-    parser.add_option("-o", "--outprefix", dest="outprefix", default = 'leafcutter_',
-                  help="output prefix (default leafcutter_), should include the diretory address if not\
-                  in the same dic")    
+    parser.add_option('-a', "--annot", dest="annot", default=None,
+                      help="transcriptome annotation GTF file (required)")
 
-    parser.add_option("--maxintronlen", dest="maxintronlen", default = 5000000, type="int",
-                  help="maximum intron length in bp (default 500,000bp)")
-        
-    parser.add_option("--minintronlen", dest="minintronlen", default = 50,type="int",
-                  help="minimum intron length in bp (default 50bp)")
+    parser.add_option("--annot_source", dest="annot_source", default='gencode',
+                      help="annotation source: 'gencode' or 'Stringtie' (default: gencode)")
 
+    parser.add_option("-o", "--outprefix", dest="outprefix", default='tealeaf_',
+                      help="output file prefix; include directory path if not the current directory "
+                           "(default: tealeaf_)")
 
+    parser.add_option("--maxintronlen", dest="maxintronlen", default=5000000, type="int",
+                      help="maximum intron length in bp (default: 5,000,000)")
 
+    parser.add_option("--minintronlen", dest="minintronlen", default=50, type="int",
+                      help="minimum intron length in bp (default: 50)")
 
-    parser.add_option("--no_quality_control", dest="no_quality_control", default = False, action="store_true",
-                 help="whether to retain pseudogene, and decay transcript")
+    parser.add_option("--no_quality_control", dest="no_quality_control", default=False,
+                      action="store_true",
+                      help="retain pseudogenes and decay transcripts (default: filter them out)")
 
-    parser.add_option("-v", "--virtual_intron", dest="virtual_intron", action="store_true", default = False,
-                 help="whether to use virtual intron to capture alternative first and last exon usage")
-    
-    
-    parser.add_option("--single_cell", dest="single_cell", default = True,
-                 help="whether to build matrices for isoform to intron and exon, required if dealing with\
-                     single cell data from alevin-fry")
-    
-    
+    parser.add_option("-v", "--virtual_intron", dest="virtual_intron", action="store_true",
+                      default=False,
+                      help="add virtual introns to capture alternative first/last exon usage "
+                           "(experimental; default: False)")
+
+    parser.add_option("--single_cell", dest="single_cell", default=True,
+                      help="build sparse isoform→intron/exon matrices required for tealeaf-sc "
+                           "(default: True)")
+
     (options, args) = parser.parse_args()
 
-
-
     if options.annot is None:
-        sys.exit("Error: no annotation file provided...\n")
+        sys.exit("Error: no annotation file provided (use -a / --annot).\n")
 
-
-    sys.stderr.write(f"Start Processing transcriptome annotation {options.annot}\n")
-    sys.stderr.write(f"annot source: {options.annot_source}\n")
-    sys.stderr.write(f"outprefix: {options.outprefix}\n")
+    sys.stderr.write(f"Processing transcriptome annotation: {options.annot}\n")
+    sys.stderr.write(f"Annotation source: {options.annot_source}\n")
+    sys.stderr.write(f"Output prefix: {options.outprefix}\n")
     sys.stderr.write(f"Max intron length: {options.maxintronlen}\n")
     sys.stderr.write(f"Min intron length: {options.minintronlen}\n")
-    sys.stderr.write(f"not removing pseudogene and decay transcript: {options.no_quality_control}\n")
-    sys.stderr.write(f"virtual intron: {options.virtual_intron}\n")
-    
+    sys.stderr.write(f"Skip quality control: {options.no_quality_control}\n")
+    sys.stderr.write(f"Virtual introns: {options.virtual_intron}\n")
+
     record = f'{options.outprefix}map_parameters.txt'
-    sys.stderr.write(f'saving record to {record} \n')
-    
+    sys.stderr.write(f'Saving parameters to {record}\n')
     write_options_to_file(options, record)
 
     tealeaf_map_generation(options)
-    
-    sys.stderr.write('Finish building Isofrom to intron map \n')
 
-
-
-
+    sys.stderr.write('Finished building isoform-to-intron map\n')
 
 
 

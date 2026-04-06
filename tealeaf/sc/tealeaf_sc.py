@@ -1,3 +1,10 @@
+"""tealeaf single-cell clustering pipeline.
+
+Reads alevin-fry equivalence-class output, runs EM transcript quantification,
+aggregates barcodes into pseudobulk samples, and applies the same intron
+clustering logic as the bulk pipeline.
+"""
+
 import numpy as np
 import pandas as pd
 import sys
@@ -10,23 +17,15 @@ import random
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor
 import os
+import re
+
 warnings.simplefilter(action='ignore', category=pd.errors.DtypeWarning)
 
-import re
-import tealeaf.utils
-from tealeaf.utils import timing_decorator,write_options_to_file
+from tealeaf.utils import timing_decorator, write_options_to_file
 from tealeaf.sc import sc_utils
 from tealeaf.shared_functions import build_init_cluster, process_clusters, compute_ratio
 
 from joblib import Parallel, delayed
-
-
-"""
-# for local test
-from utils import timing_decorator,write_options_to_file
-from shared_functions import build_init_cluster, process_clusters, compute_ratio
-
-"""
 
 
 def barcode_group_print(barcode_group_dic, out_prefix = ''):
@@ -241,7 +240,7 @@ def process_pseudo_row(i, cell_ec_sparse_pseudo_filt, ec_transcript_input, w, no
     total_count = temp_sample.sum()
     temp_sample += 0.0000001  # add 1e-6 to avoid null value
     
-    alpha = calcutta_functions.EM(temp_sample, ec_transcript_input, w)
+    alpha = sc_utils.EM(temp_sample, ec_transcript_input, w)
     TPM = alpha * 1000000
     
     
@@ -277,16 +276,10 @@ def process_pseudo_row(i, cell_ec_sparse_pseudo_filt, ec_transcript_input, w, no
             effective_read_len = (read_length - overhang)  * sizing_factor
             
         count = count * w * effective_read_len
-        
-        
-    # we don't need the actual count, we just need a scale that represent the support level of the TPM value
-    # TPM * total_count will give a count-like value that retain the TPM ratio of transcripts
 
-    """
-    count /= w
-    count = (count / count.sum()) * total_count
-    """
-    
+    # we don't need the actual count, we just need a scale that represents the support level of the TPM value
+    # TPM * total_count gives a count-like value that retains the TPM ratio of transcripts
+
     return TPM, count
 
 
@@ -309,11 +302,6 @@ def parallel_EM_processing(cell_ec_sparse_pseudo_filt, ec_transcript_input, w, t
         tmp_count = csr_matrix(value[1].reshape(1,-1))
         pseudo_TPM = vstack([pseudo_TPM, tmp_tpm])
         pseudo_count = vstack([pseudo_count, tmp_count])
-    """
-    TPMs, counts = zip(*results)  # This separates TPM and count results
-    pseudo_TPM = np.vstack(TPMs)
-    pseudo_count = np.vstack(counts)
-    """
     return pseudo_TPM, pseudo_count
 
 
@@ -340,7 +328,7 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
     threshold = float(threshold) # ensure the threshold is a float number
     thread = int(thread)
     # step 1: data loading
-    transcript_lengths_dic = calcutta_functions.get_transcript_lengths(Path(salmon_ref))    
+    transcript_lengths_dic = sc_utils.get_transcript_lengths(Path(salmon_ref))    
     
     
     
@@ -351,9 +339,9 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
     if map_cache.is_file(): 
         ec_transcript_mat = scipy.sparse.load_npz(map_cache)
     else:
-        num_genes, num_ec, ecs = calcutta_functions.read_alevin_ec(alevin_dir/ "gene_eqclass.txt.gz") 
+        num_genes, num_ec, ecs = sc_utils.read_alevin_ec(alevin_dir/ "gene_eqclass.txt.gz") 
         ecs_list = [ ecs[k] for k in range(len(ecs)) ] # this works because indexing is dense
-        ec_transcript_mat = calcutta_functions.to_coo(ecs_list)
+        ec_transcript_mat = sc_utils.to_coo(ecs_list)
         scipy.sparse.save_npz(map_cache, ec_transcript_mat)
 
 
@@ -378,10 +366,10 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
     
     # step 2: first round of filtering, to facilitate computation speed
     #aggregate all barcodes to give a single pseudobulk sample
-    pseudobulk = calcutta_functions.sparse_sum(cell_ec_sparse,0) 
+    pseudobulk = sc_utils.sparse_sum(cell_ec_sparse,0) 
     
     transcript_count = pseudobulk @ ec_transcript_mat
-    ec_sizes = calcutta_functions.sparse_sum(ec_transcript_mat,1)
+    ec_sizes = sc_utils.sparse_sum(ec_transcript_mat,1)
     
     
     # first round of filtering, this will speed up the pseudobulk matrix generation
@@ -422,7 +410,7 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
     pseudo_ec_sparse = pseudo_ec_sparse.tocsr() 
     
     # step 4: additional filtering to further reduce the matrix size
-    aggragate_cell_ec = calcutta_functions.sparse_sum(pseudo_ec_sparse,0)
+    aggragate_cell_ec = sc_utils.sparse_sum(pseudo_ec_sparse,0)
     transcript_count = aggragate_cell_ec @ ec_transcript_ff
     
 
@@ -435,7 +423,7 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
     ec_transcript_ffff = ec_transcript_fff[:,features_to_keep]
 
 
-    feature_lengths, w = calcutta_functions.get_feature_weights(features_ff, transcript_lengths_dic)
+    feature_lengths, w = sc_utils.get_feature_weights(features_ff, transcript_lengths_dic)
     
     
     bool_spliced_trans = np.array([0 if '-I' in value else 1 for value in features_ff]) # Knowing what isofrom is spliced and which is unspliced
@@ -445,36 +433,11 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
     ec_transcript_input = ec_transcript_ffff.tocoo()
     
     
-    pseudo_TPM, pseudo_count = parallel_EM_processing(cell_ec_sparse_pseudo_filt, ec_transcript_input, w, thread, \
-                                                      normalize_mode,read_length, paired_end , overhang, sizing_factor, bool_spliced_trans)
-    
-    """
-    pseudo_TPM = csr_matrix((0, ec_transcript_input.shape[1]))  # Initialize an empty sparse matrix
-    pseudo_count = csr_matrix((0, ec_transcript_input.shape[1]))  # Initialize an empty sparse matrix
-    
-    for i in range(cell_ec_sparse_pseudo_filt.shape[0]):
-    
-        temp_sample = cell_ec_sparse_pseudo_filt.getrow(i)
-        temp_sample = temp_sample.toarray().ravel() # collapse the row into a vector
-        
-        total_count = temp_sample.sum()
-        temp_sample += 0.0000001 # add 1e-6 to avoid null value
-        
-        alpha = calcutta_functions.EM(temp_sample, ec_transcript_input, w)
-        TPM = alpha * 1000000
-        count = alpha * total_count 
-        # we don't need the actual count, we just need a scale that represent the support level of the TPM value
-        # TPM * total_count will give a count-like value that retain the TPM ratio of transcripts
-    
-        
-      
-        
-        pseudo_TPM = vstack([pseudo_TPM, TPM])
-        pseudo_count = vstack([pseudo_count, count])
-        
-    """
-         #count = TPM/w
-        #count = (count/count.sum()) * total_count
+    pseudo_TPM, pseudo_count = parallel_EM_processing(
+        cell_ec_sparse_pseudo_filt, ec_transcript_input, w, thread,
+        normalize_mode, read_length, paired_end, overhang, sizing_factor,
+        bool_spliced_trans,
+    )
        
 
     # this will ensure that the extremly small value won't be detected in the final result
@@ -746,9 +709,9 @@ def tealeaf_sc(options):
     sc_intron_count(options.ref_dir, pseudo_matrix_file,pseudo_cols_file, pseudo_rows_file,  in_prefix= options.ref_prefix ,\
                     out_prefix = out_prefix, threshold = options.introncutoff)
     sys.stderr.write("Intron and exon were quantified\n")
-    # a csv file that is compatible with the rest of leafcutterITI is obtained
-    
-    # step 4: clustering, using shared function with leafuctterITI
+    # a TSV file compatible with the rest of the tealeaf pipeline is obtained
+
+    # step 4: clustering, using shared functions from tealeaf
 
     if options.with_virtual == False:
         connect_file = f'{ref_prefix}intron_exon_connectivity.tsv'
@@ -804,8 +767,9 @@ if __name__ == "__main__":
     parser.add_option("--salmon_ref", dest="salmon_ref", default = None,
                   help="The reference used for salmon index, The salmon reference,  maybe spliceu or splicei (default: None)")
 
-    parser.add_option("--ref_dir", dest="ref_dir", default = None,
-                  help="leafcutterITI reference directory, which should contain the matrices for isoform to intron and exon (default: None)")
+    parser.add_option("--ref_dir", dest="ref_dir", default=None,
+                      help="tealeaf reference directory containing isoform-to-intron and isoform-to-exon "
+                           "matrices produced by tealeaf-map (default: None)")
 
     parser.add_option("--barcodes_clusters", dest="barcodes_clusters", default = None,
                   help="The file that records which barcodes belong to which cluster/cell type in the format 'barcode,cluster' \
@@ -819,9 +783,9 @@ if __name__ == "__main__":
 
     # optional parameter
 
-    parser.add_option("--ref_prefix", dest="ref_prefix", default = '',
-               help="the reference prefix that is used to generate isoform to intron map using\
-               leacutterITI_map_gen (default: '')")            
+    parser.add_option("--ref_prefix", dest="ref_prefix", default='',
+                      help="file prefix used when generating the isoform-to-intron map with "
+                           "tealeaf-map (default: '')")            
                
     parser.add_option("-n",'--num_cell', dest="num_cell", default = 100, type="int",
                   help="the number of cell/barcode that would like to include in a pseudobulk sample, cluster/cell type that have fewer cell than\
@@ -855,9 +819,9 @@ if __name__ == "__main__":
                   help="three def available, 1: overlap, 2: overlap+share_intron_splice_site, \
                       3: overlap+share_intron_splice_site+shared_exon_splice_site")
     
-    parser.add_option("-o", "--outprefix", dest="outprefix", default = 'leafcutterITI_',
-                  help="output prefix , should include the diretory address if not\
-                  in the same dic (default leafcutterITI_)")    
+    parser.add_option("-o", "--outprefix", dest="outprefix", default='tealeaf_',
+                      help="output file prefix; include directory path if not the current directory "
+                           "(default: tealeaf_)")    
 
     parser.add_option("--samplecutoff", dest="samplecutoff", default = 0.1, type="float",
                   help="minimum count for an isoform in a sample to count as exist(default: 0.1)")
@@ -903,7 +867,7 @@ if __name__ == "__main__":
         sys.exit("Error: no salmon reference is provided...\n")
     
     if options.ref_dir is None:
-        sys.exit("Error: no leafcutterITI reference is provided...\n")
+        sys.exit("Error: no tealeaf reference directory provided (use --ref_dir).\n")
     
     
     if options.barcodes_clusters == None and options.pseudobulk_samples == None and options.preprocessed == False:
@@ -911,11 +875,11 @@ if __name__ == "__main__":
         
         
     
-    sys.stderr.write(f"Start Processing alevin-fry results in {options.alevin_dir}\n")
-    sys.stderr.write(f"reference used by salmon is {options.salmon_ref}\n")
-    sys.stderr.write(f'leacutterITI reference directory is {options.ref_dir}')
-    sys.stderr.write(f'leacutterITI reference prefix is {options.ref_prefix}')
-    sys.stderr.write(f"outprefix: {options.outprefix}\n")
+    sys.stderr.write(f"Processing alevin-fry results in: {options.alevin_dir}\n")
+    sys.stderr.write(f"Salmon reference: {options.salmon_ref}\n")
+    sys.stderr.write(f"tealeaf reference directory: {options.ref_dir}\n")
+    sys.stderr.write(f"tealeaf reference prefix: {options.ref_prefix}\n")
+    sys.stderr.write(f"Output prefix: {options.outprefix}\n")
     
     if options.preprocessed != False:
         sys.stderr.write(f'reading preprocessed pseudobulk to EC matrix using prefix {options.outprefix}\n')
@@ -933,14 +897,8 @@ if __name__ == "__main__":
     record = f'{options.outprefix}clustering_parameters.txt'
     sys.stderr.write(f'Detailed parameters will be saved to {record}\n')
     write_options_to_file(options, record)
-        
-    
 
     tealeaf_sc(options)
-
-
-
-
 
 
 

@@ -1,26 +1,31 @@
-import pandas as pd
-import collections
-import time
-from pathlib import Path
-import numpy as np
-import scipy.sparse as sp
+"""Utility functions for the tealeaf single-cell (sc) module.
+
+Includes helpers for reading alevin-fry equivalence-class output, building
+sparse EC-to-transcript matrices, and running the EM transcript quantification.
+"""
 
 import gzip
+import collections
 
-from collections import OrderedDict, namedtuple
+import numpy as np
+import scipy.sparse as sp
+from collections import OrderedDict
 
-REVERSER=str.maketrans("AGCT","TCGA")
-
-# this scipts contain function from calcultta that will be used in scITI
-# functions in this file were written by Dr. David A. Knowles
-
-def smart_open(filename, *argene_set, **kwargene_set):
-    return gzip.open(filename, *argene_set, **kwargene_set) if filename.suffix==".gz" else open(filename, *argene_set, **kwargene_set)
+def smart_open(filename, *args, **kwargs):
+    """Open a file, transparently decompressing if the suffix is ``.gz``."""
+    return gzip.open(filename, *args, **kwargs) if filename.suffix == ".gz" else open(filename, *args, **kwargs)
 
 
 def read_alevin_ec(fn):
-    """Read gene_eqclass.txt.gz from `alevin quant --dump-eqclasses`"""
+    """Read ``gene_eqclass.txt.gz`` produced by ``alevin quant --dump-eqclasses``.
 
+    Returns
+    -------
+    num_genes : int
+    num_ec : int
+    ecs : collections.OrderedDict
+        Mapping from EC index → list of transcript indices.
+    """
     ecs = collections.OrderedDict()
 
     with smart_open(fn) as f: 
@@ -41,8 +46,16 @@ def read_alevin_ec(fn):
 
 
 
-def to_coo(x, shape = None):
-    """x is a list, where each item corresponds to a different row. The item for a row gives the column IDs for the non-zero entries. """
+def to_coo(x, shape=None):
+    """Build a COO sparse matrix from a list-of-column-id-lists.
+
+    Parameters
+    ----------
+    x : list[list[int]]
+        Each entry ``x[i]`` gives the column indices for non-zero entries in row *i*.
+    shape : tuple, optional
+        Explicit ``(rows, cols)`` shape; inferred from the data if omitted.
+    """
     nnz = sum([len(g) for g in x])
 
     indices = np.zeros((2,nnz), dtype=int) # cell then EC idx
@@ -91,31 +104,44 @@ def get_feature_weights(features, transcript_lengths_dic,  fragment_size = 300):
     return feature_lengths, 1. / eff_lens
 
 
-def EM(counts, ec_transcript_mat, w, iterations = 30):
-    
+def EM(counts, ec_transcript_mat, w, iterations=30):
+    """Expectation-Maximisation transcript quantification.
+
+    Parameters
+    ----------
+    counts : array-like, shape (n_ec,)
+        Observed equivalence-class counts for one pseudobulk sample.
+    ec_transcript_mat : scipy.sparse.coo_matrix, shape (n_ec, n_transcripts)
+        Binary EC-to-transcript membership matrix.
+    w : ndarray, shape (n_transcripts,)
+        Transcript weight vector (typically 1 / effective_length).
+    iterations : int
+        Number of EM iterations.
+
+    Returns
+    -------
+    alpha : ndarray, shape (n_transcripts,)
+        Estimated relative abundance for each transcript.
+    """
     n_transcripts = len(w)
-    alpha = np.full(n_transcripts,1.0/n_transcripts) # initialize to uniform
-    
+    alpha = np.full(n_transcripts, 1.0 / n_transcripts)  # uniform initialisation
+
     alpha_w = ec_transcript_mat.copy()
 
     for i in range(iterations):
-        alpha_w.data = (alpha * w)[ec_transcript_mat.col] # alpha_w[e,t] = ec_transcript_mat[e,t] alpha_t w_t
-        ec_sums = sparse_sum(alpha_w,1) # ec_sums[e] = sum_{t \in e} alpha_t w_t
-        z = sp.diags(counts / ec_sums) @ alpha_w 
-        alpha_new = sparse_sum(z,0)
+        # alpha_w[e, t] = alpha_t * w_t  (only for transcripts in EC e)
+        alpha_w.data = (alpha * w)[ec_transcript_mat.col]
+        ec_sums = sparse_sum(alpha_w, 1)
+        z = sp.diags(counts / ec_sums) @ alpha_w
+        alpha_new = sparse_sum(z, 0)
         alpha_new /= alpha_new.sum()
-        
-        if i == 29:
-            print(i,np.mean(np.abs(alpha - alpha_new)))
-        
+
+        if i == iterations - 1:
+            print(i, np.mean(np.abs(alpha - alpha_new)))
+
         alpha = alpha_new
-        
-        
+
     return alpha
-
-
-
-
 
 
 

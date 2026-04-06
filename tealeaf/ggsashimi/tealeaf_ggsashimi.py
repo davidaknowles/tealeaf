@@ -710,10 +710,8 @@ def define_options():
                 help="""
                 The exon count file by tealeaf
                 """)
-        parser.add_argument("--strand_info", dest = "strand_info", type=str, default = "/gpfs/commons/home/xzhang/reference/vM32_leafcutterITI/vM32_intron_exon_connectivity.tsv",
-                help="""
-                The intron exon connectivity file that contain information for strandness
-                """)
+        parser.add_argument("--strand_info", dest="strand_info", type=str, default=None,
+                help="intron-exon connectivity TSV produced by tealeaf-map, used to determine strandness")
   
         parser.add_argument("--data_type", dest = "data_type", type=str, default = "bulk",
                 help="The data type that input into tealeaf, could be bulk or sc, use to determine the sample name (default: bulk)")

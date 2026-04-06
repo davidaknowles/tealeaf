@@ -1,11 +1,11 @@
-# this script include some support functions for LeafcutterITI
+"""Shared utility functions for the tealeaf package."""
 
 import time
 from functools import wraps
 
 
 def timing_decorator(func):
-    # the timing decorator, use to keep track the running time of functions
+    """Decorator that prints the wall-clock elapsed time after a function returns."""
     @wraps(func)
     def wrapper(*args, **kwargs):
         start_time = time.time()
@@ -37,10 +37,8 @@ def timing_decorator(func):
 
 
 def write_options_to_file(options, filename):
+    """Write all optparse option values to a plain-text record file."""
     with open(filename, 'w') as file:
         for attr in vars(options):
             value = getattr(options, attr)
             file.write(f"{attr}: {value}\n")
-
-
-

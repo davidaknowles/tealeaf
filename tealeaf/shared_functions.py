@@ -1,11 +1,16 @@
-import pyranges as pr
-import numpy as np
+"""
+Shared clustering functions used by both the bulk and single-cell pipelines.
+
+Intron representation used throughout this module:
+    [start, end, total_count, name, exon_set]
+where *exon_set* is the set of neighbouring exon identifiers (strings).
+"""
+
 import pandas as pd
-import sys
 import warnings
-from leafcutterITI.utils import timing_decorator,write_options_to_file
-from optparse import OptionParser
-import os
+
+from tealeaf.utils import timing_decorator, write_options_to_file
+
 warnings.simplefilter(action='ignore', category=pd.errors.DtypeWarning)
 
 
@@ -33,12 +38,11 @@ def build_init_cluster(intron_count_file, connect_file):
                             
     
     
-    # Sort the DataFrame as required
-    df.sort_values(by=['Chr', 'Strand', 'Start', 'End'], inplace=True) # seperate the + and - strand intron
+    # Sort so that overlapping-intron detection works correctly (separate + and - strand)
+    df.sort_values(by=['Chr', 'Strand', 'Start', 'End'], inplace=True)
 
-    # Initialize variables for tracking clusters
+    # State variables for the sequential cluster-assignment pass
     cluster_num = 1
-    #cluster_gene = df.iloc[0]['Gene'] 
     cluster_end = df.iloc[0]['End']
     cluster_chr = df.iloc[0]['Chr']
     cluster_strand = df.iloc[0]['Strand']
@@ -49,11 +53,9 @@ def build_init_cluster(intron_count_file, connect_file):
         nonlocal cluster_chr
         nonlocal cluster_end
         nonlocal cluster_strand
-        #nonlocal cluster_gene #used in previous version, plan to removed in further version
-        
 
-        # Start a new cluster if the gene changes or there's no overlap with the current cluster
-        # no need to check for sttart as we sort value based on Start
+        # Start a new cluster when chromosome, strand, or genomic position breaks the overlap chain.
+        # No need to check Start explicitly because rows are sorted by Start.
         if row['Chr'] != cluster_chr or row['Strand'] != cluster_strand or row['Start'] > cluster_end:
             cluster_num += 1
             cluster_end = row['End']
@@ -64,8 +66,6 @@ def build_init_cluster(intron_count_file, connect_file):
             cluster_end = max(cluster_end, row['End'])
         return f'cluster_{cluster_num}'
 
-    # Apply the function to each row in the DataFrame
-    # df['Cluster'] = df.apply(check_new_cluster, axis=1)
     df.insert(1, 'Cluster', df.apply(check_new_cluster, axis=1))
     df.drop(columns = ['Strand'], inplace = True)
     # Save the modified DataFrame back to a file
@@ -213,52 +213,35 @@ def process_clusters(init_clus_file, exon_count_file, intron_to_exon_file, out_p
 
 
 
-def build_intron(index, row, samples, exon_count,intron_to_exon):
-    """
-    a helper function for process_clusters function
+def build_intron(index, row, samples, exon_count, intron_to_exon):
+    """Build the intron list representation used by the cluster-processing functions.
 
     Parameters
     ----------
-    index: the index of the df row, should be the name of intron
-    row : a df row in format (Cluster Chr Start End Gene samples)
-    samples: a list of sample names
-    exon_count : df
-    intron_to_exon : df
+    index : str
+        Row index of the intron (its name, e.g. ``chr1:1000-2000``).
+    row : pandas.Series
+        Row from the initial-cluster DataFrame (Cluster Chr Start End [Gene] samples… Sum).
+    samples : list[str]
+        Sample column names (unused here, kept for API symmetry).
+    exon_count : pandas.DataFrame
+        Exon-level count table, indexed by exon name.
+    intron_to_exon : pandas.DataFrame
+        Intron-to-exon connectivity table from ``intron_exon_connectivity.tsv``.
 
     Returns
     -------
-    None.
-
+    list : [start, end, total_count, name, exon_set]
     """
-    intron = [row['Start'], row['End']]
-    
-    total_val = row['Sum']
+    intron = [row['Start'], row['End'], row['Sum'], index]
 
-    intron.append(total_val)
-    intron.append(index)
-    
-    
-    exon_sites = set()
-    exon_set = set()
-    
-    if index in intron_to_exon.index and pd.notna(intron_to_exon.at[index,'near_exons']): 
-        #add this check because virtual intron 0 and -1 will not have connected exon
-        exons = intron_to_exon.at[index,'near_exons'].split(',')
+    # Virtual introns (intron_0 / intron_-1) have no connected exons.
+    if index in intron_to_exon.index and pd.notna(intron_to_exon.at[index, 'near_exons']):
+        exons = intron_to_exon.at[index, 'near_exons'].split(',')
     else:
         exons = []
-    
-    
-    for exon in exons:
-        if exon in exon_count.index: # check whether this exon exist:
-            exon_infor = exon_count.loc[exon]
-            exon_sites.add(exon_infor['Start'])
-            exon_sites.add(exon_infor['End'])
-    
-    
-    exon_set = set(exons)
-    #intron.append(exon_sites)
-    intron.append(exon_set)
-    
+
+    intron.append(set(exons))
     return intron
     
 
@@ -457,28 +440,26 @@ def refine_links(introns, exon_connection = True):
             unassigned = unassigned[1:]
     
     if len(current) > 0:
-        newClusters.append(current) #this line is not necessary, it is use to append the single intron cluster tha come last
-    
+        newClusters.append(current)
 
-    return newClusters   
-
-
+    return newClusters
 
 
 @timing_decorator
 def compute_ratio(cluster_file, output_prefix=''):
-    """
+    """Compute per-intron PSI (ratio) values from a refined-cluster count file.
+
+    Divides each intron's count by the total count of its cluster for every
+    sample, producing a ratio in [0, 1].  Results are written to
+    ``{output_prefix}ratio_count`` in a format compatible with
+    ``leafcutter_ds``.
 
     Parameters
     ----------
-    cluster_file : the refined cluster file from process_clusters
-    output_prefix: str
-
-    Returns
-    -------
-    None
-    save to disk, result in a file called ratio_count
-
+    cluster_file : str
+        Path to the ``refined_cluster`` file produced by :func:`process_clusters`.
+    output_prefix : str, optional
+        Prefix prepended to the output file name.
     """
     df = pd.read_csv(cluster_file, sep=' ', index_col=0)
     samples = df.columns
@@ -506,20 +487,14 @@ def compute_ratio(cluster_file, output_prefix=''):
     # Write the result to a file
     output_df.to_csv(f'{output_prefix}ratio_count', sep=' ')
 
-
-    #Remove the leading space of the first line, this step is specifically to fit the leafcutter_df format
+    # Strip the leading space on the header line so the file is compatible with leafcutter_ds.
     with open(f'{output_prefix}ratio_count', 'r') as file:
         lines = file.readlines()
-      
+
     lines[0] = lines[0].lstrip()
 
-    # Write the modified content back to the file
     with open(f'{output_prefix}ratio_count', 'w') as file:
         file.writelines(lines)
-
-
-
-
 
 
 
