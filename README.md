@@ -1,4 +1,10 @@
-# tealeaf ( previously LeafCutterITI)
+# tealeaf - Transcript Expression Augmented LEAFcutter
+
+tealeaf combines ideas from [SUPPA](https://doi.org/10.1261/rna.051557.115) and LeafCutter to analyze alternative splicing events by first performing isoform abundance estimation and then collapsing to individual splice events/junctions. This is particularly useful for low coverage samples, e.g. single-cell RNA-seq. 
+
+tealeaf can be installed as a command line tool with `pip install tealeaf`
+
+![tealeaf_Workflow](figures/tealeaf_workflow.png)
 
 ### By Xingpei Zhang and David A. Knowles
 
@@ -34,14 +40,7 @@
 
 #### Other dependencies for Leafcutter as listed in https://github.com/davidaknowles/leafcutter/tree/master, especially for Leafcutter_ds
 
-## tealeaf
-A modified version of Leafcutter that detects and analyzes alternative splicing events by quantifying excised introns by utilizing isoform abundance and transcriptome annotation. Can also be install as a command line tool with `pip install tealeaf`
-
-![tealeaf_Workflow](figures/tealeaf_workflow.png)
-
-
-
-There are three parts of LeafcutterITI: 
+There are three parts of tealeaf: 
 - tealeaf_map_gen
 - tealeaf_clustering (for bulk & bulk-like single-cell or pseudobulk)
 - tealeaf_sc (for single-cell)
@@ -52,13 +51,13 @@ There are three parts of LeafcutterITI:
 usage: python tealeaf_map_gen.py [-a/--annot] [--annot_source] [-o/--outprefix] 
                      [--maxintronlen] [--minintronlen] [-v/--virtual_intron] [--single_cell]
 or when install with pip
-leafcutterITI-tealeaf [-a/--annot] [--annot_source] [-o/--outprefix] [--maxintronlen]
-                      [--minintronlen] [-v/--virtual_intron] [--single_cell]
+tealeaf-map [-a/--annot] [--annot_source] [-o/--outprefix] [--maxintronlen]
+            [--minintronlen] [-v/--virtual_intron] [--single_cell]
 
 
 Mandatory parameters:
 
--a, --annot     The transcriptome annotation gtf file for LeafcutterITI_map_gen to run with 
+-a, --annot     The transcriptome annotation gtf file for tealeaf_map_gen to run with 
 
 Optional Parameters:
 
@@ -96,11 +95,11 @@ tealeaf-cluster [--map] [--count_files] [--connect_file] [-a/--annot]
 
 
 Mandatory parameters:
---map             The isoforms to introns map generated from leafcutterITI_map_gen  
+--map             The isoforms to introns map generated from tealeaf_map_gen  
 
 --count_files     A txt file that contain the sample names 
 
---connect_file    The intron-exon connectivity file generated from leafcutterITI_map_gen 
+--connect_file    The intron-exon connectivity file generated from tealeaf_map_gen 
 
 -a, --annot       The transcriptome annotation gtf file 
 
@@ -162,7 +161,7 @@ Mandatory parameters:
 
 --salmon_ref            The reference used for salmon index, The salmon reference,  maybe spliceu or splicei
 
---ref_dir               leafcutterITI reference directory, which should contain the matrices for isoform to intron and exon
+--ref_dir               tealeaf reference directory, which should contain the matrices for isoform to intron and exon
 
 --barcodes_cluster      The file that records which barcodes belong to which cluster/cell type in the format 'barcode,cluster' 
                         this file will be used to generate pseudobulk samples 
@@ -173,7 +172,7 @@ Mandatory parameters:
 
 Optional Parameters:
 --ref_prefix            The prefix that is used to generate isoform to intron map using
-                        leacutterITI_map_gen (default: '')
+                        tealeaf_map_gen (default: '')
 
 --n,--num_cell          The number of cell/barcode that you would like to include in a pseudobulk sample, cluster/cell type that has fewer
                         cell/barcodes than this number will not included in the computation (default: 100)
@@ -285,7 +284,7 @@ When --single_cell == True, five additional files will be generated. Two for spa
 
 tealeaf utlized pseudoalignment method Salmon for bulk and preprocessed pseudobulk data. For usage of Salmon please refer https://salmon.readthedocs.io/en/latest/salmon.html
 
-For single-cell data, leafcutterITI utilized alevin-fry pipeline form Salmon. The usage of alevin-fry please refer https://alevin-fry.readthedocs.io/en/latest/. 
+For single-cell data, tealeaf utilized alevin-fry pipeline form Salmon. The usage of alevin-fry please refer https://alevin-fry.readthedocs.io/en/latest/. 
 Specific notices, please use -d, --dump-eqclasses flag when using alevin-fry quant to obtain the eqclass matrix. Also, t2t mapping should be used instead of normal t2g mapping. t2t mapping can be easily obtained by replacing the gene col in t2g file with the transcripts.
 
 In the rest of the tutorial, we assume RNA-seq data aligned to the transcriptome using Salmon or Alevin-fry. 
@@ -330,20 +329,20 @@ These two files are equivalent to Leafcutter clustering numers.counts.gz and cou
 
 
 
-### Step 3.2: LeafcutterITI clustering for single-cell data
+### Step 3.2: tealeaf clustering for single-cell data
 
-For this step, we assume the data we are processing are single-cell data. Results from Step 2 and Step 2.1 were obtained. The files required for this step will be 1. the salmon/alevin directory that contains files `gene_eqclass.txt.gz`, `geqc_counts.mtx`, and other relevant files from alevin-fry 2. Directory for where the mapping were generated by leafcutterITI-map_gen 3. the reference that salmon use to generate the index 4. a barcode to cluster file or barcodes to pseudobulk sample file. 
+For this step, we assume the data we are processing are single-cell data. Results from Step 2 and Step 2.1 were obtained. The files required for this step will be 1. the salmon/alevin directory that contains files `gene_eqclass.txt.gz`, `geqc_counts.mtx`, and other relevant files from alevin-fry 2. Directory for where the mapping were generated by tealeaf-map 3. the reference that salmon use to generate the index 4. a barcode to cluster file or barcodes to pseudobulk sample file. 
 
 Other parameters are optional. 
 
 Sample run:
 ```
-LeafcutterITI-scITI --alevin_dir salmon/out_permit_know/quant_spliceu_t2t --salmon_ref salmon_index/spliceu.fa --ref_dir leafcutterITI_map_dir
+tealeaf-sc --alevin_dir salmon/out_permit_know/quant_spliceu_t2t --salmon_ref salmon_index/spliceu.fa --ref_dir tealeaf_map_dir
                     --barcodes_cluster barcodes_clusters.txt  --cluster_def 3 --normalization True --preprocessed False -o sample_run_
                     --minclucounts 30 --mincluratio 0.01 -n 100
 ```
 
-Similar to leacutterITI-clustering, two main output files will be obtained:
+Similar to tealeaf-cluster, two main output files will be obtained:
 - {outprefix}refined_cluster
 - {outprefix}ratio_count
 
