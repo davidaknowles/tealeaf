@@ -6,17 +6,17 @@ tealeaf can be installed as a command line tool with `pip install tealeaf`
 
 ![tealeaf_Workflow](figures/tealeaf_workflow.png)
 
-### By Xingpei Zhang and David A. Knowles
+By Xingpei Zhang and David A. Knowles
 
-### Citations:
-**Alamancos, G. P., Pagès, A., Trincado, J. L., Bellora, N., & Eyras, E. (2015). Leveraging transcript quantification for fast computation of alternative splicing profiles. RNA , 21(9), 1521–1531. https://doi.org/10.1261/rna.051557.115**
+## References:
 
-**Garrido-Martín, D., Palumbo, E., Guigó, R., & Breschi, A. (2018). ggsashimi: Sashimi plot revised for browser-and annotation-independent splicing visualization. PLoS computational biology, 14(8), e1006360.**
+*Alamancos, G. P., Pagès, A., Trincado, J. L., Bellora, N., & Eyras, E. (2015). Leveraging transcript quantification for fast computation of alternative splicing profiles. RNA , 21(9), 1521–1531. https://doi.org/10.1261/rna.051557.115**
 
-**Li, Y. I., Knowles, D. A., Humphrey, J., Barbeira, A. N., Dickinson, S. P., Im, H. K., & Pritchard, J. K. (2018). Annotation-free quantification of RNA splicing using LeafCutter. Nature Genetics, 50(1), 151–158. https://doi.org/10.1038/s41588-017-0004-9**
+*Garrido-Martín, D., Palumbo, E., Guigó, R., & Breschi, A. (2018). ggsashimi: Sashimi plot revised for browser-and annotation-independent splicing visualization. PLoS computational biology, 14(8), e1006360.**
 
-**Patro, R., Duggal, G., Love, M. I., Irizarry, R. A., & Kingsford, C. (2017). Salmon provides fast and bias-aware quantification of transcript expression. Nature Methods, 14(4), 417–419. https://doi.org/10.1038/nmeth.4197**
+*Li, Y. I., Knowles, D. A., Humphrey, J., Barbeira, A. N., Dickinson, S. P., Im, H. K., & Pritchard, J. K. (2018). Annotation-free quantification of RNA splicing using LeafCutter. Nature Genetics, 50(1), 151–158. https://doi.org/10.1038/s41588-017-0004-9**
 
+*Patro, R., Duggal, G., Love, M. I., Irizarry, R. A., & Kingsford, C. (2017). Salmon provides fast and bias-aware quantification of transcript expression. Nature Methods, 14(4), 417–419. https://doi.org/10.1038/nmeth.4197**
 
 ### Requirements (versions used for development)
 
