@@ -44,7 +44,7 @@ There are three parts of tealeaf:
 - tealeaf_map_gen
 - tealeaf_clustering (for bulk & bulk-like single-cell or pseudobulk)
 - tealeaf_sc (for single-cell)
-- tealeaf-ggsashimi (utlize adapted ggsashimi for sashimi plotting)
+- tealeaf-ggsashimi (uses an adapted ggsashimi for sashimi plotting)
 
 ### tealeaf_map_gen
 ```
@@ -70,7 +70,7 @@ Optional Parameters:
 
 --minintronlen          The minimum allowed intron length for introns (default: 50)
 
---no_quality_control  A flag on whether not to remove pseudogene, and decay transcript
+--no_quality_control  A flag to skip removal of pseudogenes and decay transcripts
 
 -v, --virtual_intron    A flag on whether to compute virtual intron that can be used to capture
                         AFE and ALE usage, a testing feature
@@ -97,7 +97,7 @@ tealeaf-cluster [--map] [--count_files] [--connect_file] [-a/--annot]
 Mandatory parameters:
 --map             The isoforms to introns map generated from tealeaf_map_gen  
 
---count_files     A txt file that contain the sample names 
+--count_files     A txt file containing the sample names 
 
 --connect_file    The intron-exon connectivity file generated from tealeaf_map_gen 
 
@@ -112,14 +112,14 @@ Optional Parameters:
 
 --use_TPM               A flag on whether to use TPM or normalized count
 
---preprocessed          A flag on Whether the files provided are already normalized, mainly for rerunning the pipeline and don't 
-                        perform normalization again
---normalization_scale   The mode use for normaliztion, whether the count/TPM scale is based on junction count simulation, local (gene level) or global level,
-                        can only input junction, local, or global (default: junction)
+--preprocessed          A flag on whether the files provided are already normalized, mainly for rerunning the pipeline without
+                        performing normalization again
+--normalization_scale   The mode used for normalization: whether the count/TPM scale is based on junction count simulation, local (gene level), or global level.
+                        Accepted values: junction, local, or global (default: junction)
 
---samplecutoff          Minimum Normalized count/TPM for an intron in a sample to count as exist (default: 0)
+--samplecutoff          Minimum Normalized count/TPM for an intron in a sample to count as present (default: 0)
 
---introncutoff          Minimum Normalized count/TPM for an intron to count as exist(default 5)
+--introncutoff          Minimum Normalized count/TPM for an intron to count as present (default: 5)
 
 --m, --minclucounts     Minimum Normalized count/TPM to support a cluster (default: 30)
 
@@ -127,10 +127,10 @@ Optional Parameters:
 
 --read_len              The read length of sequencing data, use to simulate junction count, only work when normalization_scale = "junction"
 
---not_paired_end        Whether the reads are not paired end use to simulate junction count, only work when normalization_scale = "junction"
+--not_paired_end        Whether the reads are not paired-end, used to simulate junction counts; only applies when normalization_scale = "junction"
                         (default: False)
---overhang              The oeverhand that would like to use, could be set to zero, use to simulate junction count, 
-                        only work when normalization_scale = junction (default: 2)
+--overhang              The overhang to use; can be set to zero. Used to simulate junction counts;
+                        only applies when normalization_scale = junction (default: 2)
 
 --sizing_factor         The sizing factor for junction simulation normalization to better calibrate the p-values (default: 1)
 
@@ -159,16 +159,15 @@ Mandatory parameters:
 
 --alevin_dir            The directory for alevin results, the file should contain the eq matrix and other files
 
---salmon_ref            The reference used for salmon index, The salmon reference,  maybe spliceu or splicei
+--salmon_ref            The reference used for the Salmon index; either spliceu or splicei
 
 --ref_dir               tealeaf reference directory, which should contain the matrices for isoform to intron and exon
 
 --barcodes_cluster      The file that records which barcodes belong to which cluster/cell type in the format 'barcode,cluster' 
                         this file will be used to generate pseudobulk samples 
 
---pseudobulk_samples    A txt file with barcodes to pseudobulk sample are expected in format 'barcode pseudobulk_ample', if \
-                        this option != None, then it will overwrite the input to --barcodes_cluster, and use the file in this option \
-                        for computation. Only one of barcodes_cluster or pseudobulk_samples is required
+--pseudobulk_samples    A txt file mapping barcodes to pseudobulk samples in the format 'barcode pseudobulk_sample'. If \
+                        this option is set, it will overwrite the input to --barcodes_cluster. Only one of barcodes_cluster or pseudobulk_samples is required
 
 Optional Parameters:
 --ref_prefix            The prefix that is used to generate isoform to intron map using
@@ -196,22 +195,22 @@ Optional Parameters:
 
 -v,--with_virtual       A flag on whether the map that contain virtual intron to capture AFE and ALE
 
---samplecutoff          Minimum Normalized count/TPM for an isoform in a sample to count as exist (default: 0.1)
+--samplecutoff          Minimum Normalized count/TPM for an isoform in a sample to count as present (default: 0.1)
 
---introncutoff          Minimum Normalized count/TPM for an intron to count as exist(default: 80)
+--introncutoff          Minimum Normalized count/TPM for an intron to count as present (default: 80)
 
 --m, --minclucounts     Minimum Normalized count/TPM to support a cluster (default: 100)
 
 -r, --mincluratio       Minimum fraction of reads in a cluster that supports an intron (default 0.01)
 
---normalization_scale   The mode use for normaliztion, whether the count/TPM scale is based on junction count simulation, local (gene level) or global level,
-                        can only input junction, local, or global (default: junction)
+--normalization_scale   The mode used for normalization: whether the count/TPM scale is based on junction count simulation, local (gene level), or global level.
+                        Accepted values: junction, local, or global (default: junction)
 
---read_len              The read length of sequencing data, use to simulate junction count, only work when normalization_scale = "junction" (default: 100)
+--read_len              The read length of sequencing data, used to simulate junction counts; only applies when normalization_scale = "junction" (default: 100)
 
---not_paired_end        Whether the reads are not paired end use to simulate junction count, only work when normalization_scale = "junction" (default: False)
---overhang              The oeverhand that would like to use, could be set to zero, use to simulate junction count, 
-                        only work when normalization_scale = junction (default: 2)
+--not_paired_end        Whether the reads are not paired-end, used to simulate junction counts; only applies when normalization_scale = "junction" (default: False)
+--overhang              The overhang to use; can be set to zero. Used to simulate junction counts;
+                        only applies when normalization_scale = junction (default: 2)
 
 --sizing_factor         The sizing factor for junction simulation normalization to better calibrate the p-values (default: 1)
 
@@ -267,7 +266,7 @@ Depending on the setting, two or four files will be generated.
 - {out_prefix}isoform_intron_map_with_virtual.tsv
 - {out_prefix}intron_exon_connectivity_with_virtual.tsv
 
-where with_virtual mean virtual intron was used to capture all annotated AFE and ALE (a testing feature).
+where with_virtual means virtual introns were used to capture all annotated AFE and ALE (a testing feature).
 
 if annotation_source='gencode', an additional file will be generated to give out information about the possible isoform type that can be generated by splicing out each intron
 - {out_prefix}intron_source_map.tsv (also a testing feature)
@@ -275,26 +274,26 @@ if annotation_source='gencode', an additional file will be generated to give out
   
 A record file that contains the parameters will also be generated
 
-When --single_cell == True, five additional files will be generated. Two for sparse matrices in npz format, rows are isoforms, and columns are introns or exons. Three txt files record the row and column names. These file is essential for tealeaf-sc.
+When --single_cell == True, five additional files will be generated. Two for sparse matrices in npz format, rows are isoforms, and columns are introns or exons. Three txt files record the row and column names. These files are essential for tealeaf-sc.
 
 
 
 
 ### Step 2: Salmon isoform quantification
 
-tealeaf utlized pseudoalignment method Salmon for bulk and preprocessed pseudobulk data. For usage of Salmon please refer https://salmon.readthedocs.io/en/latest/salmon.html
+tealeaf uses the pseudoalignment tool Salmon for bulk and preprocessed pseudobulk data. For usage of Salmon please refer to https://salmon.readthedocs.io/en/latest/salmon.html
 
-For single-cell data, tealeaf utilized alevin-fry pipeline form Salmon. The usage of alevin-fry please refer https://alevin-fry.readthedocs.io/en/latest/. 
+For single-cell data, tealeaf uses the alevin-fry pipeline from Salmon. For usage of alevin-fry please refer to https://alevin-fry.readthedocs.io/en/latest/. 
 Specific notices, please use -d, --dump-eqclasses flag when using alevin-fry quant to obtain the eqclass matrix. Also, t2t mapping should be used instead of normal t2g mapping. t2t mapping can be easily obtained by replacing the gene col in t2g file with the transcripts.
 
 In the rest of the tutorial, we assume RNA-seq data aligned to the transcriptome using Salmon or Alevin-fry. 
 
 ### Step 2.1: Single-cell clustering after alevin-fry
 
-For single-cell data, after pseudoaligment, we will need to process the data and obtain a barcodes to clusters/cell_types csv file that have row in format 'barcode,cluster/cell_type'. 
-There are different single-cell analysis tool can achieve this goal. For examples, Seurat and Scanpy. Any analysis tool could work as long as the barcodes to clusters/cell_types csv file is provided. 
-For our analysis, we used Scanpy and tutorial for cell clustering with Scanpy could be found at https://scanpy.readthedocs.io/en/stable/tutorials/basics/clustering.html. 
-After the clustering and cell labeling, the barcodes to clusters/cell_types could be export like 
+For single-cell data, after pseudoalignment, we need to process the data and obtain a barcodes-to-clusters/cell_types CSV file with rows in the format 'barcode,cluster/cell_type'. 
+There are different single-cell analysis tools that can achieve this goal. For example, Seurat or Scanpy. Any analysis tool will work as long as the barcodes-to-clusters/cell_types CSV file is provided. 
+For our analysis, we used Scanpy; a tutorial for cell clustering with Scanpy can be found at https://scanpy.readthedocs.io/en/stable/tutorials/basics/clustering.html. 
+After clustering and cell labeling, the barcodes-to-clusters/cell_types can be exported as 
 `adata.obs[['cell_barcodes', 'cluster_name']].to_csv('barcode_to_cluster.csv', index = False, header = None)` 
 
 
