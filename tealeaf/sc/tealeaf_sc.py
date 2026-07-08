@@ -658,9 +658,9 @@ def tealeaf_sc(options):
     This is the main function for tealeaf_sc
 
     """
+    out_prefix = options.outprefix
     if options.preprocessed == False:
     #  step 1: generate or read the barcodes to pseudobulk samples file
-        out_prefix = options.outprefix
         if options.pseudobulk_samples == None:
     
             pseudo_group_generation(options.barcodes_clusters, options.num_cell, options.num_bootstrapping, \
@@ -899,7 +899,6 @@ if __name__ == "__main__":
     write_options_to_file(options, record)
 
     tealeaf_sc(options)
-
 
 
 
