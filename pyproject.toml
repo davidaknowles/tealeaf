@@ -21,7 +21,7 @@ license= {file = "LICENSE"}
 tealeaf-map = 'tealeaf.__main__:tealeaf_map_gen'
 tealeaf-cluster = 'tealeaf.__main__:tealeaf_clustering'
 tealeaf-sc = 'tealeaf.__main__:tealeaf_sc'
-tealeaf-ggsashimi = 'tealeaf.__main__:tealeaf_ggshashimi'
+tealeaf-ggsashimi = 'tealeaf.__main__:tealeaf_ggsashimi'
 
 [project.urls]
 Homepage = "https://github.com/XZ3149/tealeaf"
