@@ -123,3 +123,48 @@ Final outputs:
 - `/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/cluster_count_exon`: 196,748 lines.
 - `/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/cluster_refined_cluster`: 27,414 lines.
 - `/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/cluster_ratio_count`: 27,414 lines.
+
+## 2026-07-08 Microglia Cluster x DX x Mouse Pseudobulk Run
+
+Reran tealeaf with pseudobulks defined by:
+
+- `cluster_name`
+- `DX`
+- `sample`
+
+Here `sample` is treated as the mouse/individual identifier. The metadata join
+used `sublibrary`, `rnd1_well`, `rnd2_well`, and `rnd3_well` as keys between
+the combined AnnData object and `GSM5693472_cell_metadata.txt.gz`.
+
+Input mapping:
+
+- `/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/barcodes_to_cluster_dx_mouse.csv`
+- 51,294 annotated cells joined to metadata.
+- 936 `cluster_name x DX x sample` groups.
+- 88,920 barcode/group rows after dropping 6,016 barcodes with conflicting
+  group labels.
+- Group sizes range from 2 to 1,592 barcode rows, median 38.
+
+Added Slurm recipe:
+
+- `extra_scripts/run_microglia_cluster_dx_mouse_tealeaf.sbatch`
+
+Run details:
+
+- Slurm job: `18729972`.
+- Partition: `bigmem`.
+- Requested memory: 500G.
+- MaxRSS reported: 12,598,008K.
+- Elapsed time: 41m 30s.
+- Aggregated transcript matrix:
+  - Input shape: 744,997 cells by 116,918 transcripts.
+  - Input nonzeros: 797,002,207.
+  - Output shape: 936 pseudobulks by 116,918 transcripts.
+  - Output nonzeros: 26,144,309.
+
+Final outputs:
+
+- `/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/cluster_dx_mouse_count_intron`: 167,800 lines.
+- `/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/cluster_dx_mouse_count_exon`: 196,748 lines.
+- `/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/cluster_dx_mouse_refined_cluster`: 27,414 lines.
+- `/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/cluster_dx_mouse_ratio_count`: 27,414 lines.
