@@ -9,6 +9,7 @@ import pyranges as pr
 import numpy as np
 import pandas as pd
 import sys
+from pathlib import Path
 import warnings
 
 from tealeaf.utils import timing_decorator, write_options_to_file
@@ -20,13 +21,7 @@ from optparse import OptionParser
 warnings.simplefilter(action='ignore', category=pd.errors.DtypeWarning)
 
 
-
-chr_dic = {'chr1': 0,'chr2': 1,'chr3': 2,'chr4': 3,'chr5': 4,'chr6': 5,'chr7': 6,'chr8': 7,'chr9': 8,'chr10': 9,
-               'chr11': 10,'chr12': 11,'chr13': 12, 'chr14': 13,'chr15': 14,'chr16': 15,'chr17': 16,'chr18': 17,
-               'chr19': 18,'chr20': 19,'chr21': 20, 'chr22': 21, 'chrX':22, 'chrY':23}
-
-
-##################################isoform to intron and exon map generation
+####### isoform to intron and exon map generation
 def compute_transcript_intron_map(annot, out_prefix = '', annot_type = 'gencode', min_length = 50, max_length = 5000000, no_quality_control = False):
     """
 
@@ -45,28 +40,23 @@ def compute_transcript_intron_map(annot, out_prefix = '', annot_type = 'gencode'
     Result will be saved to disk
 
     """
-
     num_gene = 0
     num_transcript = 0
     
-    
-    try:
-        open(annot)
-    except:
-        sys.exit("%s does not exist... check your annotation files.\n"%annot)
-        
+    if not Path(annot).is_file():
+        raise FileNotFoundError(f"{annot} does not exist... check your annotation files.")
     
     gr = pr.read_gtf(annot)
     df = gr.df
     df = df.replace({np.nan: None})
     df = df[df['Chromosome'].str.contains('chr')].reset_index(drop=True) #eliminate gene and transcript not mapped into a chr
     df = df[~ df['gene_type'].str.contains('artifact', na = False)]
-    df = df[df['Chromosome'] != ('chrM')].reset_index(drop=True) #eliminate mito genes as they are not likely undergo alternative splicing
+    df = df[df['Chromosome'] != ('chrM')].reset_index(drop=True) # eliminate mito genes as they do not undergo alternative splicing
+
     # deal with output from stringtie
     if annot_type == 'Stringtie':
         gene_dic = {}
         name_dic = {}
-
 
         filtered_df = df[df['ref_gene_id'].notna()]
 
@@ -79,12 +69,10 @@ def compute_transcript_intron_map(annot, out_prefix = '', annot_type = 'gencode'
         df['ref_gene_id'] = df['gene_id'].map(gene_dic).fillna(df['ref_gene_id'])
         df['gene_name'] = df['gene_id'].map(name_dic).fillna(df['gene_name'])   
     
-
-        reference_list = open(f'{out_prefix}stringtie_transcriptome_reference.tsv', 'w') 
-        print('Stringtie_id reference_id reference_name', file=reference_list)
-        for key in gene_dic:
-            print(f'{key} {gene_dic[key]} {name_dic[key]}', file = reference_list)
-        reference_list.close()
+        with open(f'{out_prefix}stringtie_transcriptome_reference.tsv', 'w') as reference_list:
+            print('Stringtie_id reference_id reference_name', file=reference_list)
+            for key in gene_dic:
+                print(f'{key} {gene_dic[key]} {name_dic[key]}', file=reference_list)
 
     elif no_quality_control == False:
         df = df[~ df['gene_type'].str.contains('pseudogene', na = False)]
@@ -92,27 +80,18 @@ def compute_transcript_intron_map(annot, out_prefix = '', annot_type = 'gencode'
         # df = df[~ df['transcript_type'].str.contains('retained_intron', na = False)]
         # maybe useful to account for retain_intron isoforms
 
-
-    genes = list(df['gene_id'].unique()) #get all gene_id    
-
     gene_start_index = 0
     num_rows = len(df) - 1
 
-
     output = open(f'{out_prefix}isoform_intron_map.tsv', 'w')
 
-    if annot_type != 'Stringtie':
-        print('Chr Gene Transcript support_introns support_exons Transcript_type', file = output)
-    else: 
-        print('Chr Gene Transcript support_introns support_exons', file = output)
+    print('Chr Gene Transcript support_introns support_exons Transcript_type', file = output)
 
-    
     near_exon_dic = {}  # the dic that keep infor about the nearby exon of a intron
     # should in format {intron: {exon: counts}} counts not use 
     intron_str_dic = {}
 
     for idx in range(len(df)): # don't need to deal with the case that -1 row have a different gene than -2 row, since a gene must have at lease one transcript
-    
         if df.iloc[gene_start_index]['gene_id'] == df.iloc[idx]['gene_id'] and idx != num_rows:
             continue
         else: #
@@ -121,27 +100,22 @@ def compute_transcript_intron_map(annot, out_prefix = '', annot_type = 'gencode'
             
             else: # there are more rows left
                 gene_df = df.iloc[gene_start_index:idx]
-        
-        
-        
+
             num_gene += 1
             gene = gene_df['gene_id'].unique()[0]
             chromosome = gene_df['Chromosome'].unique()[0]
             transcripts = list(gene_df['transcript_id'].unique()) #get all gene_id, will include None 
-        
-        
+
             for trans in transcripts:
-                if trans == None: # skip the None value 
+                if trans is None: # skip the None value 
                     continue 
                 num_transcript += 1
                 exons = []
                 trans_df = gene_df[(gene_df['transcript_id'] == trans) & (gene_df['Feature'] == 'exon')] # only care about exon for the transcript
-                if annot_type != 'Stringtie': 
-                    trans_type = trans_df['transcript_type'].unique()[0]
+                trans_type = trans_df['transcript_type'].unique()[0] if annot_type != 'Stringtie' else 'unknown'
         
                 for index,row in trans_df.iterrows():
                     exon = [int(row['exon_number']), row['Chromosome'], row['Start'], row['End']] # exon number is the order of exon for this transcript
-                    
                     exons += [exon]
         
                 # computer introns:
@@ -152,49 +126,26 @@ def compute_transcript_intron_map(annot, out_prefix = '', annot_type = 'gencode'
                     next_exon = exons[i + 1]
                     current_exon_name = f'{current_exon[1]}:{current_exon[2]}-{current_exon[3]}'
                     next_exon_name = f'{next_exon[1]}:{next_exon[2]}-{next_exon[3]}'
-                    
-            
                     if current_exon[3] < next_exon[2]: # current_exon end < next_exon start, foward direction
                         introns += [[i+1,current_exon[1], (current_exon[3]), next_exon[2] + 1]] # +1 to align with leafcutter intron
-                        
                         # the precise location could be problematic, but it is defined th
                         temp_name = f'{current_exon[1]}:{current_exon[3]}-{next_exon[2] + 1}'
-                        
-                        add_near_exon_dic(near_exon_dic, temp_name, current_exon_name, next_exon_name) # add value to near_exon_dic
-                        # use helper function to improve readbility
-                        
+                        add_near_exon_dic(near_exon_dic, temp_name, current_exon_name, next_exon_name)
                         intron_str_dic[temp_name] = '+'
-                        
-                
+
                     else: # current_exon start > next_exon end, backward direction
                         introns += [[i+1,current_exon[1], (next_exon[3]), current_exon[2] + 1]] # +1 to align with leafcutter intron
-                        
                         temp_name = f'{current_exon[1]}:{next_exon[3]}-{current_exon[2] + 1}'
-                
                         add_near_exon_dic(near_exon_dic, temp_name, current_exon_name, next_exon_name)
-                        
                         intron_str_dic[temp_name] = '-'
-        
-        
-                # the order of intron doesn't really matter, but will keep in case have usage in future 
-            
-                out_introns = ''
-                out_exons = ''
-                for i in introns: 
-                    intron_len = abs(i[2]-i[3])
-                    if intron_len > min_length and intron_len < max_length: # limit the length of intron
-                        out_introns += f'{chromosome}:{i[2]}-{i[3]},'
-                
-            
-                for i in exons:
-                    out_exons += f'{chromosome}:{i[2]}-{i[3]},'
-            
-                out_introns = out_introns[:-1]  
-                out_exons = out_exons[:-1] # eliminate the last ","
-                if annot_type != 'Stringtie':
-                    print(f'{chromosome} {gene} {trans} {out_introns} {out_exons} {trans_type}', file = output)
-                else: 
-                    print(f'{chromosome} {gene} {trans} {out_introns} {out_exons}', file = output)
+
+                # the order of intron doesn't really matter, but will keep in case have usage in future
+                out_introns = ','.join(
+                    f'{chromosome}:{i[2]}-{i[3]}' for i in introns
+                    if min_length < abs(i[2] - i[3]) < max_length
+                )
+                out_exons = ','.join(f'{chromosome}:{i[2]}-{i[3]}' for i in exons)
+                print(f'{chromosome} {gene} {trans} {out_introns} {out_exons} {trans_type}', file = output)
             gene_start_index = idx
         
     output.close()
@@ -205,47 +156,18 @@ def compute_transcript_intron_map(annot, out_prefix = '', annot_type = 'gencode'
 
 
 def add_near_exon_dic(near_exon_dic, intron_name, current_exon_name, next_exon_name):
-    """ 
-    this is the helper function to build near_exon_dic
-    """
-    
-    if intron_name not in near_exon_dic:
-        near_exon_dic[intron_name] = {current_exon_name:1}
-        near_exon_dic[intron_name][next_exon_name] = 1
-                            
-    else:
-        if current_exon_name not in near_exon_dic[intron_name]:
-            near_exon_dic[intron_name][current_exon_name] = 1
-        else: 
-            near_exon_dic[intron_name][current_exon_name] += 1
-                        
-        if next_exon_name not in near_exon_dic[intron_name]:
-            near_exon_dic[intron_name][next_exon_name] = 1
-        else: 
-            near_exon_dic[intron_name][next_exon_name] += 1
+    exon_counts = near_exon_dic.setdefault(intron_name, {})
+    exon_counts[current_exon_name] = exon_counts.get(current_exon_name, 0) + 1
+    exon_counts[next_exon_name] = exon_counts.get(next_exon_name, 0) + 1
                         
 
 def print_near_exon_dic(near_exon_dic, intron_str_dic, out_prefix):
-    """ 
-    this is the ulepre function that print out the 
-    """
+    with open(f'{out_prefix}intron_exon_connectivity.tsv', 'w') as output:
+        print('intron near_exons strand', file=output)
+        for intron, exon_counts in near_exon_dic.items():
+            exons = ','.join(exon_counts.keys())
+            print(f'{intron} {exons} {intron_str_dic[intron]}', file=output)
     
-    output = open(f'{out_prefix}intron_exon_connectivity.tsv', 'w')
-
-    print('intron near_exons strand', file = output)
-
-    for intron in near_exon_dic:
-        exons = ''
-        for exon in near_exon_dic[intron]:
-            exons += f'{exon},'
-        exons = exons[:-1]
-        print(f'{intron} {exons} {intron_str_dic[intron]}',file = output)
-    
-    output.close()
-    
-    
-
-
 
 def isoform_intron_exon_sparse_generation(isoform_intron_map_file, out_prefix = ''):
     """
@@ -256,123 +178,52 @@ def isoform_intron_exon_sparse_generation(isoform_intron_map_file, out_prefix = 
     None.
 
     """
-
-
     df = pd.read_csv(isoform_intron_map_file, sep = ' ')
 
+    isoform_to_introns = {
+        iso: [] if pd.isna(v) else v.split(',') for iso, v in zip(df['Transcript'], df['support_introns'])
+    }
+    isoform_to_exons = {
+        iso: [] if pd.isna(v) else v.split(',') for iso, v in zip(df['Transcript'], df['support_exons'])
+    }
 
-    isoform_to_introns = dict(zip(df['Transcript'], df['support_introns']))
-    isoform_to_exons = dict(zip(df['Transcript'], df['support_exons']))
-
-
-
-    for isoform, introns in isoform_to_introns.items():
-    # Check if introns is not NaN (using pandas isna() function)
-        if pd.isna(introns):
-            isoform_to_introns[isoform] = []
-        else:
-            isoform_to_introns[isoform] = introns.split(',')
-
-
-    for isoform, exons in isoform_to_exons.items():
-    # Check if introns is not NaN (using pandas isna() function)
-        if pd.isna(exons):
-            isoform_to_exons[isoform] = []
-        else:
-            isoform_to_exons[isoform] = exons.split(',')
-
-
-
-    # Step 1: Extract unique isoforms and introns
     all_isoforms = list(isoform_to_introns.keys())
-    
-    all_introns = set()
-    for introns in isoform_to_introns.values():
-        all_introns.update(introns)
-    all_introns = list(all_introns)    
-    
-    all_exons = set()
-    for exons in isoform_to_exons.values():
-        all_exons.update(exons)
-    all_exons = list(all_exons)
+    all_introns = list({i for introns in isoform_to_introns.values() for i in introns})
+    all_exons = list({e for exons in isoform_to_exons.values() for e in exons})
 
-
-
-    # Step 2: Create mappings to indices
-    isoform_to_index = {isoform: i for i, isoform in enumerate(all_isoforms)}
+    # Step 2: Create index mappings
+    isoform_to_index = {iso: i for i, iso in enumerate(all_isoforms)}
     intron_to_index = {intron: i for i, intron in enumerate(all_introns)}
     exon_to_index = {exon: i for i, exon in enumerate(all_exons)}
 
-
-
-
-    # Step 3: Populate the matrix
-    row_indices = []
-    col_indices = []
-    for isoform, introns in isoform_to_introns.items():
-        row_index = isoform_to_index[isoform]
-        for intron in introns:
-            col_index = intron_to_index[intron]
-            row_indices.append(row_index)
-            col_indices.append(col_index)
-
-    num_rows = len(all_isoforms)
-    num_intron_cols = len(all_introns)
-
-
-    isoform_intron_matrix = scipy.sparse.coo_matrix(
-        ( [1]*len(row_indices), (row_indices, col_indices) ),
-        shape=(num_rows, num_intron_cols)
+    # Step 3: Build sparse matrices
+    def _build_matrix(mapping, item_to_index, num_cols):
+        rows, cols = zip(*[
+            (isoform_to_index[iso], item_to_index[item])
+            for iso, items in mapping.items() for item in items
+        ]) if any(mapping.values()) else ([], [])
+        return scipy.sparse.coo_matrix(
+            ([1] * len(rows), (list(rows), list(cols))),
+            shape=(len(all_isoforms), num_cols)
         )
 
-
-    row_indices = []
-    col_indices = []
-    for isoform, exons in isoform_to_exons.items():
-        row_index = isoform_to_index[isoform]
-        for exon in exons:
-            col_index = exon_to_index[exon]
-            row_indices.append(row_index)
-            col_indices.append(col_index)
-
-    num_exon_cols = len(all_exons)
-    
-    isoform_exon_matrix = scipy.sparse.coo_matrix(
-        ( [1]*len(row_indices), (row_indices, col_indices) ),
-        shape=(num_rows, num_exon_cols)
-        )
-
-
+    isoform_intron_matrix = _build_matrix(isoform_to_introns, intron_to_index, len(all_introns))
+    isoform_exon_matrix = _build_matrix(isoform_to_exons, exon_to_index, len(all_exons))
 
     save_npz(f'{out_prefix}isoform_intron_matrix.npz', isoform_intron_matrix)
     save_npz(f'{out_prefix}isoform_exon_matrix.npz', isoform_exon_matrix)
 
-
-    with open(f'{out_prefix}isoform_rows.txt', 'w') as output:
-        for isoform in all_isoforms:
-            print(isoform, file= output)
-
-    with open(f'{out_prefix}intron_cols.txt', 'w') as output:
-        for intron in all_introns:
-            print(intron, file= output)
-
-    with open(f'{out_prefix}exon_cols.txt', 'w') as output:
-        for exon in all_exons:
-            print(exon, file= output)
+    for path, items in [
+        (f'{out_prefix}isoform_rows.txt', all_isoforms),
+        (f'{out_prefix}intron_cols.txt', all_introns),
+        (f'{out_prefix}exon_cols.txt', all_exons),
+    ]:
+        with open(path, 'w') as f:
+            f.write('\n'.join(items) + '\n')
 
 
-
-
-    
-    
-    
-    
-    
-    
 ##############################################################################################
-
-#these function is some additional features, not fully tested yet
-
+# these function is some additional features, not fully tested yet
 def add_virtual_first_last_introns(trancript_to_intron_map, intron_to_exon_map, out_prefix = '', include_exon = False):
     """
     This is the function that use to add virtual intron 0 and -1 to capture 
@@ -386,18 +237,14 @@ def add_virtual_first_last_introns(trancript_to_intron_map, intron_to_exon_map, 
     gene_dic = {}
     intron_exon_df = pd.read_csv(intron_to_exon_map, sep = ' ')
     
-    
     # this round to get the start and end for a gene
     for index, row in df.iterrows():
         current_gene = row['Gene']
         current_exons= row['support_exons'].split(',')
         
-        
-        
         # exon in format "chr1:3143475-3144545"
         first_exon = current_exons[0].split(':')[1].split('-')
         last_exon = current_exons[-1].split(':')[1].split('-')
-        
 
         # tmp_start always smaller than tmp_end
         if int(first_exon[0]) <= int(last_exon[0]): # forward direction
@@ -408,7 +255,6 @@ def add_virtual_first_last_introns(trancript_to_intron_map, intron_to_exon_map, 
             tmp_start = int(last_exon[0]) 
             tmp_end = int(first_exon[1])
             tmp_direction = '-'
-        
         
         if current_gene not in gene_dic:
             gene_dic[current_gene] = {'start':tmp_start, 'end': tmp_end, 'direction': tmp_direction}
@@ -422,16 +268,10 @@ def add_virtual_first_last_introns(trancript_to_intron_map, intron_to_exon_map, 
             if tmp_direction != gene_dic[current_gene]['direction'] and len(current_exons) >1:
                 #correct the possible direction mistake when single exon appear
                 gene_dic[current_gene]['direction'] = tmp_direction
-        
-    list_virtual = open(f'{out_prefix}virtual.tsv', 'w')
-    print('intron type', file = list_virtual)
-    
-    #not sure whether to update the intron_to_exon map as virtual intron may cause
-    # arbitray large cluster depend on reference structure, but without it hard to
-    # define hybrid exon
+
     intron_exon_dic = {}
     intron_dic = {}
-    
+
     for index, row in df.iterrows():
         current_chr = row['Chr']
         current_gene = row['Gene']
@@ -440,75 +280,55 @@ def add_virtual_first_last_introns(trancript_to_intron_map, intron_to_exon_map, 
         first_exon = current_exons[0].split(':')[1].split('-')
         last_exon = current_exons[-1].split(':')[1].split('-')
         
-        
-        
         direction = gene_dic[current_gene]['direction']
         
         if direction == '+':
             intron_0 = f'{current_chr}:{gene_dic[current_gene]["start"] - 500}-{int(first_exon[0])}'
             intron_minus1 = f'{current_chr}:{int(last_exon[1])}-{gene_dic[current_gene]["end"] + 500}'
-            
-            
-            
+
         else:
             intron_0 = f'{current_chr}:{int(first_exon[1])}-{gene_dic[current_gene]["end"] + 500}'
             intron_minus1 = f'{current_chr}:{gene_dic[current_gene]["start"] - 500}-{int(last_exon[0])}'
-            
-    
-        
-        if include_exon == True:
+
+        if include_exon:
             if intron_0 not in intron_exon_dic:
-                intron_exon_dic[intron_0] = {'exons': set([current_exons[0]]), 'strand': direction}
-            else: 
-                intron_exon_dic[intron_0]['exons'].append(current_exons[0])
-                
+                intron_exon_dic[intron_0] = {'exons': {current_exons[0]}, 'strand': direction}
+            else:
+                intron_exon_dic[intron_0]['exons'].add(current_exons[0])
             if intron_minus1 not in intron_exon_dic:
-                intron_exon_dic[intron_minus1] = {'exons': set([current_exons[-1]]), 'strand': direction}
-            else: 
-                intron_exon_dic[intron_minus1]['exons'].append(current_exons[-1])  
+                intron_exon_dic[intron_minus1] = {'exons': {current_exons[-1]}, 'strand': direction}
+            else:
+                intron_exon_dic[intron_minus1]['exons'].add(current_exons[-1])
         else:
-            if intron_0 not in intron_exon_dic:
-                intron_exon_dic[intron_0] = {'exons': 'not_avalible', 'strand': direction}
-            if intron_minus1 not in intron_exon_dic:
-                intron_exon_dic[intron_minus1] = {'exons': 'not_avalible', 'strand': direction}
-            # can use N/A or None to replace 'not_avalible'
-            
-            
-        
-        if df.loc[index]['support_introns'] == None:
-            df.loc[index]['support_introns'] = f'{intron_0},{intron_minus1}'
+            intron_exon_dic.setdefault(intron_0, {'exons': None, 'strand': direction})
+            intron_exon_dic.setdefault(intron_minus1, {'exons': None, 'strand': direction})
+
+        cur_introns = df.loc[index, 'support_introns']
+        if cur_introns is None:
+            df.loc[index, 'support_introns'] = f'{intron_0},{intron_minus1}'
         else:
-            df.loc[index]['support_introns'] = f'{intron_0},{df.loc[index]["support_introns"]},{intron_minus1}'
-        
-        
-        if intron_0 not in intron_dic:
-            intron_dic[intron_0] = 'intron_0'
-        if intron_minus1 not in intron_dic:
-            intron_dic[intron_minus1] = 'intron_-1'
-        
-        
-    intron_exon_list = []
-    for intron in intron_exon_dic:
-        if include_exon == True:
-            tmp_str = ''
-            for element in intron_exon_dic[intron]['exons']:
-                tmp_str += f'{element},'
-            tmp_str = tmp_str[:-1]
-            # get rid of last , 
-            intron_exon_list.append([intron,tmp_str,intron_exon_dic[intron]['strand']])
-        else:
-            intron_exon_list.append([intron,intron_exon_dic[intron]['exons'],intron_exon_dic[intron]['strand']])
-    
-    for intron in intron_dic:
-        print(f'{intron} {intron_dic[intron]}', file=list_virtual)
-    
+            df.loc[index, 'support_introns'] = f'{intron_0},{cur_introns},{intron_minus1}'
 
-    list_virtual.close()
-    df.to_csv(f'{out_prefix}isoform_intron_map_with_virtual.tsv', sep = ' ', index=False)
-    intron_exon_df = intron_exon_df.append(pd.DataFrame(intron_exon_list, columns = ['intron', 'near_exons', 'strand']), ignore_index=True)
-    intron_exon_df.to_csv(f'{out_prefix}intron_exon_connectivity_with_virtual.tsv', sep = ' ', index=False)    
+        intron_dic.setdefault(intron_0, 'intron_0')
+        intron_dic.setdefault(intron_minus1, 'intron_-1')
 
+    intron_exon_list = [
+        [intron,
+         ','.join(d['exons']) if include_exon else d['exons'],
+         d['strand']]
+        for intron, d in intron_exon_dic.items()
+    ]
 
+    with open(f'{out_prefix}virtual.tsv', 'w') as list_virtual:
+        print('intron type', file=list_virtual)
+        for intron, itype in intron_dic.items():
+            print(f'{intron} {itype}', file=list_virtual)
+    df.to_csv(f'{out_prefix}isoform_intron_map_with_virtual.tsv', sep=' ', index=False)
+    intron_exon_df = pd.concat(
+        [intron_exon_df, pd.DataFrame(intron_exon_list, columns=['intron', 'near_exons', 'strand'])],
+        ignore_index=True
+    )
+    intron_exon_df.to_csv(f'{out_prefix}intron_exon_connectivity_with_virtual.tsv', sep=' ', index=False)
 
 
 def intron_source_generation(transcript_intron_map, out_prefix = ''):
@@ -529,22 +349,17 @@ def intron_source_generation(transcript_intron_map, out_prefix = ''):
 #######################################################################################################################################
 @timing_decorator
 def tealeaf_map_generation(options):
-    """
-    This this the main warper function for the tealeaf map generation
-
-    """
+    out_prefix = options.outprefix
+    compute_transcript_intron_map(
+        options.annot,
+        out_prefix=out_prefix,
+        annot_type=options.annot_source,
+        min_length=options.minintronlen,
+        max_length=options.maxintronlen,
+        no_quality_control=options.no_quality_control,
+    )
     
-    
-    
-    compute_transcript_intron_map(options.annot, out_prefix= options.outprefix,\
-                                  annot_type = options.annot_source,\
-                                  min_length = options.minintronlen,\
-                                  max_length= options.maxintronlen, \
-                                  no_quality_control= options.no_quality_control)
-        
-    out_prefix = options.outprefix    
-    
-    if options.single_cell == True:
+    if options.single_cell:
         isoform_intron_exon_sparse_generation(f'{out_prefix}isoform_intron_map.tsv', out_prefix)
         
     if options.annot_source == 'gencode':
@@ -556,9 +371,6 @@ def tealeaf_map_generation(options):
             f'{out_prefix}intron_exon_connectivity.tsv',
             out_prefix,
         )
-
-
-
 
 
 if __name__ == "__main__":
@@ -611,7 +423,10 @@ if __name__ == "__main__":
     sys.stderr.write(f'Saving parameters to {record}\n')
     write_options_to_file(options, record)
 
-    tealeaf_map_generation(options)
+    try:
+        tealeaf_map_generation(options)
+    except FileNotFoundError as e:
+        sys.exit(f"Error: {e}\n")
 
     sys.stderr.write('Finished building isoform-to-intron map\n')
 

@@ -229,10 +229,6 @@ tealeaf-ggsashimi
 
 
 Mandatory parameters:
-
-
-
-
 ```
 
 
@@ -240,7 +236,7 @@ Mandatory parameters:
 
 
 
-## Detailed Tutorial to run the tealeaf
+## Detailed Tutorial to run tealeaf
 
 In this tutorial, we walk through all the steps to run the tealeaf pipeline. For each step, we discuss the possible parameters that can be changed, how to do so and the considerations involved in each of the parameters. Finally, we show example inputs and outputs of each step (with column explanations) so the user knows what to expect and can make custom files as needed.
 
