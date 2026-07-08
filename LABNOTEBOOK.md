@@ -72,3 +72,54 @@ Implementation note:
 - `tealeaf_sc()` had a preprocessed-mode bug: `out_prefix` was only assigned
   inside the non-preprocessed branch. Moved `out_prefix = options.outprefix` to
   the top of the function so `--preprocessed` can use existing pseudo matrices.
+
+## 2026-07-08 Microglia Cluster-Name Pseudobulk Run
+
+The `calcutta` notebook `analyze_microglialess.ipynb` identified the relevant
+combined AnnData object:
+
+- `/gpfs/commons/groups/knowles_lab/data/sc/splitpool/microglia_less_mice/salmon_per_sublib/t2g_permit_known_combined.h5ad`
+
+The AnnData `.obs` table contains `CB_polydT`, `CB_ranhex`, `class`, and
+`cluster_name`. Both barcode columns overlap the transcript-level alevin row
+barcodes in:
+
+- `/gpfs/commons/groups/knowles_lab/data/sc/splitpool/microglia_less_mice/salmon_spliceu/out_permit_known/quant_t2t_dedup/alevin/quants_mat_rows.txt`
+
+Generated barcode-to-cluster mapping:
+
+- `/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/barcodes_to_cluster_name.csv`
+- 88,920 barcode/group rows.
+- 20 cluster-name groups.
+- Barcodes with conflicting labels were dropped.
+
+Moved the tealeaf reference from local scratch to a GPFS-visible run directory:
+
+- `/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/ref/vM32_*`
+
+Added helper scripts:
+
+- `extra_scripts/aggregate_pseudobulk_sparse.py`: aggregates a cell-by-transcript
+  sparse matrix into tealeaf-sc preprocessed pseudobulk transcript matrices.
+- `extra_scripts/run_microglia_cluster_tealeaf.sbatch`: Slurm recipe for this
+  microglia-less cluster-name run.
+
+Run details:
+
+- Slurm job: `18728233`.
+- Partition: `bigmem`.
+- Requested memory: 500G.
+- MaxRSS reported: 11,317,496K.
+- Elapsed time: 4m 23s.
+- Aggregated transcript matrix:
+  - Input shape: 744,997 cells by 116,918 transcripts.
+  - Input nonzeros: 797,002,207.
+  - Output shape: 20 cluster-name pseudobulks by 116,918 transcripts.
+  - Output nonzeros: 1,445,078.
+
+Final outputs:
+
+- `/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/cluster_count_intron`: 167,800 lines.
+- `/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/cluster_count_exon`: 196,748 lines.
+- `/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/cluster_refined_cluster`: 27,414 lines.
+- `/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/cluster_ratio_count`: 27,414 lines.
