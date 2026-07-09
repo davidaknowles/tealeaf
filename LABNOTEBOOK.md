@@ -219,3 +219,28 @@ Validation:
   `Python/3.12.3-GCCcore-13.3.0`.
 - A tiny synthetic EC/transcript system produced nonnegative, normalized
   outputs for EM, NNLS, and nuclear-norm NNLS.
+
+## 2026-07-09 Salmon/Alevin Pipeline Recipes
+
+Pulled the useful microglia-less Salmon/Alevin pipeline pieces from the older
+Calcutta workflow into this repo.
+
+Added recipes:
+
+- `extra_scripts/run_microglia_salmon_alevin_align.sbatch`: original
+  `salmon alevin --splitseqV2 --sketch` RAD-generation step.
+- `extra_scripts/run_microglia_alevin_fry_t2t_quant.sbatch`: original
+  permit-list, collate, and transcript-level `alevin-fry quant
+  --dump-eqclasses` step.
+- `extra_scripts/run_microglia_salmon_dump_eq_weights.sbatch`: new Salmon
+  `quant --dumpEq --dumpEqWeights` pass for the weighted equivalence-class
+  design matrix described in `docs/glm.tex`.
+- `extra_scripts/alevin_make_t2t.py` and
+  `extra_scripts/alevin_dedup_t2g.py`: mapping helpers used to build
+  transcript-level alevin-fry mappings.
+
+Important caveat: `--dumpEqWeights` is exposed by `salmon quant`, not by the
+documented `salmon alevin` options. The new weighted-EC recipe is therefore a
+bulk Salmon pass over the same FASTQs used for Alevin RAD generation. Before
+using those weighted EC rows with the existing alevin-fry cell-by-EC matrix, we
+need to verify that the EC definitions can be matched or add a conversion step.
