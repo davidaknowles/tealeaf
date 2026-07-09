@@ -9,6 +9,9 @@ import collections
 
 import numpy as np
 import scipy.sparse as sp
+from scipy.optimize import lsq_linear
+from scipy.sparse.linalg import eigsh, svds
+from scipy.linalg import svd
 from collections import OrderedDict
 
 def smart_open(filename, *args, **kwargs):
@@ -143,6 +146,139 @@ def EM(counts, ec_transcript_mat, w, iterations=30):
 
     return alpha
 
+
+def weighted_ec_transcript_matrix(ec_transcript_mat, w, ec_effective_lengths=None):
+    """Build the GLM compatibility matrix ``A`` from EC membership.
+
+    ``docs/glm.tex`` defines ``A[s, t] = u_s / l_t`` for compatible EC/isoform
+    pairs.  Alevin-fry EC dumps do not include EC effective lengths, so callers
+    pass ``ec_effective_lengths=None`` to use ``u_s = 1``.
+    """
+    mat = ec_transcript_mat.tocoo(copy=True)
+    if ec_effective_lengths is None:
+        mat.data = w[mat.col].astype(float, copy=False)
+    else:
+        u = np.asarray(ec_effective_lengths, dtype=float)
+        if len(u) != mat.shape[0]:
+            raise ValueError("ec_effective_lengths must have one value per EC row")
+        mat.data = u[mat.row] * w[mat.col]
+    return mat.tocsr()
+
+
+def NNLS(counts, ec_transcript_mat, w, ec_effective_lengths=None,
+         max_iter=200, tol=1e-6):
+    """Non-negative least-squares approximation to EM.
+
+    Solves ``min_phi ||c - A phi||_2^2`` with ``phi >= 0`` for one pseudobulk,
+    where ``c`` is the EC count vector normalized to proportions.  The returned
+    vector is normalized to sum to one when possible so downstream count scaling
+    can reuse the EM code path.
+    """
+    counts = np.asarray(counts, dtype=float)
+    total = counts.sum()
+    if total <= 0:
+        return np.zeros(ec_transcript_mat.shape[1], dtype=float)
+
+    c = counts / total
+    A = weighted_ec_transcript_matrix(ec_transcript_mat, w, ec_effective_lengths)
+    result = lsq_linear(
+        A,
+        c,
+        bounds=(0, np.inf),
+        max_iter=max_iter,
+        tol=tol,
+        lsmr_tol="auto",
+    )
+    phi = np.maximum(result.x, 0)
+    phi_sum = phi.sum()
+    if phi_sum > 0:
+        phi /= phi_sum
+    return phi
+
+
+def _svt_nonnegative(x, threshold, rank=None):
+    """Apply singular-value soft-thresholding followed by nonnegative projection."""
+    min_dim = min(x.shape)
+    if rank is not None and 0 < rank < min_dim - 1:
+        u, s, vt = svds(x, k=rank)
+        order = np.argsort(s)[::-1]
+        u, s, vt = u[:, order], s[order], vt[order]
+    else:
+        u, s, vt = svd(x, full_matrices=False, check_finite=False)
+
+    keep = s > threshold
+    if not np.any(keep):
+        return np.zeros_like(x)
+    shrunk = s[keep] - threshold
+    x_new = (u[:, keep] * shrunk) @ vt[keep, :]
+    return np.maximum(x_new, 0)
+
+
+def NNLS_nucnorm(count_matrix, ec_transcript_mat, w, regularization=0.01,
+                 ec_effective_lengths=None, max_iter=50, tol=1e-4,
+                 svd_rank=50, max_dense_entries=100_000_000):
+    """Many-pseudobulk NNLS with nuclear-norm regularization.
+
+    This is a direct reference implementation of the objective in
+    ``docs/glm.tex``:
+
+        0.5 * ||C - A Phi||_F^2 + lambda * ||Phi||_*
+
+    using sparse sufficient statistics ``B=A.T@C`` and ``G=A.T@A``.  It stores
+    ``Phi`` densely, so callers should keep the pseudobulk/feature matrix
+    filtered or raise ``max_dense_entries`` knowingly.
+    """
+    counts = count_matrix.tocsr()
+    n_samples, _ = counts.shape
+    A = weighted_ec_transcript_matrix(ec_transcript_mat, w, ec_effective_lengths)
+    n_transcripts = A.shape[1]
+
+    dense_entries = n_samples * n_transcripts
+    if dense_entries > max_dense_entries:
+        raise MemoryError(
+            "NNLS_nucnorm would create a dense transcript-by-sample matrix with "
+            f"{dense_entries} entries; increase max_dense_entries if intended."
+        )
+
+    totals = np.asarray(counts.sum(axis=1)).ravel()
+    nonzero = totals > 0
+    inv_totals = np.zeros_like(totals, dtype=float)
+    inv_totals[nonzero] = 1.0 / totals[nonzero]
+    C = counts.T @ sp.diags(inv_totals)
+
+    B = (A.T @ C).toarray()
+    G = A.T @ A
+
+    try:
+        lipschitz = float(eigsh(G, k=1, return_eigenvectors=False)[0])
+    except Exception:
+        lipschitz = float(sp.linalg.norm(G))
+    if not np.isfinite(lipschitz) or lipschitz <= 0:
+        lipschitz = 1.0
+
+    phi = np.zeros((n_transcripts, n_samples), dtype=float)
+    y = phi.copy()
+    momentum = 1.0
+    threshold = regularization / lipschitz
+
+    for _ in range(max_iter):
+        grad = G @ y - B
+        proposal = y - grad / lipschitz
+        phi_new = _svt_nonnegative(proposal, threshold, svd_rank)
+
+        denom = max(np.linalg.norm(phi), 1.0)
+        rel_change = np.linalg.norm(phi_new - phi) / denom
+        next_momentum = (1 + np.sqrt(1 + 4 * momentum * momentum)) / 2
+        y = phi_new + ((momentum - 1) / next_momentum) * (phi_new - phi)
+        phi, momentum = phi_new, next_momentum
+        if rel_change < tol:
+            break
+
+    col_sums = phi.sum(axis=0)
+    positive = col_sums > 0
+    phi[:, positive] /= col_sums[positive]
+    phi[:, ~nonzero] = 0
+    return phi.T
 
 
 

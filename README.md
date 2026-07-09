@@ -189,6 +189,26 @@ Optional Parameters:
 
 --thread                The number of threads used for parallel computation, should not be too large to avoid crash (default: 8)
 
+--quant_method          Transcript quantification method for pseudobulk equivalence-class counts:
+                        em, nnls, or nnls_nucnorm (default: em)
+
+--nnls_max_iter         Maximum iterations for the NNLS bounded least-squares solver (default: 200)
+
+--nnls_tol              Tolerance for the NNLS bounded least-squares solver (default: 1e-6)
+
+--nucnorm_lambda        Nuclear-norm penalty used when --quant_method=nnls_nucnorm (default: 0.01)
+
+--nucnorm_max_iter      Maximum proximal-gradient iterations used when --quant_method=nnls_nucnorm (default: 50)
+
+--nucnorm_tol           Relative convergence tolerance used when --quant_method=nnls_nucnorm (default: 1e-4)
+
+--nucnorm_rank          Number of singular vectors used by truncated singular-value thresholding
+                        when --quant_method=nnls_nucnorm (default: 50)
+
+--nucnorm_max_dense_entries
+                        Maximum dense transcript-by-pseudobulk matrix entries allowed for
+                        --quant_method=nnls_nucnorm (default: 100,000,000)
+
 --use_TPM               A flag on whether to use TPM or normalized count
 
 --preprocessed          A flag on whether pseudobulk generation and EM were done, if true, then the pipeline starts from counting intron (default: False)
@@ -348,7 +368,6 @@ This step will also generate other relevant files like `barcodes_pseudobulk.txt`
 ### Step 4:
 The output from step 3 is equivalent to results from leafcutter clustering, and the results are compatible with downstream analysis for Leafcutter, such as Leafcutter_ds and Leafviz. 
 Further information and downstream analysis please refer to https://davidaknowles.github.io/leafcutter/index.html
-
 
 
 

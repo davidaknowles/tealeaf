@@ -229,8 +229,44 @@ def check_barcodes_exsitent(barcode_pseudo_df, valid_barcodes, out_prefix):
 
 
 
+def alpha_to_tpm_count(alpha, total_count, w, normalize_mode, read_length, paired_end,
+                       overhang, sizing_factor, bool_spliced_trans):
+    """Convert an isoform probability vector into tealeaf TPM/count outputs."""
+    TPM = alpha * 1000000
+
+    if normalize_mode == 'global':
+        count = (alpha * total_count) * sizing_factor
+    elif normalize_mode == 'snRNA':
+        count = np.where(bool_spliced_trans == 1, alpha, 0)
+        count = count / w
+        count_sum = count.sum()
+        if count_sum > 0:
+            count = (count / count_sum) * total_count
+
+        if paired_end:
+            effective_read_len = (read_length - overhang) * 2 * sizing_factor
+        else:
+            effective_read_len = (read_length - overhang) * sizing_factor
+
+        count = count * w * effective_read_len
+    else:
+        count = alpha / w
+        count_sum = count.sum()
+        if count_sum > 0:
+            count = (count / count_sum) * total_count
+
+        if paired_end:
+            effective_read_len = (read_length - overhang) * 2 * sizing_factor
+        else:
+            effective_read_len = (read_length - overhang) * sizing_factor
+
+        count = count * w * effective_read_len
+
+    return TPM, count
+
+
 def process_pseudo_row(i, cell_ec_sparse_pseudo_filt, ec_transcript_input, w, normalize_mode, read_length, paired_end , overhang, \
-                       sizing_factor,bool_spliced_trans):
+                       sizing_factor,bool_spliced_trans, quant_method='em', nnls_max_iter=200, nnls_tol=1e-6):
     """
     This is the helper function for pseudo_eq_conversion, this function will be use to enable multiprocessing
     This function will be called by parallel_EM_processing
@@ -239,70 +275,72 @@ def process_pseudo_row(i, cell_ec_sparse_pseudo_filt, ec_transcript_input, w, no
     temp_sample = cell_ec_sparse_pseudo_filt.getrow(i).toarray().ravel()
     total_count = temp_sample.sum()
     temp_sample += 0.0000001  # add 1e-6 to avoid null value
-    
-    alpha = sc_utils.EM(temp_sample, ec_transcript_input, w)
-    TPM = alpha * 1000000
-    
-    
-    if normalize_mode == 'global':
-    
-        count = (alpha * total_count)  * sizing_factor# TPM to count conversion
-    elif normalize_mode == 'snRNA':
-        # attribute the count of unspliced RNA to spliced RNA based on the spliced RNA ratio
-        count = np.where(bool_spliced_trans == 1, alpha, 0)
-        count = count / w
-        count = (count / count.sum()) * total_count
-        
-        
-        if paired_end:
-            
-            effective_read_len = (read_length - overhang) * 2 * sizing_factor
-        else:
-            effective_read_len = (read_length - overhang)  * sizing_factor
-            
-        count = count * w * effective_read_len
-        
-          
-        
+
+    if quant_method == 'em':
+        alpha = sc_utils.EM(temp_sample, ec_transcript_input, w)
+    elif quant_method == 'nnls':
+        alpha = sc_utils.NNLS(temp_sample, ec_transcript_input, w,
+                              max_iter=nnls_max_iter, tol=nnls_tol)
     else:
-        count = alpha / w # expected count of each transcript should be poportional to the value of TPM * effective_len for each transcript
-        # w = 1/effective_len
-        count = (count / count.sum()) * total_count
-        
-        if paired_end:
-            
-            effective_read_len = (read_length - overhang) * 2 * sizing_factor
-        else:
-            effective_read_len = (read_length - overhang)  * sizing_factor
-            
-        count = count * w * effective_read_len
+        raise ValueError(f"Unsupported quant_method for row processing: {quant_method}")
 
     # we don't need the actual count, we just need a scale that represents the support level of the TPM value
     # TPM * total_count gives a count-like value that retains the TPM ratio of transcripts
-
+    TPM, count = alpha_to_tpm_count(
+        alpha, total_count, w, normalize_mode, read_length, paired_end,
+        overhang, sizing_factor, bool_spliced_trans,
+    )
     return TPM, count
 
 
 
 def parallel_EM_processing(cell_ec_sparse_pseudo_filt, ec_transcript_input, w, thread,normalize_mode, read_length, paired_end , overhang, sizing_factor,\
                            bool_spliced_trans):
-   
+    return parallel_quant_processing(
+        cell_ec_sparse_pseudo_filt, ec_transcript_input, w, thread,
+        normalize_mode, read_length, paired_end, overhang, sizing_factor,
+        bool_spliced_trans, quant_method='em',
+    )
+
+
+def parallel_quant_processing(cell_ec_sparse_pseudo_filt, ec_transcript_input, w, thread, normalize_mode,
+                              read_length, paired_end, overhang, sizing_factor, bool_spliced_trans,
+                              quant_method='em', nnls_max_iter=200, nnls_tol=1e-6,
+                              nucnorm_lambda=0.01, nucnorm_max_iter=50,
+                              nucnorm_tol=1e-4, nucnorm_rank=50,
+                              nucnorm_max_dense_entries=100000000):
+    if quant_method == 'nnls_nucnorm':
+        alphas = sc_utils.NNLS_nucnorm(
+            cell_ec_sparse_pseudo_filt,
+            ec_transcript_input,
+            w,
+            regularization=nucnorm_lambda,
+            max_iter=nucnorm_max_iter,
+            tol=nucnorm_tol,
+            svd_rank=nucnorm_rank,
+            max_dense_entries=nucnorm_max_dense_entries,
+        )
+        tpm_rows = []
+        count_rows = []
+        totals = np.asarray(cell_ec_sparse_pseudo_filt.sum(axis=1)).ravel()
+
+        for i, alpha in enumerate(alphas):
+            tmp_tpm, tmp_count = alpha_to_tpm_count(
+                alpha, totals[i], w, normalize_mode, read_length, paired_end,
+                overhang, sizing_factor, bool_spliced_trans,
+            )
+            tpm_rows.append(csr_matrix(tmp_tpm.reshape(1, -1)))
+            count_rows.append(csr_matrix(tmp_count.reshape(1, -1)))
+        return vstack(tpm_rows), vstack(count_rows)
 
     results = Parallel(n_jobs=thread)(delayed(process_pseudo_row)(i,cell_ec_sparse_pseudo_filt, ec_transcript_input, w, \
-                                                                  normalize_mode, read_length, paired_end , overhang, sizing_factor,bool_spliced_trans) \
+                                                                  normalize_mode, read_length, paired_end , overhang, sizing_factor,bool_spliced_trans,\
+                                                                  quant_method, nnls_max_iter, nnls_tol) \
                                   for i in range(cell_ec_sparse_pseudo_filt.shape[0]))
 
-    # Extracting results and combining them into matrices
-    pseudo_TPM = csr_matrix((0, ec_transcript_input.shape[1]))  # Initialize an empty sparse matrix
-    pseudo_count = csr_matrix((0, ec_transcript_input.shape[1]))  # Initialize an empty sparse matrix
-
-    
-    for value in results:
-        tmp_tpm = csr_matrix(value[0].reshape(1,-1))
-        tmp_count = csr_matrix(value[1].reshape(1,-1))
-        pseudo_TPM = vstack([pseudo_TPM, tmp_tpm])
-        pseudo_count = vstack([pseudo_count, tmp_count])
-    return pseudo_TPM, pseudo_count
+    tpm_rows = [csr_matrix(value[0].reshape(1, -1)) for value in results]
+    count_rows = [csr_matrix(value[1].reshape(1, -1)) for value in results]
+    return vstack(tpm_rows), vstack(count_rows)
 
 
 
@@ -310,7 +348,10 @@ def parallel_EM_processing(cell_ec_sparse_pseudo_filt, ec_transcript_input, w, t
 
 
 def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5, min_transcript = 0, out_prefix= '', threshold = 0.1, thread =8, \
-                         normalize_mode = 'junction', read_length = 100, paired_end = True, overhang = 2, sizing_factor = 1):
+                         normalize_mode = 'junction', read_length = 100, paired_end = True, overhang = 2, sizing_factor = 1,\
+                         quant_method = 'em', nnls_max_iter = 200, nnls_tol = 1e-6, nucnorm_lambda = 0.01,\
+                         nucnorm_max_iter = 50, nucnorm_tol = 1e-4, nucnorm_rank = 50,\
+                         nucnorm_max_dense_entries = 100000000):
     """
     
 
@@ -326,7 +367,18 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
     """
 
     threshold = float(threshold) # ensure the threshold is a float number
+    min_EC = float(min_EC)
+    min_transcript = float(min_transcript)
     thread = int(thread)
+    nnls_max_iter = int(nnls_max_iter)
+    nnls_tol = float(nnls_tol)
+    nucnorm_lambda = float(nucnorm_lambda)
+    nucnorm_max_iter = int(nucnorm_max_iter)
+    nucnorm_tol = float(nucnorm_tol)
+    nucnorm_rank = int(nucnorm_rank)
+    nucnorm_max_dense_entries = int(nucnorm_max_dense_entries)
+    if quant_method not in {'em', 'nnls', 'nnls_nucnorm'}:
+        sys.exit("Error: invalid quantification method...\n")
     # step 1: data loading
     transcript_lengths_dic = sc_utils.get_transcript_lengths(Path(salmon_ref))    
     
@@ -433,10 +485,12 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
     ec_transcript_input = ec_transcript_ffff.tocoo()
     
     
-    pseudo_TPM, pseudo_count = parallel_EM_processing(
+    pseudo_TPM, pseudo_count = parallel_quant_processing(
         cell_ec_sparse_pseudo_filt, ec_transcript_input, w, thread,
         normalize_mode, read_length, paired_end, overhang, sizing_factor,
-        bool_spliced_trans,
+        bool_spliced_trans, quant_method, nnls_max_iter, nnls_tol,
+        nucnorm_lambda, nucnorm_max_iter, nucnorm_tol, nucnorm_rank,
+        nucnorm_max_dense_entries,
     )
        
 
@@ -685,7 +739,11 @@ def tealeaf_sc(options):
         
         pseudo_eq_conversion(options.alevin_dir, options.salmon_ref, pseudobulk_name, options.min_eq, min_transcript , \
                              out_prefix, options.samplecutoff,  options.thread, options.normalization_scale,
-                                                 options.read_length, paired_end, options.overhang, options.sizing_factor)
+                             options.read_length, paired_end, options.overhang, options.sizing_factor,
+                             options.quant_method, options.nnls_max_iter, options.nnls_tol,
+                             options.nucnorm_lambda, options.nucnorm_max_iter,
+                             options.nucnorm_tol, options.nucnorm_rank,
+                             options.nucnorm_max_dense_entries)
     
     
     
@@ -802,6 +860,30 @@ if __name__ == "__main__":
 
     parser.add_option("--thread", dest="thread", default = 8, type="int",
                   help="the thread use for computation")            
+
+    parser.add_option("--quant_method", dest="quant_method", default='em',
+                  help="transcript quantification method for EC pseudobulks: em, nnls, or nnls_nucnorm (default: em)")
+
+    parser.add_option("--nnls_max_iter", dest="nnls_max_iter", default=200, type="int",
+                  help="maximum iterations for scipy bounded least-squares NNLS (default: 200)")
+
+    parser.add_option("--nnls_tol", dest="nnls_tol", default=1e-6, type="float",
+                  help="tolerance for scipy bounded least-squares NNLS (default: 1e-6)")
+
+    parser.add_option("--nucnorm_lambda", dest="nucnorm_lambda", default=0.01, type="float",
+                  help="nuclear-norm penalty for quant_method=nnls_nucnorm (default: 0.01)")
+
+    parser.add_option("--nucnorm_max_iter", dest="nucnorm_max_iter", default=50, type="int",
+                  help="maximum proximal-gradient iterations for quant_method=nnls_nucnorm (default: 50)")
+
+    parser.add_option("--nucnorm_tol", dest="nucnorm_tol", default=1e-4, type="float",
+                  help="relative convergence tolerance for quant_method=nnls_nucnorm (default: 1e-4)")
+
+    parser.add_option("--nucnorm_rank", dest="nucnorm_rank", default=50, type="int",
+                  help="number of singular vectors used by truncated SVT for quant_method=nnls_nucnorm (default: 50)")
+
+    parser.add_option("--nucnorm_max_dense_entries", dest="nucnorm_max_dense_entries", default=100000000, type="int",
+                  help="maximum dense Phi entries allowed for quant_method=nnls_nucnorm (default: 100000000)")
                   
     parser.add_option("--use_TPM", dest="use_TPM", default = False, action="store_true",
                   help="whether to performance normalization, if not use TPM directly (default: True)")
@@ -893,19 +975,15 @@ if __name__ == "__main__":
     if options.normalization_scale != 'junction' and options.normalization_scale != 'global' and options.normalization_scale != 'snRNA':
         sys.exit("Error: invalid normalization scale...\n")
 
+    if options.quant_method not in {'em', 'nnls', 'nnls_nucnorm'}:
+        sys.exit("Error: invalid quantification method...\n")
+
         
     record = f'{options.outprefix}clustering_parameters.txt'
     sys.stderr.write(f'Detailed parameters will be saved to {record}\n')
     write_options_to_file(options, record)
 
     tealeaf_sc(options)
-
-
-
-
-
-
-
 
 
 
