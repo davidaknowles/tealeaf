@@ -4,6 +4,8 @@
 \usepackage{amsmath,amssymb}
 \usepackage{enumitem}
 \usepackage{hyperref}
+\usepackage{bm}
+\usepackage{booktabs}
 
 \title{Short-Read Isoform Quantification as a GLM}
 \author{}
@@ -420,18 +422,47 @@ out rows is usually cleaner because a row corresponds to a biological read
 compatibility pattern and avoids mixing the same equivalence class between
 training and validation.
 
-\section*{Remarks}
+\section*{Connecting to equivalence-class-based inference}
 
+The preceding derivation used geometric regions with entries
+\(\tilde{u}_s/\tilde{l}_t\). Salmon's range-factorized equivalence classes can
+be used in the same linear system by replacing those geometric entries with
+Salmon's conditional assignment weights.
+
+Let \(K\) be the number of equivalence classes. Running Salmon with
+\texttt{--dumpEqWeights} provides the two quantities needed to instantiate the
+model:
 \begin{itemize}[leftmargin=*]
-  \item The derivation intentionally starts from a simplified model that only
-  uses isoform of origin and read start site. Full read-based methods can add
-  information such as fragment length, orientation, or GC content.
-  \item In the basic model, equivalence classes coincide with disjoint regions
-  because all reads in a region have the same mapping set and likelihood
-  contribution.
-  \item More complex methods may define equivalence classes differently, but
-  read counts over equivalence classes can still serve as sufficient statistics
-  for isoform abundance estimation.
+  \item \texttt{eq\_classes.txt} gives the count \(c_k\) for each class and the
+  conditional weights
+  \[
+    p_{kt} = \Pr(R_n \in k \mid R_n \in t),
+  \]
+  with \(p_{kt}=0\) when transcript \(t\) is incompatible with class \(k\).
+  These weights define the design matrix \(A \in \mathbb{R}^{K \times T}\),
+  \(a_{kt}=p_{kt}\).
+  \item \texttt{quant.sf} gives the effective length vector
+  \(\tilde{\bm{l}}=(\tilde{l}_1,\ldots,\tilde{l}_T)'\), including Salmon's
+  fragment-length and bias corrections.
 \end{itemize}
+
+With this substitution, the isoform-origin formulation is exactly the one above:
+counts use \(\mathbb{E}[\bm{c}]=N A\bm{\phi}\), or equivalently
+\(\bm{c}=A\bm{\phi}^*\) for the unnormalized signal
+\(\bm{\phi}^*=N\bm{\phi}\). The same nonnegative least-squares and many-cell
+extensions therefore apply without explicitly computing geometric region
+lengths \(\tilde{u}_s\).
+
+If inference is desired directly on the relative abundance scale
+\(\boldsymbol{\theta}\), absorb transcript effective lengths into the design:
+\[
+  B = A\operatorname{diag}(\tilde{\bm{l}}),
+  \qquad
+  b_{kt}=p_{kt}\tilde{l}_t.
+\]
+Solving the corresponding nonnegative system
+\(\bm{c}=B\boldsymbol{\theta}^*\) estimates an unnormalized abundance signal;
+normalizing its entries to sum to one recovers relative abundances.
+
 
 \end{document}
