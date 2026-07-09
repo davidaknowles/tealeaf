@@ -244,3 +244,33 @@ documented `salmon alevin` options. The new weighted-EC recipe is therefore a
 bulk Salmon pass over the same FASTQs used for Alevin RAD generation. Before
 using those weighted EC rows with the existing alevin-fry cell-by-EC matrix, we
 need to verify that the EC definitions can be matched or add a conversion step.
+
+## 2026-07-09 Alevin-Fry Weighted EC Source Inspection
+
+Checked upstream `alevin-fry` and Salmon source to see whether the GLM weights
+can be recovered directly from the existing single-cell output.
+
+Findings:
+
+- `alevin-fry quant --dump-eqclasses` writes `geqc_counts.mtx` and
+  `gene_eqclass.txt.gz` from a global gene/transcript EC map, but the writer
+  only stores label sets plus EC ids.
+- Standard short-read single-cell records dispatch through
+  `BasicEqClassPayload`, so the EC payload has counts only.
+- `OptionalAlignmentExtras` returns no alignment-score/position extras for
+  `AlevinFryReadRecordT`, `AlevinFryReadRecordWithPositionT`, and
+  `MultiBarcodeReadRecordT`. Probability vectors are currently only available
+  for `ScLongReadRecordT`.
+- Salmon v1.10 `--dumpEqWeights` is implemented in the bulk quantification
+  writer; the separate Alevin single-cell writer dumps compatibility sets and
+  barcode/UMI count details, not the bulk combined weights.
+
+Consequence: for the existing short-read Split-seq alevin-fry output, there is
+no hidden weighted EC sidecar to request from alevin-fry. A conversion/matching
+step against a separately generated Salmon weighted EC dump is required, unless
+Salmon/Alevin is modified upstream to write the relevant conditional weights
+into the RAD or single-cell EC output.
+
+Added `extra_scripts/check_eqweight_compatibility.py` to compare Salmon
+weighted EC rows with alevin-fry EC rows by transcript-set key and report
+missing or ambiguous matches.
