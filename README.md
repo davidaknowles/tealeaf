@@ -243,7 +243,7 @@ In this tutorial, we walk through all the steps to run the tealeaf pipeline. For
 
 ### Step 0: Transcriptome annotation download or generation and Salmon isoform quantification
 
-Example human transcriptome annotation can be downloaded from https://www.gencodegenes.org/human/
+Example human transcriptome annotation (GTF) can be downloaded from https://www.gencodegenes.org/human/
 
 
 ### Step 1: Isoform to intron map generation
@@ -252,9 +252,8 @@ In this step, tealeaf_map_gen will be used to generate a map that contains infor
 
 Sample run:
 ```
-python tealeaf_map_gen -a gencode.v45.annotation.gtf --annot_source gencode -o sample_run_ --maxintronlen 5000000 --minintronlen 50 -v False          
+python tealeaf_map_gen.py -a gencode.v45.annotation.gtf --annot_source gencode -o sample_run_ --maxintronlen 5000000 --minintronlen 50 -v False          
 ```
-
 
 Depending on the setting, two or four files will be generated.
 - {out_prefix}isoform_intron_map.tsv

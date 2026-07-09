@@ -1,0 +1,437 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usepackage{hyperref}
+
+\title{Short-Read Isoform Quantification as a GLM}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section*{Purpose}
+
+Common short-read isoform quantification models can be written in a common
+generalized linear model (GLM) framework. This formulation also defines the
+read-isoform alignment conditional probability matrix used in
+quantification-error analysis and K-value calculation.
+
+\section*{Basic Model}
+
+Consider a gene with \(T\) isoforms and relative abundance vector
+\[
+  \boldsymbol{\theta} = (\theta_1,\theta_2,\ldots,\theta_T)'.
+\]
+There are \(N\) independent reads \(R_1,\ldots,R_N\), each with common read
+length \(L\). For isoform \(t\), let \(l_t\) be the isoform length and
+\[
+  \tilde{l}_t = l_t - L + 1
+\]
+be its effective length. Read start sites are assumed to be uniformly
+distributed over the isoform of origin.
+
+Under this setup, the probability that a read originates from isoform \(t\) is
+\[
+  \phi_t =
+  \Pr(R_n \in t)
+  =
+  \frac{\theta_t \tilde{l}_t}
+       {\sum_{j=1}^T \theta_j \tilde{l}_j}.
+\]
+
+\section*{Read-Based and Region-Based Views}
+
+The read-based likelihood models the probability of observing each read
+directly. A read contributes according to the isoforms to which it can map:
+\[
+  \Pr(\text{observing } R_n)
+  =
+  \sum_{t=1}^T
+  \frac{1}{\tilde{l}_t}
+  \mathbf{1}\{R_n \text{ maps to isoform } t\}
+  \phi_t.
+\]
+
+The region/equivalence class-based likelihood first partitions a gene into disjoint regions such
+that reads falling in the same region map to the same set of isoforms (equivalence classes). If region
+\(s\) has effective length \(\tilde{u}_s\), the probability that a randomly
+selected read falls in region \(s\) is
+\[
+  p_s =
+  \sum_{t=1}^T
+  \frac{\tilde{u}_s}{\tilde{l}_t}
+  \mathbf{1}\{s \in t\}
+  \phi_t.
+\]
+Region counts can then be modeled with a multinomial distribution, approximated
+with independent Poisson variables, or approximated using a normal model for
+region read proportions.
+
+\section*{Main Equivalence Result}
+
+In the basic model, read-based and region-based formulations yield equivalent
+estimators. The key observation is that reads within the same disjoint region
+have identical mapping compatibility and therefore make the same likelihood
+contribution. Grouping reads by region turns the read-based likelihood into the
+multinomial region likelihood up to a constant. The Poisson approximation is
+also equivalent to these formulations, so the read-based, multinomial, and
+Poisson likelihoods produce the same maximum-likelihood estimator of
+\(\boldsymbol{\theta}\).
+
+The normal model is not written as the same likelihood, but its mean structure
+has the same linear form. Thus its estimator approximates the estimators from
+the read-based, multinomial, and Poisson models.
+
+\section*{GLM Formulation}
+
+For region read proportions \(c_s\), the normal model uses the identity-link
+mean equation
+\[
+  \mathbb{E}[c_s]
+  =
+  \sum_{t=1}^T
+  \frac{\tilde{u}_s}{\tilde{l}_t}
+  \mathbf{1}\{s \in t\}
+  \phi_t,
+  \qquad 1 \le s \le S.
+\]
+For region read counts \(n_s\), the multinomial and Poisson formulations use
+\[
+  \mathbb{E}[n_s]
+  =
+  N
+  \sum_{t=1}^T
+  \frac{\tilde{u}_s}{\tilde{l}_t}
+  \mathbf{1}\{s \in t\}
+  \phi_t,
+  \qquad 1 \le s \le S.
+\]
+Dividing the count equation by \(N\) gives the same mathematical relationship
+as the proportion equation. Both are identity-link GLMs relating observed
+regional summaries to isoform-origin probabilities.
+
+\section*{Conditional Probability Matrix}
+
+The normal model can be written as a least-squares problem:
+\[
+  \hat{\boldsymbol{\phi}}
+  =
+  \arg\min_{\boldsymbol{\phi} \in \mathbb{R}_+^T}
+  \left\|
+    \mathbf{c} - A\boldsymbol{\phi}
+  \right\|_2^2,
+\]
+where \(\mathbb{R}_+^T\) denotes the nonnegative orthant. Nonnegativity follows
+from the interpretation of \(\phi_t\) as an isoform-origin probability or
+nonnegative isoform signal. A sum-to-one constraint is optional: if
+\(\mathbf{c}\) is normalized and the columns of \(A\) have compatible total
+mass, the least-squares loss identifies the scale of
+\(\boldsymbol{\phi}\). The fitted vector can then be normalized post hoc if a
+probability vector is desired. Here
+\[
+  \mathbf{c} = (c_1,c_2,\ldots,c_S)'
+\]
+is the vector of region read proportions and
+\[
+  A = (a_{st}) \in \mathbb{R}^{S \times T}
+\]
+is the read-isoform alignment conditional probability matrix. Its entries are
+\[
+  a_{st}
+  =
+  \Pr(R_n \in s \mid R_n \in t)
+  =
+  \frac{\tilde{u}_s}{\tilde{l}_t}
+  \mathbf{1}\{s \in t\}.
+\]
+Equivalently, the estimation problem is the linear system
+\[
+  \mathbf{c} = A\boldsymbol{\phi}.
+\]
+This linear system is the basis for defining the K-value.
+
+\section*{Many-Cell Extension and Nuclear-Norm Regularization}
+
+For single-cell data, the same gene can be quantified across \(M\) cells at
+once. Let
+\[
+  C = [\mathbf{c}_1,\mathbf{c}_2,\ldots,\mathbf{c}_M]
+  \in \mathbb{R}^{S \times M}
+\]
+be the matrix of region read proportions, with one column per cell, and let
+\[
+  \Phi = [\boldsymbol{\phi}_1,\boldsymbol{\phi}_2,\ldots,\boldsymbol{\phi}_M]
+  \in \mathbb{R}^{T \times M}
+\]
+be the matrix of cell-specific isoform signals. The entries of \(\Phi\) are
+constrained to be nonnegative. If the same read-isoform compatibility matrix
+\(A\) is used for all cells, the simultaneous least-squares problem is
+\[
+  \hat{\Phi}
+  =
+  \arg\min_{\Phi \ge 0}
+  \frac{1}{2}\left\|C - A\Phi\right\|_F^2.
+\]
+If column-normalized isoform proportions are needed, each fitted column can be
+converted to
+\[
+  \tilde{\boldsymbol{\phi}}_m
+  =
+  \frac{\hat{\boldsymbol{\phi}}_m}
+       {\mathbf{1}'\hat{\boldsymbol{\phi}}_m}
+\]
+after optimization, for columns with positive total mass.
+
+Single-cell read coverage is sparse, so both \(A\) and \(C\) are typically very
+sparse. To share information across cells, one can either penalize the nuclear
+norm of the matrix \(\Phi\),
+\[
+  \hat{\Phi}
+  =
+  \arg\min_{\Phi \ge 0}
+  \frac{1}{2}\left\|C - A\Phi\right\|_F^2
+  + \lambda \left\|\Phi\right\|_*.
+\]
+or constrain it directly:
+\[
+  \hat{\Phi}
+  =
+  \arg\min_{\Phi \ge 0,\,\|\Phi\|_* \le \tau}
+  \frac{1}{2}\left\|C - A\Phi\right\|_F^2.
+\]
+The nuclear norm \(\|\Phi\|_*\), the sum of singular values of \(\Phi\), favors
+a low-rank structure in which isoform usage across cells is explained by a
+small number of shared patterns. 
+
+\subsection*{Sparse Objective Evaluation}
+
+A scalable implementation should avoid forming the dense residual
+\(C-A\Phi\). The squared loss can be expanded as
+\[
+  \left\|C - A\Phi\right\|_F^2
+  =
+  \left\|C\right\|_F^2
+  - 2\,\operatorname{tr}\!\left(\Phi' A' C\right)
+  + \operatorname{tr}\!\left(\Phi' A' A \Phi\right).
+\]
+Thus the data enter through
+\[
+  B = A'C,
+  \qquad
+  G = A'A.
+\]
+Both can be computed with sparse matrix multiplication. The gradient of the
+smooth loss is
+\[
+  \nabla_{\Phi}
+  \frac{1}{2}\left\|C-A\Phi\right\|_F^2
+  =
+  G\Phi - B,
+\]
+which requires multiplication by the small isoform-by-isoform matrix \(G\),
+rather than by a large dense region-by-cell residual.
+
+\subsection*{Optimization Strategies}
+
+There are three practical routes.
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{ADMM with a nuclear-norm split.} Introduce a second matrix
+  \(Z\) and solve
+  \[
+    \min_{\Phi \ge 0,\,Z}
+    \frac{1}{2}\left\|C-A\Phi\right\|_F^2
+    + \lambda\|Z\|_*
+    \quad\text{subject to}\quad
+    \Phi = Z.
+  \]
+  The \(\Phi\)-update is a sparse nonnegative quadratic problem. The
+  corresponding unconstrained normal equation has the form
+  \[
+    (A'A + \rho I)\Phi = A'C + \rho(Z-U),
+  \]
+  where \(U\) is the scaled dual variable and \(\rho\) is the ADMM penalty.
+  Therefore the update can use the sparse products \(B=A'C\) and \(G=A'A\)
+  instead of forming the dense residual \(C-A\Phi\). If \(T\) is modest for a
+  gene, factorize \(G+\rho I\) once and reuse it for all cells. If \(T\) is
+  large, solve the update iteratively using products with sparse \(A\) and
+  \(A'\), or with \(G\) if \(G\) is still sparse enough. The nonnegativity
+  constraint can be handled by projected conjugate gradient, coordinate
+  descent, active-set nonnegative least squares, or an additional proximal
+  projection step.
+
+  The \(Z\)-update is singular-value soft-thresholding:
+  \[
+    Z \leftarrow
+    \operatorname{SVT}_{\lambda/\rho}(\Phi + U).
+  \]
+  This step acts on the isoform-by-cell matrix and does not involve \(A\) or
+  \(C\). Thus ADMM can exploit sparsity in the data-fitting step, but the
+  nuclear-norm proximal step may become the bottleneck when \(M\) is very
+  large. In that regime, truncated or randomized SVD, cell minibatches, or the
+  factorized formulation below are usually preferable.
+
+  \item \textbf{Frank-Wolfe for a constrained nuclear norm.} For the constrained
+  problem
+  \[
+    \min_{\Phi \ge 0,\,\|\Phi\|_* \le \tau}
+    f(\Phi)
+    =
+    \frac{1}{2}\left\|C-A\Phi\right\|_F^2,
+  \]
+  Frank-Wolfe avoids nuclear-norm proximal steps. At iteration \(k\), compute
+  the gradient
+  \[
+    D_k = \nabla f(\Phi_k) = G\Phi_k - B.
+  \]
+  The linear minimization oracle solves
+  \[
+    S_k
+    =
+    \arg\min_{S \ge 0,\,\|S\|_* \le \tau}
+    \langle D_k, S\rangle.
+  \]
+  Because \(S\) is constrained to be nonnegative, only the positive part of the
+  descent matrix matters. Let
+  \[
+    H_k = (-D_k)_+ = (B-G\Phi_k)_+.
+  \]
+  If \(H_k\) is nonzero, take its leading left and right singular vectors
+  \(u_k\) and \(v_k\), which can be chosen nonnegative, and set
+  \[
+    S_k = \tau u_k v_k'.
+  \]
+  The update
+  \[
+    \Phi_{k+1}
+    =
+    (1-\gamma_k)\Phi_k + \gamma_k S_k
+  \]
+  preserves both nonnegativity and the nuclear-norm constraint. Line search can
+  use the same sparse sufficient statistics \(B=A'C\) and \(G=A'A\), since
+  \(f(\Phi)\) and directional derivatives are available without forming
+  \(C-A\Phi\).
+
+  This approach is attractive when a small effective rank is expected: the
+  iterate is an explicit convex combination of rank-one atoms, and each step
+  requires only a leading singular vector computation rather than a full SVD.
+  The main cost is repeatedly computing the top singular vectors of
+  \((B-G\Phi_k)_+\). Randomized or Lanczos methods can exploit fast products
+  with \(G\) and the low-rank representation of \(\Phi_k\).
+
+  \item \textbf{Low-rank factorization.} Use the variational identity
+  \[
+    \|\Phi\|_*
+    =
+    \min_{\Phi=UV'}
+    \frac{1}{2}\left(\|U\|_F^2 + \|V\|_F^2\right)
+  \]
+  and optimize a fixed-rank approximation \(\Phi \approx UV'\), where
+  \(U \in \mathbb{R}^{T \times r}\), \(V \in \mathbb{R}^{M \times r}\), and
+  \(r \ll \min(T,M)\). This avoids full singular-value decompositions and
+  stores only \(O(r(T+M))\) parameters. The loss can be evaluated using \(B\)
+  and \(G\):
+  \[
+    \left\|C-AUV'\right\|_F^2
+    =
+    \|C\|_F^2
+    -2\,\operatorname{tr}\!\left(VU'B\right)
+    +\operatorname{tr}\!\left((U'GU)(V'V)\right).
+  \]
+  Nonnegativity can be enforced by projecting \(UV'\) onto the nonnegative
+  orthant, by using an ADMM split for the constrained matrix, or by
+  parameterizing \(\Phi\) through a nonnegative link such as an exponential or
+  softplus transformation. Column normalization can be applied after fitting if
+  isoform proportions are required.
+\end{itemize}
+
+The factorized and Frank-Wolfe approaches are usually the most scalable choices
+for many cells. Both keep \(\Phi\) in a compact low-rank representation and use
+sparse preprocessing for \(B=A'C\). ADMM is useful as a direct convex reference
+implementation for smaller genes or smaller cell batches, but its repeated
+singular-value thresholding can be more expensive at large scale.
+
+\subsection*{Choosing the Regularization Level}
+
+The regularization parameter can be chosen by cross-validation because the
+many-cell model is a large regression problem. A natural split is over
+regions, or equivalently over read equivalence classes. For a fold \(q\), split
+the rows of \(A\) and \(C\) into training and validation sets:
+\[
+  A =
+  \begin{bmatrix}
+    A_{\mathrm{tr}} \\
+    A_{\mathrm{val}}
+  \end{bmatrix},
+  \qquad
+  C =
+  \begin{bmatrix}
+    C_{\mathrm{tr}} \\
+    C_{\mathrm{val}}
+  \end{bmatrix}.
+\]
+For each candidate penalty \(\lambda\), or each candidate nuclear-norm radius
+\(\tau\), fit \(\Phi\) using only the training rows. For the constrained form,
+this means solving
+\[
+  \hat{\Phi}_{\tau}^{(q)}
+  =
+  \arg\min_{\Phi \ge 0,\,\|\Phi\|_* \le \tau}
+  \frac{1}{2}\left\|C_{\mathrm{tr}} - A_{\mathrm{tr}}\Phi\right\|_F^2.
+\]
+Then evaluate prediction error on the held-out rows:
+\[
+  \operatorname{CV}_q(\tau)
+  =
+  \left\|
+    C_{\mathrm{val}}
+    -
+    A_{\mathrm{val}}\hat{\Phi}_{\tau}^{(q)}
+  \right\|_F^2.
+\]
+The selected regularization level minimizes the average validation error across
+folds. A weighted version can be used if some regions or cells have much higher
+read depth:
+\[
+  \operatorname{CV}_q(\tau)
+  =
+  \left\|
+    W_{\mathrm{val}}^{1/2}
+    \odot
+    \left(
+      C_{\mathrm{val}}
+      -
+      A_{\mathrm{val}}\hat{\Phi}_{\tau}^{(q)}
+    \right)
+  \right\|_F^2,
+\]
+where \(W_{\mathrm{val}}\) contains inverse-variance or read-depth weights and
+\(\odot\) denotes elementwise multiplication.
+
+Row-wise folds test whether isoform usage inferred from one set of
+equivalence classes predicts held-out equivalence classes for the same cells.
+The folds should be stratified so that each training set retains informative
+regions for the gene; otherwise a fold can remove all evidence distinguishing
+two isoforms. Holding out individual sparse entries is possible, but holding
+out rows is usually cleaner because a row corresponds to a biological read
+compatibility pattern and avoids mixing the same equivalence class between
+training and validation.
+
+\section*{Remarks}
+
+\begin{itemize}[leftmargin=*]
+  \item The derivation intentionally starts from a simplified model that only
+  uses isoform of origin and read start site. Full read-based methods can add
+  information such as fragment length, orientation, or GC content.
+  \item In the basic model, equivalence classes coincide with disjoint regions
+  because all reads in a region have the same mapping set and likelihood
+  contribution.
+  \item More complex methods may define equivalence classes differently, but
+  read counts over equivalence classes can still serve as sufficient statistics
+  for isoform abundance estimation.
+\end{itemize}
+
+\end{document}
