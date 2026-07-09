@@ -168,3 +168,54 @@ Final outputs:
 - `/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/cluster_dx_mouse_count_exon`: 196,748 lines.
 - `/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/cluster_dx_mouse_refined_cluster`: 27,414 lines.
 - `/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/cluster_dx_mouse_ratio_count`: 27,414 lines.
+
+## 2026-07-09 Filtered Pseudobulk EM
+
+Created a filtered `cluster_name x DX x sample` pseudobulk mapping requiring
+at least 20 cells and at least 100,000 UMI per pseudobulk.
+
+Filtering summary:
+
+- Started with 936 pseudobulks and 88,920 barcode/group rows.
+- Kept 551 pseudobulks and 83,858 barcode/group rows.
+- Dropped 385 low-support pseudobulks.
+
+Added Slurm recipe:
+
+- `extra_scripts/run_microglia_cluster_dx_mouse_filtered_em_tealeaf.sbatch`
+
+Run details:
+
+- Slurm job: `18732826`.
+- Partition: `bigmem`.
+- Requested memory: 500G.
+- MaxRSS reported: 27,185,384K.
+- Elapsed time: 23m 15s.
+- Exit code: 0.
+
+## 2026-07-09 NNLS Quantification Backends
+
+Implemented transcript quantification alternatives for the single-cell
+equivalence-class path described in `docs/glm.tex`.
+
+Key implementation choices:
+
+- Added `--quant_method em|nnls|nnls_nucnorm` to `tealeaf-sc`; the default
+  remains `em`.
+- `nnls` solves independent non-negative least squares problems for each
+  pseudobulk using SciPy's bounded sparse least-squares solver.
+- `nnls_nucnorm` is a reference many-pseudobulk proximal-gradient
+  implementation with singular-value thresholding and nonnegative projection.
+- Transcript effective-length factors are computed from the Salmon reference
+  with the existing `get_feature_weights()` convention.
+- Alevin-fry `--dump-eqclasses` does not include EC/region effective lengths,
+  so the GLM factor `u_s` currently defaults to `1.0` for all equivalence
+  classes.
+
+Validation:
+
+- `python -m py_compile tealeaf/sc/sc_utils.py tealeaf/sc/tealeaf_sc.py`
+  succeeded under `~/venv/jax` after loading
+  `Python/3.12.3-GCCcore-13.3.0`.
+- A tiny synthetic EC/transcript system produced nonnegative, normalized
+  outputs for EM, NNLS, and nuclear-norm NNLS.
