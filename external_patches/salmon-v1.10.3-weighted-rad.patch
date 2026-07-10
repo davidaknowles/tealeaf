@@ -1,0 +1,59 @@
+diff --git a/src/SalmonAlevin.cpp b/src/SalmonAlevin.cpp
+index 21032cfa..50f18cbf 100644
+--- a/src/SalmonAlevin.cpp
++++ b/src/SalmonAlevin.cpp
+@@ -1083,10 +1083,17 @@ void process_reads_sc_align(paired_parser* parser, ReadExperimentT& readExp, Rea
+ 
+           for (auto& aln : jointAlignments) {
+             uint32_t fw_mask = aln.fwd ? 0x80000000 : 0x00000000;
+-            //bw << is_fw;
+             bw << (aln.tid | fw_mask);
+-            // position 
+-            //bw << static_cast<uint32_t>((aln.pos < 0) ? 0 : aln.pos);
++            bw << static_cast<int32_t>(aln.score);
++            uint32_t start_pos = static_cast<uint32_t>((aln.pos < 0) ? 0 : aln.pos);
++            auto end_pos = start_pos + static_cast<uint32_t>(readSubSeq->length());
++            auto txp_len = transcripts[aln.tid].RefLength;
++            if (end_pos > txp_len) {
++              end_pos = txp_len;
++            }
++            bw << start_pos;
++            bw << end_pos;
++            bw << txp_len;
+           }
+           ++num_reads_in_chunk;
+         } else {
+@@ -2046,7 +2053,7 @@ bool do_sc_align(ReadExperimentT& experiment,
+   bw << type_id;
+ 
+   // alignment-level tag description
+-  uint16_t aln_level_tags{1};
++  uint16_t aln_level_tags{5};
+   bw << aln_level_tags;
+   // we maintain orientation
+   //bw << std::string("orientation");
+@@ -2058,6 +2065,24 @@ bool do_sc_align(ReadExperimentT& experiment,
+   type_id = 3;
+   bw << type_id;
+ 
++  // alignment score, start, end, and transcript length. These match
++  // alevin-fry's ScLongReadRecord parser and allow weighted EC payloads.
++  bw << std::string("as");
++  type_id = 12;
++  bw << type_id;
++
++  bw << std::string("start");
++  type_id = 3;
++  bw << type_id;
++
++  bw << std::string("end");
++  type_id = 3;
++  bw << type_id;
++
++  bw << std::string("tlen");
++  type_id = 3;
++  bw << type_id;
++
+   // ### end of tag definitions
+ 
+   // the actual file-level tags

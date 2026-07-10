@@ -274,3 +274,46 @@ into the RAD or single-cell EC output.
 Added `extra_scripts/check_eqweight_compatibility.py` to compare Salmon
 weighted EC rows with alevin-fry EC rows by transcript-set key and report
 missing or ambiguous matches.
+
+## 2026-07-09 Weighted RAD Patch Probe
+
+Implemented and built a local Salmon v1.10.3 patch that writes the fields
+needed by alevin-fry's weighted single-cell record path during RAD generation.
+
+Patch:
+
+- `external_patches/salmon-v1.10.3-weighted-rad.patch`
+- Applied locally in `/gpfs/commons/home/daknowles/projects/salmon-v1.10.3`.
+- Built binary:
+  `/gpfs/commons/home/daknowles/projects/salmon-v1.10.3/build/src/salmon`
+
+Behavior:
+
+- Use `salmon alevin --rad --splitseqV2`, not `--sketch`.
+- The selective-alignment path computes alignment scores and positions; the
+  sketch path does not.
+- The patched RAD records declare and write five alignment-level tags:
+  `compressed_ori_refid`, `as`, `start`, `end`, and `tlen`.
+- Those tags match current alevin-fry's `ScLongReadRecord` parser, which routes
+  quantification through `LongReadEqClassPayload`.
+
+Validation:
+
+- `salmon --version` reports `salmon 1.10.3`.
+- A 10,000 read-pair Split-seq probe generated RAD successfully with
+  `--rad` and no `--sketch`.
+- The probe RAD header parsed as:
+  file tags `cblen`, `ulen`; read tags `b`, `u`; alignment tags
+  `compressed_ori_refid`, `as`, `start`, `end`, `tlen`.
+- Current alevin-fry source built with Rust 1.97.0 and recognized the patched
+  RAD as `long read single-cell RNA-seq`.
+- `alevin-fry generate-permit-list`, `collate`, and `quant --dump-eqclasses`
+  completed on the probe.
+
+Remaining gap:
+
+- Current alevin-fry uses the probability payload internally for the long-read
+  route, but its standard `--dump-eqclasses` output still writes only EC labels
+  and count matrices. If the GLM needs the per-molecule/per-UMI probability
+  vectors on disk, add an alevin-fry dump from the in-memory
+  `LongReadEqClassPayload` before collapsing the per-cell EC map.
