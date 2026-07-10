@@ -354,3 +354,15 @@ Full-data plan:
   `-r parsimony-em`, `--use-mtx`, and `--dump-eqclasses`.
 - Run tealeaf on filtered cluster x diagnosis x mouse pseudobulks for all
   current GLM variants: `em`, `nnls`, and `nnls_nucnorm`.
+
+Full-data status:
+
+- Weighted RAD job `18755367` completed after 16:57:32 and wrote `map.rad`.
+- The first alevin-fry job failed immediately with `Illegal instruction`
+  because the binary had been built with `target-cpu=native` on a newer CPU
+  node and then scheduled on an older CPU node.
+- Switched the dataset script default to a portable alevin-fry binary path
+  under `target-portable/release/alevin-fry`.
+- Added `extra_scripts/build_alevin_fry_portable.sbatch` and submitted retry
+  chain `18759219 -> 18759220 -> 18759221` for portable build, weighted
+  alevin-fry quantification, and all-variant tealeaf GLM.
