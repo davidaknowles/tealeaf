@@ -1,0 +1,157 @@
+diff --git a/src/quant.rs b/src/quant.rs
+index d954d41..1d5dd1f 100644
+--- a/src/quant.rs
++++ b/src/quant.rs
+@@ -37,7 +37,7 @@ use libradicl::record::{
+     MultiBarcodeReadRecord, RecordContext, ScLongReadRecord, UmiTaggedRecord,
+ };
+
+-use std::fmt;
++use std::fmt::{self, Write as FmtWrite};
+ //use std::ptr;
+
+ use flate2::Compression;
+@@ -51,6 +51,7 @@ use crate::prog_opts::QuantOpts;
+
+ /// Shared closure that extracts a sample index from a record.
+ type SampleIdxExtractor<R> = Arc<dyn Fn(&R) -> usize + Send + Sync>;
++type EqProbWriter = Arc<Mutex<BufWriter<GzEncoder<File>>>>;
+ use crate::pugutils;
+ use crate::utils as afutils;
+ use crate::utils::{
+@@ -418,6 +419,7 @@ struct WorkerSharedState<R: MappedRecord> {
+     cells_remaining: Arc<AtomicUsize>,
+     bcout: Arc<Mutex<QuantOutputInfo>>,
+     eqid_map_lock: Arc<Mutex<EqcMap>>,
++    eq_prob_out: Option<EqProbWriter>,
+     alt_res_cells: Arc<Mutex<Vec<u64>>>,
+     empty_resolved_cells: Arc<Mutex<Vec<u64>>>,
+     unmapped_count: Arc<libradicl::unmapped::CollatedUnmappedCounts>,
+@@ -757,7 +759,7 @@ where
+                 // O(num_genes) dense counts vector allocation AND the
+                 // O(num_genes) scan to extract non-zero entries.
+                 let used_fast_path;
+-                if c.reads.len() < SMALL_CELL_FAST_THRESHOLD {
++                if !P::HAS_PROBS && c.reads.len() < SMALL_CELL_FAST_THRESHOLD {
+                     used_fast_path = true;
+                     quantify_small_cell_sparse::<B, R>(
+                         &mut c,
+@@ -1240,6 +1242,7 @@ where
+                 // if we are dumping the equivalence class output, fill in
+                 // the in-memory representation here.
+                 if config.dump_eq {
++                    let mut prob_lines = String::new();
+                     let eqmap_deref = shared.eqid_map_lock.lock();
+                     let geqmap = &mut *eqmap_deref.unwrap();
+                     // the next available global id for a gene-level
+@@ -1247,23 +1250,46 @@ where
+                     let mut next_id = geqmap.global_eqc.len() as u64;
+                     for (labels, payload) in gene_eqc.iter() {
+                         let count = payload.count();
+-                        let mut found = true;
+-                        match geqmap.global_eqc.get(labels) {
+-                            Some(eqid) => {
+-                                geqmap.cell_level_count.push((*eqid, count));
+-                            }
++                        let eqid = match geqmap.global_eqc.get(labels) {
++                            Some(eqid) => *eqid,
+                             None => {
+-                                found = false;
+-                                geqmap.cell_level_count.push((next_id, count));
++                                let eqid = next_id;
++                                geqmap.global_eqc.insert(labels.to_vec().clone(), eqid);
++                                next_id += 1;
++                                eqid
++                            }
++                        };
++                        geqmap.cell_level_count.push((eqid, count));
++
++                        if P::HAS_PROBS {
++                            let prob_rows = payload.probs().num_rows();
++                            let n_rows = std::cmp::min(count as usize, prob_rows);
++                            for umi_rank in 0..n_rows {
++                                let probs = payload.prob_row(umi_rank);
++                                let _ = write!(
++                                    prob_lines,
++                                    "{}\t{}\t{}\t",
++                                    row_index, eqid, umi_rank
++                                );
++                                for (i, prob) in probs.iter().enumerate() {
++                                    if i > 0 {
++                                        prob_lines.push(',');
++                                    }
++                                    let _ = write!(prob_lines, "{:.17e}", prob);
++                                }
++                                prob_lines.push('\n');
+                             }
+-                        }
+-                        if !found {
+-                            geqmap.global_eqc.insert(labels.to_vec().clone(), next_id);
+-                            next_id += 1;
+                         }
+                     }
+                     //let bc_mer: BitKmer = (bc, bclen as u8);
+                     geqmap.cell_offset.push((row_index, gene_eqc.len()));
++
++                    if !prob_lines.is_empty() {
++                        if let Some(eq_prob_out) = &shared.eq_prob_out {
++                            let mut writer = eq_prob_out.lock().unwrap();
++                            writer.write_all(prob_lines.as_bytes()).unwrap();
++                        }
++                    }
+                 }
+                 // Reset the gene eqc map only if it was used (i.e., NOT the fast path).
+                 // For fast-path cells (nrec < SMALL_CELL_FAST_THRESHOLD), gene_eqc was
+@@ -1615,6 +1641,16 @@ where
+         row_index: 0usize,
+     }));
+
++    let eq_prob_out = if dump_eq && P::HAS_PROBS {
++        let prob_path = output_matrix_path.join("gene_eqclass_probs.tsv.gz");
++        let prob_file = File::create(&prob_path)?;
++        let mut prob_writer = BufWriter::new(GzEncoder::new(prob_file, Compression::default()));
++        writeln!(prob_writer, "cell_idx\teqid\tumi_rank\tprobs")?;
++        Some(Arc::new(Mutex::new(prob_writer)))
++    } else {
++        None
++    };
++
+     let mmrate = Arc::new(Mutex::new(vec![0f64; num_cells as usize]));
+
+     type WorkerResult = (usize, Vec<(usize, usize, f32)>, BootstrapHelper);
+@@ -1650,6 +1686,7 @@ where
+         let bcout = bc_writer.clone();
+         // global gene-level eqc map
+         let eqid_map_lockc = eqid_map_lock.clone();
++        let eq_prob_outc = eq_prob_out.clone();
+         // and will need to know the barcode length
+         let alt_res_cells = alt_res_cells.clone();
+         let empty_resolved_cells = empty_resolved_cells.clone();
+@@ -1707,6 +1744,7 @@ where
+             cells_remaining,
+             bcout,
+             eqid_map_lock: eqid_map_lockc,
++            eq_prob_out: eq_prob_outc,
+             alt_res_cells,
+             empty_resolved_cells,
+             unmapped_count,
+diff --git a/src/utils.rs b/src/utils.rs
+index ac4a4df..e93a836 100644
+--- a/src/utils.rs
++++ b/src/utils.rs
+@@ -146,6 +146,15 @@ impl<T: Clone + Copy> ProbMap<T> {
+         debug_assert_eq!(self.stride, p.len());
+         self.probs.extend_from_slice(p);
+     }
++
++    #[inline(always)]
++    pub fn num_rows(&self) -> usize {
++        if self.stride == 0 {
++            0
++        } else {
++            self.probs.len() / self.stride
++        }
++    }
+ }
+
+ impl<T: Clone + Copy> std::ops::Index<usize> for ProbMap<T> {

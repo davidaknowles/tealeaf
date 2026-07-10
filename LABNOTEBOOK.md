@@ -317,3 +317,40 @@ Remaining gap:
   and count matrices. If the GLM needs the per-molecule/per-UMI probability
   vectors on disk, add an alevin-fry dump from the in-memory
   `LongReadEqClassPayload` before collapsing the per-cell EC map.
+
+## 2026-07-09 Alevin-Fry Probability Dump Patch
+
+Implemented a local alevin-fry v0.16.0 patch for the weighted RAD route.
+
+Patch:
+
+- `external_patches/alevin-fry-v0.16.0-dump-eq-probs.patch`
+
+Behavior:
+
+- When `alevin-fry quant --dump-eqclasses` runs on a long-read/probability
+  payload record type, it writes `gene_eqclass_probs.tsv.gz` next to
+  `gene_eqclass.txt.gz` and `geqc_counts.mtx`.
+- The sidecar columns are `cell_idx`, `eqid`, `umi_rank`, and `probs`.
+- `gene_eqclass.txt.gz` remains the source of `eqid -> transcript/gene label`
+  definitions; the probability sidecar stores only the probability vector.
+- The small-cell shortcut remains enabled for ordinary count-only records, but
+  is bypassed for probability payloads so the EC payload is populated.
+
+Validation:
+
+- Patched alevin-fry built successfully with Rust 1.97.0.
+- A 10,000 read-pair weighted-RAD probe produced nonempty probability rows with
+  `-r parsimony-em`.
+- The same probe with `-r cr-like-em` produced EC counts but no probability
+  rows, because that resolution path does not use the probability-aware
+  parsimony graph machinery. Full weighted runs therefore use
+  `parsimony-em`.
+
+Full-data plan:
+
+- Generate weighted RAD with the patched Salmon v1.10.3 binary.
+- Run patched alevin-fry with known barcodes, `--min-reads 100`,
+  `-r parsimony-em`, `--use-mtx`, and `--dump-eqclasses`.
+- Run tealeaf on filtered cluster x diagnosis x mouse pseudobulks for all
+  current GLM variants: `em`, `nnls`, and `nnls_nucnorm`.
