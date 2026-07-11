@@ -366,3 +366,13 @@ Full-data status:
 - Added `extra_scripts/build_alevin_fry_portable.sbatch` and submitted retry
   chain `18759219 -> 18759220 -> 18759221` for portable build, weighted
   alevin-fry quantification, and all-variant tealeaf GLM.
+- Retry quant job `18759220` generated the permit list and collated RAD, then
+  hung after worker panics in long-read EM. The panic occurred when some
+  `LongReadEqClassPayload` entries had fewer probability rows than molecule
+  counts, which can happen when large connected components fall back to
+  count-only `cr-like` resolution.
+- Patched long-read EM to use available probability rows and fall back to
+  uniform compatibility weights for missing rows, avoiding an indexing panic.
+- Moved the partial failed quant output to scratch and submitted retry chain
+  `18772912 -> 18772913 -> 18772914` for portable rebuild, weighted
+  alevin-fry quantification, and all-variant tealeaf GLM.

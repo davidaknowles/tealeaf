@@ -1,3 +1,30 @@
+diff --git a/src/em.rs b/src/em.rs
+index 925f04a..77287b9 100644
+--- a/src/em.rs
++++ b/src/em.rs
+@@ -725,8 +725,21 @@ pub fn em_update_long_read<P: EqClassPayload>(
+             let probs = payload.probs();
+             let mut denominator: f32 = 0.0;
+             let mut avg_probs: Vec<f32> = Vec::with_capacity(labels.len());
++            let count_usize = count as usize;
++            let prob_rows = std::cmp::min(count_usize, probs.num_rows());
++            let missing_prob_rows = count_usize.saturating_sub(prob_rows);
++            let uniform_prob = 1.0 / labels.len() as f64;
+             for (tx_idx, label) in labels.iter().enumerate() {
+-                let sum_prob: f64 = (0..count as usize).map(|i| probs[i][tx_idx]).sum();
++                let observed_prob: f64 = (0..prob_rows)
++                    .map(|i| {
++                        probs
++                            .row(i)
++                            .and_then(|row| row.get(tx_idx))
++                            .copied()
++                            .unwrap_or(uniform_prob)
++                    })
++                    .sum();
++                let sum_prob = observed_prob + (missing_prob_rows as f64 * uniform_prob);
+                 let avg_prob: f32 = sum_prob as f32 / count as f32;
+                 avg_probs.push(avg_prob);
+                 denominator += alphas_in[*label as usize] * avg_prob;
 diff --git a/src/quant.rs b/src/quant.rs
 index d954d41..1d5dd1f 100644
 --- a/src/quant.rs
@@ -136,10 +163,10 @@ index d954d41..1d5dd1f 100644
              empty_resolved_cells,
              unmapped_count,
 diff --git a/src/utils.rs b/src/utils.rs
-index ac4a4df..e93a836 100644
+index ac4a4df..f07a79a 100644
 --- a/src/utils.rs
 +++ b/src/utils.rs
-@@ -146,6 +146,15 @@ impl<T: Clone + Copy> ProbMap<T> {
+@@ -146,6 +146,26 @@ impl<T: Clone + Copy> ProbMap<T> {
          debug_assert_eq!(self.stride, p.len());
          self.probs.extend_from_slice(p);
      }
@@ -150,6 +177,17 @@ index ac4a4df..e93a836 100644
 +            0
 +        } else {
 +            self.probs.len() / self.stride
++        }
++    }
++
++    #[inline(always)]
++    pub fn row(&self, i: usize) -> Option<&[T]> {
++        let s = i * self.stride;
++        let e = s + self.stride;
++        if e <= self.probs.len() {
++            Some(&self.probs[s..e])
++        } else {
++            None
 +        }
 +    }
  }
