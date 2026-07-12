@@ -213,6 +213,11 @@ Optional Parameters:
 
 --nucnorm_lambda        Nuclear-norm penalty used when --quant_method=nnls_nucnorm (default: 0.01)
 
+--regularization_target Coefficient matrix receiving low-rank regularization:
+                        phi uses the read-origin parameterization; theta uses
+                        molecular abundance with A_theta = A_phi diag(l)
+                        (default: phi)
+
 --nucnorm_max_iter      Maximum proximal-gradient iterations used when --quant_method=nnls_nucnorm (default: 50)
 
 --nucnorm_tol           Relative convergence tolerance used when --quant_method=nnls_nucnorm (default: 1e-4)
@@ -393,7 +398,6 @@ This step will also generate other relevant files like `barcodes_pseudobulk.txt`
 ### Step 4:
 The output from step 3 is equivalent to results from leafcutter clustering, and the results are compatible with downstream analysis for Leafcutter, such as Leafcutter_ds and Leafviz. 
 Further information and downstream analysis please refer to https://davidaknowles.github.io/leafcutter/index.html
-
 
 
 

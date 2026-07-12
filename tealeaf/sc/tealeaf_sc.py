@@ -311,7 +311,7 @@ def parallel_quant_processing(cell_ec_sparse_pseudo_filt, ec_transcript_input, w
                               nucnorm_max_dense_entries=100000000,
                               glm_device='auto', glm_batch_cells=4096,
                               glm_rank=64, admm_rho=1.0, admm_inner_iter=25,
-                              nucnorm_tau=None):
+                              nucnorm_tau=None, regularization_target='phi'):
     if quant_method == 'nnls_nucnorm':
         alphas = sc_utils.NNLS_nucnorm(
             cell_ec_sparse_pseudo_filt,
@@ -322,6 +322,7 @@ def parallel_quant_processing(cell_ec_sparse_pseudo_filt, ec_transcript_input, w
             tol=nucnorm_tol,
             svd_rank=nucnorm_rank,
             max_dense_entries=nucnorm_max_dense_entries,
+            regularization_target=regularization_target,
         )
         tpm_rows = []
         count_rows = []
@@ -339,7 +340,9 @@ def parallel_quant_processing(cell_ec_sparse_pseudo_filt, ec_transcript_input, w
     if quant_method in {'admm', 'admm_factorized', 'frank_wolfe', 'factorized'}:
         from tealeaf.sc import glm_solvers
 
-        compatibility = sc_utils.weighted_ec_transcript_matrix(ec_transcript_input, w)
+        compatibility = sc_utils.weighted_ec_transcript_matrix(
+            ec_transcript_input, w, parameterization=regularization_target
+        )
         result = glm_solvers.fit_glm(
             cell_ec_sparse_pseudo_filt,
             compatibility,
@@ -355,6 +358,7 @@ def parallel_quant_processing(cell_ec_sparse_pseudo_filt, ec_transcript_input, w
             device=glm_device,
             batch_cells=glm_batch_cells,
         )
+        result.diagnostics['regularization_target'] = regularization_target
         alpha_matrix = glm_solvers.result_to_csr(
             result, 0, cell_ec_sparse_pseudo_filt.shape[0], threshold=0.0
         ).toarray()
@@ -390,7 +394,8 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
                          nucnorm_max_iter = 50, nucnorm_tol = 1e-4, nucnorm_rank = 50,\
                          nucnorm_max_dense_entries = 100000000, glm_device='auto',\
                          glm_batch_cells=4096, glm_rank=64, admm_rho=1.0,\
-                         admm_inner_iter=25, nucnorm_tau=None):
+                         admm_inner_iter=25, nucnorm_tau=None,\
+                         regularization_target='phi'):
     """
     
 
@@ -416,6 +421,8 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
     nucnorm_tol = float(nucnorm_tol)
     nucnorm_rank = int(nucnorm_rank)
     nucnorm_max_dense_entries = int(nucnorm_max_dense_entries)
+    if regularization_target not in {'phi', 'theta'}:
+        sys.exit("Error: regularization_target must be phi or theta.\n")
     if quant_method not in {'em', 'nnls', 'nnls_nucnorm', 'admm', 'admm_factorized', 'frank_wolfe', 'factorized'}:
         sys.exit("Error: invalid quantification method...\n")
     # step 1: data loading
@@ -530,7 +537,7 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
         bool_spliced_trans, quant_method, nnls_max_iter, nnls_tol,
         nucnorm_lambda, nucnorm_max_iter, nucnorm_tol, nucnorm_rank,
         nucnorm_max_dense_entries, glm_device, glm_batch_cells, glm_rank,
-        admm_rho, admm_inner_iter, nucnorm_tau,
+        admm_rho, admm_inner_iter, nucnorm_tau, regularization_target,
     )
        
 
@@ -615,7 +622,9 @@ def single_cell_glm_conversion(options):
     _, weights = sc_utils.get_feature_weights(
         filtered_features, sc_utils.get_transcript_lengths(Path(options.salmon_ref))
     )
-    compatibility = sc_utils.weighted_ec_transcript_matrix(filtered_ec, weights)
+    compatibility = sc_utils.weighted_ec_transcript_matrix(
+        filtered_ec, weights, parameterization=options.regularization_target
+    )
     result = glm_solvers.fit_glm(
         filtered_counts,
         compatibility,
@@ -631,6 +640,7 @@ def single_cell_glm_conversion(options):
         device=options.glm_device,
         batch_cells=options.glm_batch_cells,
     )
+    result.diagnostics['regularization_target'] = options.regularization_target
     glm_solvers.write_chunked_result(
         result,
         options.outprefix,
@@ -858,7 +868,7 @@ def tealeaf_sc(options):
                              options.nucnorm_max_dense_entries, options.glm_device,
                              options.glm_batch_cells, options.glm_rank,
                              options.admm_rho, options.admm_inner_iter,
-                             options.nucnorm_tau)
+                             options.nucnorm_tau, options.regularization_target)
     
     
     
@@ -1003,6 +1013,9 @@ if __name__ == "__main__":
     parser.add_option("--nucnorm_lambda", dest="nucnorm_lambda", default=0.01, type="float",
                   help="nuclear-norm penalty for quant_method=nnls_nucnorm (default: 0.01)")
 
+    parser.add_option("--regularization_target", dest="regularization_target", default='phi',
+                  help="coefficient matrix receiving low-rank regularization: phi or theta (default: phi)")
+
     parser.add_option("--nucnorm_max_iter", dest="nucnorm_max_iter", default=50, type="int",
                   help="maximum proximal-gradient iterations for quant_method=nnls_nucnorm (default: 50)")
 
@@ -1120,14 +1133,15 @@ if __name__ == "__main__":
     if options.quant_method not in {'em', 'nnls', 'nnls_nucnorm', 'admm', 'admm_factorized', 'frank_wolfe', 'factorized'}:
         sys.exit("Error: invalid quantification method...\n")
 
+    if options.regularization_target not in {'phi', 'theta'}:
+        sys.exit("Error: --regularization_target must be phi or theta.\n")
+
         
     record = f'{options.outprefix}clustering_parameters.txt'
     sys.stderr.write(f'Detailed parameters will be saved to {record}\n')
     write_options_to_file(options, record)
 
     tealeaf_sc(options)
-
-
 
 
 

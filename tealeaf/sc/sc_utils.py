@@ -147,21 +147,27 @@ def EM(counts, ec_transcript_mat, w, iterations=30):
     return alpha
 
 
-def weighted_ec_transcript_matrix(ec_transcript_mat, w, ec_effective_lengths=None):
+def weighted_ec_transcript_matrix(ec_transcript_mat, w, ec_effective_lengths=None,
+                                  parameterization="phi"):
     """Build the GLM compatibility matrix ``A`` from EC membership.
 
-    ``docs/glm.tex`` defines ``A[s, t] = u_s / l_t`` for compatible EC/isoform
-    pairs.  Alevin-fry EC dumps do not include EC effective lengths, so callers
-    pass ``ec_effective_lengths=None`` to use ``u_s = 1``.
+    ``docs/glm.tex`` defines ``A_phi[s, t] = u_s / l_t`` for compatible
+    EC/isoform pairs. For ``parameterization='theta'``, the identity
+    ``Phi = diag(l) Theta`` gives ``A_theta = A_phi diag(l)``, so compatible
+    entries are ``u_s``. Alevin-fry EC dumps do not include EC effective
+    lengths, so callers pass ``ec_effective_lengths=None`` to use ``u_s = 1``.
     """
+    if parameterization not in {"phi", "theta"}:
+        raise ValueError("parameterization must be 'phi' or 'theta'")
     mat = ec_transcript_mat.tocoo(copy=True)
+    transcript_factor = w if parameterization == "phi" else np.ones_like(w, dtype=float)
     if ec_effective_lengths is None:
-        mat.data = w[mat.col].astype(float, copy=False)
+        mat.data = transcript_factor[mat.col].astype(float, copy=False)
     else:
         u = np.asarray(ec_effective_lengths, dtype=float)
         if len(u) != mat.shape[0]:
             raise ValueError("ec_effective_lengths must have one value per EC row")
-        mat.data = u[mat.row] * w[mat.col]
+        mat.data = u[mat.row] * transcript_factor[mat.col]
     return mat.tocsr()
 
 
@@ -216,7 +222,8 @@ def _svt_nonnegative(x, threshold, rank=None):
 
 def NNLS_nucnorm(count_matrix, ec_transcript_mat, w, regularization=0.01,
                  ec_effective_lengths=None, max_iter=50, tol=1e-4,
-                 svd_rank=50, max_dense_entries=100_000_000):
+                 svd_rank=50, max_dense_entries=100_000_000,
+                 regularization_target="phi"):
     """Many-pseudobulk NNLS with nuclear-norm regularization.
 
     This is a direct reference implementation of the objective in
@@ -230,7 +237,9 @@ def NNLS_nucnorm(count_matrix, ec_transcript_mat, w, regularization=0.01,
     """
     counts = count_matrix.tocsr()
     n_samples, _ = counts.shape
-    A = weighted_ec_transcript_matrix(ec_transcript_mat, w, ec_effective_lengths)
+    A = weighted_ec_transcript_matrix(
+        ec_transcript_mat, w, ec_effective_lengths, regularization_target
+    )
     n_transcripts = A.shape[1]
 
     dense_entries = n_samples * n_transcripts
@@ -279,7 +288,6 @@ def NNLS_nucnorm(count_matrix, ec_transcript_mat, w, regularization=0.01,
     phi[:, positive] /= col_sums[positive]
     phi[:, ~nonzero] = 0
     return phi.T
-
 
 
 

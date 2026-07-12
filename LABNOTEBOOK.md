@@ -249,6 +249,22 @@ Updated docs/glm.tex to distinguish the bounded dense ADMM reference from the
 streamed genome-wide factorized solvers, and to document raw-cell output
 chunks, factors, diagnostics, and the current EC compatibility construction.
 
+Added a phi-or-theta regularization target. The response remains the EC-count
+proportion in each cell. Phi uses the inverse-effective-length design; theta
+applies the linear reparameterization A_theta = A_phi diag(effective_length)
+and regularizes the resulting molecular-abundance coefficient matrix without
+a simplex constraint.
+
+Source inspection clarified that gene_eqclass_probs.tsv.gz contains
+cell/UMI-specific alignment-likelihood vectors computed from alignment scores
+and transcript-end positions. Alevin-fry uses these vectors inside weighted
+EM. Tealeaf does not yet consume them because its GLM currently assumes one
+shared EC-by-transcript design matrix across cells.
+
+Validation covered the identity A_theta = A_phi diag(effective_length), invalid
+target rejection, and a theta-parameterized nuclear-norm fit recovering an
+identity-design normalized response when the penalty is zero.
+
 ## 2026-07-09 Salmon/Alevin Pipeline Recipes
 
 Pulled the useful microglia-less Salmon/Alevin pipeline pieces from the older

@@ -5,6 +5,8 @@ import unittest
 import numpy as np
 import scipy.sparse as sp
 
+from tealeaf.sc import sc_utils
+
 try:
     from tealeaf.sc import glm_solvers
     glm_solvers._torch()
@@ -12,6 +14,40 @@ except ImportError:  # pragma: no cover - exercised in non-GLM environments
     TORCH_AVAILABLE = False
 else:
     TORCH_AVAILABLE = True
+
+
+class ParameterizationTest(unittest.TestCase):
+    def test_theta_design_is_length_rescaled_phi_design(self):
+        membership = sp.csr_matrix(np.array([[1, 1], [0, 1]], dtype=float))
+        inverse_lengths = np.array([0.5, 0.25])
+        a_phi = sc_utils.weighted_ec_transcript_matrix(
+            membership, inverse_lengths, parameterization="phi"
+        )
+        a_theta = sc_utils.weighted_ec_transcript_matrix(
+            membership, inverse_lengths, parameterization="theta"
+        )
+        expected = a_phi @ sp.diags(1.0 / inverse_lengths)
+        np.testing.assert_allclose(a_theta.toarray(), expected.toarray())
+
+    def test_invalid_parameterization_is_rejected(self):
+        with self.assertRaises(ValueError):
+            sc_utils.weighted_ec_transcript_matrix(
+                sp.eye(1), np.ones(1), parameterization="invalid"
+            )
+
+    def test_theta_nucnorm_uses_theta_design(self):
+        counts = sp.csr_matrix(np.array([[8.0, 2.0], [2.0, 8.0]]))
+        membership = sp.eye(2, format="csr")
+        result = sc_utils.NNLS_nucnorm(
+            counts,
+            membership,
+            np.array([0.5, 0.25]),
+            regularization=0.0,
+            max_iter=5,
+            regularization_target="theta",
+        )
+        expected = counts.toarray() / np.asarray(counts.sum(axis=1))
+        np.testing.assert_allclose(result, expected, atol=1e-7)
 
 
 @unittest.skipUnless(TORCH_AVAILABLE, "Torch optional dependency is unavailable")

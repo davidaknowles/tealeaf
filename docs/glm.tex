@@ -210,6 +210,30 @@ The nuclear norm \(\|\Phi\|_*\), the sum of singular values of \(\Phi\), favors
 a low-rank structure in which isoform usage across cells is explained by a
 small number of shared patterns. 
 
+\subsection*{Regularizing Read-Origin or Molecular Abundance}
+
+The response matrix is normalized columnwise: for each nonempty cell or
+pseudobulk, EC counts are divided by their total, so
+\(\mathbf{1}'\mathbf{c}_m=1\). UMI depth therefore does not set the scale of a
+column or weight its contribution to the least-squares loss.
+
+The linear model can regularize either read-origin signal \(\Phi\) or molecular
+abundance signal \(\Theta\), without imposing a simplex constraint. Let
+\(D_l=\operatorname{diag}(\tilde l_1,\ldots,\tilde l_T)\). Since
+\(\Phi=D_l\Theta\) up to the column scale identified by the normalized
+response,
+\[
+  C \approx A_\phi\Phi
+    = A_\phi D_l\Theta
+    = A_\theta\Theta.
+\]
+Thus regularizing \(\Theta\) uses \(A_\theta=A_\phi D_l\) and replaces
+\(\lambda\|\Phi\|_*\) by \(\lambda\|\Theta\|_*\). Under the current geometric
+approximation, \(A_{\phi,st}=\tilde u_s/\tilde l_t\) and
+\(A_{\theta,st}=\tilde u_s\) for compatible isoforms. Fitted columns are
+normalized only when producing relative-abundance output; the optimization
+itself remains nonnegative but unconstrained in column sum.
+
 \subsection*{Sparse Objective Evaluation}
 
 A scalable implementation should avoid forming the dense residual
@@ -390,7 +414,10 @@ PyTorch backend and select CUDA when available; NumPy/SciPy remains responsible
 for sparse input and compatibility-matrix construction. The rank, cell block
 size, convergence tolerance, regularization strength, ADMM penalty, and
 Frank--Wolfe radius are configurable. The default low-rank capacity is 64, and
-the default Frank--Wolfe radius is \(\sqrt{M}\).
+the default Frank--Wolfe radius is \(\sqrt{M}\). The
+\texttt{--regularization\_target} option selects \texttt{phi} or
+\texttt{theta}; it changes both the coefficient matrix receiving the penalty
+and the corresponding design matrix.
 
 In \texttt{single\_cell} mode, fitting operates directly on the raw
 cell-by-equivalence-class matrix rather than creating pseudobulks. The output
@@ -501,9 +528,14 @@ lengths \(\tilde{u}_s\).
 The current single-cell implementation constructs \(A\) from EC membership
 when only the standard alevin-fry EC dump is present: compatible entries are
 weighted by \(1/\tilde{l}_t\), using transcript effective-length proxies from
-the reference, and the region factor is set to one. A probability-aware EC
-reader can later populate \(a_{kt}=p_{kt}\), preserving Salmon's conditional
-assignment weights without changing the sparse solver interface.
+the reference, and the region factor is set to one. The patched weighted RAD
+and alevin-fry route additionally writes per-UMI alignment-likelihood vectors
+to \texttt{gene\_eqclass\_probs.tsv.gz}. These vectors are computed from
+alignment score and transcript-end position and are used inside alevin-fry's
+EM update. They vary by cell and UMI; they are not yet consumed by the GLM,
+which currently assumes one common \(A\) across cells. Using them exactly
+requires a cell-specific design operator rather than replacing \(A\) by a
+single averaged matrix.
 
 If inference is desired directly on the relative abundance scale
 \(\boldsymbol{\theta}\), absorb transcript effective lengths into the design:
