@@ -1,6 +1,9 @@
 """Small numerical checks for the Torch GLM backends."""
 
 import unittest
+import gzip
+from pathlib import Path
+import tempfile
 
 import numpy as np
 import scipy.sparse as sp
@@ -48,6 +51,30 @@ class ParameterizationTest(unittest.TestCase):
         )
         expected = counts.toarray() / np.asarray(counts.sum(axis=1))
         np.testing.assert_allclose(result, expected, atol=1e-7)
+
+    def test_probability_sidecar_builds_column_normalized_design(self):
+        membership = sp.csr_matrix(
+            np.array([[1, 1], [1, 0], [0, 1]], dtype=float)
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            probability_file = Path(directory) / "probs.tsv.gz"
+            cache_file = Path(directory) / "weights.npz"
+            with gzip.open(probability_file, "wt") as handle:
+                handle.write("cell_idx\teqid\tumi_rank\tprobs\n")
+                handle.write("0\t0\t0\t8e-1,2e-1\n")
+                handle.write("1\t0\t0\t6e-1,4e-1\n")
+                handle.write("0\t1\t0\t1e0\n")
+            design = sc_utils.averaged_ec_probability_matrix(
+                probability_file, membership, cache_file
+            )
+            np.testing.assert_allclose(
+                np.asarray(design.sum(axis=0)).ravel(), np.ones(2)
+            )
+            self.assertTrue(cache_file.is_file())
+            cached = sc_utils.averaged_ec_probability_matrix(
+                probability_file, membership, cache_file
+            )
+            np.testing.assert_allclose(cached.toarray(), design.toarray())
 
 
 @unittest.skipUnless(TORCH_AVAILABLE, "Torch optional dependency is unavailable")

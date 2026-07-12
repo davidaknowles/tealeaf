@@ -311,7 +311,8 @@ def parallel_quant_processing(cell_ec_sparse_pseudo_filt, ec_transcript_input, w
                               nucnorm_max_dense_entries=100000000,
                               glm_device='auto', glm_batch_cells=4096,
                               glm_rank=64, admm_rho=1.0, admm_inner_iter=25,
-                              nucnorm_tau=None, regularization_target='phi'):
+                              nucnorm_tau=None, regularization_target='phi',
+                              glm_design_input=None, ec_design='legacy'):
     if quant_method == 'nnls_nucnorm':
         alphas = sc_utils.NNLS_nucnorm(
             cell_ec_sparse_pseudo_filt,
@@ -323,6 +324,7 @@ def parallel_quant_processing(cell_ec_sparse_pseudo_filt, ec_transcript_input, w
             svd_rank=nucnorm_rank,
             max_dense_entries=nucnorm_max_dense_entries,
             regularization_target=regularization_target,
+            design_matrix=glm_design_input,
         )
         tpm_rows = []
         count_rows = []
@@ -340,9 +342,11 @@ def parallel_quant_processing(cell_ec_sparse_pseudo_filt, ec_transcript_input, w
     if quant_method in {'admm', 'admm_factorized', 'frank_wolfe', 'factorized'}:
         from tealeaf.sc import glm_solvers
 
-        compatibility = sc_utils.weighted_ec_transcript_matrix(
-            ec_transcript_input, w, parameterization=regularization_target
-        )
+        compatibility = glm_design_input
+        if compatibility is None:
+            compatibility = sc_utils.weighted_ec_transcript_matrix(
+                ec_transcript_input, w, parameterization=regularization_target
+            )
         result = glm_solvers.fit_glm(
             cell_ec_sparse_pseudo_filt,
             compatibility,
@@ -359,6 +363,7 @@ def parallel_quant_processing(cell_ec_sparse_pseudo_filt, ec_transcript_input, w
             batch_cells=glm_batch_cells,
         )
         result.diagnostics['regularization_target'] = regularization_target
+        result.diagnostics['ec_design'] = ec_design
         alpha_matrix = glm_solvers.result_to_csr(
             result, 0, cell_ec_sparse_pseudo_filt.shape[0], threshold=0.0
         ).toarray()
@@ -395,7 +400,8 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
                          nucnorm_max_dense_entries = 100000000, glm_device='auto',\
                          glm_batch_cells=4096, glm_rank=64, admm_rho=1.0,\
                          admm_inner_iter=25, nucnorm_tau=None,\
-                         regularization_target='phi'):
+                         regularization_target='phi', ec_design='legacy',\
+                         eq_probabilities=None, eq_weight_cache=None):
     """
     
 
@@ -423,6 +429,8 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
     nucnorm_max_dense_entries = int(nucnorm_max_dense_entries)
     if regularization_target not in {'phi', 'theta'}:
         sys.exit("Error: regularization_target must be phi or theta.\n")
+    if ec_design not in {'legacy', 'binary', 'weighted'}:
+        sys.exit("Error: ec_design must be legacy, binary, or weighted.\n")
     if quant_method not in {'em', 'nnls', 'nnls_nucnorm', 'admm', 'admm_factorized', 'frank_wolfe', 'factorized'}:
         sys.exit("Error: invalid quantification method...\n")
     # step 1: data loading
@@ -460,6 +468,21 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
         features = np.array([line.strip() for line in file.readlines()])
     with open(alevin_dir / "quants_mat_rows.txt", 'r') as file:
         barcodes = np.array([line.strip() for line in file.readlines()])
+
+    glm_phi_design = None
+    regularized_methods = {'nnls_nucnorm', 'admm', 'admm_factorized', 'frank_wolfe', 'factorized'}
+    if quant_method in regularized_methods:
+        _, full_w = sc_utils.get_feature_weights(features, transcript_lengths_dic)
+        probability_file = eq_probabilities or (alevin_dir / "gene_eqclass_probs.tsv.gz")
+        cache_file = eq_weight_cache or (alevin_dir / "gene_eqclass_fixed_weights.npz")
+        glm_phi_design = sc_utils.glm_design_matrix(
+            ec_transcript_mat,
+            full_w,
+            parameterization='phi',
+            design=ec_design,
+            probability_file=probability_file,
+            cache_file=cache_file,
+        )
     
     
     # step 2: first round of filtering, to facilitate computation speed
@@ -477,6 +500,8 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
     features_to_keep = transcript_count > min_transcript
     features_filt = features[features_to_keep]
     ec_transcript_ff = ec_transcript_filt[:,features_to_keep]
+    if glm_phi_design is not None:
+        glm_phi_design = glm_phi_design[ECs_to_keep, :][:, features_to_keep]
     
     
     sys.stderr.write("start barcodes checking\n")
@@ -519,9 +544,19 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
     features_to_keep = transcript_count > min_transcript
     features_ff = features_filt[features_to_keep]
     ec_transcript_ffff = ec_transcript_fff[:,features_to_keep]
+    if glm_phi_design is not None:
+        glm_phi_design = glm_phi_design[ECs_to_keep, :][:, features_to_keep]
 
 
     feature_lengths, w = sc_utils.get_feature_weights(features_ff, transcript_lengths_dic)
+    glm_design_input = None
+    if glm_phi_design is not None:
+        glm_design_input = sc_utils.parameterize_glm_design(
+            glm_phi_design,
+            w,
+            regularization_target,
+            normalize_columns=ec_design in {'binary', 'weighted'},
+        )
     
     
     bool_spliced_trans = np.array([0 if '-I' in value else 1 for value in features_ff]) # Knowing what isofrom is spliced and which is unspliced
@@ -538,6 +573,7 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
         nucnorm_lambda, nucnorm_max_iter, nucnorm_tol, nucnorm_rank,
         nucnorm_max_dense_entries, glm_device, glm_batch_cells, glm_rank,
         admm_rho, admm_inner_iter, nucnorm_tau, regularization_target,
+        glm_design_input, ec_design,
     )
        
 
@@ -612,18 +648,35 @@ def single_cell_glm_conversion(options):
     with open(alevin_dir / "quants_mat_rows.txt") as handle:
         barcodes = np.asarray([line.strip() for line in handle])
 
+    transcript_lengths = sc_utils.get_transcript_lengths(Path(options.salmon_ref))
+    _, full_weights = sc_utils.get_feature_weights(features, transcript_lengths)
+    probability_file = options.eq_probabilities or (alevin_dir / "gene_eqclass_probs.tsv.gz")
+    cache_file = options.eq_weight_cache or (alevin_dir / "gene_eqclass_fixed_weights.npz")
+    phi_design = sc_utils.glm_design_matrix(
+        ec_transcript_mat,
+        full_weights,
+        parameterization='phi',
+        design=options.ec_design,
+        probability_file=probability_file,
+        cache_file=cache_file,
+    )
+
     aggregate = sc_utils.sparse_sum(cell_ec_sparse, 0)
     transcript_count = aggregate @ ec_transcript_mat
     ec_keep = aggregate >= float(options.min_eq)
     feature_keep = transcript_count > 0
     filtered_counts = cell_ec_sparse[:, ec_keep]
     filtered_ec = ec_transcript_mat[ec_keep, :][:, feature_keep]
+    filtered_phi_design = phi_design[ec_keep, :][:, feature_keep]
     filtered_features = features[feature_keep]
     _, weights = sc_utils.get_feature_weights(
-        filtered_features, sc_utils.get_transcript_lengths(Path(options.salmon_ref))
+        filtered_features, transcript_lengths
     )
-    compatibility = sc_utils.weighted_ec_transcript_matrix(
-        filtered_ec, weights, parameterization=options.regularization_target
+    compatibility = sc_utils.parameterize_glm_design(
+        filtered_phi_design,
+        weights,
+        options.regularization_target,
+        normalize_columns=options.ec_design in {'binary', 'weighted'},
     )
     result = glm_solvers.fit_glm(
         filtered_counts,
@@ -641,6 +694,7 @@ def single_cell_glm_conversion(options):
         batch_cells=options.glm_batch_cells,
     )
     result.diagnostics['regularization_target'] = options.regularization_target
+    result.diagnostics['ec_design'] = options.ec_design
     glm_solvers.write_chunked_result(
         result,
         options.outprefix,
@@ -868,7 +922,9 @@ def tealeaf_sc(options):
                              options.nucnorm_max_dense_entries, options.glm_device,
                              options.glm_batch_cells, options.glm_rank,
                              options.admm_rho, options.admm_inner_iter,
-                             options.nucnorm_tau, options.regularization_target)
+                             options.nucnorm_tau, options.regularization_target,
+                             options.ec_design, options.eq_probabilities,
+                             options.eq_weight_cache)
     
     
     
@@ -1016,6 +1072,15 @@ if __name__ == "__main__":
     parser.add_option("--regularization_target", dest="regularization_target", default='phi',
                   help="coefficient matrix receiving low-rank regularization: phi or theta (default: phi)")
 
+    parser.add_option("--ec_design", dest="ec_design", default='legacy',
+                  help="fixed EC design: legacy, binary, or weighted (default: legacy)")
+
+    parser.add_option("--eq_probabilities", dest="eq_probabilities", default=None,
+                  help="alevin-fry per-UMI probability sidecar for --ec_design weighted")
+
+    parser.add_option("--eq_weight_cache", dest="eq_weight_cache", default=None,
+                  help="cache path for the fixed weighted EC design")
+
     parser.add_option("--nucnorm_max_iter", dest="nucnorm_max_iter", default=50, type="int",
                   help="maximum proximal-gradient iterations for quant_method=nnls_nucnorm (default: 50)")
 
@@ -1136,14 +1201,15 @@ if __name__ == "__main__":
     if options.regularization_target not in {'phi', 'theta'}:
         sys.exit("Error: --regularization_target must be phi or theta.\n")
 
+    if options.ec_design not in {'legacy', 'binary', 'weighted'}:
+        sys.exit("Error: --ec_design must be legacy, binary, or weighted.\n")
+
         
     record = f'{options.outprefix}clustering_parameters.txt'
     sys.stderr.write(f'Detailed parameters will be saved to {record}\n')
     write_options_to_file(options, record)
 
     tealeaf_sc(options)
-
-
 
 
 

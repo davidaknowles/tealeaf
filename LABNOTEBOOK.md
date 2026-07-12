@@ -265,6 +265,14 @@ Validation covered the identity A_theta = A_phi diag(effective_length), invalid
 target rejection, and a theta-parameterized nuclear-norm fit recovering an
 identity-design normalized response when the penalty is zero.
 
+Added fixed EC design choices for regularized methods. `binary` uses
+column-normalized EC membership. `weighted` averages the dumped per-UMI
+likelihood vectors within each global EC, fills ECs without vectors uniformly,
+then column-normalizes over ECs for each transcript. The weighted matrix is
+cached because its sidecar is large. The comparison launcher schedules cache
+construction once before weighted GPU fits and runs binary and weighted
+designs as separate jobs.
+
 ## 2026-07-09 Salmon/Alevin Pipeline Recipes
 
 Pulled the useful microglia-less Salmon/Alevin pipeline pieces from the older

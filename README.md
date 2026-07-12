@@ -218,6 +218,17 @@ Optional Parameters:
                         molecular abundance with A_theta = A_phi diag(l)
                         (default: phi)
 
+--ec_design             Fixed EC design used by regularized methods:
+                        legacy retains inverse-length compatibility; binary
+                        column-normalizes binary EC membership; weighted
+                        column-normalizes globally averaged per-UMI likelihoods
+                        from the alevin-fry sidecar (default: legacy)
+
+--eq_probabilities      Override the gene_eqclass_probs.tsv.gz input used by
+                        --ec_design weighted
+
+--eq_weight_cache       Override the cached fixed weighted design path
+
 --nucnorm_max_iter      Maximum proximal-gradient iterations used when --quant_method=nnls_nucnorm (default: 50)
 
 --nucnorm_tol           Relative convergence tolerance used when --quant_method=nnls_nucnorm (default: 1e-4)
@@ -398,7 +409,6 @@ This step will also generate other relevant files like `barcodes_pseudobulk.txt`
 ### Step 4:
 The output from step 3 is equivalent to results from leafcutter clustering, and the results are compatible with downstream analysis for Leafcutter, such as Leafcutter_ds and Leafviz. 
 Further information and downstream analysis please refer to https://davidaknowles.github.io/leafcutter/index.html
-
 
 
 

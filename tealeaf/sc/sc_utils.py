@@ -6,6 +6,8 @@ sparse EC-to-transcript matrices, and running the EM transcript quantification.
 
 import gzip
 import collections
+import os
+from pathlib import Path
 
 import numpy as np
 import scipy.sparse as sp
@@ -171,6 +173,115 @@ def weighted_ec_transcript_matrix(ec_transcript_mat, w, ec_effective_lengths=Non
     return mat.tocsr()
 
 
+def _column_normalize(matrix):
+    """Normalize each nonempty sparse column to sum to one."""
+    matrix = matrix.tocsr()
+    totals = np.asarray(matrix.sum(axis=0)).ravel()
+    inverse = np.zeros_like(totals, dtype=float)
+    positive = totals > 0
+    inverse[positive] = 1.0 / totals[positive]
+    return (matrix @ sp.diags(inverse)).tocsr()
+
+
+def averaged_ec_probability_matrix(probability_file, ec_transcript_mat, cache_file=None):
+    """Build a fixed EC design by averaging per-UMI likelihood vectors.
+
+    The alevin-fry probability sidecar has one row per retained UMI. Its
+    probability vector follows the transcript order in the corresponding
+    global EC. This function averages vectors within each EC, uses uniform
+    compatibility for ECs without probability rows, and column-normalizes the
+    result so each transcript defines a distribution over ECs.
+    """
+    probability_file = Path(probability_file)
+    cache_file = Path(cache_file) if cache_file is not None else None
+    membership = ec_transcript_mat.tocsr()
+    if cache_file is not None and cache_file.is_file():
+        if cache_file.stat().st_mtime >= probability_file.stat().st_mtime:
+            cached = sp.load_npz(cache_file).tocsr()
+            if cached.shape == membership.shape:
+                return cached
+
+    sums = np.zeros(membership.nnz, dtype=np.float64)
+    observations = np.zeros(membership.shape[0], dtype=np.uint64)
+    with gzip.open(probability_file, "rt") as handle:
+        header = next(handle, "").rstrip("\n")
+        if header != "cell_idx\teqid\tumi_rank\tprobs":
+            raise ValueError(f"Unexpected probability sidecar header: {header!r}")
+        for line_number, line in enumerate(handle, start=2):
+            fields = line.rstrip("\n").split("\t", 3)
+            if len(fields) != 4:
+                raise ValueError(f"Malformed probability row at line {line_number}")
+            eqid = int(fields[1])
+            if eqid < 0 or eqid >= membership.shape[0]:
+                raise ValueError(f"EC id {eqid} is outside the compatibility matrix")
+            start, stop = membership.indptr[eqid:eqid + 2]
+            probabilities = np.fromstring(fields[3], sep=",", dtype=np.float64)
+            if probabilities.size != stop - start:
+                raise ValueError(
+                    f"EC {eqid} has {stop - start} transcripts but probability row "
+                    f"has {probabilities.size} values"
+                )
+            sums[start:stop] += probabilities
+            observations[eqid] += 1
+
+    for eqid in range(membership.shape[0]):
+        start, stop = membership.indptr[eqid:eqid + 2]
+        if start == stop:
+            continue
+        if observations[eqid] > 0:
+            sums[start:stop] /= observations[eqid]
+        else:
+            sums[start:stop] = 1.0 / (stop - start)
+    weighted = sp.csr_matrix(
+        (sums, membership.indices.copy(), membership.indptr.copy()),
+        shape=membership.shape,
+    )
+    weighted = _column_normalize(weighted)
+    if cache_file is not None:
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        temporary = cache_file.with_name(
+            f".{cache_file.name}.{os.getpid()}.tmp.npz"
+        )
+        sp.save_npz(temporary, weighted)
+        os.replace(temporary, cache_file)
+    return weighted
+
+
+def glm_design_matrix(ec_transcript_mat, w, parameterization="phi",
+                      design="legacy", probability_file=None, cache_file=None):
+    """Construct a fixed GLM design and apply the phi/theta parameterization."""
+    if parameterization not in {"phi", "theta"}:
+        raise ValueError("parameterization must be 'phi' or 'theta'")
+    if design == "legacy":
+        return weighted_ec_transcript_matrix(
+            ec_transcript_mat, w, parameterization=parameterization
+        )
+    if design == "binary":
+        phi_design = _column_normalize(ec_transcript_mat.astype(float))
+    elif design == "weighted":
+        if probability_file is None:
+            raise ValueError("probability_file is required for design='weighted'")
+        phi_design = averaged_ec_probability_matrix(
+            probability_file, ec_transcript_mat, cache_file
+        )
+    else:
+        raise ValueError("design must be 'legacy', 'binary', or 'weighted'")
+    return parameterize_glm_design(phi_design, w, parameterization)
+
+
+def parameterize_glm_design(phi_design, w, parameterization="phi",
+                            normalize_columns=False):
+    """Optionally renormalize a filtered phi design and convert to theta."""
+    if parameterization not in {"phi", "theta"}:
+        raise ValueError("parameterization must be 'phi' or 'theta'")
+    design = phi_design.tocsr()
+    if normalize_columns:
+        design = _column_normalize(design)
+    if parameterization == "theta":
+        design = design @ sp.diags(1.0 / np.asarray(w, dtype=float))
+    return design.tocsr()
+
+
 def NNLS(counts, ec_transcript_mat, w, ec_effective_lengths=None,
          max_iter=200, tol=1e-6):
     """Non-negative least-squares approximation to EM.
@@ -223,7 +334,7 @@ def _svt_nonnegative(x, threshold, rank=None):
 def NNLS_nucnorm(count_matrix, ec_transcript_mat, w, regularization=0.01,
                  ec_effective_lengths=None, max_iter=50, tol=1e-4,
                  svd_rank=50, max_dense_entries=100_000_000,
-                 regularization_target="phi"):
+                 regularization_target="phi", design_matrix=None):
     """Many-pseudobulk NNLS with nuclear-norm regularization.
 
     This is a direct reference implementation of the objective in
@@ -237,9 +348,12 @@ def NNLS_nucnorm(count_matrix, ec_transcript_mat, w, regularization=0.01,
     """
     counts = count_matrix.tocsr()
     n_samples, _ = counts.shape
-    A = weighted_ec_transcript_matrix(
-        ec_transcript_mat, w, ec_effective_lengths, regularization_target
-    )
+    if design_matrix is None:
+        A = weighted_ec_transcript_matrix(
+            ec_transcript_mat, w, ec_effective_lengths, regularization_target
+        )
+    else:
+        A = design_matrix.tocsr()
     n_transcripts = A.shape[1]
 
     dense_entries = n_samples * n_transcripts
@@ -288,6 +402,4 @@ def NNLS_nucnorm(count_matrix, ec_transcript_mat, w, regularization=0.01,
     phi[:, positive] /= col_sums[positive]
     phi[:, ~nonzero] = 0
     return phi.T
-
-
 

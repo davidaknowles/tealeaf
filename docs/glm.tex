@@ -537,6 +537,16 @@ which currently assumes one common \(A\) across cells. Using them exactly
 requires a cell-specific design operator rather than replacing \(A\) by a
 single averaged matrix.
 
+For a direct fixed-design comparison, the implementation also supports a
+globally weighted approximation. For each global EC, its per-UMI likelihood
+vectors are averaged over cells and UMIs; ECs without dumped vectors receive
+uniform weights over their compatible transcripts. The resulting sparse matrix
+is column-normalized over ECs for each transcript and cached. The binary
+comparator column-normalizes the binary EC membership matrix in the same way.
+This comparison isolates the effect of within-EC alignment evidence while
+retaining one shared design matrix. It is an empirical approximation to the
+cell-specific likelihoods, not an annotation-only conditional model.
+
 If inference is desired directly on the relative abundance scale
 \(\boldsymbol{\theta}\), absorb transcript effective lengths into the design:
 \[
