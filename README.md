@@ -190,7 +190,22 @@ Optional Parameters:
 --thread                The number of threads used for parallel computation, should not be too large to avoid crash (default: 8)
 
 --quant_method          Transcript quantification method for pseudobulk equivalence-class counts:
-                        em, nnls, or nnls_nucnorm (default: em)
+                        em, nnls, nnls_nucnorm, admm, admm_factorized,
+                        frank_wolfe, or factorized (default: em)
+
+--cell_mode             pseudobulk (default) or single_cell. Single-cell mode writes
+                        chunked sparse transcript estimates and does not run the
+                        downstream intron clustering workflow.
+
+--glm_device            Torch device for scalable GLMs: auto, cuda, or cpu (default: auto)
+
+--glm_batch_cells       Number of cells per sparse GPU/CPU block (default: 4096)
+
+--glm_rank              Rank for factorized, factorized-ADMM, and Frank-Wolfe fits
+                        (default: 64)
+
+--glm_output_threshold  Values below this normalized abundance are dropped from
+                        single-cell sparse output chunks (default: 1e-8)
 
 --nnls_max_iter         Maximum iterations for the NNLS bounded least-squares solver (default: 200)
 
@@ -208,6 +223,16 @@ Optional Parameters:
 --nucnorm_max_dense_entries
                         Maximum dense transcript-by-pseudobulk matrix entries allowed for
                         --quant_method=nnls_nucnorm (default: 100,000,000)
+
+--nucnorm_tau           Nuclear-norm radius for Frank-Wolfe. The default is
+                        sqrt(number of nonempty cells).
+
+--admm_rho              ADMM penalty (default: 1.0)
+
+--admm_inner_iter       Inner projected-gradient iterations for dense ADMM (default: 25)
+
+The scalable GLM methods require the optional Torch dependency, installed with
+`pip install '.[glm]'`, and use CUDA when `--glm_device auto` finds a GPU.
 
 --use_TPM               A flag on whether to use TPM or normalized count
 
@@ -368,9 +393,6 @@ This step will also generate other relevant files like `barcodes_pseudobulk.txt`
 ### Step 4:
 The output from step 3 is equivalent to results from leafcutter clustering, and the results are compatible with downstream analysis for Leafcutter, such as Leafcutter_ds and Leafviz. 
 Further information and downstream analysis please refer to https://davidaknowles.github.io/leafcutter/index.html
-
-
-
 
 
 

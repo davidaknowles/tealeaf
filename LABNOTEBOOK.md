@@ -220,6 +220,31 @@ Validation:
 - A tiny synthetic EC/transcript system produced nonnegative, normalized
   outputs for EM, NNLS, and nuclear-norm NNLS.
 
+## 2026-07-11 Genome-Wide Torch GLMs
+
+Added reusable Torch-based genome-wide EC GLM solvers in
+`tealeaf/sc/glm_solvers.py`:
+
+- `admm` is a dense, bounded convex nuclear-norm reference solver.
+- `admm_factorized` uses factor-sized ADMM state and is non-convex.
+- `frank_wolfe` stores a convex combination of nonnegative rank-one atoms.
+- `factorized` fits a nonnegative fixed-rank variational nuclear-norm model.
+
+The scalable methods stream sparse cell-by-EC blocks and retain only
+transcript-by-rank and cell-by-rank factors. They avoid forming a global
+transcript-by-cell abundance matrix during fitting. `single_cell` mode writes
+thresholded sparse output chunks, factors, and diagnostics; it intentionally
+does not invoke the pseudobulk intron clustering path.
+
+Torch is an optional package dependency (`tealeaf[glm]`). The GPU execution
+path uses the site Torch module and the provided GPU submission wrapper. Dense
+ADMM is capped and is not included in the large single-cell submission default.
+
+Static validation passed with the repository Python environment. The Torch
+synthetic suite requires a node where the Torch runtime is available; the login
+and CPU validation node lacked the required runtime library, and the GPU smoke
+test was not started because the account GPU allocation limit was occupied.
+
 ## 2026-07-09 Salmon/Alevin Pipeline Recipes
 
 Pulled the useful microglia-less Salmon/Alevin pipeline pieces from the older

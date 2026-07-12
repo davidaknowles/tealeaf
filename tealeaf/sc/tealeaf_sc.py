@@ -308,7 +308,10 @@ def parallel_quant_processing(cell_ec_sparse_pseudo_filt, ec_transcript_input, w
                               quant_method='em', nnls_max_iter=200, nnls_tol=1e-6,
                               nucnorm_lambda=0.01, nucnorm_max_iter=50,
                               nucnorm_tol=1e-4, nucnorm_rank=50,
-                              nucnorm_max_dense_entries=100000000):
+                              nucnorm_max_dense_entries=100000000,
+                              glm_device='auto', glm_batch_cells=4096,
+                              glm_rank=64, admm_rho=1.0, admm_inner_iter=25,
+                              nucnorm_tau=None):
     if quant_method == 'nnls_nucnorm':
         alphas = sc_utils.NNLS_nucnorm(
             cell_ec_sparse_pseudo_filt,
@@ -333,6 +336,40 @@ def parallel_quant_processing(cell_ec_sparse_pseudo_filt, ec_transcript_input, w
             count_rows.append(csr_matrix(tmp_count.reshape(1, -1)))
         return vstack(tpm_rows), vstack(count_rows)
 
+    if quant_method in {'admm', 'admm_factorized', 'frank_wolfe', 'factorized'}:
+        from tealeaf.sc import glm_solvers
+
+        compatibility = sc_utils.weighted_ec_transcript_matrix(ec_transcript_input, w)
+        result = glm_solvers.fit_glm(
+            cell_ec_sparse_pseudo_filt,
+            compatibility,
+            quant_method,
+            rank=glm_rank,
+            regularization=nucnorm_lambda,
+            max_iter=nucnorm_max_iter,
+            tol=nucnorm_tol,
+            rho=admm_rho,
+            inner_iter=admm_inner_iter,
+            max_dense_entries=nucnorm_max_dense_entries,
+            tau=nucnorm_tau,
+            device=glm_device,
+            batch_cells=glm_batch_cells,
+        )
+        alpha_matrix = glm_solvers.result_to_csr(
+            result, 0, cell_ec_sparse_pseudo_filt.shape[0], threshold=0.0
+        ).toarray()
+        tpm_rows = []
+        count_rows = []
+        totals = np.asarray(cell_ec_sparse_pseudo_filt.sum(axis=1)).ravel()
+        for alpha, total_count in zip(alpha_matrix, totals):
+            tmp_tpm, tmp_count = alpha_to_tpm_count(
+                alpha, total_count, w, normalize_mode, read_length, paired_end,
+                overhang, sizing_factor, bool_spliced_trans,
+            )
+            tpm_rows.append(csr_matrix(tmp_tpm.reshape(1, -1)))
+            count_rows.append(csr_matrix(tmp_count.reshape(1, -1)))
+        return vstack(tpm_rows), vstack(count_rows)
+
     results = Parallel(n_jobs=thread)(delayed(process_pseudo_row)(i,cell_ec_sparse_pseudo_filt, ec_transcript_input, w, \
                                                                   normalize_mode, read_length, paired_end , overhang, sizing_factor,bool_spliced_trans,\
                                                                   quant_method, nnls_max_iter, nnls_tol) \
@@ -351,7 +388,9 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
                          normalize_mode = 'junction', read_length = 100, paired_end = True, overhang = 2, sizing_factor = 1,\
                          quant_method = 'em', nnls_max_iter = 200, nnls_tol = 1e-6, nucnorm_lambda = 0.01,\
                          nucnorm_max_iter = 50, nucnorm_tol = 1e-4, nucnorm_rank = 50,\
-                         nucnorm_max_dense_entries = 100000000):
+                         nucnorm_max_dense_entries = 100000000, glm_device='auto',\
+                         glm_batch_cells=4096, glm_rank=64, admm_rho=1.0,\
+                         admm_inner_iter=25, nucnorm_tau=None):
     """
     
 
@@ -377,7 +416,7 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
     nucnorm_tol = float(nucnorm_tol)
     nucnorm_rank = int(nucnorm_rank)
     nucnorm_max_dense_entries = int(nucnorm_max_dense_entries)
-    if quant_method not in {'em', 'nnls', 'nnls_nucnorm'}:
+    if quant_method not in {'em', 'nnls', 'nnls_nucnorm', 'admm', 'admm_factorized', 'frank_wolfe', 'factorized'}:
         sys.exit("Error: invalid quantification method...\n")
     # step 1: data loading
     transcript_lengths_dic = sc_utils.get_transcript_lengths(Path(salmon_ref))    
@@ -490,7 +529,8 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
         normalize_mode, read_length, paired_end, overhang, sizing_factor,
         bool_spliced_trans, quant_method, nnls_max_iter, nnls_tol,
         nucnorm_lambda, nucnorm_max_iter, nucnorm_tol, nucnorm_rank,
-        nucnorm_max_dense_entries,
+        nucnorm_max_dense_entries, glm_device, glm_batch_cells, glm_rank,
+        admm_rho, admm_inner_iter, nucnorm_tau,
     )
        
 
@@ -531,6 +571,75 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
     save_npz(f'{out_prefix}pseudo_count.npz', pseudo_count)
     save_npz(f'{out_prefix}pseudo_spliced_TPM.npz', spliced_pseudo_TPM)
     save_npz(f'{out_prefix}pseudo_spliced_count.npz', spliced_pseudo_count)
+
+
+def single_cell_glm_conversion(options):
+    """Fit a genome-wide GLM directly to raw cells and write sparse cell chunks.
+
+    The downstream intron and clustering stages expect a manageable pseudobulk
+    matrix.  They are intentionally not run in ``single_cell`` mode.
+    """
+    from tealeaf.sc import glm_solvers
+
+    if options.quant_method not in glm_solvers.SCALABLE_METHODS:
+        raise ValueError(
+            "--cell_mode single_cell requires admm, admm_factorized, frank_wolfe, or factorized"
+        )
+    alevin_dir = Path(options.alevin_dir)
+    map_cache = alevin_dir / "gene_eqclass.npz"
+    if map_cache.is_file():
+        ec_transcript_mat = scipy.sparse.load_npz(map_cache).tocsr()
+    else:
+        _, _, ecs = sc_utils.read_alevin_ec(alevin_dir / "gene_eqclass.txt.gz")
+        ec_transcript_mat = sc_utils.to_coo([ecs[k] for k in range(len(ecs))]).tocsr()
+        scipy.sparse.save_npz(map_cache, ec_transcript_mat)
+
+    npz_cache = alevin_dir / "geqc_counts.npz"
+    if npz_cache.is_file():
+        cell_ec_sparse = scipy.sparse.load_npz(npz_cache).tocsr()
+    else:
+        cell_ec_sparse = scipy.io.mmread(alevin_dir / "geqc_counts.mtx").tocsr()
+        scipy.sparse.save_npz(npz_cache, cell_ec_sparse)
+    with open(alevin_dir / "quants_mat_cols.txt") as handle:
+        features = np.asarray([line.strip() for line in handle])
+    with open(alevin_dir / "quants_mat_rows.txt") as handle:
+        barcodes = np.asarray([line.strip() for line in handle])
+
+    aggregate = sc_utils.sparse_sum(cell_ec_sparse, 0)
+    transcript_count = aggregate @ ec_transcript_mat
+    ec_keep = aggregate >= float(options.min_eq)
+    feature_keep = transcript_count > 0
+    filtered_counts = cell_ec_sparse[:, ec_keep]
+    filtered_ec = ec_transcript_mat[ec_keep, :][:, feature_keep]
+    filtered_features = features[feature_keep]
+    _, weights = sc_utils.get_feature_weights(
+        filtered_features, sc_utils.get_transcript_lengths(Path(options.salmon_ref))
+    )
+    compatibility = sc_utils.weighted_ec_transcript_matrix(filtered_ec, weights)
+    result = glm_solvers.fit_glm(
+        filtered_counts,
+        compatibility,
+        options.quant_method,
+        rank=options.glm_rank,
+        regularization=options.nucnorm_lambda,
+        rho=options.admm_rho,
+        max_iter=options.nucnorm_max_iter,
+        inner_iter=options.admm_inner_iter,
+        tol=options.nucnorm_tol,
+        max_dense_entries=options.nucnorm_max_dense_entries,
+        tau=options.nucnorm_tau,
+        device=options.glm_device,
+        batch_cells=options.glm_batch_cells,
+    )
+    glm_solvers.write_chunked_result(
+        result,
+        options.outprefix,
+        barcodes,
+        filtered_features,
+        batch_cells=options.glm_batch_cells,
+        threshold=options.glm_output_threshold,
+    )
+    sys.stderr.write("Genome-wide single-cell GLM outputs were written\n")
 
 
 def extract_order(col):
@@ -713,6 +822,9 @@ def tealeaf_sc(options):
 
     """
     out_prefix = options.outprefix
+    if options.cell_mode == 'single_cell':
+        single_cell_glm_conversion(options)
+        return
     if options.preprocessed == False:
     #  step 1: generate or read the barcodes to pseudobulk samples file
         if options.pseudobulk_samples == None:
@@ -743,7 +855,10 @@ def tealeaf_sc(options):
                              options.quant_method, options.nnls_max_iter, options.nnls_tol,
                              options.nucnorm_lambda, options.nucnorm_max_iter,
                              options.nucnorm_tol, options.nucnorm_rank,
-                             options.nucnorm_max_dense_entries)
+                             options.nucnorm_max_dense_entries, options.glm_device,
+                             options.glm_batch_cells, options.glm_rank,
+                             options.admm_rho, options.admm_inner_iter,
+                             options.nucnorm_tau)
     
     
     
@@ -862,7 +977,22 @@ if __name__ == "__main__":
                   help="the thread use for computation")            
 
     parser.add_option("--quant_method", dest="quant_method", default='em',
-                  help="transcript quantification method for EC pseudobulks: em, nnls, or nnls_nucnorm (default: em)")
+                  help="EC quantification: em, nnls, nnls_nucnorm, admm, admm_factorized, frank_wolfe, or factorized (default: em)")
+
+    parser.add_option("--cell_mode", dest="cell_mode", default='pseudobulk',
+                  help="fit pseudobulks or raw cells: pseudobulk or single_cell (default: pseudobulk)")
+
+    parser.add_option("--glm_device", dest="glm_device", default='auto',
+                  help="Torch device for scalable GLMs: auto, cuda, or cpu (default: auto)")
+
+    parser.add_option("--glm_batch_cells", dest="glm_batch_cells", default=4096, type="int",
+                  help="number of cells transferred per Torch GLM block (default: 4096)")
+
+    parser.add_option("--glm_rank", dest="glm_rank", default=64, type="int",
+                  help="low-rank capacity for factorized and Frank-Wolfe GLMs (default: 64)")
+
+    parser.add_option("--glm_output_threshold", dest="glm_output_threshold", default=1e-8, type="float",
+                  help="drop smaller normalized values from single-cell sparse output (default: 1e-8)")
 
     parser.add_option("--nnls_max_iter", dest="nnls_max_iter", default=200, type="int",
                   help="maximum iterations for scipy bounded least-squares NNLS (default: 200)")
@@ -884,6 +1014,15 @@ if __name__ == "__main__":
 
     parser.add_option("--nucnorm_max_dense_entries", dest="nucnorm_max_dense_entries", default=100000000, type="int",
                   help="maximum dense Phi entries allowed for quant_method=nnls_nucnorm (default: 100000000)")
+
+    parser.add_option("--nucnorm_tau", dest="nucnorm_tau", default=None, type="float",
+                  help="nuclear-norm radius for frank_wolfe; default is sqrt(number of cells)")
+
+    parser.add_option("--admm_rho", dest="admm_rho", default=1.0, type="float",
+                  help="ADMM penalty for admm and admm_factorized (default: 1.0)")
+
+    parser.add_option("--admm_inner_iter", dest="admm_inner_iter", default=25, type="int",
+                  help="projected-gradient inner iterations for dense admm (default: 25)")
                   
     parser.add_option("--use_TPM", dest="use_TPM", default = False, action="store_true",
                   help="whether to performance normalization, if not use TPM directly (default: True)")
@@ -952,7 +1091,10 @@ if __name__ == "__main__":
         sys.exit("Error: no tealeaf reference directory provided (use --ref_dir).\n")
     
     
-    if options.barcodes_clusters == None and options.pseudobulk_samples == None and options.preprocessed == False:
+    if options.cell_mode not in {'pseudobulk', 'single_cell'}:
+        sys.exit("Error: --cell_mode must be pseudobulk or single_cell.\n")
+
+    if options.cell_mode == 'pseudobulk' and options.barcodes_clusters == None and options.pseudobulk_samples == None and options.preprocessed == False:
         sys.exit("Error: no barcodes to cluster/cell_type or pseudobulk file is provided...\n")
         
         
@@ -975,7 +1117,7 @@ if __name__ == "__main__":
     if options.normalization_scale != 'junction' and options.normalization_scale != 'global' and options.normalization_scale != 'snRNA':
         sys.exit("Error: invalid normalization scale...\n")
 
-    if options.quant_method not in {'em', 'nnls', 'nnls_nucnorm'}:
+    if options.quant_method not in {'em', 'nnls', 'nnls_nucnorm', 'admm', 'admm_factorized', 'frank_wolfe', 'factorized'}:
         sys.exit("Error: invalid quantification method...\n")
 
         
@@ -984,11 +1126,6 @@ if __name__ == "__main__":
     write_options_to_file(options, record)
 
     tealeaf_sc(options)
-
-
-
-
-
 
 
 

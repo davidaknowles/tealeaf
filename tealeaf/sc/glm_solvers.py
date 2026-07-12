@@ -1,0 +1,419 @@
+"""Memory-bounded genome-wide GLM solvers for single-cell EC counts.
+
+The scalable solvers keep a transcript-by-rank factor and a cell-by-rank
+factor.  Count blocks stay sparse, so neither ``A.T @ C`` nor a full
+transcript-by-cell abundance matrix is materialized during fitting.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+import json
+from pathlib import Path
+from typing import Iterator
+
+import numpy as np
+import scipy.sparse as sp
+
+
+SCALABLE_METHODS = {"admm", "admm_factorized", "frank_wolfe", "factorized"}
+
+
+def _torch():
+    try:
+        import torch
+    except ImportError as exc:
+        raise ImportError(
+            "Torch GLM methods require the optional dependency. Install tealeaf[glm] "
+            "or load a PyTorch environment."
+        ) from exc
+    return torch
+
+
+def resolve_device(device: str):
+    """Resolve ``auto`` to CUDA when available and otherwise CPU."""
+    torch = _torch()
+    if device == "auto":
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    target = torch.device(device)
+    if target.type == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("--glm_device cuda was requested but CUDA is unavailable")
+    return target
+
+
+def _csr_to_torch(matrix: sp.spmatrix, device, dtype=None):
+    torch = _torch()
+    matrix = matrix.tocsr()
+    dtype = dtype or torch.float32
+    return torch.sparse_csr_tensor(
+        torch.as_tensor(matrix.indptr, dtype=torch.int64, device=device),
+        torch.as_tensor(matrix.indices, dtype=torch.int64, device=device),
+        torch.as_tensor(matrix.data, dtype=dtype, device=device),
+        size=matrix.shape,
+        device=device,
+    )
+
+
+def _normalized_block(counts: sp.csr_matrix, start: int, stop: int, device):
+    """Return a normalized cells-by-EC sparse COO block and nonempty mask."""
+    torch = _torch()
+    block = counts[start:stop].tocsr(copy=True).astype(np.float32)
+    totals = np.asarray(block.sum(axis=1)).ravel()
+    nonempty = totals > 0
+    inverse = np.zeros_like(totals, dtype=np.float32)
+    inverse[nonempty] = 1.0 / totals[nonempty]
+    block.data *= np.repeat(inverse, np.diff(block.indptr))
+    coo = block.tocoo()
+    sparse = torch.sparse_coo_tensor(
+        torch.as_tensor(np.vstack((coo.row, coo.col)), dtype=torch.int64, device=device),
+        torch.as_tensor(coo.data, dtype=torch.float32, device=device),
+        size=block.shape,
+        device=device,
+    ).coalesce()
+    return sparse, torch.as_tensor(nonempty, device=device)
+
+
+@dataclass
+class GLMResult:
+    method: str
+    left: object | None
+    right: object | None
+    dense_phi: object | None
+    diagnostics: dict
+
+
+class SparseGLM:
+    """Sparse count access and low-rank objective helpers."""
+
+    def __init__(self, counts, compatibility, device="auto", batch_cells=4096):
+        self.torch = _torch()
+        self.device = resolve_device(device)
+        self.counts = counts.tocsr()
+        self.a = _csr_to_torch(compatibility, self.device)
+        self.a_t = self.a.transpose(0, 1).to_sparse_coo().coalesce()
+        self.n_cells, self.n_ec = self.counts.shape
+        self.n_transcripts = compatibility.shape[1]
+        self.batch_cells = max(1, int(batch_cells))
+        self.n_nonempty = max(1, int(np.count_nonzero(np.asarray(self.counts.sum(axis=1)).ravel())))
+        self.total_count_sq = float(np.square(self.counts.data / np.repeat(
+            np.maximum(np.asarray(self.counts.sum(axis=1)).ravel(), 1.0),
+            np.diff(self.counts.indptr),
+        )).sum())
+
+    def blocks(self) -> Iterator[tuple[int, int, object, object]]:
+        for start in range(0, self.n_cells, self.batch_cells):
+            stop = min(start + self.batch_cells, self.n_cells)
+            block, nonempty = _normalized_block(self.counts, start, stop, self.device)
+            yield start, stop, block, nonempty
+
+    def a_times(self, value):
+        return self.torch.sparse.mm(self.a, value)
+
+    def at_times(self, value):
+        return self.torch.sparse.mm(self.a_t, value)
+
+    def gram_times(self, value):
+        return self.at_times(self.a_times(value))
+
+    def b_times(self, right):
+        """Compute ``A.T @ C @ right`` without forming ``C`` or ``A.T @ C``."""
+        result = self.torch.zeros((self.n_transcripts, right.shape[1]), device=self.device)
+        for start, stop, block, _ in self.blocks():
+            result += self.at_times(self.torch.sparse.mm(block.transpose(0, 1), right[start:stop]))
+        return result
+
+    def loss_for_factors(self, left, right, regularization=0.0):
+        au = self.a_times(left)
+        cross = self.torch.zeros((), device=self.device)
+        right_gram = self.torch.zeros((right.shape[1], right.shape[1]), device=self.device)
+        for start, stop, block, _ in self.blocks():
+            right_block = right[start:stop]
+            cross += (self.torch.sparse.mm(block, au) * right_block).sum()
+            right_gram += right_block.T @ right_block
+        left_gram = left.T @ self.gram_times(left)
+        loss = 0.5 * (self.total_count_sq - 2.0 * cross + (left_gram * right_gram).sum())
+        if regularization:
+            loss += 0.5 * regularization * ((left * left).sum() + (right * right).sum())
+        return float(loss.detach().cpu())
+
+
+def _initial_factors(data: SparseGLM, rank: int, seed: int):
+    torch = data.torch
+    generator = torch.Generator(device=data.device)
+    generator.manual_seed(seed)
+    scale = 1.0 / np.sqrt(max(rank, 1))
+    left = torch.rand((data.n_transcripts, rank), generator=generator, device=data.device) * scale
+    right = torch.rand((data.n_cells, rank), generator=generator, device=data.device) * scale
+    totals = np.asarray(data.counts.sum(axis=1)).ravel()
+    right[torch.as_tensor(totals <= 0, device=data.device)] = 0
+    return left, right
+
+
+def fit_factorized(counts, compatibility, *, rank=64, regularization=0.01,
+                   max_iter=100, tol=1e-4, learning_rate=0.05, device="auto",
+                   batch_cells=4096, seed=0):
+    """Projected alternating optimization of a genome-wide nonnegative factorization."""
+    data = SparseGLM(counts, compatibility, device, batch_cells)
+    torch = data.torch
+    left, right = _initial_factors(data, rank, seed)
+    diagnostics = {"objective": [], "device": str(data.device), "rank": rank}
+    previous = None
+
+    for iteration in range(int(max_iter)):
+        au = data.a_times(left)
+        gram_left = left.T @ data.gram_times(left)
+        b_times_right = torch.zeros_like(left)
+        right_gram = torch.zeros((rank, rank), device=data.device)
+        for start, stop, block, nonempty in data.blocks():
+            right_block = right[start:stop]
+            gradient = right_block @ gram_left - torch.sparse.mm(block, au)
+            gradient += regularization * right_block
+            right_block = torch.relu(right_block - learning_rate * gradient)
+            right_block[~nonempty] = 0
+            right[start:stop] = right_block
+            right_gram += right_block.T @ right_block
+            b_times_right += data.at_times(
+                torch.sparse.mm(block.transpose(0, 1), right_block)
+            )
+        gradient_left = (data.gram_times(left) @ right_gram - b_times_right) / data.n_nonempty
+        gradient_left += regularization * left
+        left = torch.relu(left - learning_rate * gradient_left)
+
+        objective = data.loss_for_factors(left, right, regularization)
+        diagnostics["objective"].append(objective)
+        if previous is not None and abs(previous - objective) / max(abs(previous), 1.0) < tol:
+            diagnostics.update(iterations=iteration + 1, converged=True)
+            break
+        previous = objective
+    else:
+        diagnostics.update(iterations=int(max_iter), converged=False)
+    return GLMResult("factorized", left, right, None, diagnostics)
+
+
+def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
+                        rho=1.0, max_iter=100, tol=1e-4, learning_rate=0.05,
+                        device="auto", batch_cells=4096, seed=0):
+    """Factor-sized ADMM split for nonnegative low-rank genome-wide fitting.
+
+    This is deliberately distinct from :func:`fit_admm`: it uses the variational
+    factorization and therefore is non-convex, while retaining only ``O(r(T+M))``
+    state.
+    """
+    data = SparseGLM(counts, compatibility, device, batch_cells)
+    torch = data.torch
+    left, right = _initial_factors(data, rank, seed)
+    left_copy, right_copy = left.clone(), right.clone()
+    left_dual, right_dual = torch.zeros_like(left), torch.zeros_like(right)
+    diagnostics = {"objective": [], "device": str(data.device), "rank": rank, "rho": rho}
+    previous = None
+
+    for iteration in range(int(max_iter)):
+        au = data.a_times(left)
+        gram_left = left.T @ data.gram_times(left)
+        b_times_right = torch.zeros_like(left)
+        right_gram = torch.zeros((rank, rank), device=data.device)
+        for start, stop, block, nonempty in data.blocks():
+            right_block = right[start:stop]
+            gradient = right_block @ gram_left - torch.sparse.mm(block, au)
+            gradient += regularization * right_block + rho * (right_block - right_copy[start:stop] + right_dual[start:stop])
+            right_block = right_block - learning_rate * gradient
+            right[start:stop] = right_block
+            right_copy[start:stop] = torch.relu(right_block + right_dual[start:stop])
+            right_dual[start:stop] += right_block - right_copy[start:stop]
+            right_copy[start:stop][~nonempty] = 0
+            right_gram += right_copy[start:stop].T @ right_copy[start:stop]
+            b_times_right += data.at_times(
+                torch.sparse.mm(block.transpose(0, 1), right_copy[start:stop])
+            )
+        gradient_left = (data.gram_times(left) @ right_gram - b_times_right) / data.n_nonempty
+        gradient_left += regularization * left + rho * (left - left_copy + left_dual)
+        left = left - learning_rate * gradient_left
+        left_copy = torch.relu(left + left_dual)
+        left_dual += left - left_copy
+        left = left_copy
+        right = right_copy
+
+        objective = data.loss_for_factors(left, right, regularization)
+        diagnostics["objective"].append(objective)
+        if previous is not None and abs(previous - objective) / max(abs(previous), 1.0) < tol:
+            diagnostics.update(iterations=iteration + 1, converged=True)
+            break
+        previous = objective
+    else:
+        diagnostics.update(iterations=int(max_iter), converged=False)
+    return GLMResult("admm_factorized", left, right, None, diagnostics)
+
+
+def fit_admm(counts, compatibility, *, regularization=0.01, rho=1.0,
+             max_iter=100, inner_iter=25, tol=1e-4, max_dense_entries=100_000_000,
+             device="auto", batch_cells=4096):
+    """Bounded dense convex ADMM reference solver for the nuclear-norm objective."""
+    data = SparseGLM(counts, compatibility, device, batch_cells)
+    torch = data.torch
+    dense_entries = data.n_transcripts * data.n_cells
+    if dense_entries > max_dense_entries:
+        raise MemoryError(
+            f"admm needs {dense_entries} dense transcript-by-cell entries; "
+            f"the configured cap is {max_dense_entries}. Use admm_factorized instead."
+        )
+    if data.n_ec * data.n_cells > max_dense_entries:
+        raise MemoryError("admm would densify an EC-by-cell matrix above the configured cap")
+    count_dense = torch.as_tensor(data.counts.toarray(), dtype=torch.float32, device=data.device)
+    totals = count_dense.sum(dim=1, keepdim=True).clamp_min(1.0)
+    c = (count_dense / totals).T
+    a = data.a.to_dense()
+    b = a.T @ c
+    gram = a.T @ a
+    lipschitz = torch.linalg.matrix_norm(gram, ord=2).item() + rho
+    phi = torch.zeros((data.n_transcripts, data.n_cells), device=data.device)
+    z = phi.clone()
+    dual = phi.clone()
+    diagnostics = {"objective": [], "device": str(data.device), "rho": rho}
+
+    for iteration in range(int(max_iter)):
+        candidate = phi
+        for _ in range(int(inner_iter)):
+            gradient = gram @ candidate - b + rho * (candidate - z + dual)
+            candidate = torch.relu(candidate - gradient / lipschitz)
+        phi = candidate
+        u, singular, vt = torch.linalg.svd(phi + dual, full_matrices=False)
+        shrunk = torch.relu(singular - regularization / rho)
+        z_previous = z
+        z = (u * shrunk) @ vt
+        dual += phi - z
+        primal = torch.linalg.vector_norm(phi - z).item()
+        dual_residual = rho * torch.linalg.vector_norm(z - z_previous).item()
+        residual = c - a @ phi
+        objective = 0.5 * float((residual * residual).sum().detach().cpu()) + regularization * float(torch.linalg.svdvals(phi).sum().detach().cpu())
+        diagnostics["objective"].append(objective)
+        if max(primal, dual_residual) < tol:
+            diagnostics.update(iterations=iteration + 1, converged=True, primal_residual=primal, dual_residual=dual_residual)
+            break
+    else:
+        diagnostics.update(iterations=int(max_iter), converged=False)
+    return GLMResult("admm", None, None, torch.relu(phi), diagnostics)
+
+
+def fit_frank_wolfe(counts, compatibility, *, rank=64, tau=None, max_iter=64,
+                    power_iter=3, tol=1e-4, device="auto", batch_cells=4096,
+                    seed=0):
+    """Streaming nonnegative Frank-Wolfe solver with rank-one atom storage."""
+    data = SparseGLM(counts, compatibility, device, batch_cells)
+    torch = data.torch
+    max_iter = min(int(max_iter), int(rank))
+    tau = float(np.sqrt(data.n_cells) if tau is None else tau)
+    left = torch.empty((data.n_transcripts, 0), device=data.device)
+    right = torch.empty((data.n_cells, 0), device=data.device)
+    generator = torch.Generator(device=data.device)
+    generator.manual_seed(seed)
+    diagnostics = {"objective": [], "device": str(data.device), "rank": rank, "tau": tau}
+
+    for iteration in range(max_iter):
+        if left.shape[1]:
+            gram_left = data.gram_times(left)
+        else:
+            gram_left = None
+        vector = torch.rand(data.n_cells, generator=generator, device=data.device)
+        vector /= torch.linalg.vector_norm(vector).clamp_min(1e-12)
+        for _ in range(int(power_iter)):
+            left_vector = torch.zeros(data.n_transcripts, device=data.device)
+            for start, stop, block, _ in data.blocks():
+                b_block = data.at_times(block.transpose(0, 1)).to_dense()
+                if gram_left is not None:
+                    b_block -= gram_left @ right[start:stop].T
+                left_vector += torch.relu(b_block) @ vector[start:stop]
+            left_vector = torch.relu(left_vector)
+            left_vector /= torch.linalg.vector_norm(left_vector).clamp_min(1e-12)
+            next_vector = torch.zeros_like(vector)
+            for start, stop, block, _ in data.blocks():
+                b_block = data.at_times(block.transpose(0, 1)).to_dense()
+                if gram_left is not None:
+                    b_block -= gram_left @ right[start:stop].T
+                next_vector[start:stop] = torch.relu(b_block).T @ left_vector
+            vector = torch.relu(next_vector)
+            vector /= torch.linalg.vector_norm(vector).clamp_min(1e-12)
+
+        # Exact quadratic line search for S - Phi using compact factors.
+        atom_left = np.sqrt(tau) * left_vector[:, None]
+        atom_right = np.sqrt(tau) * vector[:, None]
+        direction_left = torch.cat((atom_left, left), dim=1)
+        direction_right = torch.cat((atom_right, -right), dim=1)
+        a_direction = data.a_times(direction_left)
+        b_dot_direction = torch.zeros((), device=data.device)
+        for start, stop, block, _ in data.blocks():
+            b_dot_direction += (torch.sparse.mm(block, a_direction) * direction_right[start:stop]).sum()
+        quadratic = (direction_left.T @ data.gram_times(direction_left) * (direction_right.T @ direction_right)).sum()
+        if left.shape[1]:
+            cross = (direction_left.T @ data.gram_times(left) * (direction_right.T @ right)).sum()
+        else:
+            cross = torch.zeros((), device=data.device)
+        gamma = torch.clamp((b_dot_direction - cross) / quadratic.clamp_min(1e-12), 0.0, 1.0)
+        keep = torch.sqrt(1.0 - gamma)
+        add = torch.sqrt(gamma)
+        left = torch.cat((left * keep, atom_left * add), dim=1)
+        right = torch.cat((right * keep, atom_right * add), dim=1)
+        objective = data.loss_for_factors(left, right)
+        diagnostics["objective"].append(objective)
+        if iteration and abs(diagnostics["objective"][-2] - objective) / max(abs(objective), 1.0) < tol:
+            diagnostics.update(iterations=iteration + 1, converged=True)
+            break
+    else:
+        diagnostics.update(iterations=max_iter, converged=False)
+    return GLMResult("frank_wolfe", left, right, None, diagnostics)
+
+
+def fit_glm(counts, compatibility, method, **kwargs):
+    """Dispatch a GLM method using a cells-by-EC sparse count matrix."""
+    if method == "factorized":
+        allowed = {"rank", "regularization", "max_iter", "tol", "learning_rate", "device", "batch_cells", "seed"}
+        return fit_factorized(counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed})
+    if method == "admm_factorized":
+        allowed = {"rank", "regularization", "rho", "max_iter", "tol", "learning_rate", "device", "batch_cells", "seed"}
+        return fit_factorized_admm(counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed})
+    if method == "admm":
+        allowed = {"regularization", "rho", "max_iter", "inner_iter", "tol", "max_dense_entries", "device", "batch_cells"}
+        return fit_admm(counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed})
+    if method == "frank_wolfe":
+        allowed = {"rank", "tau", "max_iter", "power_iter", "tol", "device", "batch_cells", "seed"}
+        return fit_frank_wolfe(counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed})
+    raise ValueError(f"Unsupported Torch GLM method: {method}")
+
+
+def result_to_csr(result: GLMResult, start: int, stop: int, threshold=0.0):
+    """Materialize a normalized cell block as SciPy CSR for output only."""
+    torch = _torch()
+    if result.dense_phi is not None:
+        phi = result.dense_phi[:, start:stop].T
+    else:
+        phi = result.right[start:stop] @ result.left.T
+    phi = torch.relu(phi)
+    phi /= phi.sum(dim=1, keepdim=True).clamp_min(1e-12)
+    values = phi.detach().cpu().numpy()
+    if threshold > 0:
+        values[values < threshold] = 0
+    return sp.csr_matrix(values)
+
+
+def write_chunked_result(result: GLMResult, output_prefix, barcodes, features,
+                         batch_cells=4096, threshold=1e-8):
+    """Write factors, diagnostics, and sparse transcript estimates in cell blocks."""
+    output_prefix = Path(output_prefix)
+    output_prefix.parent.mkdir(parents=True, exist_ok=True)
+    chunk_paths = []
+    n_cells = len(barcodes)
+    for index, start in enumerate(range(0, n_cells, int(batch_cells))):
+        stop = min(start + int(batch_cells), n_cells)
+        filename = f"{output_prefix.name}glm_cells_{index:05d}.npz"
+        path = output_prefix.parent / filename
+        sp.save_npz(path, result_to_csr(result, start, stop, threshold))
+        chunk_paths.append({"path": filename, "start": start, "stop": stop})
+    np.savetxt(f"{output_prefix}glm_rows.txt", np.asarray(barcodes), fmt="%s")
+    np.savetxt(f"{output_prefix}glm_cols.txt", np.asarray(features), fmt="%s")
+    if result.left is not None:
+        np.savez_compressed(
+            f"{output_prefix}glm_factors.npz",
+            left=result.left.detach().cpu().numpy(),
+            right=result.right.detach().cpu().numpy(),
+        )
+    with open(f"{output_prefix}glm_manifest.json", "w") as handle:
+        json.dump({"method": result.method, "chunks": chunk_paths, "diagnostics": result.diagnostics}, handle, indent=2)

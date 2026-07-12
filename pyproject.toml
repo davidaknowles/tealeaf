@@ -15,6 +15,9 @@ dependencies = [
     "pandas",
     "scipy"
 ]
+
+[project.optional-dependencies]
+glm = ["torch>=2.1"]
 license= {file = "LICENSE"}
 
 [project.scripts]
