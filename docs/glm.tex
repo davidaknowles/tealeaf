@@ -157,8 +157,10 @@ This linear system is the basis for defining the K-value.
 
 \section*{Many-Cell Extension and Nuclear-Norm Regularization}
 
-For single-cell data, the same gene can be quantified across \(M\) cells at
-once. Let
+For single-cell data, isoforms can be quantified jointly across \(M\) cells.
+The formulation applies either to one gene or to a genome-wide transcript set;
+the latter is useful when low-rank structure is intended to capture shared cell
+states rather than gene-specific effects. Let
 \[
   C = [\mathbf{c}_1,\mathbf{c}_2,\ldots,\mathbf{c}_M]
   \in \mathbb{R}^{S \times M}
@@ -225,20 +227,33 @@ Thus the data enter through
   \qquad
   G = A'A.
 \]
-Both can be computed with sparse matrix multiplication. The gradient of the
-smooth loss is
+For a small problem, both can be computed with sparse matrix multiplication.
+For a genome-wide single-cell matrix, however, \(B\) is generally dense even
+when \(A\) and \(C\) are sparse, so it must not be materialized. The gradient
+of the smooth loss is
 \[
   \nabla_{\Phi}
   \frac{1}{2}\left\|C-A\Phi\right\|_F^2
   =
   G\Phi - B,
 \]
-which requires multiplication by the small isoform-by-isoform matrix \(G\),
-rather than by a large dense region-by-cell residual.
+which requires multiplication by the isoform-by-isoform matrix \(G\), rather
+than by a large dense region-by-cell residual. When
+\(\Phi=UV'\), with \(U\in\mathbb{R}^{T\times r}\) and
+\(V\in\mathbb{R}^{M\times r}\), the required products can be evaluated over
+cell blocks \(C_b\) and \(V_b\):
+\[
+  A'C_bV_b,\qquad C_b' AU,\qquad U'GU,\qquad V_b'V_b.
+\]
+Thus the implementation streams sparse cell-by-equivalence-class blocks and
+keeps only the \(T\times r\) and \(M\times r\) factors in memory. This avoids
+forming \(B\), the residual, or the full \(T\times M\) abundance matrix during
+optimization.
 
 \subsection*{Optimization Strategies}
 
-There are three practical routes.
+There are three practical routes, plus a factorized ADMM variant for the
+large-scale setting.
 
 \begin{itemize}[leftmargin=*]
   \item \textbf{ADMM with a nuclear-norm split.} Introduce a second matrix
@@ -273,8 +288,17 @@ There are three practical routes.
   This step acts on the isoform-by-cell matrix and does not involve \(A\) or
   \(C\). Thus ADMM can exploit sparsity in the data-fitting step, but the
   nuclear-norm proximal step may become the bottleneck when \(M\) is very
-  large. In that regime, truncated or randomized SVD, cell minibatches, or the
-  factorized formulation below are usually preferable.
+  large. The implemented convex ADMM solver is therefore a bounded reference
+  method: it stores \(\Phi\), \(Z\), and the dual variable densely, uses a
+  projected-gradient inner solve for the nonnegative update, and rejects
+  problems beyond a configured dense-entry limit.
+
+  A separate \emph{factorized ADMM} mode replaces the dense state by
+  \(U,V\) and nonnegative split copies of these factors. It alternates
+  factor updates with proximal nonnegative projections and stores
+  \(O(r(T+M))\) state. This has the same scalability advantages as the
+  factorized formulation below, but it is non-convex and is not equivalent to
+  the bounded convex ADMM reference.
 
   \item \textbf{Frank-Wolfe for a constrained nuclear norm.} For the constrained
   problem
@@ -320,9 +344,9 @@ There are three practical routes.
   This approach is attractive when a small effective rank is expected: the
   iterate is an explicit convex combination of rank-one atoms, and each step
   requires only a leading singular vector computation rather than a full SVD.
-  The main cost is repeatedly computing the top singular vectors of
-  \((B-G\Phi_k)_+\). Randomized or Lanczos methods can exploit fast products
-  with \(G\) and the low-rank representation of \(\Phi_k\).
+  The implementation stores these atoms as low-rank factors and uses streamed
+  block power iterations on \((B-G\Phi_k)_+\). It performs the quadratic line
+  search from compact Gram products, without assembling \(B\) or \(\Phi_k\).
 
   \item \textbf{Low-rank factorization.} Use the variational identity
   \[
@@ -343,18 +367,39 @@ There are three practical routes.
     -2\,\operatorname{tr}\!\left(VU'B\right)
     +\operatorname{tr}\!\left((U'GU)(V'V)\right).
   \]
-  Nonnegativity can be enforced by projecting \(UV'\) onto the nonnegative
-  orthant, by using an ADMM split for the constrained matrix, or by
-  parameterizing \(\Phi\) through a nonnegative link such as an exponential or
-  softplus transformation. Column normalization can be applied after fitting if
-  isoform proportions are required.
+  The implementation uses nonnegative factors and projected alternating
+  updates. Gradients for the shared transcript factor are accumulated over
+  sparse cell blocks and normalized by the number of nonempty cells; cell
+  factors are updated blockwise. Column normalization is applied after fitting
+  when isoform proportions are required.
 \end{itemize}
 
-The factorized and Frank-Wolfe approaches are usually the most scalable choices
-for many cells. Both keep \(\Phi\) in a compact low-rank representation and use
-sparse preprocessing for \(B=A'C\). ADMM is useful as a direct convex reference
-implementation for smaller genes or smaller cell batches, but its repeated
-singular-value thresholding can be more expensive at large scale.
+The factorized and Frank-Wolfe approaches are the scalable choices for many
+cells. Both keep \(\Phi\) in a compact low-rank representation and stream
+sparse blocks rather than precomputing \(B=A'C\). ADMM is useful as a direct
+convex reference for smaller matrices, but its repeated singular-value
+thresholding and dense primal state make it unsuitable for a million-cell
+matrix.
+
+\subsection*{Software Interface and Output}
+
+The single-cell command exposes the methods as
+\texttt{--quant\_method admm}, \texttt{admm\_factorized},
+\texttt{frank\_wolfe}, and \texttt{factorized}. The scalable methods use a
+PyTorch backend and select CUDA when available; NumPy/SciPy remains responsible
+for sparse input and compatibility-matrix construction. The rank, cell block
+size, convergence tolerance, regularization strength, ADMM penalty, and
+Frank--Wolfe radius are configurable. The default low-rank capacity is 64, and
+the default Frank--Wolfe radius is \(\sqrt{M}\).
+
+In \texttt{single\_cell} mode, fitting operates directly on the raw
+cell-by-equivalence-class matrix rather than creating pseudobulks. The output
+is written as thresholded sparse transcript-by-cell chunks, accompanied by the
+barcode and transcript order, low-rank factors when applicable, and a manifest
+of solver diagnostics. This output layout avoids a dense genome-wide abundance
+file and makes reconstruction of selected cell blocks possible from the saved
+factors. The downstream intron clustering workflow remains a pseudobulk
+operation and is not invoked in this mode.
 
 \subsection*{Choosing the Regularization Level}
 
@@ -452,6 +497,13 @@ counts use \(\mathbb{E}[\bm{c}]=N A\bm{\phi}\), or equivalently
 \(\bm{\phi}^*=N\bm{\phi}\). The same nonnegative least-squares and many-cell
 extensions therefore apply without explicitly computing geometric region
 lengths \(\tilde{u}_s\).
+
+The current single-cell implementation constructs \(A\) from EC membership
+when only the standard alevin-fry EC dump is present: compatible entries are
+weighted by \(1/\tilde{l}_t\), using transcript effective-length proxies from
+the reference, and the region factor is set to one. A probability-aware EC
+reader can later populate \(a_{kt}=p_{kt}\), preserving Salmon's conditional
+assignment weights without changing the sparse solver interface.
 
 If inference is desired directly on the relative abundance scale
 \(\boldsymbol{\theta}\), absorb transcript effective lengths into the design:

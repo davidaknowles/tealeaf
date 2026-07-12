@@ -245,6 +245,10 @@ synthetic suite requires a node where the Torch runtime is available; the login
 and CPU validation node lacked the required runtime library, and the GPU smoke
 test was not started because the account GPU allocation limit was occupied.
 
+Updated docs/glm.tex to distinguish the bounded dense ADMM reference from the
+streamed genome-wide factorized solvers, and to document raw-cell output
+chunks, factors, diagnostics, and the current EC compatibility construction.
+
 ## 2026-07-09 Salmon/Alevin Pipeline Recipes
 
 Pulled the useful microglia-less Salmon/Alevin pipeline pieces from the older
