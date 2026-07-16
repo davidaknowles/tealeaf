@@ -319,6 +319,16 @@ that structure aligns weakly with the standard cell-type labels. The weighted
 EC design improves supervised recovery for Frank-Wolfe but does not yet
 recapitulate the standard cell types well in absolute terms.
 
+The 64-iteration comparison is retained as an intermediate result but is being
+superseded by convergence-controlled fits. Factorized methods now require at
+least 50 iterations and ten consecutive relative-objective changes below
+`1e-6`; factorized ADMM also checks relative primal and dual residuals.
+Frank-Wolfe uses its relative duality gap with the same minimum and patience,
+ten power iterations per approximate oracle, and a separate 256-atom capacity.
+All methods have a 512-iteration ceiling. Diagnostics record objective changes,
+ADMM residuals, Frank-Wolfe gaps and line-search steps, and an explicit
+convergence reason.
+
 Added reference-label scoring for completed fits. The benchmark aligns cell
 factors to the standard-analysis `cluster_name` labels, uses five-fold
 stratified splits grouped by mouse, and reports accuracy, balanced accuracy,

@@ -115,6 +115,17 @@ class GLMSolverTest(unittest.TestCase):
             self.counts, self.compatibility, rank=2, max_iter=8, device="cpu", batch_cells=2
         ))
 
+    def test_factorized_uses_minimum_iterations_and_patience(self):
+        result = glm_solvers.fit_factorized(
+            self.counts, self.compatibility, rank=2, max_iter=20,
+            min_iter=4, patience=2, tol=1.0, device="cpu", batch_cells=2,
+        )
+        self.assertGreaterEqual(result.diagnostics["iterations"], 4)
+        self.assertTrue(result.diagnostics["converged"])
+        self.assertEqual(
+            result.diagnostics["convergence_reason"], "objective_patience"
+        )
+
     def test_factorized_admm(self):
         self._assert_result(glm_solvers.fit_factorized_admm(
             self.counts, self.compatibility, rank=2, max_iter=8, device="cpu", batch_cells=2
@@ -130,6 +141,25 @@ class GLMSolverTest(unittest.TestCase):
             compute_uv=False,
         ).sum()
         self.assertLessEqual(nuclear_norm, result.diagnostics["tau"] + 1e-4)
+
+    def test_frank_wolfe_uses_duality_gap_patience(self):
+        result = glm_solvers.fit_frank_wolfe(
+            self.counts, self.compatibility, rank=2, max_atoms=10,
+            max_iter=10, min_iter=4, patience=2, tol=1e6,
+            device="cpu", batch_cells=2,
+        )
+        self.assertGreaterEqual(result.diagnostics["iterations"], 4)
+        self.assertTrue(result.diagnostics["converged"])
+        self.assertEqual(len(result.diagnostics["duality_gap"]), 4)
+        self.assertEqual(
+            result.diagnostics["convergence_reason"], "duality_gap_patience"
+        )
+
+    def test_invalid_stopping_parameters_are_rejected(self):
+        with self.assertRaises(ValueError):
+            glm_solvers.fit_factorized(
+                self.counts, self.compatibility, max_iter=0, device="cpu"
+            )
 
     def test_dense_admm(self):
         self._assert_result(glm_solvers.fit_admm(

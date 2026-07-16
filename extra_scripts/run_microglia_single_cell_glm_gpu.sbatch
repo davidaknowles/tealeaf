@@ -32,9 +32,13 @@ python -m tealeaf.sc.tealeaf_sc \
   --ec_design "${EC_DESIGN}" \
   --glm_device cuda \
   --glm_rank 64 \
+  --fw_max_atoms 256 \
+  --fw_power_iter 10 \
   --glm_batch_cells 4096 \
   --glm_no_write_chunks \
-  --nucnorm_max_iter 64 \
-  --nucnorm_tol 0 \
+  --nucnorm_max_iter 512 \
+  --nucnorm_min_iter 50 \
+  --nucnorm_patience 10 \
+  --nucnorm_tol 1e-6 \
   --min_eq 5 \
   -o "${OUT_ROOT}/single_cell_${EC_DESIGN}_${METHOD}_${REGULARIZATION_TARGET}_"

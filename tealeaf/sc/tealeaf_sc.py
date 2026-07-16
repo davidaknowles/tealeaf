@@ -686,10 +686,14 @@ def single_cell_glm_conversion(options):
         regularization=options.nucnorm_lambda,
         rho=options.admm_rho,
         max_iter=options.nucnorm_max_iter,
+        min_iter=options.nucnorm_min_iter,
+        patience=options.nucnorm_patience,
         inner_iter=options.admm_inner_iter,
         tol=options.nucnorm_tol,
         max_dense_entries=options.nucnorm_max_dense_entries,
         tau=options.nucnorm_tau,
+        max_atoms=options.fw_max_atoms,
+        power_iter=options.fw_power_iter,
         device=options.glm_device,
         batch_cells=options.glm_batch_cells,
     )
@@ -1089,6 +1093,12 @@ if __name__ == "__main__":
     parser.add_option("--nucnorm_max_iter", dest="nucnorm_max_iter", default=50, type="int",
                   help="maximum proximal-gradient iterations for quant_method=nnls_nucnorm (default: 50)")
 
+    parser.add_option("--nucnorm_min_iter", dest="nucnorm_min_iter", default=10, type="int",
+                  help="minimum iterations before scalable GLM convergence checks (default: 10)")
+
+    parser.add_option("--nucnorm_patience", dest="nucnorm_patience", default=5, type="int",
+                  help="consecutive convergence checks required for scalable GLMs (default: 5)")
+
     parser.add_option("--nucnorm_tol", dest="nucnorm_tol", default=1e-4, type="float",
                   help="relative convergence tolerance for quant_method=nnls_nucnorm (default: 1e-4)")
 
@@ -1100,6 +1110,12 @@ if __name__ == "__main__":
 
     parser.add_option("--nucnorm_tau", dest="nucnorm_tau", default=None, type="float",
                   help="nuclear-norm radius for frank_wolfe; default is sqrt(number of cells)")
+
+    parser.add_option("--fw_max_atoms", dest="fw_max_atoms", default=None, type="int",
+                  help="maximum stored Frank-Wolfe atoms; defaults to glm_rank")
+
+    parser.add_option("--fw_power_iter", dest="fw_power_iter", default=3, type="int",
+                  help="power iterations per Frank-Wolfe linear oracle (default: 3)")
 
     parser.add_option("--admm_rho", dest="admm_rho", default=1.0, type="float",
                   help="ADMM penalty for admm and admm_factorized (default: 1.0)")
@@ -1215,7 +1231,6 @@ if __name__ == "__main__":
     write_options_to_file(options, record)
 
     tealeaf_sc(options)
-
 
 
 

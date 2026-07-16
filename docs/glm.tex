@@ -440,6 +440,16 @@ the split penalty \(\rho\). This prevents an update from crossing the
 nonnegative orthant and collapsing an entire factor to zero when the design
 curvature is large.
 
+The factorized solvers stop only after a configured minimum iteration count
+and several consecutive relative-objective changes below tolerance.
+Factorized ADMM additionally requires its relative primal and dual split
+residuals to satisfy the tolerance. Frank--Wolfe instead uses the relative
+duality gap from its linear oracle, again with minimum iterations and patience.
+Its atom capacity is configured separately from the fixed rank used by the
+factorized methods, and additional power iterations can improve the approximate
+linear oracle. Every manifest records the stopping history, convergence reason,
+and whether the maximum iteration or atom limit was reached.
+
 \subsection*{Choosing the Regularization Level}
 
 The regularization parameter can be chosen by cross-validation because the

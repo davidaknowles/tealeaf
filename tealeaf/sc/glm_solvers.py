@@ -168,18 +168,43 @@ def _initial_factors(data: SparseGLM, rank: int, seed: int):
     return left, right
 
 
+def _objective_stop(diagnostics, objective, previous, stable, iteration,
+                    tol, min_iter, patience):
+    """Update a patient relative-objective stopping rule."""
+    if previous is None:
+        relative_change = None
+        stable = 0
+    else:
+        relative_change = abs(previous - objective) / max(abs(previous), 1.0)
+        stable = stable + 1 if relative_change <= tol else 0
+    diagnostics["objective_relative_change"].append(relative_change)
+    stop = iteration + 1 >= min_iter and stable >= patience
+    return stop, stable
+
+
+def _validate_stopping(max_iter, min_iter, patience, tol):
+    if int(max_iter) < 1 or int(min_iter) < 1 or int(patience) < 1:
+        raise ValueError("max_iter, min_iter, and patience must be positive")
+    if float(tol) < 0:
+        raise ValueError("tol must be nonnegative")
+
+
 def fit_factorized(counts, compatibility, *, rank=64, regularization=0.01,
                    max_iter=100, tol=1e-4, learning_rate=0.05, device="auto",
-                   batch_cells=4096, seed=0):
+                   batch_cells=4096, seed=0, min_iter=10, patience=5):
     """Projected alternating optimization of a genome-wide nonnegative factorization."""
+    _validate_stopping(max_iter, min_iter, patience, tol)
     data = SparseGLM(counts, compatibility, device, batch_cells)
     torch = data.torch
     left, right = _initial_factors(data, rank, seed)
     diagnostics = {
-        "objective": [], "device": str(data.device), "rank": rank,
+        "objective": [], "objective_relative_change": [],
+        "device": str(data.device), "rank": rank,
         "gram_lipschitz": data.gram_lipschitz,
+        "min_iter": int(min_iter), "patience": int(patience), "tolerance": tol,
     }
     previous = None
+    stable = 0
 
     for iteration in range(int(max_iter)):
         au = data.a_times(left)
@@ -214,34 +239,50 @@ def fit_factorized(counts, compatibility, *, rank=64, regularization=0.01,
 
         objective = data.loss_for_factors(left, right, regularization)
         diagnostics["objective"].append(objective)
-        if previous is not None and abs(previous - objective) / max(abs(previous), 1.0) < tol:
-            diagnostics.update(iterations=iteration + 1, converged=True)
+        stop, stable = _objective_stop(
+            diagnostics, objective, previous, stable, iteration,
+            tol, int(min_iter), int(patience),
+        )
+        if stop:
+            diagnostics.update(
+                iterations=iteration + 1, converged=True,
+                convergence_reason="objective_patience",
+            )
             break
         previous = objective
     else:
-        diagnostics.update(iterations=int(max_iter), converged=False)
+        diagnostics.update(
+            iterations=int(max_iter), converged=False,
+            convergence_reason="max_iterations",
+        )
     return GLMResult("factorized", left, right, None, diagnostics)
 
 
 def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
                         rho=1.0, max_iter=100, tol=1e-4, learning_rate=0.05,
-                        device="auto", batch_cells=4096, seed=0):
+                        device="auto", batch_cells=4096, seed=0,
+                        min_iter=10, patience=5):
     """Factor-sized ADMM split for nonnegative low-rank genome-wide fitting.
 
     This is deliberately distinct from :func:`fit_admm`: it uses the variational
     factorization and therefore is non-convex, while retaining only ``O(r(T+M))``
     state.
     """
+    _validate_stopping(max_iter, min_iter, patience, tol)
     data = SparseGLM(counts, compatibility, device, batch_cells)
     torch = data.torch
     left, right = _initial_factors(data, rank, seed)
     left_copy, right_copy = left.clone(), right.clone()
     left_dual, right_dual = torch.zeros_like(left), torch.zeros_like(right)
     diagnostics = {
-        "objective": [], "device": str(data.device), "rank": rank,
+        "objective": [], "objective_relative_change": [],
+        "primal_relative_residual": [], "dual_relative_residual": [],
+        "device": str(data.device), "rank": rank,
         "rho": rho, "gram_lipschitz": data.gram_lipschitz,
+        "min_iter": int(min_iter), "patience": int(patience), "tolerance": tol,
     }
     previous = None
+    stable = 0
 
     for iteration in range(int(max_iter)):
         au = data.a_times(left)
@@ -252,7 +293,11 @@ def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
         right_step = min(learning_rate, 1.0 / max(right_lipschitz, 1e-12))
         b_times_right = torch.zeros_like(left)
         right_gram = torch.zeros((rank, rank), device=data.device)
+        primal_sq = 0.0
+        dual_sq = 0.0
+        split_norm_sq = 0.0
         for start, stop, block, nonempty in data.blocks():
+            previous_right_copy = right_copy[start:stop].clone()
             right_block = right[start:stop]
             gradient = right_block @ gram_left - torch.sparse.mm(block, au)
             gradient += regularization * right_block + rho * (right_block - right_copy[start:stop] + right_dual[start:stop])
@@ -261,6 +306,13 @@ def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
             right_copy[start:stop] = torch.relu(right_block + right_dual[start:stop])
             right_dual[start:stop] += right_block - right_copy[start:stop]
             right_copy[start:stop][~nonempty] = 0
+            primal_sq += float(
+                (right_block - right_copy[start:stop]).square().sum().item()
+            )
+            dual_sq += float(
+                (right_copy[start:stop] - previous_right_copy).square().sum().item()
+            )
+            split_norm_sq += float(right_copy[start:stop].square().sum().item())
             right_gram += right_copy[start:stop].T @ right_copy[start:stop]
             b_times_right += data.at_times(
                 torch.sparse.mm(block.transpose(0, 1), right_copy[start:stop])
@@ -275,20 +327,43 @@ def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
             + rho
         )
         left_step = min(learning_rate, 1.0 / max(left_lipschitz, 1e-12))
+        previous_left_copy = left_copy.clone()
         left = left - left_step * gradient_left
         left_copy = torch.relu(left + left_dual)
         left_dual += left - left_copy
+        primal_sq += float((left - left_copy).square().sum().item())
+        dual_sq += float((left_copy - previous_left_copy).square().sum().item())
+        split_norm_sq += float(left_copy.square().sum().item())
+        primal_relative = np.sqrt(primal_sq) / max(np.sqrt(split_norm_sq), 1e-12)
+        dual_relative = rho * np.sqrt(dual_sq) / max(
+            rho * np.sqrt(split_norm_sq), 1e-12
+        )
         left = left_copy
         right = right_copy
 
         objective = data.loss_for_factors(left, right, regularization)
         diagnostics["objective"].append(objective)
-        if previous is not None and abs(previous - objective) / max(abs(previous), 1.0) < tol:
-            diagnostics.update(iterations=iteration + 1, converged=True)
+        diagnostics["primal_relative_residual"].append(primal_relative)
+        diagnostics["dual_relative_residual"].append(dual_relative)
+        stop, stable = _objective_stop(
+            diagnostics, objective, previous, stable, iteration,
+            tol, int(min_iter), int(patience),
+        )
+        if max(primal_relative, dual_relative) > tol:
+            stable = 0
+            stop = False
+        if stop:
+            diagnostics.update(
+                iterations=iteration + 1, converged=True,
+                convergence_reason="objective_patience",
+            )
             break
         previous = objective
     else:
-        diagnostics.update(iterations=int(max_iter), converged=False)
+        diagnostics.update(
+            iterations=int(max_iter), converged=False,
+            convergence_reason="max_iterations",
+        )
     return GLMResult("admm_factorized", left, right, None, diagnostics)
 
 
@@ -342,19 +417,31 @@ def fit_admm(counts, compatibility, *, regularization=0.01, rho=1.0,
     return GLMResult("admm", None, None, torch.relu(phi), diagnostics)
 
 
-def fit_frank_wolfe(counts, compatibility, *, rank=64, tau=None, max_iter=64,
+def fit_frank_wolfe(counts, compatibility, *, rank=64, max_atoms=None,
+                    tau=None, max_iter=64,
                     power_iter=3, tol=1e-4, device="auto", batch_cells=4096,
-                    seed=0):
+                    seed=0, min_iter=10, patience=5):
     """Streaming nonnegative Frank-Wolfe solver with rank-one atom storage."""
+    _validate_stopping(max_iter, min_iter, patience, tol)
     data = SparseGLM(counts, compatibility, device, batch_cells)
     torch = data.torch
-    max_iter = min(int(max_iter), int(rank))
+    max_atoms = int(rank if max_atoms is None else max_atoms)
+    if max_atoms < 1 or int(power_iter) < 1:
+        raise ValueError("max_atoms and power_iter must be positive")
+    max_iter = min(int(max_iter), max_atoms)
     tau = float(np.sqrt(data.n_cells) if tau is None else tau)
     left = torch.empty((data.n_transcripts, 0), device=data.device)
     right = torch.empty((data.n_cells, 0), device=data.device)
     generator = torch.Generator(device=data.device)
     generator.manual_seed(seed)
-    diagnostics = {"objective": [], "device": str(data.device), "rank": rank, "tau": tau}
+    diagnostics = {
+        "objective": [], "duality_gap": [], "relative_duality_gap": [],
+        "line_search_step": [], "device": str(data.device), "rank": rank,
+        "max_atoms": max_atoms, "tau": tau, "power_iterations": int(power_iter),
+        "min_iter": int(min_iter), "patience": int(patience), "tolerance": tol,
+    }
+    initial_gap = None
+    stable = 0
 
     for iteration in range(max_iter):
         if left.shape[1]:
@@ -395,34 +482,48 @@ def fit_frank_wolfe(counts, compatibility, *, rank=64, tau=None, max_iter=64,
             cross = (direction_left.T @ data.gram_times(left) * (direction_right.T @ right)).sum()
         else:
             cross = torch.zeros((), device=data.device)
-        gamma = torch.clamp((b_dot_direction - cross) / quadratic.clamp_min(1e-12), 0.0, 1.0)
+        gap_tensor = torch.relu(b_dot_direction - cross)
+        gap = float(gap_tensor.item())
+        initial_gap = gap if initial_gap is None else initial_gap
+        relative_gap = gap / max(initial_gap, 1e-12)
+        gamma = torch.clamp(gap_tensor / quadratic.clamp_min(1e-12), 0.0, 1.0)
         keep = torch.sqrt(1.0 - gamma)
         add = torch.sqrt(gamma)
         left = torch.cat((left * keep, atom_left * add), dim=1)
         right = torch.cat((right * keep, atom_right * add), dim=1)
         objective = data.loss_for_factors(left, right)
         diagnostics["objective"].append(objective)
-        if iteration and abs(diagnostics["objective"][-2] - objective) / max(abs(objective), 1.0) < tol:
-            diagnostics.update(iterations=iteration + 1, converged=True)
+        diagnostics["duality_gap"].append(gap)
+        diagnostics["relative_duality_gap"].append(relative_gap)
+        diagnostics["line_search_step"].append(float(gamma.item()))
+        stable = stable + 1 if relative_gap <= tol else 0
+        if iteration + 1 >= int(min_iter) and stable >= int(patience):
+            diagnostics.update(
+                iterations=iteration + 1, converged=True,
+                convergence_reason="duality_gap_patience",
+            )
             break
     else:
-        diagnostics.update(iterations=max_iter, converged=False)
+        reason = "atom_capacity" if max_iter == max_atoms else "max_iterations"
+        diagnostics.update(
+            iterations=max_iter, converged=False, convergence_reason=reason,
+        )
     return GLMResult("frank_wolfe", left, right, None, diagnostics)
 
 
 def fit_glm(counts, compatibility, method, **kwargs):
     """Dispatch a GLM method using a cells-by-EC sparse count matrix."""
     if method == "factorized":
-        allowed = {"rank", "regularization", "max_iter", "tol", "learning_rate", "device", "batch_cells", "seed"}
+        allowed = {"rank", "regularization", "max_iter", "tol", "learning_rate", "device", "batch_cells", "seed", "min_iter", "patience"}
         return fit_factorized(counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed})
     if method == "admm_factorized":
-        allowed = {"rank", "regularization", "rho", "max_iter", "tol", "learning_rate", "device", "batch_cells", "seed"}
+        allowed = {"rank", "regularization", "rho", "max_iter", "tol", "learning_rate", "device", "batch_cells", "seed", "min_iter", "patience"}
         return fit_factorized_admm(counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed})
     if method == "admm":
         allowed = {"regularization", "rho", "max_iter", "inner_iter", "tol", "max_dense_entries", "device", "batch_cells"}
         return fit_admm(counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed})
     if method == "frank_wolfe":
-        allowed = {"rank", "tau", "max_iter", "power_iter", "tol", "device", "batch_cells", "seed"}
+        allowed = {"rank", "max_atoms", "tau", "max_iter", "power_iter", "tol", "device", "batch_cells", "seed", "min_iter", "patience"}
         return fit_frank_wolfe(counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed})
     raise ValueError(f"Unsupported Torch GLM method: {method}")
 
