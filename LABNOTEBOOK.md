@@ -343,6 +343,21 @@ Silhouette uses a fixed 10,000-cell subsample because exact pairwise distances
 over all labeled cells are quadratic, while PCA and the other metrics continue
 to use all matched cells.
 
+The preceding label benchmark used PCA of standardized cell factors, not
+normalized log expression. Those scores are retained as factor-space
+diagnostics but are not the final standard-analysis comparison. Added a
+streamed fitted-expression benchmark that sums transcript loadings to the gene
+IDs in the standard AnnData, normalizes each fitted cell to 10,000, applies
+`log1p`, selects 2,000 variable genes per fit, and computes 30-component
+incremental PCA. All supervised and unsupervised label metrics now use this
+log-gene PCA. Reconstruction uses GPU matrix multiplication in cell blocks;
+only gene moments and PCA blocks move to CPU memory.
+
+A real-factor probe found that 62,344 fitted transcripts map into the selected
+standard gene universe and contribute nonzero loadings to 21,107 of 21,134
+genes. A 100-cell blocked reconstruction produced finite PCA coordinates and
+matched dense synthetic normalization, moments, and PCA geometry in tests.
+
 ## 2026-07-09 Salmon/Alevin Pipeline Recipes
 
 Pulled the useful microglia-less Salmon/Alevin pipeline pieces from the older

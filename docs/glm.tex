@@ -450,6 +450,18 @@ factorized methods, and additional power iterations can improve the approximate
 linear oracle. Every manifest records the stopping history, convergence reason,
 and whether the maximum iteration or atom limit was reached.
 
+For comparison with a standard single-cell expression analysis, downstream
+label scoring does not apply a nonlinear transform to the arbitrary factors.
+Instead, transcript loadings are summed by gene so that fitted gene abundance
+remains \(VU_{\mathrm{gene}}'\). For each cell this abundance is normalized to
+a total of 10,000 and transformed with \(\log(1+x)\). Per-fit gene moments are
+computed in streamed cell blocks, the 2,000 most variable genes are selected,
+and incremental PCA is fit and transformed in two further streamed passes.
+Grouped classification, k-means, ARI, NMI, and silhouette are all computed in
+the resulting 30-dimensional PCA representation. This preserves the intended
+nonlinear expression preprocessing without materializing a dense genome-wide
+cell-by-gene matrix.
+
 \subsection*{Choosing the Regularization Level}
 
 The regularization parameter can be chosen by cross-validation because the
