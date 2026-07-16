@@ -273,6 +273,14 @@ cached because its sidecar is large. The comparison launcher schedules cache
 construction once before weighted GPU fits and runs binary and weighted
 designs as separate jobs.
 
+The full fixed weighted design has shape 948,916 by 116,918 and 600,236
+nonzeros, compared with 14,974,929 nonzeros in the binary design. Its support
+is a subset retaining 4.0% of binary-compatible entries, reflecting exact-zero
+alignment likelihoods. After column normalization, weighted versus binary has
+cosine similarity 0.919 and relative Frobenius difference 0.408. This is a
+large enough design change to compare fitted genome-wide models rather than
+treat the two constructions as interchangeable.
+
 ## 2026-07-09 Salmon/Alevin Pipeline Recipes
 
 Pulled the useful microglia-less Salmon/Alevin pipeline pieces from the older

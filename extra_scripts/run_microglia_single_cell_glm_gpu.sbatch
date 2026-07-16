@@ -5,6 +5,8 @@
 #SBATCH --mem=256G
 #SBATCH -t 2-00:00:00
 #SBATCH -J tealeaf_sc_glm
+#SBATCH -o /gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/%x-%j.out
+#SBATCH -e /gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/%x-%j.err
 
 set -euo pipefail
 

@@ -29,27 +29,47 @@ def main():
     if weighted.shape != binary.shape:
         raise ValueError(f"shape mismatch: weighted={weighted.shape}, binary={binary.shape}")
     weighted = weighted.tocsr()
-    if not np.array_equal(weighted.indptr, binary.indptr) or not np.array_equal(
-        weighted.indices, binary.indices
-    ):
-        raise ValueError("weighted and binary designs do not have identical sparse support")
+    weighted.eliminate_zeros()
+    binary.eliminate_zeros()
 
-    delta = weighted.data - binary.data
-    abs_delta = np.abs(delta)
-    weighted_norm = np.linalg.norm(weighted.data)
-    binary_norm = np.linalg.norm(binary.data)
+    overlap_nnz = weighted.sign().multiply(binary.sign()).nnz
+    union_nnz = weighted.nnz + binary.nnz - overlap_nnz
+    delta = weighted - binary
+    delta.eliminate_zeros()
+    abs_delta = np.abs(delta.data)
+    # Include entries that agree exactly when summarizing differences over the
+    # union of both sparse supports.
+    union_abs_delta = np.zeros(union_nnz, dtype=float)
+    union_abs_delta[:abs_delta.size] = abs_delta
+    weighted_norm = np.sqrt(weighted.multiply(weighted).sum())
+    binary_norm = np.sqrt(binary.multiply(binary).sum())
     denominator = weighted_norm * binary_norm
     metrics = {
         "shape": list(weighted.shape),
-        "nnz": int(weighted.nnz),
-        "cosine_similarity": float(np.dot(weighted.data, binary.data) / denominator),
-        "relative_frobenius_difference": float(np.linalg.norm(delta) / binary_norm),
-        "mean_absolute_difference": float(abs_delta.mean()),
-        "median_absolute_difference": float(np.median(abs_delta)),
-        "max_absolute_difference": float(abs_delta.max()),
-        "fraction_abs_difference_gt_1e-4": float(np.mean(abs_delta > 1e-4)),
-        "fraction_abs_difference_gt_1e-3": float(np.mean(abs_delta > 1e-3)),
-        "fraction_abs_difference_gt_1e-2": float(np.mean(abs_delta > 1e-2)),
+        "binary_nnz": int(binary.nnz),
+        "weighted_nnz": int(weighted.nnz),
+        "support_overlap_nnz": int(overlap_nnz),
+        "support_union_nnz": int(union_nnz),
+        "fraction_binary_support_retained": float(overlap_nnz / binary.nnz),
+        "fraction_weighted_support_outside_binary": float(
+            (weighted.nnz - overlap_nnz) / weighted.nnz
+        ),
+        "cosine_similarity": float(weighted.multiply(binary).sum() / denominator),
+        "relative_frobenius_difference": float(
+            np.sqrt(delta.multiply(delta).sum()) / binary_norm
+        ),
+        "mean_absolute_difference": float(union_abs_delta.mean()),
+        "median_absolute_difference": float(np.median(union_abs_delta)),
+        "max_absolute_difference": float(union_abs_delta.max()),
+        "fraction_abs_difference_gt_1e-4": float(
+            np.mean(union_abs_delta > 1e-4)
+        ),
+        "fraction_abs_difference_gt_1e-3": float(
+            np.mean(union_abs_delta > 1e-3)
+        ),
+        "fraction_abs_difference_gt_1e-2": float(
+            np.mean(union_abs_delta > 1e-2)
+        ),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(metrics, indent=2) + "\n")
