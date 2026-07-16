@@ -26,6 +26,8 @@ def main():
     parser.add_argument("--groups", type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--folds", type=int, default=5)
+    parser.add_argument("--pca-components", type=int, default=30)
+    parser.add_argument("--silhouette-sample-size", type=int, default=10_000)
     args = parser.parse_args()
 
     labels = pd.read_csv(
@@ -50,7 +52,9 @@ def main():
                 cell_ids, factors, labels, groups
             )
             report, folds = representation_scoring.score_representation(
-                aligned[0], aligned[1], aligned[2], n_splits=args.folds
+                aligned[0], aligned[1], aligned[2], n_splits=args.folds,
+                pca_components=args.pca_components,
+                silhouette_sample_size=args.silhouette_sample_size,
             )
             report["status"] = "ok"
         except (OSError, ValueError) as error:

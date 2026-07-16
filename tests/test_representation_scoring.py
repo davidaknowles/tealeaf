@@ -32,6 +32,9 @@ class RepresentationScoringTest(unittest.TestCase):
         self.assertEqual(len(folds), 4)
         self.assertGreater(report["macro_f1_mean"], 0.95)
         self.assertGreater(report["adjusted_rand_index"], 0.95)
+        self.assertGreater(report["reference_label_silhouette"], 0.9)
+        self.assertGreater(report["kmeans_cluster_silhouette"], 0.9)
+        self.assertEqual(report["pca_components"], 3)
 
     def test_load_and_align_factors(self):
         with tempfile.TemporaryDirectory() as directory:

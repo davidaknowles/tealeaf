@@ -55,6 +55,8 @@ def score_representation(
     *,
     n_splits=5,
     random_state=0,
+    pca_components=30,
+    silhouette_sample_size=10_000,
 ):
     """Score supervised label transfer and unsupervised label recovery.
 
@@ -70,10 +72,12 @@ def score_representation(
         balanced_accuracy_score,
         f1_score,
         normalized_mutual_info_score,
+        silhouette_score,
     )
     from sklearn.model_selection import StratifiedGroupKFold, StratifiedKFold
+    from sklearn.decomposition import PCA
     from sklearn.pipeline import make_pipeline
-    from sklearn.preprocessing import StandardScaler, normalize
+    from sklearn.preprocessing import StandardScaler
 
     representation = np.asarray(representation, dtype=np.float32)
     labels = np.asarray(labels, dtype=str)
@@ -124,13 +128,31 @@ def score_representation(
         )
     folds = pd.DataFrame(fold_rows)
 
-    unit_representation = normalize(representation)
+    scaled_representation = StandardScaler().fit_transform(representation)
+    n_components = min(
+        int(pca_components), representation.shape[1], representation.shape[0] - 1
+    )
+    pca = PCA(n_components=n_components, svd_solver="randomized", random_state=random_state)
+    pca_representation = pca.fit_transform(scaled_representation)
     clusters = MiniBatchKMeans(
         n_clusters=len(np.unique(labels)),
         batch_size=4096,
         n_init=10,
         random_state=random_state,
-    ).fit_predict(unit_representation)
+    ).fit_predict(pca_representation)
+    silhouette_size = min(int(silhouette_sample_size), len(labels))
+    label_silhouette = silhouette_score(
+        pca_representation,
+        labels,
+        sample_size=silhouette_size,
+        random_state=random_state,
+    )
+    cluster_silhouette = silhouette_score(
+        pca_representation,
+        clusters,
+        sample_size=silhouette_size,
+        random_state=random_state,
+    )
     report = {
         "n_reference_cells": int(len(keep)),
         "n_scored_cells": int(keep.sum()),
@@ -138,6 +160,9 @@ def score_representation(
         "n_labels": int(len(np.unique(labels))),
         "n_groups": None if groups is None else int(len(np.unique(groups))),
         "cv_folds": int(splits),
+        "pca_components": int(n_components),
+        "pca_explained_variance": float(pca.explained_variance_ratio_.sum()),
+        "silhouette_sample_size": int(silhouette_size),
         "accuracy_mean": float(folds["accuracy"].mean()),
         "accuracy_sd": float(folds["accuracy"].std(ddof=1)),
         "balanced_accuracy_mean": float(folds["balanced_accuracy"].mean()),
@@ -146,6 +171,8 @@ def score_representation(
         "macro_f1_sd": float(folds["macro_f1"].std(ddof=1)),
         "adjusted_rand_index": float(adjusted_rand_score(labels, clusters)),
         "normalized_mutual_info": float(normalized_mutual_info_score(labels, clusters)),
+        "reference_label_silhouette": float(label_silhouette),
+        "kmeans_cluster_silhouette": float(cluster_silhouette),
     }
     return report, folds
 

@@ -308,6 +308,12 @@ and macro-F1. It also reports unsupervised adjusted Rand index and normalized
 mutual information from mini-batch k-means with the reference number of cell
 types. Active finite cell coverage is reported so a collapsed fit cannot
 receive an apparently valid score.
+Each factor representation is also standardized and projected into up to 30
+principal components. The benchmark reports silhouette coefficients for both
+the standard-analysis labels and fitted k-means clusters in this PCA space.
+Silhouette uses a fixed 10,000-cell subsample because exact pairwise distances
+over all labeled cells are quadratic, while PCA and the other metrics continue
+to use all matched cells.
 
 ## 2026-07-09 Salmon/Alevin Pipeline Recipes
 
