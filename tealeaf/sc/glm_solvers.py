@@ -141,7 +141,10 @@ def _initial_factors(data: SparseGLM, rank: int, seed: int):
     torch = data.torch
     generator = torch.Generator(device=data.device)
     generator.manual_seed(seed)
-    scale = 1.0 / np.sqrt(max(rank, 1))
+    # A coefficient row should initially have O(1) total mass because each
+    # response row is normalized to sum to one. Scaling both factors this way
+    # avoids an initial prediction mass proportional to the transcript count.
+    scale = 1.0 / np.sqrt(max(rank * data.n_transcripts, 1))
     left = torch.rand((data.n_transcripts, rank), generator=generator, device=data.device) * scale
     right = torch.rand((data.n_cells, rank), generator=generator, device=data.device) * scale
     totals = np.asarray(data.counts.sum(axis=1)).ravel()
@@ -394,19 +397,27 @@ def result_to_csr(result: GLMResult, start: int, stop: int, threshold=0.0):
     return sp.csr_matrix(values)
 
 
+def _factor_diagnostics(result: GLMResult):
+    """Summarize whether a fitted representation is finite and nondegenerate."""
+    if result.right is None:
+        return {}
+    right = result.right.detach()
+    row_norm = right.square().sum(dim=1).sqrt()
+    return {
+        "left_finite": bool(result.left.isfinite().all().item()),
+        "right_finite": bool(right.isfinite().all().item()),
+        "left_norm": float(result.left.square().sum().sqrt().item()),
+        "right_norm": float(right.square().sum().sqrt().item()),
+        "active_cell_fraction": float((row_norm > 0).float().mean().item()),
+    }
+
+
 def write_chunked_result(result: GLMResult, output_prefix, barcodes, features,
-                         batch_cells=4096, threshold=1e-8):
-    """Write factors, diagnostics, and sparse transcript estimates in cell blocks."""
+                         batch_cells=4096, threshold=1e-8, write_chunks=True):
+    """Write compact factors first and optional transcript estimates in blocks."""
     output_prefix = Path(output_prefix)
     output_prefix.parent.mkdir(parents=True, exist_ok=True)
-    chunk_paths = []
     n_cells = len(barcodes)
-    for index, start in enumerate(range(0, n_cells, int(batch_cells))):
-        stop = min(start + int(batch_cells), n_cells)
-        filename = f"{output_prefix.name}glm_cells_{index:05d}.npz"
-        path = output_prefix.parent / filename
-        sp.save_npz(path, result_to_csr(result, start, stop, threshold))
-        chunk_paths.append({"path": filename, "start": start, "stop": stop})
     np.savetxt(f"{output_prefix}glm_rows.txt", np.asarray(barcodes), fmt="%s")
     np.savetxt(f"{output_prefix}glm_cols.txt", np.asarray(features), fmt="%s")
     if result.left is not None:
@@ -415,5 +426,23 @@ def write_chunked_result(result: GLMResult, output_prefix, barcodes, features,
             left=result.left.detach().cpu().numpy(),
             right=result.right.detach().cpu().numpy(),
         )
+    result.diagnostics.update(_factor_diagnostics(result))
+    chunk_paths = []
+    if write_chunks:
+        for index, start in enumerate(range(0, n_cells, int(batch_cells))):
+            stop = min(start + int(batch_cells), n_cells)
+            filename = f"{output_prefix.name}glm_cells_{index:05d}.npz"
+            path = output_prefix.parent / filename
+            sp.save_npz(path, result_to_csr(result, start, stop, threshold))
+            chunk_paths.append({"path": filename, "start": start, "stop": stop})
     with open(f"{output_prefix}glm_manifest.json", "w") as handle:
-        json.dump({"method": result.method, "chunks": chunk_paths, "diagnostics": result.diagnostics}, handle, indent=2)
+        json.dump(
+            {
+                "method": result.method,
+                "chunks_written": bool(write_chunks),
+                "chunks": chunk_paths,
+                "diagnostics": result.diagnostics,
+            },
+            handle,
+            indent=2,
+        )

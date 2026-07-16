@@ -702,6 +702,7 @@ def single_cell_glm_conversion(options):
         filtered_features,
         batch_cells=options.glm_batch_cells,
         threshold=options.glm_output_threshold,
+        write_chunks=options.glm_write_chunks,
     )
     sys.stderr.write("Genome-wide single-cell GLM outputs were written\n")
 
@@ -1060,6 +1061,10 @@ if __name__ == "__main__":
     parser.add_option("--glm_output_threshold", dest="glm_output_threshold", default=1e-8, type="float",
                   help="drop smaller normalized values from single-cell sparse output (default: 1e-8)")
 
+    parser.add_option("--glm_no_write_chunks", dest="glm_write_chunks", default=True,
+                  action="store_false",
+                  help="write compact factors without reconstructing cell-by-transcript chunks")
+
     parser.add_option("--nnls_max_iter", dest="nnls_max_iter", default=200, type="int",
                   help="maximum iterations for scipy bounded least-squares NNLS (default: 200)")
 
@@ -1210,7 +1215,6 @@ if __name__ == "__main__":
     write_options_to_file(options, record)
 
     tealeaf_sc(options)
-
 
 
 

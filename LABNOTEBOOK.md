@@ -282,6 +282,23 @@ cosine similarity 0.919 and relative Frobenius difference 0.408. This is a
 large enough design change to compare fitted genome-wide models rather than
 treat the two constructions as interchangeable.
 
+The first full single-cell output attempt exposed two scaling issues. Writing
+reconstructed transcript chunks produced multi-gigabyte files for individual
+cell blocks, so genome-wide runs now write compact factors first and skip
+transcript chunks unless explicitly requested. Factor manifests report finite
+status, factor norms, and the fraction of cells with an active representation.
+The initial factors are scaled by both rank and transcript count so their
+predicted mass matches the unit-sum response; the previous rank-only scaling
+caused factorized ADMM cell factors to collapse to zero.
+
+Added reference-label scoring for completed fits. The benchmark aligns cell
+factors to the standard-analysis `cluster_name` labels, uses five-fold
+stratified splits grouped by mouse, and reports accuracy, balanced accuracy,
+and macro-F1. It also reports unsupervised adjusted Rand index and normalized
+mutual information from mini-batch k-means with the reference number of cell
+types. Active finite cell coverage is reported so a collapsed fit cannot
+receive an apparently valid score.
+
 ## 2026-07-09 Salmon/Alevin Pipeline Recipes
 
 Pulled the useful microglia-less Salmon/Alevin pipeline pieces from the older

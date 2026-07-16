@@ -421,12 +421,17 @@ and the corresponding design matrix.
 
 In \texttt{single\_cell} mode, fitting operates directly on the raw
 cell-by-equivalence-class matrix rather than creating pseudobulks. The output
-is written as thresholded sparse transcript-by-cell chunks, accompanied by the
-barcode and transcript order, low-rank factors when applicable, and a manifest
-of solver diagnostics. This output layout avoids a dense genome-wide abundance
-file and makes reconstruction of selected cell blocks possible from the saved
-factors. The downstream intron clustering workflow remains a pseudobulk
-operation and is not invoked in this mode.
+consists of compact low-rank factors, barcode and transcript order, and a
+manifest of solver diagnostics. Thresholded sparse transcript-by-cell chunks
+are optional because even sparse reconstruction can be large when many fitted
+values exceed the threshold. Selected cell blocks can instead be reconstructed
+from the saved factors. The downstream intron clustering workflow remains a
+pseudobulk operation and is not invoked in this mode.
+
+Because each response column has unit mass, both random factors are initialized
+at scale \(1/\sqrt{rT}\). This keeps the initial fitted mass at order one;
+scaling only by rank initializes the fitted mass at order \(T\) and can drive
+a projected method to the all-zero solution on its first update.
 
 \subsection*{Choosing the Regularization Level}
 

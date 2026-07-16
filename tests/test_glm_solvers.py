@@ -95,6 +95,21 @@ class GLMSolverTest(unittest.TestCase):
         np.testing.assert_allclose(output[3].sum(), 0.0, atol=1e-7)
         self.assertGreaterEqual(len(result.diagnostics["objective"]), 1)
 
+    def test_factor_only_output(self):
+        result = glm_solvers.fit_factorized(
+            self.counts, self.compatibility, rank=2, max_iter=2,
+            device="cpu", batch_cells=2,
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory) / "fit_"
+            glm_solvers.write_chunked_result(
+                result, prefix, ["a", "b", "c", "d"], ["t1", "t2"],
+                write_chunks=False,
+            )
+            self.assertTrue(Path(f"{prefix}glm_factors.npz").is_file())
+            self.assertFalse(list(Path(directory).glob("*glm_cells_*.npz")))
+            self.assertGreater(result.diagnostics["active_cell_fraction"], 0)
+
     def test_factorized(self):
         self._assert_result(glm_solvers.fit_factorized(
             self.counts, self.compatibility, rank=2, max_iter=8, device="cpu", batch_cells=2

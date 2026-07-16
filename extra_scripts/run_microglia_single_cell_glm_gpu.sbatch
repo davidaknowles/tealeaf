@@ -33,6 +33,7 @@ python -m tealeaf.sc.tealeaf_sc \
   --glm_device cuda \
   --glm_rank 64 \
   --glm_batch_cells 4096 \
+  --glm_no_write_chunks \
   --nucnorm_max_iter 64 \
   --nucnorm_tol 1e-4 \
   --min_eq 5 \

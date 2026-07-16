@@ -6,9 +6,12 @@ CACHE_SCRIPT=/gpfs/commons/home/daknowles/projects/tealeaf/extra_scripts/run_mic
 METHODS=${METHODS:-"admm_factorized frank_wolfe factorized"}
 DESIGNS=${DESIGNS:-"binary weighted"}
 TARGETS=${TARGETS:-"theta"}
+SCORE_AFTER=${SCORE_AFTER:-1}
 ALEVIN=${ALEVIN:-/gpfs/commons/groups/knowles_lab/data/sc/splitpool/microglia_less_mice/salmon_spliceu_weighted_rad/out_permit_known_weighted/quant_t2t_dedup_parsimony_em/alevin}
+SCORE_SCRIPT=/gpfs/commons/home/daknowles/projects/tealeaf/extra_scripts/run_microglia_score_single_cell_glm.sbatch
 
 CACHE_JOB=""
+FIT_JOBS=()
 if [[ " ${DESIGNS} " == *" weighted "* ]]; then
   if [[ ! -f "${ALEVIN}/gene_eqclass_fixed_weights.npz" || \
         "${ALEVIN}/gene_eqclass_probs.tsv.gz" -nt "${ALEVIN}/gene_eqclass_fixed_weights.npz" ]]; then
@@ -23,10 +26,18 @@ for design in ${DESIGNS}; do
   fi
   for target in ${TARGETS}; do
     for method in ${METHODS}; do
-      sbatch "${dependency[@]}" \
+      job=$(sbatch --parsable "${dependency[@]}" \
         --job-name="tealeaf_${design}_${method}_${target}" \
         --export=ALL,METHOD="${method}",EC_DESIGN="${design}",REGULARIZATION_TARGET="${target}" \
-        "${SCRIPT}"
+        "${SCRIPT}")
+      FIT_JOBS+=("${job}")
+      echo "Submitted ${job}: ${design} ${method} ${target}"
     done
   done
 done
+
+if [[ "${SCORE_AFTER}" == 1 && ${#FIT_JOBS[@]} -gt 0 ]]; then
+  dependencies=$(IFS=:; echo "${FIT_JOBS[*]}")
+  score_job=$(sbatch --parsable --dependency="afterok:${dependencies}" "${SCORE_SCRIPT}")
+  echo "Submitted ${score_job}: reference-label scoring"
+fi
