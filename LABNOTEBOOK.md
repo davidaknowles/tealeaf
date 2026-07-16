@@ -295,6 +295,11 @@ could still cross the nonnegative boundary. Factorized and factorized-ADMM
 updates now cap each step by a Lipschitz bound. Cell updates use the exact
 rank-sized curvature matrix, while transcript updates combine cell-factor
 curvature with a sparse power estimate of the design spectral norm.
+The comparison runs use all 64 configured iterations. An initial Frank-Wolfe
+fit stopped after two iterations because the float32 objective rounded to an
+unchanged value; its held-out macro-F1 was 0.029 and adjusted Rand index was
+near zero. Objective-change stopping is therefore disabled for the full
+method comparison so rounded losses cannot terminate an unfitted model.
 
 Added reference-label scoring for completed fits. The benchmark aligns cell
 factors to the standard-analysis `cluster_name` labels, uses five-fold

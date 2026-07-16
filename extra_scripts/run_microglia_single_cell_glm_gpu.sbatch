@@ -35,6 +35,6 @@ python -m tealeaf.sc.tealeaf_sc \
   --glm_batch_cells 4096 \
   --glm_no_write_chunks \
   --nucnorm_max_iter 64 \
-  --nucnorm_tol 1e-4 \
+  --nucnorm_tol 0 \
   --min_eq 5 \
   -o "${OUT_ROOT}/single_cell_${EC_DESIGN}_${METHOD}_${REGULARIZATION_TARGET}_"
