@@ -1,6 +1,6 @@
 #!/bin/bash -l
 #SBATCH -p gpu
-#SBATCH --gres gpu:l40s:1
+#SBATCH --gres gpu:b6k:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=256G
 #SBATCH -t 2-00:00:00
@@ -10,7 +10,8 @@
 
 set -euo pipefail
 
-module load PyTorch/2.1.2-foss-2023b SciPy-bundle/2023.11-gfbf-2023b
+module load Python/3.12.3-GCCcore-13.3.0
+source "${HOME}/venv/cpa_blackwell/bin/activate"
 export PYTHONPATH=/gpfs/commons/home/daknowles/projects/tealeaf:${PYTHONPATH:-}
 
 METHOD=${METHOD:?Set METHOD to admm_factorized, frank_wolfe, or factorized}

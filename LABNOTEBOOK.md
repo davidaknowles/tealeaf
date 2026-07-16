@@ -237,13 +237,14 @@ thresholded sparse output chunks, factors, and diagnostics; it intentionally
 does not invoke the pseudobulk intron clustering path.
 
 Torch is an optional package dependency (`tealeaf[glm]`). The GPU execution
-path uses the site Torch module and the provided GPU submission wrapper. Dense
-ADMM is capped and is not included in the large single-cell submission default.
+path uses the project Torch environment and the provided GPU submission
+wrapper. Dense ADMM is capped and is not included in the large single-cell
+submission default.
 
-Static validation passed with the repository Python environment. The Torch
-synthetic suite requires a node where the Torch runtime is available; the login
-and CPU validation node lacked the required runtime library, and the GPU smoke
-test was not started because the account GPU allocation limit was occupied.
+Static validation and the Torch synthetic suite passed in the project Torch
+environment. The site PyTorch module was unsuitable because it referenced a
+missing system RDMA library. The selected environment's CUDA runtime was
+checked with an allocated-device tensor operation before full-data submission.
 
 Updated docs/glm.tex to distinguish the bounded dense ADMM reference from the
 streamed genome-wide factorized solvers, and to document raw-cell output
