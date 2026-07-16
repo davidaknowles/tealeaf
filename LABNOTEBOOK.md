@@ -290,6 +290,11 @@ status, factor norms, and the fraction of cells with an active representation.
 The initial factors are scaled by both rank and transcript count so their
 predicted mass matches the unit-sum response; the previous rank-only scaling
 caused factorized ADMM cell factors to collapse to zero.
+The first rescaled full-data retry showed that a fixed factor learning rate
+could still cross the nonnegative boundary. Factorized and factorized-ADMM
+updates now cap each step by a Lipschitz bound. Cell updates use the exact
+rank-sized curvature matrix, while transcript updates combine cell-factor
+curvature with a sparse power estimate of the design spectral norm.
 
 Added reference-label scoring for completed fits. The benchmark aligns cell
 factors to the standard-analysis `cluster_name` labels, uses five-fold

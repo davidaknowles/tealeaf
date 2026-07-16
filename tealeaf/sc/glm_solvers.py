@@ -95,10 +95,26 @@ class SparseGLM:
         self.n_transcripts = compatibility.shape[1]
         self.batch_cells = max(1, int(batch_cells))
         self.n_nonempty = max(1, int(np.count_nonzero(np.asarray(self.counts.sum(axis=1)).ravel())))
+        self.gram_lipschitz = self._estimate_gram_lipschitz()
         self.total_count_sq = float(np.square(self.counts.data / np.repeat(
             np.maximum(np.asarray(self.counts.sum(axis=1)).ravel(), 1.0),
             np.diff(self.counts.indptr),
         )).sum())
+
+    def _estimate_gram_lipschitz(self, iterations=8):
+        """Estimate the largest eigenvalue of A.T A with sparse power steps."""
+        vector = self.torch.full(
+            (self.n_transcripts, 1),
+            1.0 / np.sqrt(max(self.n_transcripts, 1)),
+            device=self.device,
+        )
+        for _ in range(int(iterations)):
+            image = self.gram_times(vector)
+            norm = self.torch.linalg.vector_norm(image)
+            if norm.item() == 0:
+                return 0.0
+            vector = image / norm
+        return float((vector * self.gram_times(vector)).sum().item())
 
     def blocks(self) -> Iterator[tuple[int, int, object, object]]:
         for start in range(0, self.n_cells, self.batch_cells):
@@ -159,19 +175,26 @@ def fit_factorized(counts, compatibility, *, rank=64, regularization=0.01,
     data = SparseGLM(counts, compatibility, device, batch_cells)
     torch = data.torch
     left, right = _initial_factors(data, rank, seed)
-    diagnostics = {"objective": [], "device": str(data.device), "rank": rank}
+    diagnostics = {
+        "objective": [], "device": str(data.device), "rank": rank,
+        "gram_lipschitz": data.gram_lipschitz,
+    }
     previous = None
 
     for iteration in range(int(max_iter)):
         au = data.a_times(left)
         gram_left = left.T @ data.gram_times(left)
+        right_lipschitz = float(
+            torch.linalg.matrix_norm(gram_left, ord=2).item()
+        ) + regularization
+        right_step = min(learning_rate, 1.0 / max(right_lipschitz, 1e-12))
         b_times_right = torch.zeros_like(left)
         right_gram = torch.zeros((rank, rank), device=data.device)
         for start, stop, block, nonempty in data.blocks():
             right_block = right[start:stop]
             gradient = right_block @ gram_left - torch.sparse.mm(block, au)
             gradient += regularization * right_block
-            right_block = torch.relu(right_block - learning_rate * gradient)
+            right_block = torch.relu(right_block - right_step * gradient)
             right_block[~nonempty] = 0
             right[start:stop] = right_block
             right_gram += right_block.T @ right_block
@@ -180,7 +203,14 @@ def fit_factorized(counts, compatibility, *, rank=64, regularization=0.01,
             )
         gradient_left = (data.gram_times(left) @ right_gram - b_times_right) / data.n_nonempty
         gradient_left += regularization * left
-        left = torch.relu(left - learning_rate * gradient_left)
+        left_lipschitz = (
+            data.gram_lipschitz
+            * float(torch.linalg.matrix_norm(right_gram, ord=2).item())
+            / data.n_nonempty
+            + regularization
+        )
+        left_step = min(learning_rate, 1.0 / max(left_lipschitz, 1e-12))
+        left = torch.relu(left - left_step * gradient_left)
 
         objective = data.loss_for_factors(left, right, regularization)
         diagnostics["objective"].append(objective)
@@ -207,19 +237,26 @@ def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
     left, right = _initial_factors(data, rank, seed)
     left_copy, right_copy = left.clone(), right.clone()
     left_dual, right_dual = torch.zeros_like(left), torch.zeros_like(right)
-    diagnostics = {"objective": [], "device": str(data.device), "rank": rank, "rho": rho}
+    diagnostics = {
+        "objective": [], "device": str(data.device), "rank": rank,
+        "rho": rho, "gram_lipschitz": data.gram_lipschitz,
+    }
     previous = None
 
     for iteration in range(int(max_iter)):
         au = data.a_times(left)
         gram_left = left.T @ data.gram_times(left)
+        right_lipschitz = float(
+            torch.linalg.matrix_norm(gram_left, ord=2).item()
+        ) + regularization + rho
+        right_step = min(learning_rate, 1.0 / max(right_lipschitz, 1e-12))
         b_times_right = torch.zeros_like(left)
         right_gram = torch.zeros((rank, rank), device=data.device)
         for start, stop, block, nonempty in data.blocks():
             right_block = right[start:stop]
             gradient = right_block @ gram_left - torch.sparse.mm(block, au)
             gradient += regularization * right_block + rho * (right_block - right_copy[start:stop] + right_dual[start:stop])
-            right_block = right_block - learning_rate * gradient
+            right_block = right_block - right_step * gradient
             right[start:stop] = right_block
             right_copy[start:stop] = torch.relu(right_block + right_dual[start:stop])
             right_dual[start:stop] += right_block - right_copy[start:stop]
@@ -230,7 +267,15 @@ def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
             )
         gradient_left = (data.gram_times(left) @ right_gram - b_times_right) / data.n_nonempty
         gradient_left += regularization * left + rho * (left - left_copy + left_dual)
-        left = left - learning_rate * gradient_left
+        left_lipschitz = (
+            data.gram_lipschitz
+            * float(torch.linalg.matrix_norm(right_gram, ord=2).item())
+            / data.n_nonempty
+            + regularization
+            + rho
+        )
+        left_step = min(learning_rate, 1.0 / max(left_lipschitz, 1e-12))
+        left = left - left_step * gradient_left
         left_copy = torch.relu(left + left_dual)
         left_dual += left - left_copy
         left = left_copy

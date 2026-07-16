@@ -432,6 +432,13 @@ Because each response column has unit mass, both random factors are initialized
 at scale \(1/\sqrt{rT}\). This keeps the initial fitted mass at order one;
 scaling only by rank initializes the fitted mass at order \(T\) and can drive
 a projected method to the all-zero solution on its first update.
+Projected factor updates use curvature-bounded step sizes rather than one fixed
+step across datasets. The cell-factor bound is computed from the rank-sized
+matrix \(U'A'AU\). The transcript-factor bound combines \(V'V\) with a sparse
+power-iteration estimate of \(\lVert A\rVert_2^2\); the ADMM bounds also include
+the split penalty \(\rho\). This prevents an update from crossing the
+nonnegative orthant and collapsing an entire factor to zero when the design
+curvature is large.
 
 \subsection*{Choosing the Regularization Level}
 
