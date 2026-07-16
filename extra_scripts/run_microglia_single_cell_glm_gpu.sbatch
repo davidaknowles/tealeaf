@@ -21,6 +21,7 @@ ALEVIN=${ALEVIN:-/gpfs/commons/groups/knowles_lab/data/sc/splitpool/microglia_le
 REF=${REF:-/gpfs/commons/home/daknowles/knowles_lab/index/salmon/mus_spliceu/spliceu.fa}
 REF_DIR=${REF_DIR:-/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/ref}
 OUT_ROOT=${OUT_ROOT:-/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run}
+GLM_MAX_ITER=${GLM_MAX_ITER:-2048}
 
 python -m tealeaf.sc.tealeaf_sc \
   --alevin_dir "${ALEVIN}" \
@@ -36,7 +37,7 @@ python -m tealeaf.sc.tealeaf_sc \
   --fw_power_iter 10 \
   --glm_batch_cells 4096 \
   --glm_no_write_chunks \
-  --nucnorm_max_iter 512 \
+  --nucnorm_max_iter "${GLM_MAX_ITER}" \
   --nucnorm_min_iter 50 \
   --nucnorm_patience 10 \
   --nucnorm_tol 1e-6 \

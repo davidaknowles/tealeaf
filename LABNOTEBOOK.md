@@ -325,7 +325,12 @@ least 50 iterations and ten consecutive relative-objective changes below
 `1e-6`; factorized ADMM also checks relative primal and dual residuals.
 Frank-Wolfe uses its relative duality gap with the same minimum and patience,
 ten power iterations per approximate oracle, and a separate 256-atom capacity.
-All methods have a 512-iteration ceiling. Diagnostics record objective changes,
+The initial convergence-controlled run used a 512-iteration ceiling. Binary
+factorized and both factorized-ADMM fits reached that ceiling without meeting
+their stopping criteria: the binary factorized objective was still changing
+by about `1.7e-5`, while ADMM relative residuals remained between about
+`2e-4` and `8e-4`. These three fits are therefore rerun with a configurable
+2,048-iteration ceiling. Diagnostics record objective changes,
 ADMM residuals, Frank-Wolfe gaps and line-search steps, and an explicit
 convergence reason.
 
