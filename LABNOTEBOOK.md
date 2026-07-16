@@ -301,6 +301,24 @@ unchanged value; its held-out macro-F1 was 0.029 and adjusted Rand index was
 near zero. Objective-change stopping is therefore disabled for the full
 method comparison so rounded losses cannot terminate an unfitted model.
 
+All six 64-iteration fits and the dependent label benchmark completed. Every
+fit had finite factors and active representations for all matched cells. The
+fixed weighted Frank-Wolfe fit recovered the reference labels best: held-out
+accuracy 0.154, balanced accuracy 0.156, macro-F1 0.110, adjusted Rand index
+0.024, and normalized mutual information 0.075. Binary Frank-Wolfe was second
+among the Frank-Wolfe designs by balanced accuracy (0.072), while all four
+factorized or factorized-ADMM fits were near the 0.05 balanced-accuracy chance
+level (0.053--0.056).
+
+Reference-label silhouettes were negative for every fit. Binary and weighted
+factorized fits were closest to zero (-0.024 to -0.020); weighted Frank-Wolfe
+was -0.212 and binary Frank-Wolfe was -0.252. The corresponding k-means
+silhouettes were positive (0.108--0.528), but ARI remained at most 0.024. Thus
+the factor spaces contain cluster structure, especially for Frank-Wolfe, but
+that structure aligns weakly with the standard cell-type labels. The weighted
+EC design improves supervised recovery for Frank-Wolfe but does not yet
+recapitulate the standard cell types well in absolute terms.
+
 Added reference-label scoring for completed fits. The benchmark aligns cell
 factors to the standard-analysis `cluster_name` labels, uses five-fold
 stratified splits grouped by mouse, and reports accuracy, balanced accuracy,
