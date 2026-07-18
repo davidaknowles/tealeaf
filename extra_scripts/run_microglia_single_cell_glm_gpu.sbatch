@@ -22,6 +22,9 @@ REF=${REF:-/gpfs/commons/home/daknowles/knowles_lab/index/salmon/mus_spliceu/spl
 REF_DIR=${REF_DIR:-/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/ref}
 OUT_ROOT=${OUT_ROOT:-/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run}
 GLM_MAX_ITER=${GLM_MAX_ITER:-2048}
+FW_MAX_ATOMS=${FW_MAX_ATOMS:-256}
+FW_POWER_ITER=${FW_POWER_ITER:-10}
+FW_NONNEGATIVE_PENALTY=${FW_NONNEGATIVE_PENALTY:-1.0}
 
 python -m tealeaf.sc.tealeaf_sc \
   --alevin_dir "${ALEVIN}" \
@@ -33,8 +36,9 @@ python -m tealeaf.sc.tealeaf_sc \
   --ec_design "${EC_DESIGN}" \
   --glm_device cuda \
   --glm_rank 64 \
-  --fw_max_atoms 256 \
-  --fw_power_iter 10 \
+  --fw_max_atoms "${FW_MAX_ATOMS}" \
+  --fw_power_iter "${FW_POWER_ITER}" \
+  --fw_nonnegative_penalty "${FW_NONNEGATIVE_PENALTY}" \
   --glm_batch_cells 4096 \
   --glm_no_write_chunks \
   --nucnorm_max_iter "${GLM_MAX_ITER}" \

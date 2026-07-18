@@ -28,4 +28,6 @@ python /gpfs/commons/home/daknowles/projects/tealeaf/extra_scripts/score_single_
   --fit "binary_factorized=${RUN}/single_cell_binary_factorized_theta_" \
   --fit "weighted_admm_factorized=${RUN}/single_cell_weighted_admm_factorized_theta_" \
   --fit "weighted_frank_wolfe=${RUN}/single_cell_weighted_frank_wolfe_theta_" \
-  --fit "weighted_factorized=${RUN}/single_cell_weighted_factorized_theta_"
+  --fit "weighted_factorized=${RUN}/single_cell_weighted_factorized_theta_" \
+  --fit "binary_frank_wolfe_penalized=${RUN}/single_cell_binary_frank_wolfe_penalized_theta_" \
+  --fit "weighted_frank_wolfe_penalized=${RUN}/single_cell_weighted_frank_wolfe_penalized_theta_"

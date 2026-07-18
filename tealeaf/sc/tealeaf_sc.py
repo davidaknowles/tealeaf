@@ -311,7 +311,8 @@ def parallel_quant_processing(cell_ec_sparse_pseudo_filt, ec_transcript_input, w
                               nucnorm_max_dense_entries=100000000,
                               glm_device='auto', glm_batch_cells=4096,
                               glm_rank=64, admm_rho=1.0, admm_inner_iter=25,
-                              nucnorm_tau=None, regularization_target='phi',
+                              nucnorm_tau=None, fw_nonnegative_penalty=1.0,
+                              regularization_target='phi',
                               glm_design_input=None, ec_design='legacy'):
     if quant_method == 'nnls_nucnorm':
         alphas = sc_utils.NNLS_nucnorm(
@@ -339,7 +340,10 @@ def parallel_quant_processing(cell_ec_sparse_pseudo_filt, ec_transcript_input, w
             count_rows.append(csr_matrix(tmp_count.reshape(1, -1)))
         return vstack(tpm_rows), vstack(count_rows)
 
-    if quant_method in {'admm', 'admm_factorized', 'frank_wolfe', 'factorized'}:
+    if quant_method in {
+        'admm', 'admm_factorized', 'frank_wolfe',
+        'frank_wolfe_penalized', 'factorized',
+    }:
         from tealeaf.sc import glm_solvers
 
         compatibility = glm_design_input
@@ -359,6 +363,7 @@ def parallel_quant_processing(cell_ec_sparse_pseudo_filt, ec_transcript_input, w
             inner_iter=admm_inner_iter,
             max_dense_entries=nucnorm_max_dense_entries,
             tau=nucnorm_tau,
+            nonnegative_penalty=fw_nonnegative_penalty,
             device=glm_device,
             batch_cells=glm_batch_cells,
         )
@@ -400,6 +405,7 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
                          nucnorm_max_dense_entries = 100000000, glm_device='auto',\
                          glm_batch_cells=4096, glm_rank=64, admm_rho=1.0,\
                          admm_inner_iter=25, nucnorm_tau=None,\
+                         fw_nonnegative_penalty=1.0,\
                          regularization_target='phi', ec_design='legacy',\
                          eq_probabilities=None, eq_weight_cache=None):
     """
@@ -431,7 +437,10 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
         sys.exit("Error: regularization_target must be phi or theta.\n")
     if ec_design not in {'legacy', 'binary', 'weighted'}:
         sys.exit("Error: ec_design must be legacy, binary, or weighted.\n")
-    if quant_method not in {'em', 'nnls', 'nnls_nucnorm', 'admm', 'admm_factorized', 'frank_wolfe', 'factorized'}:
+    if quant_method not in {
+        'em', 'nnls', 'nnls_nucnorm', 'admm', 'admm_factorized',
+        'frank_wolfe', 'frank_wolfe_penalized', 'factorized',
+    }:
         sys.exit("Error: invalid quantification method...\n")
     # step 1: data loading
     transcript_lengths_dic = sc_utils.get_transcript_lengths(Path(salmon_ref))    
@@ -470,7 +479,10 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
         barcodes = np.array([line.strip() for line in file.readlines()])
 
     glm_phi_design = None
-    regularized_methods = {'nnls_nucnorm', 'admm', 'admm_factorized', 'frank_wolfe', 'factorized'}
+    regularized_methods = {
+        'nnls_nucnorm', 'admm', 'admm_factorized', 'frank_wolfe',
+        'frank_wolfe_penalized', 'factorized',
+    }
     if quant_method in regularized_methods:
         _, full_w = sc_utils.get_feature_weights(features, transcript_lengths_dic)
         probability_file = eq_probabilities or (alevin_dir / "gene_eqclass_probs.tsv.gz")
@@ -572,7 +584,8 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
         bool_spliced_trans, quant_method, nnls_max_iter, nnls_tol,
         nucnorm_lambda, nucnorm_max_iter, nucnorm_tol, nucnorm_rank,
         nucnorm_max_dense_entries, glm_device, glm_batch_cells, glm_rank,
-        admm_rho, admm_inner_iter, nucnorm_tau, regularization_target,
+        admm_rho, admm_inner_iter, nucnorm_tau, fw_nonnegative_penalty,
+        regularization_target,
         glm_design_input, ec_design,
     )
        
@@ -626,7 +639,7 @@ def single_cell_glm_conversion(options):
 
     if options.quant_method not in glm_solvers.SCALABLE_METHODS:
         raise ValueError(
-            "--cell_mode single_cell requires admm, admm_factorized, frank_wolfe, or factorized"
+            "--cell_mode single_cell requires a scalable GLM quantification method"
         )
     alevin_dir = Path(options.alevin_dir)
     map_cache = alevin_dir / "gene_eqclass.npz"
@@ -694,6 +707,7 @@ def single_cell_glm_conversion(options):
         tau=options.nucnorm_tau,
         max_atoms=options.fw_max_atoms,
         power_iter=options.fw_power_iter,
+        nonnegative_penalty=options.fw_nonnegative_penalty,
         device=options.glm_device,
         batch_cells=options.glm_batch_cells,
     )
@@ -927,7 +941,8 @@ def tealeaf_sc(options):
                              options.nucnorm_max_dense_entries, options.glm_device,
                              options.glm_batch_cells, options.glm_rank,
                              options.admm_rho, options.admm_inner_iter,
-                             options.nucnorm_tau, options.regularization_target,
+                             options.nucnorm_tau, options.fw_nonnegative_penalty,
+                             options.regularization_target,
                              options.ec_design, options.eq_probabilities,
                              options.eq_weight_cache)
     
@@ -1048,7 +1063,7 @@ if __name__ == "__main__":
                   help="the thread use for computation")            
 
     parser.add_option("--quant_method", dest="quant_method", default='em',
-                  help="EC quantification: em, nnls, nnls_nucnorm, admm, admm_factorized, frank_wolfe, or factorized (default: em)")
+                  help="EC quantification method, including scalable frank_wolfe_penalized (default: em)")
 
     parser.add_option("--cell_mode", dest="cell_mode", default='pseudobulk',
                   help="fit pseudobulks or raw cells: pseudobulk or single_cell (default: pseudobulk)")
@@ -1116,6 +1131,9 @@ if __name__ == "__main__":
 
     parser.add_option("--fw_power_iter", dest="fw_power_iter", default=3, type="int",
                   help="power iterations per Frank-Wolfe linear oracle (default: 3)")
+
+    parser.add_option("--fw_nonnegative_penalty", dest="fw_nonnegative_penalty", default=1.0, type="float",
+                  help="negative-mass penalty relative to squared design spectral norm for frank_wolfe_penalized (default: 1)")
 
     parser.add_option("--admm_rho", dest="admm_rho", default=1.0, type="float",
                   help="ADMM penalty for admm and admm_factorized (default: 1.0)")
@@ -1216,7 +1234,10 @@ if __name__ == "__main__":
     if options.normalization_scale != 'junction' and options.normalization_scale != 'global' and options.normalization_scale != 'snRNA':
         sys.exit("Error: invalid normalization scale...\n")
 
-    if options.quant_method not in {'em', 'nnls', 'nnls_nucnorm', 'admm', 'admm_factorized', 'frank_wolfe', 'factorized'}:
+    if options.quant_method not in {
+        'em', 'nnls', 'nnls_nucnorm', 'admm', 'admm_factorized',
+        'frank_wolfe', 'frank_wolfe_penalized', 'factorized',
+    }:
         sys.exit("Error: invalid quantification method...\n")
 
     if options.regularization_target not in {'phi', 'theta'}:
@@ -1231,9 +1252,6 @@ if __name__ == "__main__":
     write_options_to_file(options, record)
 
     tealeaf_sc(options)
-
-
-
 
 
 

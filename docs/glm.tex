@@ -324,53 +324,50 @@ large-scale setting.
   factorized formulation below, but it is non-convex and is not equivalent to
   the bounded convex ADMM reference.
 
-  \item \textbf{Frank-Wolfe for a constrained nuclear norm.} For the constrained
-  problem
+  \item \textbf{Frank-Wolfe with penalized nonnegativity.} Direct
+  Frank--Wolfe over
   \[
-    \min_{\Phi \ge 0,\,\|\Phi\|_* \le \tau}
-    f(\Phi)
-    =
-    \frac{1}{2}\left\|C-A\Phi\right\|_F^2,
+    \{\Phi:\Phi\geq 0,\ \|\Phi\|_*\leq\tau\}
   \]
-  Frank-Wolfe avoids nuclear-norm proximal steps. At iteration \(k\), compute
-  the gradient
+  does not have the usual singular-vector linear oracle. In particular,
+  replacing the signed descent matrix by its entrywise positive part is not an
+  exact oracle: a nonnegative rank-one outer product can span both positive and
+  negative entries of the original matrix. The legacy \texttt{frank\_wolfe}
+  implementation makes this approximation and its reported gap is therefore
+  not a valid certificate for the intersection problem.
+
+  The scalable corrected variant instead solves
   \[
-    D_k = \nabla f(\Phi_k) = G\Phi_k - B.
+    \min_{\|\Phi\|_*\le\tau}
+    \frac{1}{2}\|C-A\Phi\|_F^2
+    +\frac{\mu}{2}\|\Phi_-\|_F^2,
+    \qquad \Phi_-=\min(\Phi,0).
   \]
-  The linear minimization oracle solves
+  Its negative gradient is
   \[
-    S_k
-    =
-    \arg\min_{S \ge 0,\,\|S\|_* \le \tau}
-    \langle D_k, S\rangle.
+    Q_k=B-G\Phi_k-\mu(\Phi_k)_-.
   \]
-  Because \(S\) is constrained to be nonnegative, only the positive part of the
-  descent matrix matters. Let
+  The ordinary nuclear-norm ball has the signed rank-one oracle
   \[
-    H_k = (-D_k)_+ = (B-G\Phi_k)_+.
+    S_k=\tau u_kv_k',
   \]
-  If \(H_k\) is nonzero, take its leading left and right singular vectors
-  \(u_k\) and \(v_k\), which can be chosen nonnegative, and set
-  \[
-    S_k = \tau u_k v_k'.
-  \]
+  where \(u_k,v_k\) are leading singular vectors of \(Q_k\). The implementation
+  obtains them with matrix-free power iterations on the signed operator rather
+  than materializing \(B\), \(Q_k\), or \(\Phi_k\). Sparse products evaluate
+  the least-squares terms, while transcript-by-cell blocks are reconstructed
+  only to apply \((\Phi_k)_-\).
+
   The update
   \[
-    \Phi_{k+1}
-    =
-    (1-\gamma_k)\Phi_k + \gamma_k S_k
+    \Phi_{k+1}=(1-\gamma_k)\Phi_k+\gamma_kS_k
   \]
-  preserves both nonnegativity and the nuclear-norm constraint. Line search can
-  use the same sparse sufficient statistics \(B=A'C\) and \(G=A'A\), since
-  \(f(\Phi)\) and directional derivatives are available without forming
-  \(C-A\Phi\).
-
-  This approach is attractive when a small effective rank is expected: the
-  iterate is an explicit convex combination of rank-one atoms, and each step
-  requires only a leading singular vector computation rather than a full SVD.
-  The implementation stores these atoms as low-rank factors and uses streamed
-  block power iterations on \((B-G\Phi_k)_+\). It performs the quadratic line
-  search from compact Gram products, without assembling \(B\) or \(\Phi_k\).
+  preserves the nuclear-norm constraint. A curvature-bounded step uses
+  \(\|A(S_k-\Phi_k)\|_F^2+\mu\|S_k-\Phi_k\|_F^2\). The penalty coefficient is
+  specified relative to the estimated \(\|A\|_2^2\), making its scale portable
+  across design matrices. Finite \(\mu\) gives approximate rather than exact
+  nonnegativity, so manifests report negative Frobenius and absolute-mass
+  fractions. The power-iteration candidate gap is a stopping diagnostic but is
+  explicitly not labeled an exact dual certificate.
 
   \item \textbf{Low-rank factorization.} Use the variational identity
   \[
@@ -409,7 +406,8 @@ matrix.
 
 The single-cell command exposes the methods as
 \texttt{--quant\_method admm}, \texttt{admm\_factorized},
-\texttt{frank\_wolfe}, and \texttt{factorized}. The scalable methods use a
+\texttt{frank\_wolfe}, \texttt{frank\_wolfe\_penalized}, and
+\texttt{factorized}. The scalable methods use a
 PyTorch backend and select CUDA when available; NumPy/SciPy remains responsible
 for sparse input and compatibility-matrix construction. The rank, cell block
 size, convergence tolerance, regularization strength, ADMM penalty, and
@@ -443,8 +441,9 @@ curvature is large.
 The factorized solvers stop only after a configured minimum iteration count
 and several consecutive relative-objective changes below tolerance.
 Factorized ADMM additionally requires its relative primal and dual split
-residuals to satisfy the tolerance. Frank--Wolfe instead uses the relative
-duality gap from its linear oracle, again with minimum iterations and patience.
+residuals to satisfy the tolerance. Penalized Frank--Wolfe requires both
+relative objective change and its approximate candidate gap to remain below
+tolerance; this candidate gap is not presented as a certificate.
 Its atom capacity is configured separately from the fixed rank used by the
 factorized methods, and additional power iterations can improve the approximate
 linear oracle. Every manifest records the stopping history, convergence reason,

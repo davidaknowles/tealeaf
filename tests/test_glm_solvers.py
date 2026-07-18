@@ -155,6 +155,77 @@ class GLMSolverTest(unittest.TestCase):
             result.diagnostics["convergence_reason"], "duality_gap_patience"
         )
 
+    def test_penalized_frank_wolfe_uses_signed_nuclear_oracle(self):
+        result = glm_solvers.fit_frank_wolfe_penalized(
+            self.counts,
+            self.compatibility,
+            rank=4,
+            max_atoms=4,
+            max_iter=4,
+            power_iter=8,
+            nonnegative_penalty=1.0,
+            device="cpu",
+            batch_cells=2,
+        )
+        self._assert_result(result)
+        fitted = (
+            result.left.detach().cpu().numpy()
+            @ result.right.detach().cpu().numpy().T
+        )
+        self.assertLessEqual(
+            np.linalg.svd(fitted, compute_uv=False).sum(),
+            result.diagnostics["tau"] + 1e-4,
+        )
+        self.assertFalse(result.diagnostics["gap_is_certificate"])
+        self.assertEqual(len(result.diagnostics["candidate_gap"]), 4)
+        self.assertGreaterEqual(
+            result.diagnostics["negative_l1_fraction"], 0.0
+        )
+        self.assertLessEqual(
+            result.diagnostics["negative_l1_fraction"], 1.0
+        )
+
+    def test_penalized_frank_wolfe_operator_matches_dense_gradient(self):
+        torch = glm_solvers._torch()
+        data = glm_solvers.SparseGLM(
+            self.counts, self.compatibility, device="cpu", batch_cells=2
+        )
+        left = torch.tensor([[0.4, -0.2], [0.1, 0.3]])
+        right = torch.tensor(
+            [[0.2, -0.1], [-0.3, 0.5], [0.4, 0.2], [0.0, 0.0]]
+        )
+        penalty = 0.7
+        normalized = self.counts.toarray()
+        totals = normalized.sum(axis=1, keepdims=True)
+        normalized = np.divide(
+            normalized, totals, out=np.zeros_like(normalized), where=totals > 0
+        )
+        compatibility = self.compatibility.toarray()
+        phi = left.numpy() @ right.numpy().T
+        q_dense = (
+            compatibility.T @ normalized.T
+            - compatibility.T @ compatibility @ phi
+            - penalty * np.minimum(phi, 0.0)
+        )
+        cell_vectors = torch.tensor(
+            [[0.1, 0.2], [-0.2, 0.4], [0.3, -0.1], [0.5, 0.2]]
+        )
+        transcript_vectors = torch.tensor([[0.3, -0.1], [0.2, 0.4]])
+        np.testing.assert_allclose(
+            glm_solvers._penalized_fw_q_times(
+                data, left, right, cell_vectors, penalty
+            ).numpy(),
+            q_dense @ cell_vectors.numpy(),
+            atol=1e-6,
+        )
+        np.testing.assert_allclose(
+            glm_solvers._penalized_fw_qt_times(
+                data, left, right, transcript_vectors, penalty
+            ).numpy(),
+            q_dense.T @ transcript_vectors.numpy(),
+            atol=1e-6,
+        )
+
     def test_invalid_stopping_parameters_are_rejected(self):
         with self.assertRaises(ValueError):
             glm_solvers.fit_factorized(

@@ -88,6 +88,24 @@ class RepresentationScoringTest(unittest.TestCase):
         self.assertGreaterEqual(diagnostics["pca_explained_variance"], 0.0)
         self.assertLessEqual(diagnostics["pca_explained_variance"], 1.0)
 
+    def test_signed_factor_row_totals_follow_rectified_abundance(self):
+        right = np.array([[1.0, 1.0], [2.0, -1.0]], dtype=np.float32)
+        gene_left = np.array(
+            [[1.0, -2.0], [-1.0, 3.0], [2.0, 1.0]], dtype=np.float32
+        )
+        expression = representation_scoring.FactorizedGeneExpression(
+            right, gene_left, target_sum=100.0, batch_cells=1, device="cpu"
+        )
+        abundance = np.maximum(right @ gene_left.T, 0.0)
+        np.testing.assert_allclose(expression.row_totals, abundance.sum(axis=1))
+        reconstructed = np.vstack(
+            [block for _, block in expression.iter_blocks()]
+        )
+        expected = np.log1p(
+            abundance * (100.0 / abundance.sum(axis=1))[:, None]
+        )
+        np.testing.assert_allclose(reconstructed, expected, atol=1e-6)
+
     def test_log_gene_pca_rejects_library_size_only_factor(self):
         right = np.arange(1, 21, dtype=np.float32)[:, None]
         gene_left = np.array([[1.0], [2.0], [4.0]], dtype=np.float32)

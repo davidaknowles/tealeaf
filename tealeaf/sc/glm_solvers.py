@@ -16,7 +16,10 @@ import numpy as np
 import scipy.sparse as sp
 
 
-SCALABLE_METHODS = {"admm", "admm_factorized", "frank_wolfe", "factorized"}
+SCALABLE_METHODS = {
+    "admm", "admm_factorized", "frank_wolfe",
+    "frank_wolfe_penalized", "factorized",
+}
 
 
 def _torch():
@@ -511,6 +514,235 @@ def fit_frank_wolfe(counts, compatibility, *, rank=64, max_atoms=None,
     return GLMResult("frank_wolfe", left, right, None, diagnostics)
 
 
+def _penalized_fw_q_times(data, left, right, vectors, penalty):
+    """Apply the negative penalized objective gradient to cell vectors."""
+    torch = data.torch
+    result = torch.zeros(
+        (data.n_transcripts, vectors.shape[1]), device=data.device
+    )
+    if left.shape[1]:
+        result -= data.gram_times(left) @ (right.T @ vectors)
+    for start, stop, block, _ in data.blocks():
+        vector_block = vectors[start:stop]
+        result += data.at_times(
+            torch.sparse.mm(block.transpose(0, 1), vector_block)
+        )
+        if penalty and left.shape[1]:
+            phi_block = left @ right[start:stop].T
+            negative = torch.minimum(phi_block, torch.zeros_like(phi_block))
+            result -= penalty * negative @ vector_block
+    return result
+
+
+def _penalized_fw_qt_times(data, left, right, vectors, penalty):
+    """Apply the transpose negative penalized objective gradient."""
+    torch = data.torch
+    result = torch.zeros((data.n_cells, vectors.shape[1]), device=data.device)
+    au = data.a_times(vectors)
+    if left.shape[1]:
+        result -= right @ (left.T @ data.gram_times(vectors))
+    for start, stop, block, _ in data.blocks():
+        result[start:stop] += torch.sparse.mm(block, au)
+        if penalty and left.shape[1]:
+            phi_block = left @ right[start:stop].T
+            result[start:stop] -= penalty * (
+                torch.minimum(phi_block, torch.zeros_like(phi_block)).T @ vectors
+            )
+    return result
+
+
+def _penalized_fw_direction(data, left, right, atom_left, atom_right, penalty):
+    """Return candidate gap and a quadratic smoothness bound for S - Phi."""
+    torch = data.torch
+    direction_left = torch.cat((atom_left, left), dim=1)
+    direction_right = torch.cat((atom_right, -right), dim=1)
+    a_direction = data.a_times(direction_left)
+    b_dot_direction = torch.zeros((), device=data.device)
+    penalty_dot_direction = torch.zeros((), device=data.device)
+    for start, stop, block, _ in data.blocks():
+        b_dot_direction += (
+            torch.sparse.mm(block, a_direction) * direction_right[start:stop]
+        ).sum()
+        if penalty and left.shape[1]:
+            phi_block = left @ right[start:stop].T
+            direction_block = direction_left @ direction_right[start:stop].T
+            penalty_dot_direction += (
+                torch.minimum(phi_block, torch.zeros_like(phi_block))
+                * direction_block
+            ).sum()
+    if left.shape[1]:
+        cross = (
+            direction_left.T @ data.gram_times(left)
+            * (direction_right.T @ right)
+        ).sum()
+    else:
+        cross = torch.zeros((), device=data.device)
+    direction_gram_left = direction_left.T @ direction_left
+    direction_gram_right = direction_right.T @ direction_right
+    direction_norm_sq = (direction_gram_left * direction_gram_right).sum()
+    prediction_norm_sq = (
+        direction_left.T @ data.gram_times(direction_left)
+        * direction_gram_right
+    ).sum()
+    gap = b_dot_direction - cross - penalty * penalty_dot_direction
+    curvature = prediction_norm_sq + penalty * direction_norm_sq
+    return torch.clamp(gap, min=0.0), curvature.clamp_min(1e-12)
+
+
+def _negative_factor_stats(data, left, right):
+    """Measure entrywise negativity of a compact fitted matrix."""
+    torch = data.torch
+    negative_sq = torch.zeros((), device=data.device)
+    total_sq = torch.zeros((), device=data.device)
+    negative_l1 = torch.zeros((), device=data.device)
+    total_l1 = torch.zeros((), device=data.device)
+    for start in range(0, data.n_cells, data.batch_cells):
+        stop = min(start + data.batch_cells, data.n_cells)
+        block = left @ right[start:stop].T
+        negative = torch.minimum(block, torch.zeros_like(block))
+        negative_sq += negative.square().sum()
+        total_sq += block.square().sum()
+        negative_l1 -= negative.sum()
+        total_l1 += block.abs().sum()
+    return {
+        "negative_squared_norm": float(negative_sq.item()),
+        "fitted_squared_norm": float(total_sq.item()),
+        "negative_frobenius_fraction": float(
+            torch.sqrt(negative_sq / total_sq.clamp_min(1e-24)).item()
+        ),
+        "negative_l1_fraction": float(
+            (negative_l1 / total_l1.clamp_min(1e-24)).item()
+        ),
+    }
+
+
+def fit_frank_wolfe_penalized(
+    counts,
+    compatibility,
+    *,
+    rank=64,
+    max_atoms=None,
+    tau=None,
+    nonnegative_penalty=1.0,
+    max_iter=64,
+    power_iter=10,
+    tol=1e-4,
+    device="auto",
+    batch_cells=4096,
+    seed=0,
+    min_iter=10,
+    patience=5,
+):
+    """Nuclear-ball Frank-Wolfe with a smooth negative-mass penalty.
+
+    The feasible set is the ordinary nuclear-norm ball, whose signed leading
+    singular-vector oracle is well defined. ``nonnegative_penalty`` is a
+    dimensionless multiplier of the estimated squared spectral norm of A.
+    """
+    _validate_stopping(max_iter, min_iter, patience, tol)
+    if float(nonnegative_penalty) < 0:
+        raise ValueError("nonnegative_penalty must be nonnegative")
+    data = SparseGLM(counts, compatibility, device, batch_cells)
+    torch = data.torch
+    max_atoms = int(rank if max_atoms is None else max_atoms)
+    if max_atoms < 1 or int(power_iter) < 1:
+        raise ValueError("max_atoms and power_iter must be positive")
+    max_iter = min(int(max_iter), max_atoms)
+    tau = float(np.sqrt(data.n_cells) if tau is None else tau)
+    penalty = float(nonnegative_penalty) * data.gram_lipschitz
+    left = torch.empty((data.n_transcripts, 0), device=data.device)
+    right = torch.empty((data.n_cells, 0), device=data.device)
+    generator = torch.Generator(device=data.device)
+    generator.manual_seed(seed)
+    diagnostics = {
+        "objective": [], "objective_relative_change": [],
+        "candidate_gap": [], "relative_candidate_gap": [],
+        "line_search_step": [], "oracle_singular_value": [],
+        "oracle_relative_residual": [], "device": str(data.device),
+        "rank": rank, "max_atoms": max_atoms, "tau": tau,
+        "power_iterations": int(power_iter),
+        "nonnegative_penalty_multiplier": float(nonnegative_penalty),
+        "nonnegative_penalty": penalty,
+        "gram_lipschitz": data.gram_lipschitz,
+        "min_iter": int(min_iter), "patience": int(patience), "tolerance": tol,
+        "gap_is_certificate": False,
+    }
+    initial_gap = None
+    previous = None
+    stable = 0
+
+    for iteration in range(max_iter):
+        vector = torch.randn(
+            (data.n_cells, 1), generator=generator, device=data.device
+        )
+        vector /= torch.linalg.vector_norm(vector).clamp_min(1e-12)
+        for _ in range(int(power_iter)):
+            left_vector = _penalized_fw_q_times(
+                data, left, right, vector, penalty
+            )
+            left_vector /= torch.linalg.vector_norm(left_vector).clamp_min(1e-12)
+            vector = _penalized_fw_qt_times(
+                data, left, right, left_vector, penalty
+            )
+            vector /= torch.linalg.vector_norm(vector).clamp_min(1e-12)
+        q_vector = _penalized_fw_q_times(data, left, right, vector, penalty)
+        singular = torch.linalg.vector_norm(q_vector).clamp_min(1e-12)
+        left_vector = q_vector / singular
+        qt_vector = _penalized_fw_qt_times(
+            data, left, right, left_vector, penalty
+        )
+        oracle_residual = torch.linalg.vector_norm(
+            qt_vector - singular * vector
+        ) / singular
+
+        atom_left = np.sqrt(tau) * left_vector
+        atom_right = np.sqrt(tau) * vector
+        gap_tensor, curvature = _penalized_fw_direction(
+            data, left, right, atom_left, atom_right, penalty
+        )
+        gamma = torch.clamp(gap_tensor / curvature, 0.0, 1.0)
+        keep = torch.sqrt(1.0 - gamma)
+        add = torch.sqrt(gamma)
+        left = torch.cat((left * keep, atom_left * add), dim=1)
+        right = torch.cat((right * keep, atom_right * add), dim=1)
+
+        objective = data.loss_for_factors(left, right)
+        negative_stats = _negative_factor_stats(data, left, right)
+        objective += 0.5 * penalty * negative_stats["negative_squared_norm"]
+        gap = float(gap_tensor.item())
+        initial_gap = gap if initial_gap is None else initial_gap
+        relative_gap = gap / max(initial_gap, 1e-12)
+        if previous is None:
+            relative_change = None
+            stable = 0
+        else:
+            relative_change = abs(previous - objective) / max(abs(previous), 1.0)
+            stable = stable + 1 if (
+                relative_change <= tol and relative_gap <= tol
+            ) else 0
+        diagnostics["objective"].append(objective)
+        diagnostics["objective_relative_change"].append(relative_change)
+        diagnostics["candidate_gap"].append(gap)
+        diagnostics["relative_candidate_gap"].append(relative_gap)
+        diagnostics["line_search_step"].append(float(gamma.item()))
+        diagnostics["oracle_singular_value"].append(float(singular.item()))
+        diagnostics["oracle_relative_residual"].append(float(oracle_residual.item()))
+        if iteration + 1 >= int(min_iter) and stable >= int(patience):
+            diagnostics.update(
+                iterations=iteration + 1, converged=True,
+                convergence_reason="objective_and_candidate_gap_patience",
+            )
+            break
+        previous = objective
+    else:
+        reason = "atom_capacity" if max_iter == max_atoms else "max_iterations"
+        diagnostics.update(
+            iterations=max_iter, converged=False, convergence_reason=reason,
+        )
+    diagnostics.update(_negative_factor_stats(data, left, right))
+    return GLMResult("frank_wolfe_penalized", left, right, None, diagnostics)
+
+
 def fit_glm(counts, compatibility, method, **kwargs):
     """Dispatch a GLM method using a cells-by-EC sparse count matrix."""
     if method == "factorized":
@@ -525,6 +757,15 @@ def fit_glm(counts, compatibility, method, **kwargs):
     if method == "frank_wolfe":
         allowed = {"rank", "max_atoms", "tau", "max_iter", "power_iter", "tol", "device", "batch_cells", "seed", "min_iter", "patience"}
         return fit_frank_wolfe(counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed})
+    if method == "frank_wolfe_penalized":
+        allowed = {
+            "rank", "max_atoms", "tau", "nonnegative_penalty", "max_iter",
+            "power_iter", "tol", "device", "batch_cells", "seed",
+            "min_iter", "patience",
+        }
+        return fit_frank_wolfe_penalized(
+            counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed}
+        )
     raise ValueError(f"Unsupported Torch GLM method: {method}")
 
 

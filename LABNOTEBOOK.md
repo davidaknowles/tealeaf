@@ -378,6 +378,20 @@ but nonzero cell-type signal. The solver's zero approximate dual gap after its
 first atom remains a limitation of its nonnegative linear oracle, not reliable
 evidence that the full optimization problem is solved.
 
+Implemented a separate `frank_wolfe_penalized` method rather than changing the
+legacy fit. It optimizes squared reconstruction loss plus a smooth squared
+penalty on negative coefficient entries over an ordinary nuclear-norm ball.
+The signed leading-singular-vector oracle is applied to the true penalized
+negative gradient. Matrix-vector products use sparse count/design operations
+and reconstruct only cell blocks needed for the negative part; they do not
+create the dense transcript-by-cell gradient blocks used by the legacy oracle.
+The penalty multiplier is scaled by the estimated squared design spectral
+norm. Output diagnostics include negative Frobenius and absolute-mass
+fractions, oracle residuals, candidate gaps, and an explicit flag that the
+power-iteration candidate gap is not an exact certificate. Signed fitted gene
+abundances are rectified before standard-like library normalization, with row
+totals computed after rectification.
+
 ## 2026-07-09 Salmon/Alevin Pipeline Recipes
 
 Pulled the useful microglia-less Salmon/Alevin pipeline pieces from the older

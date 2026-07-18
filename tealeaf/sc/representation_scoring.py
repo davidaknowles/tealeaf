@@ -140,8 +140,17 @@ class FactorizedGeneExpression:
         if self.device.type == "cuda" and not torch.cuda.is_available():
             raise RuntimeError("CUDA reconstruction was requested but is unavailable")
         self._gene_left = torch.as_tensor(self.gene_left, device=self.device)
-        total_loading = self.gene_left.sum(axis=0, dtype=np.float64)
-        self.row_totals = self.right.astype(np.float64) @ total_loading
+        if np.all(self.right >= 0) and np.all(self.gene_left >= 0):
+            total_loading = self.gene_left.sum(axis=0, dtype=np.float64)
+            self.row_totals = self.right.astype(np.float64) @ total_loading
+        else:
+            self.row_totals = np.empty(len(self.right), dtype=np.float64)
+            for start, stop in self._bounds(len(self.right)):
+                right_block = torch.as_tensor(
+                    self.right[start:stop], device=self.device
+                )
+                totals = torch.relu(right_block @ self._gene_left.T).sum(dim=1)
+                self.row_totals[start:stop] = totals.detach().cpu().numpy()
         self.active = np.isfinite(self.row_totals) & (self.row_totals > 0)
 
     def _bounds(self, n_rows, minimum_last=1):
