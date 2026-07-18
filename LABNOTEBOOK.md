@@ -392,6 +392,25 @@ power-iteration candidate gap is not an exact certificate. Signed fitted gene
 abundances are rectified before standard-like library normalization, with row
 totals computed after rectification.
 
+The first full penalized-Frank--Wolfe comparison used 128 atoms, ten power
+iterations, and a negative-mass multiplier of one. Both binary and weighted
+fits completed in about 2.5 hours and retained variable normalized gene
+profiles. Neither converged: both reached atom capacity, with final relative
+candidate gaps of 0.326 (binary) and 0.643 (weighted). The binary fit retained
+0.74% negative absolute mass and the weighted fit retained 0.014%, so the
+penalty is adequate for weighted coefficients but only approximate for binary.
+
+Despite incomplete optimization, both fits improved recovery of the standard
+cell labels. Binary penalized Frank--Wolfe achieved mean accuracy 0.290,
+balanced accuracy 0.309, macro-F1 0.231, ARI 0.0167, and NMI 0.0557. Weighted
+penalized Frank--Wolfe achieved accuracy 0.224, balanced accuracy 0.226,
+macro-F1 0.164, ARI 0.0152, and NMI 0.0646. Reference-label silhouettes remained
+negative at -0.156 and -0.200. Binary therefore performed better on supervised
+label recovery, while weighted had slightly higher NMI and much tighter
+nonnegativity. These results support the signed nuclear-ball oracle over the
+legacy clipped oracle, but more atoms or a continuation fit are required before
+comparing converged objectives.
+
 ## 2026-07-09 Salmon/Alevin Pipeline Recipes
 
 Pulled the useful microglia-less Salmon/Alevin pipeline pieces from the older
