@@ -411,6 +411,40 @@ nonnegativity. These results support the signed nuclear-ball oracle over the
 legacy clipped oracle, but more atoms or a continuation fit are required before
 comparing converged objectives.
 
+Added residual-balanced adaptive `rho` to dense and factorized ADMM. Every ten
+iterations, a primal residual more than ten times the dual residual doubles
+`rho`, while the reverse imbalance halves it. Scaled dual variables are
+rescaled by the old/new `rho` ratio, and manifests retain the full update
+history. Statistical regularization remains controlled only by `lambda`.
+
+Added reusable count-fold cross-validation for `lambda` and `tau`. Integer UMI
+counts are partitioned into three folds, models are fit to two folds, and
+normalized EC reconstruction is evaluated on the held-out molecules using the
+same design and cells. Lambda candidates are fractions of
+`||A.T @ C||_2`. Tau candidates are multiples of the best rank-one line-search
+scale from zero, `sigma_max(A.T @ C) / ||A @ u||^2`. These matrix scales are
+estimated with streamed power products. Tuning uses a reproducible cell subset;
+the selected dimensionless multiplier is combined with a scale recomputed on
+all cells before the final fit. Dataset-specific Slurm scripts run binary and
+weighted tuning for adaptive factorized ADMM and penalized Frank--Wolfe, launch
+the four dependent all-cell fits, and then run the common log-gene PCA scoring
+benchmark.
+
+Corrected the factorized solvers so cell averaging applies to the complete
+left-factor gradient, including regularization and ADMM terms. Previously only
+the data term was averaged, making the effective penalty grow with the number
+of cells and preventing a subset-selected lambda fraction from transferring to
+the full dataset. Production fitting refuses a CV optimum on a grid boundary
+that does not have a theoretical endpoint so that the grid must first be
+widened. Zero is an explicit baseline, and lambda/lambda-max equal to one is a
+valid terminal candidate because it is the zero-solution threshold.
+Validation loss ignores cells with no molecules in that held-out count fold,
+rather than treating their unavailable response as an observed all-zero row.
+The all-cell binary smoke calculation estimated lambda-max at approximately
+2.18e5. The production ADMM grid therefore includes zero and fractions from
+1e-9 through 1e-5; larger initial fractions overwhelm the current low-rank
+initialization. The boundary check will require expansion if 1e-5 wins.
+
 ## 2026-07-09 Salmon/Alevin Pipeline Recipes
 
 Pulled the useful microglia-less Salmon/Alevin pipeline pieces from the older

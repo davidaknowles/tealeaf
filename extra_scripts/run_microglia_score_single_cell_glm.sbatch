@@ -1,6 +1,6 @@
 #!/bin/bash -l
 #SBATCH -p gpu
-#SBATCH --gres gpu:b6k:1
+#SBATCH --gres gpu:l40s:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH -t 1-00:00:00
@@ -30,4 +30,8 @@ python /gpfs/commons/home/daknowles/projects/tealeaf/extra_scripts/score_single_
   --fit "weighted_frank_wolfe=${RUN}/single_cell_weighted_frank_wolfe_theta_" \
   --fit "weighted_factorized=${RUN}/single_cell_weighted_factorized_theta_" \
   --fit "binary_frank_wolfe_penalized=${RUN}/single_cell_binary_frank_wolfe_penalized_theta_" \
-  --fit "weighted_frank_wolfe_penalized=${RUN}/single_cell_weighted_frank_wolfe_penalized_theta_"
+  --fit "weighted_frank_wolfe_penalized=${RUN}/single_cell_weighted_frank_wolfe_penalized_theta_" \
+  --fit "binary_admm_factorized_cv=${RUN}/single_cell_binary_admm_factorized_cv_theta_" \
+  --fit "weighted_admm_factorized_cv=${RUN}/single_cell_weighted_admm_factorized_cv_theta_" \
+  --fit "binary_frank_wolfe_penalized_cv=${RUN}/single_cell_binary_frank_wolfe_penalized_cv_theta_" \
+  --fit "weighted_frank_wolfe_penalized_cv=${RUN}/single_cell_weighted_frank_wolfe_penalized_cv_theta_"

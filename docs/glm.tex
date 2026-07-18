@@ -324,6 +324,14 @@ large-scale setting.
   factorized formulation below, but it is non-convex and is not equivalent to
   the bounded convex ADMM reference.
 
+  Both ADMM implementations can adapt \(\rho\) by residual balancing. Every
+  configured interval, let \(r\) be the primal split residual and \(s\) the
+  dual residual. If \(\|r\|>\eta\|s\|\), multiply \(\rho\) by \(\kappa\); if
+  \(\|s\|>\eta\|r\|\), divide it by \(\kappa\). The scaled dual variable is
+  multiplied by the old-to-new \(\rho\) ratio so that its unscaled value is
+  unchanged. The implementation defaults to \(\eta=10\), \(\kappa=2\), and an
+  update every ten iterations, and records the complete \(\rho\) history.
+
   \item \textbf{Frank-Wolfe with penalized nonnegativity.} Direct
   Frank--Wolfe over
   \[
@@ -463,69 +471,44 @@ cell-by-gene matrix.
 
 \subsection*{Choosing the Regularization Level}
 
-The regularization parameter can be chosen by cross-validation because the
-many-cell model is a large regression problem. A natural split is over
-regions, or equivalently over read equivalence classes. For a fold \(q\), split
-the rows of \(A\) and \(C\) into training and validation sets:
+The implemented cross-validation partitions molecule counts rather than rows
+of \(A\). Each observed integer EC count is randomly assigned to one of \(Q\)
+folds. For fold \(q\), the remaining counts are normalized per cell and used to
+fit \(\Phi\); the held-out counts are normalized independently and scored with
+the same design matrix:
 \[
-  A =
-  \begin{bmatrix}
-    A_{\mathrm{tr}} \\
-    A_{\mathrm{val}}
-  \end{bmatrix},
-  \qquad
-  C =
-  \begin{bmatrix}
-    C_{\mathrm{tr}} \\
-    C_{\mathrm{val}}
-  \end{bmatrix}.
+  \operatorname{CV}_q(h)
+  = \frac{1}{M_q}
+    \left\|C_{\mathrm{val}}^{(q)}
+    -A\hat\Phi_h^{(q)}\right\|_F^2.
 \]
-For each candidate penalty \(\lambda\), or each candidate nuclear-norm radius
-\(\tau\), fit \(\Phi\) using only the training rows. For the constrained form,
-this means solving
-\[
-  \hat{\Phi}_{\tau}^{(q)}
-  =
-  \arg\min_{\Phi \ge 0,\,\|\Phi\|_* \le \tau}
-  \frac{1}{2}\left\|C_{\mathrm{tr}} - A_{\mathrm{tr}}\Phi\right\|_F^2.
-\]
-Then evaluate prediction error on the held-out rows:
-\[
-  \operatorname{CV}_q(\tau)
-  =
-  \left\|
-    C_{\mathrm{val}}
-    -
-    A_{\mathrm{val}}\hat{\Phi}_{\tau}^{(q)}
-  \right\|_F^2.
-\]
-The selected regularization level minimizes the average validation error across
-folds. A weighted version can be used if some regions or cells have much higher
-read depth:
-\[
-  \operatorname{CV}_q(\tau)
-  =
-  \left\|
-    W_{\mathrm{val}}^{1/2}
-    \odot
-    \left(
-      C_{\mathrm{val}}
-      -
-      A_{\mathrm{val}}\hat{\Phi}_{\tau}^{(q)}
-    \right)
-  \right\|_F^2,
-\]
-where \(W_{\mathrm{val}}\) contains inverse-variance or read-depth weights and
-\(\odot\) denotes elementwise multiplication.
+This tests prediction of independent molecules from the same cells while
+retaining every compatibility pattern in the design and avoiding a separate
+procedure for unseen cell factors. The current full-data workflow uses three
+folds on a reproducible cell subset, chooses the multiplier with minimum mean
+held-out loss, and then refits all cells.
 
-Row-wise folds test whether isoform usage inferred from one set of
-equivalence classes predicts held-out equivalence classes for the same cells.
-The folds should be stratified so that each training set retains informative
-regions for the gene; otherwise a fold can remove all evidence distinguishing
-two isoforms. Holding out individual sparse entries is possible, but holding
-out rows is usually cleaner because a row corresponds to a biological read
-compatibility pattern and avoids mixing the same equivalence class between
-training and validation.
+Candidate values are dimensionless so that a subset-selected multiplier can be
+transferred to the complete dataset. For the penalized objective, define
+\[
+  \lambda_{\max}=\|A'C\|_2
+\]
+and tune \(\lambda/\lambda_{\max}\). For constrained Frank--Wolfe, let \(u,v\)
+be the leading singular vectors of \(B=A'C\), with singular value \(\sigma\),
+and define the rank-one line-search reference
+\[
+  \tau_1=\frac{\sigma}{\|Au\|_2^2}.
+\]
+The search tunes \(\tau/\tau_1\). Both scales are estimated by streamed power
+iterations without materializing \(B\). After selecting a multiplier on the
+subset, the corresponding scale is recomputed using all cells and their product
+is passed as the fixed \(\lambda\) or \(\tau\) for the final fit.
+The factorized implementation averages the complete left-factor block gradient,
+including its regularization and augmented-Lagrangian terms, by the number of
+nonempty cells. This preserves the relative scale of the objective terms when a
+multiplier selected on a subset is transferred to all cells. An optimum on an
+open boundary of the candidate grid is rejected pending a wider search; zero
+and \(\lambda/\lambda_{\max}=1\) are closed theoretical endpoints.
 
 \section*{Connecting to equivalence-class-based inference}
 

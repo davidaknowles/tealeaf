@@ -311,6 +311,9 @@ def parallel_quant_processing(cell_ec_sparse_pseudo_filt, ec_transcript_input, w
                               nucnorm_max_dense_entries=100000000,
                               glm_device='auto', glm_batch_cells=4096,
                               glm_rank=64, admm_rho=1.0, admm_inner_iter=25,
+                              admm_adaptive_rho=True,
+                              admm_rho_update_interval=10,
+                              admm_rho_balance=10.0, admm_rho_scale=2.0,
                               nucnorm_tau=None, fw_nonnegative_penalty=1.0,
                               regularization_target='phi',
                               glm_design_input=None, ec_design='legacy'):
@@ -360,6 +363,10 @@ def parallel_quant_processing(cell_ec_sparse_pseudo_filt, ec_transcript_input, w
             max_iter=nucnorm_max_iter,
             tol=nucnorm_tol,
             rho=admm_rho,
+            adaptive_rho=admm_adaptive_rho,
+            rho_update_interval=admm_rho_update_interval,
+            rho_balance=admm_rho_balance,
+            rho_scale=admm_rho_scale,
             inner_iter=admm_inner_iter,
             max_dense_entries=nucnorm_max_dense_entries,
             tau=nucnorm_tau,
@@ -404,7 +411,9 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
                          nucnorm_max_iter = 50, nucnorm_tol = 1e-4, nucnorm_rank = 50,\
                          nucnorm_max_dense_entries = 100000000, glm_device='auto',\
                          glm_batch_cells=4096, glm_rank=64, admm_rho=1.0,\
-                         admm_inner_iter=25, nucnorm_tau=None,\
+                         admm_inner_iter=25, admm_adaptive_rho=True,\
+                         admm_rho_update_interval=10, admm_rho_balance=10.0,\
+                         admm_rho_scale=2.0, nucnorm_tau=None,\
                          fw_nonnegative_penalty=1.0,\
                          regularization_target='phi', ec_design='legacy',\
                          eq_probabilities=None, eq_weight_cache=None):
@@ -584,7 +593,9 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
         bool_spliced_trans, quant_method, nnls_max_iter, nnls_tol,
         nucnorm_lambda, nucnorm_max_iter, nucnorm_tol, nucnorm_rank,
         nucnorm_max_dense_entries, glm_device, glm_batch_cells, glm_rank,
-        admm_rho, admm_inner_iter, nucnorm_tau, fw_nonnegative_penalty,
+        admm_rho, admm_inner_iter, admm_adaptive_rho,
+        admm_rho_update_interval, admm_rho_balance, admm_rho_scale,
+        nucnorm_tau, fw_nonnegative_penalty,
         regularization_target,
         glm_design_input, ec_design,
     )
@@ -635,69 +646,32 @@ def single_cell_glm_conversion(options):
     The downstream intron and clustering stages expect a manageable pseudobulk
     matrix.  They are intentionally not run in ``single_cell`` mode.
     """
-    from tealeaf.sc import glm_solvers
+    from tealeaf.sc import glm_cv, glm_solvers
 
     if options.quant_method not in glm_solvers.SCALABLE_METHODS:
         raise ValueError(
             "--cell_mode single_cell requires a scalable GLM quantification method"
         )
-    alevin_dir = Path(options.alevin_dir)
-    map_cache = alevin_dir / "gene_eqclass.npz"
-    if map_cache.is_file():
-        ec_transcript_mat = scipy.sparse.load_npz(map_cache).tocsr()
-    else:
-        _, _, ecs = sc_utils.read_alevin_ec(alevin_dir / "gene_eqclass.txt.gz")
-        ec_transcript_mat = sc_utils.to_coo([ecs[k] for k in range(len(ecs))]).tocsr()
-        scipy.sparse.save_npz(map_cache, ec_transcript_mat)
-
-    npz_cache = alevin_dir / "geqc_counts.npz"
-    if npz_cache.is_file():
-        cell_ec_sparse = scipy.sparse.load_npz(npz_cache).tocsr()
-    else:
-        cell_ec_sparse = scipy.io.mmread(alevin_dir / "geqc_counts.mtx").tocsr()
-        scipy.sparse.save_npz(npz_cache, cell_ec_sparse)
-    with open(alevin_dir / "quants_mat_cols.txt") as handle:
-        features = np.asarray([line.strip() for line in handle])
-    with open(alevin_dir / "quants_mat_rows.txt") as handle:
-        barcodes = np.asarray([line.strip() for line in handle])
-
-    transcript_lengths = sc_utils.get_transcript_lengths(Path(options.salmon_ref))
-    _, full_weights = sc_utils.get_feature_weights(features, transcript_lengths)
-    probability_file = options.eq_probabilities or (alevin_dir / "gene_eqclass_probs.tsv.gz")
-    cache_file = options.eq_weight_cache or (alevin_dir / "gene_eqclass_fixed_weights.npz")
-    phi_design = sc_utils.glm_design_matrix(
-        ec_transcript_mat,
-        full_weights,
-        parameterization='phi',
-        design=options.ec_design,
-        probability_file=probability_file,
-        cache_file=cache_file,
-    )
-
-    aggregate = sc_utils.sparse_sum(cell_ec_sparse, 0)
-    transcript_count = aggregate @ ec_transcript_mat
-    ec_keep = aggregate >= float(options.min_eq)
-    feature_keep = transcript_count > 0
-    filtered_counts = cell_ec_sparse[:, ec_keep]
-    filtered_ec = ec_transcript_mat[ec_keep, :][:, feature_keep]
-    filtered_phi_design = phi_design[ec_keep, :][:, feature_keep]
-    filtered_features = features[feature_keep]
-    _, weights = sc_utils.get_feature_weights(
-        filtered_features, transcript_lengths
-    )
-    compatibility = sc_utils.parameterize_glm_design(
-        filtered_phi_design,
-        weights,
-        options.regularization_target,
-        normalize_columns=options.ec_design in {'binary', 'weighted'},
+    prepared = glm_cv.prepare_alevin_glm_data(
+        options.alevin_dir,
+        options.salmon_ref,
+        ec_design=options.ec_design,
+        regularization_target=options.regularization_target,
+        min_eq=options.min_eq,
+        probability_file=options.eq_probabilities,
+        weight_cache=options.eq_weight_cache,
     )
     result = glm_solvers.fit_glm(
-        filtered_counts,
-        compatibility,
+        prepared.counts,
+        prepared.compatibility,
         options.quant_method,
         rank=options.glm_rank,
         regularization=options.nucnorm_lambda,
         rho=options.admm_rho,
+        adaptive_rho=options.admm_adaptive_rho,
+        rho_update_interval=options.admm_rho_update_interval,
+        rho_balance=options.admm_rho_balance,
+        rho_scale=options.admm_rho_scale,
         max_iter=options.nucnorm_max_iter,
         min_iter=options.nucnorm_min_iter,
         patience=options.nucnorm_patience,
@@ -716,8 +690,8 @@ def single_cell_glm_conversion(options):
     glm_solvers.write_chunked_result(
         result,
         options.outprefix,
-        barcodes,
-        filtered_features,
+        prepared.barcodes,
+        prepared.features,
         batch_cells=options.glm_batch_cells,
         threshold=options.glm_output_threshold,
         write_chunks=options.glm_write_chunks,
@@ -941,6 +915,9 @@ def tealeaf_sc(options):
                              options.nucnorm_max_dense_entries, options.glm_device,
                              options.glm_batch_cells, options.glm_rank,
                              options.admm_rho, options.admm_inner_iter,
+                             options.admm_adaptive_rho,
+                             options.admm_rho_update_interval,
+                             options.admm_rho_balance, options.admm_rho_scale,
                              options.nucnorm_tau, options.fw_nonnegative_penalty,
                              options.regularization_target,
                              options.ec_design, options.eq_probabilities,
@@ -1138,6 +1115,18 @@ if __name__ == "__main__":
     parser.add_option("--admm_rho", dest="admm_rho", default=1.0, type="float",
                   help="ADMM penalty for admm and admm_factorized (default: 1.0)")
 
+    parser.add_option("--admm_fixed_rho", dest="admm_adaptive_rho", default=True,
+                  action="store_false", help="disable residual-balanced ADMM rho updates")
+
+    parser.add_option("--admm_rho_update_interval", dest="admm_rho_update_interval", default=10, type="int",
+                  help="iterations between adaptive ADMM rho updates (default: 10)")
+
+    parser.add_option("--admm_rho_balance", dest="admm_rho_balance", default=10.0, type="float",
+                  help="primal/dual residual imbalance required to change rho (default: 10)")
+
+    parser.add_option("--admm_rho_scale", dest="admm_rho_scale", default=2.0, type="float",
+                  help="multiplicative adaptive ADMM rho update (default: 2)")
+
     parser.add_option("--admm_inner_iter", dest="admm_inner_iter", default=25, type="int",
                   help="projected-gradient inner iterations for dense admm (default: 25)")
                   
@@ -1252,9 +1241,6 @@ if __name__ == "__main__":
     write_options_to_file(options, record)
 
     tealeaf_sc(options)
-
-
-
 
 
 

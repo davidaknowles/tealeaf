@@ -145,8 +145,8 @@ class SparseGLM:
         au = self.a_times(left)
         cross = self.torch.zeros((), device=self.device)
         right_gram = self.torch.zeros((right.shape[1], right.shape[1]), device=self.device)
-        for start, stop, block, _ in self.blocks():
-            right_block = right[start:stop]
+        for start, stop, block, nonempty in self.blocks():
+            right_block = right[start:stop] * nonempty[:, None]
             cross += (self.torch.sparse.mm(block, au) * right_block).sum()
             right_gram += right_block.T @ right_block
         left_gram = left.T @ self.gram_times(left)
@@ -203,6 +203,7 @@ def fit_factorized(counts, compatibility, *, rank=64, regularization=0.01,
     diagnostics = {
         "objective": [], "objective_relative_change": [],
         "device": str(data.device), "rank": rank,
+        "regularization": float(regularization),
         "gram_lipschitz": data.gram_lipschitz,
         "min_iter": int(min_iter), "patience": int(patience), "tolerance": tol,
     }
@@ -229,13 +230,18 @@ def fit_factorized(counts, compatibility, *, rank=64, regularization=0.01,
             b_times_right += data.at_times(
                 torch.sparse.mm(block.transpose(0, 1), right_block)
             )
-        gradient_left = (data.gram_times(left) @ right_gram - b_times_right) / data.n_nonempty
-        gradient_left += regularization * left
+        # Average the complete block gradient. Averaging only the data term
+        # makes the effective nuclear penalty depend on the number of cells.
+        gradient_left = (
+            data.gram_times(left) @ right_gram
+            - b_times_right
+            + regularization * left
+        ) / data.n_nonempty
         left_lipschitz = (
             data.gram_lipschitz
             * float(torch.linalg.matrix_norm(right_gram, ord=2).item())
             / data.n_nonempty
-            + regularization
+            + regularization / data.n_nonempty
         )
         left_step = min(learning_rate, 1.0 / max(left_lipschitz, 1e-12))
         left = torch.relu(left - left_step * gradient_left)
@@ -264,7 +270,9 @@ def fit_factorized(counts, compatibility, *, rank=64, regularization=0.01,
 def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
                         rho=1.0, max_iter=100, tol=1e-4, learning_rate=0.05,
                         device="auto", batch_cells=4096, seed=0,
-                        min_iter=10, patience=5):
+                        min_iter=10, patience=5, adaptive_rho=True,
+                        rho_update_interval=10, rho_balance=10.0,
+                        rho_scale=2.0):
     """Factor-sized ADMM split for nonnegative low-rank genome-wide fitting.
 
     This is deliberately distinct from :func:`fit_admm`: it uses the variational
@@ -272,6 +280,9 @@ def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
     state.
     """
     _validate_stopping(max_iter, min_iter, patience, tol)
+    if rho <= 0 or rho_update_interval < 1 or rho_balance <= 1 or rho_scale <= 1:
+        raise ValueError("rho adaptation parameters are outside their valid range")
+    rho = float(rho)
     data = SparseGLM(counts, compatibility, device, batch_cells)
     torch = data.torch
     left, right = _initial_factors(data, rank, seed)
@@ -281,7 +292,12 @@ def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
         "objective": [], "objective_relative_change": [],
         "primal_relative_residual": [], "dual_relative_residual": [],
         "device": str(data.device), "rank": rank,
+        "regularization": float(regularization),
         "rho": rho, "gram_lipschitz": data.gram_lipschitz,
+        "rho_history": [], "rho_updates": [],
+        "adaptive_rho": bool(adaptive_rho),
+        "rho_update_interval": int(rho_update_interval),
+        "rho_balance": float(rho_balance), "rho_scale": float(rho_scale),
         "min_iter": int(min_iter), "patience": int(patience), "tolerance": tol,
     }
     previous = None
@@ -320,14 +336,19 @@ def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
             b_times_right += data.at_times(
                 torch.sparse.mm(block.transpose(0, 1), right_copy[start:stop])
             )
-        gradient_left = (data.gram_times(left) @ right_gram - b_times_right) / data.n_nonempty
-        gradient_left += regularization * left + rho * (left - left_copy + left_dual)
+        # Keep the loss, regularization, and augmented-Lagrangian terms on the
+        # same scale when stabilizing this block update by the cell count.
+        gradient_left = (
+            data.gram_times(left) @ right_gram
+            - b_times_right
+            + regularization * left
+            + rho * (left - left_copy + left_dual)
+        ) / data.n_nonempty
         left_lipschitz = (
             data.gram_lipschitz
             * float(torch.linalg.matrix_norm(right_gram, ord=2).item())
             / data.n_nonempty
-            + regularization
-            + rho
+            + (regularization + rho) / data.n_nonempty
         )
         left_step = min(learning_rate, 1.0 / max(left_lipschitz, 1e-12))
         previous_left_copy = left_copy.clone()
@@ -348,6 +369,7 @@ def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
         diagnostics["objective"].append(objective)
         diagnostics["primal_relative_residual"].append(primal_relative)
         diagnostics["dual_relative_residual"].append(dual_relative)
+        diagnostics["rho_history"].append(rho)
         stop, stable = _objective_stop(
             diagnostics, objective, previous, stable, iteration,
             tol, int(min_iter), int(patience),
@@ -361,21 +383,41 @@ def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
                 convergence_reason="objective_patience",
             )
             break
+        if adaptive_rho and (iteration + 1) % int(rho_update_interval) == 0:
+            primal_residual = np.sqrt(primal_sq)
+            dual_residual = rho * np.sqrt(dual_sq)
+            previous_rho = rho
+            if primal_residual > float(rho_balance) * dual_residual:
+                rho *= float(rho_scale)
+            elif dual_residual > float(rho_balance) * primal_residual:
+                rho /= float(rho_scale)
+            if rho != previous_rho:
+                dual_rescale = previous_rho / rho
+                left_dual *= dual_rescale
+                right_dual *= dual_rescale
+                diagnostics["rho_updates"].append(
+                    {"iteration": iteration + 1, "old": previous_rho, "new": rho}
+                )
         previous = objective
     else:
         diagnostics.update(
             iterations=int(max_iter), converged=False,
             convergence_reason="max_iterations",
         )
+    diagnostics["final_rho"] = rho
     return GLMResult("admm_factorized", left, right, None, diagnostics)
 
 
 def fit_admm(counts, compatibility, *, regularization=0.01, rho=1.0,
              max_iter=100, inner_iter=25, tol=1e-4, max_dense_entries=100_000_000,
-             device="auto", batch_cells=4096):
+             device="auto", batch_cells=4096, adaptive_rho=True,
+             rho_update_interval=10, rho_balance=10.0, rho_scale=2.0):
     """Bounded dense convex ADMM reference solver for the nuclear-norm objective."""
     data = SparseGLM(counts, compatibility, device, batch_cells)
     torch = data.torch
+    if rho <= 0 or rho_update_interval < 1 or rho_balance <= 1 or rho_scale <= 1:
+        raise ValueError("rho adaptation parameters are outside their valid range")
+    rho = float(rho)
     dense_entries = data.n_transcripts * data.n_cells
     if dense_entries > max_dense_entries:
         raise MemoryError(
@@ -394,7 +436,12 @@ def fit_admm(counts, compatibility, *, regularization=0.01, rho=1.0,
     phi = torch.zeros((data.n_transcripts, data.n_cells), device=data.device)
     z = phi.clone()
     dual = phi.clone()
-    diagnostics = {"objective": [], "device": str(data.device), "rho": rho}
+    diagnostics = {
+        "objective": [], "device": str(data.device), "rho": rho,
+        "regularization": float(regularization),
+        "rho_history": [], "rho_updates": [],
+        "adaptive_rho": bool(adaptive_rho),
+    }
 
     for iteration in range(int(max_iter)):
         candidate = phi
@@ -412,11 +459,25 @@ def fit_admm(counts, compatibility, *, regularization=0.01, rho=1.0,
         residual = c - a @ phi
         objective = 0.5 * float((residual * residual).sum().detach().cpu()) + regularization * float(torch.linalg.svdvals(phi).sum().detach().cpu())
         diagnostics["objective"].append(objective)
+        diagnostics["rho_history"].append(rho)
         if max(primal, dual_residual) < tol:
             diagnostics.update(iterations=iteration + 1, converged=True, primal_residual=primal, dual_residual=dual_residual)
             break
+        if adaptive_rho and (iteration + 1) % int(rho_update_interval) == 0:
+            previous_rho = rho
+            if primal > float(rho_balance) * dual_residual:
+                rho *= float(rho_scale)
+            elif dual_residual > float(rho_balance) * primal:
+                rho /= float(rho_scale)
+            if rho != previous_rho:
+                dual *= previous_rho / rho
+                lipschitz = torch.linalg.matrix_norm(gram, ord=2).item() + rho
+                diagnostics["rho_updates"].append(
+                    {"iteration": iteration + 1, "old": previous_rho, "new": rho}
+                )
     else:
         diagnostics.update(iterations=int(max_iter), converged=False)
+    diagnostics["final_rho"] = rho
     return GLMResult("admm", None, None, torch.relu(phi), diagnostics)
 
 
@@ -749,10 +810,10 @@ def fit_glm(counts, compatibility, method, **kwargs):
         allowed = {"rank", "regularization", "max_iter", "tol", "learning_rate", "device", "batch_cells", "seed", "min_iter", "patience"}
         return fit_factorized(counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed})
     if method == "admm_factorized":
-        allowed = {"rank", "regularization", "rho", "max_iter", "tol", "learning_rate", "device", "batch_cells", "seed", "min_iter", "patience"}
+        allowed = {"rank", "regularization", "rho", "max_iter", "tol", "learning_rate", "device", "batch_cells", "seed", "min_iter", "patience", "adaptive_rho", "rho_update_interval", "rho_balance", "rho_scale"}
         return fit_factorized_admm(counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed})
     if method == "admm":
-        allowed = {"regularization", "rho", "max_iter", "inner_iter", "tol", "max_dense_entries", "device", "batch_cells"}
+        allowed = {"regularization", "rho", "max_iter", "inner_iter", "tol", "max_dense_entries", "device", "batch_cells", "adaptive_rho", "rho_update_interval", "rho_balance", "rho_scale"}
         return fit_admm(counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed})
     if method == "frank_wolfe":
         allowed = {"rank", "max_atoms", "tau", "max_iter", "power_iter", "tol", "device", "batch_cells", "seed", "min_iter", "patience"}

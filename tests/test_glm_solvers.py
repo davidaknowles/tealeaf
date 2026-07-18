@@ -131,6 +131,42 @@ class GLMSolverTest(unittest.TestCase):
             self.counts, self.compatibility, rank=2, max_iter=8, device="cpu", batch_cells=2
         ))
 
+    def test_factorized_admm_adapts_rho_and_rescales_duals(self):
+        result = glm_solvers.fit_factorized_admm(
+            self.counts,
+            self.compatibility,
+            rank=2,
+            rho=1e-4,
+            max_iter=4,
+            min_iter=4,
+            rho_update_interval=1,
+            rho_balance=1.01,
+            rho_scale=2.0,
+            device="cpu",
+            batch_cells=2,
+        )
+        self.assertTrue(result.diagnostics["adaptive_rho"])
+        self.assertGreater(len(result.diagnostics["rho_updates"]), 0)
+        self.assertNotEqual(result.diagnostics["final_rho"], 1e-4)
+        self.assertTrue(np.isfinite(result.diagnostics["final_rho"]))
+
+    def test_factor_loss_ignores_empty_response_cells(self):
+        torch = glm_solvers._torch()
+        counts = self.counts.copy().tolil()
+        counts[0, :] = 0
+        data = glm_solvers.SparseGLM(
+            counts.tocsr(), self.compatibility, device="cpu", batch_cells=2
+        )
+        left = torch.tensor([[0.4], [0.2]])
+        right = torch.tensor([[100.0], [0.3], [0.2], [0.1]])
+        expected_right = right.clone()
+        expected_right[0] = 0
+        self.assertAlmostEqual(
+            data.loss_for_factors(left, right),
+            data.loss_for_factors(left, expected_right),
+            places=6,
+        )
+
     def test_frank_wolfe(self):
         result = glm_solvers.fit_frank_wolfe(
             self.counts, self.compatibility, rank=3, max_iter=3, device="cpu", batch_cells=2
