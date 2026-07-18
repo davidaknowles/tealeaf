@@ -23,9 +23,11 @@ REF=/gpfs/commons/home/daknowles/knowles_lab/index/salmon/mus_spliceu/spliceu.fa
 if [[ "${METHOD}" == admm_factorized ]]; then
   multipliers=(0 1e-9 1e-8 1e-7 1e-6 1e-5)
   max_iter=512
+  expansion_factor=10
 else
   multipliers=(0 0.25 1 4 16 64 256)
   max_iter=256
+  expansion_factor=4
 fi
 multiplier_args=()
 for value in "${multipliers[@]}"; do
@@ -46,4 +48,6 @@ python /gpfs/commons/home/daknowles/projects/tealeaf/extra_scripts/tune_single_c
   --scale-power-iter 10 \
   --batch-cells 2048 \
   --device cuda \
+  --max-grid-expansions 4 \
+  --grid-expansion-factor "${expansion_factor}" \
   "${multiplier_args[@]}"

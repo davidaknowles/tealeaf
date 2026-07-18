@@ -22,7 +22,7 @@ VALUE=$(python -c '
 import json, sys
 report = json.load(open(sys.argv[1]))
 if report.get("best_on_boundary"):
-    raise SystemExit("CV optimum is on a nonzero grid boundary; widen the grid before fitting")
+    raise SystemExit("CV optimum remains on an open boundary after automatic grid expansion")
 print(report["selected_full_value"])
 ' "${REPORT}")
 

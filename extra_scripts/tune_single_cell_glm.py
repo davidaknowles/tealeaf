@@ -33,6 +33,8 @@ def main():
     parser.add_argument("--min-eq", type=float, default=5)
     parser.add_argument("--device", default="auto")
     parser.add_argument("--nonnegative-penalty", type=float, default=1.0)
+    parser.add_argument("--max-grid-expansions", type=int, default=4)
+    parser.add_argument("--grid-expansion-factor", type=float, default=4.0)
     args = parser.parse_args()
 
     prepared = glm_cv.prepare_alevin_glm_data(
@@ -66,7 +68,7 @@ def main():
             power_iter=args.power_iter,
             nonnegative_penalty=args.nonnegative_penalty,
         )
-    report = glm_cv.cross_validate_glm(
+    report = glm_cv.cross_validate_glm_adaptive_grid(
         counts,
         prepared.compatibility,
         args.method,
@@ -77,6 +79,8 @@ def main():
         batch_cells=args.batch_cells,
         power_iter=args.scale_power_iter,
         fit_kwargs=fit_kwargs,
+        max_grid_expansions=args.max_grid_expansions,
+        grid_expansion_factor=args.grid_expansion_factor,
     )
     full_scale = glm_cv.hyperparameter_scale(
         prepared.counts,

@@ -1,6 +1,7 @@
 """Checks for scalable GLM count-fold cross-validation."""
 
 import unittest
+from unittest import mock
 
 import numpy as np
 import scipy.sparse as sp
@@ -61,6 +62,57 @@ class GLMCVTest(unittest.TestCase):
         self.assertTrue(
             glm_cv._best_on_open_boundary("frank_wolfe_penalized", [0, 1, 4], 4)
         )
+        self.assertEqual(
+            glm_cv._expanded_candidate(
+                "frank_wolfe_penalized", [0, 1, 4], "upper", 4
+            ),
+            16,
+        )
+        self.assertEqual(
+            glm_cv._expanded_candidate(
+                "admm_factorized", [0, 0.1], "upper", 100
+            ),
+            1,
+        )
+
+    def test_adaptive_grid_only_fits_new_boundary_candidate(self):
+        initial = {
+            "method": "frank_wolfe_penalized",
+            "n_folds": 2,
+            "multipliers": [1.0, 2.0],
+            "fold_scales": [1.0, 1.0],
+            "mean_validation_loss": {1.0: 0.2, 2.0: 0.1},
+            "best_multiplier": 2.0,
+            "best_on_boundary": True,
+            "fold_results": [{"multiplier": 1.0}, {"multiplier": 2.0}],
+        }
+        extension = {
+            "method": "frank_wolfe_penalized",
+            "n_folds": 2,
+            "multipliers": [8.0],
+            "fold_scales": [1.0, 1.0],
+            "mean_validation_loss": {8.0: 0.3},
+            "best_multiplier": 8.0,
+            "best_on_boundary": False,
+            "fold_results": [{"multiplier": 8.0}],
+        }
+        with mock.patch.object(
+            glm_cv, "cross_validate_glm", side_effect=[initial, extension]
+        ) as mocked:
+            report = glm_cv.cross_validate_glm_adaptive_grid(
+                self.counts,
+                self.compatibility,
+                "frank_wolfe_penalized",
+                [1, 2],
+                max_grid_expansions=3,
+                grid_expansion_factor=4,
+            )
+        self.assertEqual(mocked.call_count, 2)
+        self.assertEqual(mocked.call_args_list[1].args[3], [8.0])
+        self.assertEqual(report["best_multiplier"], 2.0)
+        self.assertFalse(report["best_on_boundary"])
+        self.assertFalse(report["grid_exhausted"])
+        self.assertEqual(report["grid_expansions"], 1)
 
     def test_cross_validation_reports_best_multiplier(self):
         report = glm_cv.cross_validate_glm(

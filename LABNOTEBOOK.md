@@ -443,7 +443,14 @@ rather than treating their unavailable response as an observed all-zero row.
 The all-cell binary smoke calculation estimated lambda-max at approximately
 2.18e5. The production ADMM grid therefore includes zero and fractions from
 1e-9 through 1e-5; larger initial fractions overwhelm the current low-rank
-initialization. The boundary check will require expansion if 1e-5 wins.
+initialization. Automatic expansion starts if 1e-5 wins.
+
+CV now expands an open grid boundary automatically. It evaluates only one new
+candidate per round, multiplying an upper endpoint or dividing a lower endpoint
+by a configurable factor, and merges those fold losses with the existing
+results. Lambda fractions are capped at the closed lambda-max endpoint. Reports
+record each expansion and whether the configured expansion limit was exhausted;
+the all-cell fit is blocked only if the optimum remains on an open boundary.
 
 ## 2026-07-09 Salmon/Alevin Pipeline Recipes
 

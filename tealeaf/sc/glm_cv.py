@@ -175,16 +175,38 @@ def hyperparameter_scale(counts, compatibility, method, *, device="auto",
     raise ValueError(f"CV scale is not defined for method {method}")
 
 
-def _best_on_open_boundary(method, multipliers, best_multiplier):
+def _open_boundary_direction(method, multipliers, best_multiplier):
     ordered = sorted(float(value) for value in multipliers)
     if len(ordered) < 2:
-        return False
+        return None
     lower_needs_expansion = best_multiplier == ordered[0] and ordered[0] != 0.0
     upper_is_lambda_max = method == "admm_factorized" and ordered[-1] >= 1.0
     upper_needs_expansion = (
         best_multiplier == ordered[-1] and not upper_is_lambda_max
     )
-    return lower_needs_expansion or upper_needs_expansion
+    if lower_needs_expansion:
+        return "lower"
+    if upper_needs_expansion:
+        return "upper"
+    return None
+
+
+def _best_on_open_boundary(method, multipliers, best_multiplier):
+    return _open_boundary_direction(method, multipliers, best_multiplier) is not None
+
+
+def _expanded_candidate(method, multipliers, direction, factor):
+    if float(factor) <= 1:
+        raise ValueError("grid expansion factor must be greater than one")
+    ordered = sorted(float(value) for value in multipliers)
+    if direction == "lower":
+        return ordered[0] / float(factor)
+    if direction == "upper":
+        candidate = ordered[-1] * float(factor)
+        if method == "admm_factorized":
+            candidate = min(candidate, 1.0)
+        return candidate
+    raise ValueError(f"invalid grid expansion direction: {direction}")
 
 
 def cross_validate_glm(
@@ -282,3 +304,86 @@ def cross_validate_glm(
         "best_on_boundary": best_on_boundary,
         "fold_results": rows,
     }
+
+
+def cross_validate_glm_adaptive_grid(
+    counts,
+    compatibility,
+    method,
+    multipliers,
+    *,
+    max_grid_expansions=4,
+    grid_expansion_factor=4.0,
+    **kwargs,
+):
+    """Cross-validate and extend an open-boundary grid one candidate at a time."""
+    if int(max_grid_expansions) < 0:
+        raise ValueError("max_grid_expansions must be nonnegative")
+    if float(grid_expansion_factor) <= 1:
+        raise ValueError("grid_expansion_factor must be greater than one")
+    candidates = sorted(set(float(value) for value in multipliers))
+    if len(candidates) < 2 or any(value < 0 for value in candidates):
+        raise ValueError("adaptive CV requires at least two nonnegative candidates")
+
+    report = cross_validate_glm(
+        counts, compatibility, method, candidates, **kwargs
+    )
+    history = [
+        {
+            "round": 0,
+            "added_multiplier": None,
+            "best_multiplier": report["best_multiplier"],
+            "boundary_direction": _open_boundary_direction(
+                method, candidates, report["best_multiplier"]
+            ),
+        }
+    ]
+    expansions = 0
+    while expansions < int(max_grid_expansions):
+        direction = _open_boundary_direction(
+            method, candidates, report["best_multiplier"]
+        )
+        if direction is None:
+            break
+        candidate = _expanded_candidate(
+            method, candidates, direction, grid_expansion_factor
+        )
+        if candidate in candidates:
+            break
+        extension = cross_validate_glm(
+            counts, compatibility, method, [candidate], **kwargs
+        )
+        candidates.append(candidate)
+        candidates.sort()
+        report["fold_results"].extend(extension["fold_results"])
+        report["mean_validation_loss"][candidate] = extension[
+            "mean_validation_loss"
+        ][candidate]
+        report["best_multiplier"] = min(
+            report["mean_validation_loss"],
+            key=report["mean_validation_loss"].get,
+        )
+        report["multipliers"] = candidates.copy()
+        report["best_on_boundary"] = _best_on_open_boundary(
+            method, candidates, report["best_multiplier"]
+        )
+        expansions += 1
+        history.append(
+            {
+                "round": expansions,
+                "added_multiplier": candidate,
+                "best_multiplier": report["best_multiplier"],
+                "boundary_direction": _open_boundary_direction(
+                    method, candidates, report["best_multiplier"]
+                ),
+            }
+        )
+
+    report.update(
+        grid_expansions=expansions,
+        max_grid_expansions=int(max_grid_expansions),
+        grid_expansion_factor=float(grid_expansion_factor),
+        grid_exhausted=bool(report["best_on_boundary"]),
+        grid_history=history,
+    )
+    return report

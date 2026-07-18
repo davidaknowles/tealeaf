@@ -507,8 +507,11 @@ The factorized implementation averages the complete left-factor block gradient,
 including its regularization and augmented-Lagrangian terms, by the number of
 nonempty cells. This preserves the relative scale of the objective terms when a
 multiplier selected on a subset is transferred to all cells. An optimum on an
-open boundary of the candidate grid is rejected pending a wider search; zero
-and \(\lambda/\lambda_{\max}=1\) are closed theoretical endpoints.
+open boundary of the candidate grid triggers automatic geometric expansion.
+Only the new endpoint is fit in each round and its fold losses are merged with
+the existing candidates. Expansion stops at an interior optimum, at zero or
+\(\lambda/\lambda_{\max}=1\), or at a configured expansion limit; the full fit
+is rejected only in the last case.
 
 \section*{Connecting to equivalence-class-based inference}
 
