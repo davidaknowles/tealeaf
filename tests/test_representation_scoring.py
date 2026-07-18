@@ -85,6 +85,23 @@ class RepresentationScoringTest(unittest.TestCase):
         self.assertTrue(active.all())
         self.assertEqual(diagnostics["n_hvg"], 4)
         self.assertEqual(diagnostics["representation"], "log1p_gene_pca")
+        self.assertGreaterEqual(diagnostics["pca_explained_variance"], 0.0)
+        self.assertLessEqual(diagnostics["pca_explained_variance"], 1.0)
+
+    def test_log_gene_pca_rejects_library_size_only_factor(self):
+        right = np.arange(1, 21, dtype=np.float32)[:, None]
+        gene_left = np.array([[1.0], [2.0], [4.0]], dtype=np.float32)
+        with self.assertRaisesRegex(ValueError, "representation is collapsed"):
+            representation_scoring.log_gene_pca_embedding(
+                right,
+                gene_left,
+                np.array(["g1", "g2", "g3"]),
+                target_sum=100.0,
+                n_hvg=3,
+                n_components=2,
+                batch_cells=8,
+                device="cpu",
+            )
 
     def test_grouped_scores_recover_separated_labels(self):
         rng = np.random.default_rng(0)

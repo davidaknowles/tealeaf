@@ -363,6 +363,21 @@ standard gene universe and contribute nonzero loadings to 21,107 of 21,134
 genes. A 100-cell blocked reconstruction produced finite PCA coordinates and
 matched dense synthetic normalization, moments, and PCA geometry in tests.
 
+The convergence-controlled binary Frank-Wolfe fit is rank one in practice:
+only one stored atom has nonzero mass. Its cell factor changes only the fitted
+library size, so normalization to 10,000 cancels all cell-to-cell differences.
+Across sampled normalized profiles, the largest gene range was about `1e-7`,
+which is float32 noise. Incremental PCA divided its similarly tiny component
+variance by an unstable near-zero total variance and reported an impossible
+explained-variance ratio. Scoring now combines block moments with a centered,
+numerically stable variance calculation, rejects normalized representations
+whose total between-cell variance is negligible relative to their mean-square
+abundance, and computes the PCA ratio against that stable variance. The binary
+Frank-Wolfe label scores are therefore invalid rather than evidence of a weak
+but nonzero cell-type signal. The solver's zero approximate dual gap after its
+first atom remains a limitation of its nonnegative linear oracle, not reliable
+evidence that the full optimization problem is solved.
+
 ## 2026-07-09 Salmon/Alevin Pipeline Recipes
 
 Pulled the useful microglia-less Salmon/Alevin pipeline pieces from the older

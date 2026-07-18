@@ -179,18 +179,23 @@ class FactorizedGeneExpression:
 
     def mean_variance(self):
         """Compute per-gene log-abundance moments without materializing cells by genes."""
-        sums = np.zeros(self.gene_left.shape[0], dtype=np.float64)
-        sums_sq = np.zeros_like(sums)
+        means = np.zeros(self.gene_left.shape[0], dtype=np.float64)
+        centered_ss = np.zeros_like(means)
+        n_seen = 0
         n_rows = int(self.active.sum())
         if n_rows < 2:
             raise ValueError("at least two active cells are required")
         for _, block in self.iter_blocks():
-            sums += block.sum(axis=0, dtype=np.float64)
-            sums_sq += np.square(block, dtype=np.float64).sum(axis=0)
-        means = sums / n_rows
-        variances = np.maximum(
-            (sums_sq - n_rows * np.square(means)) / (n_rows - 1), 0.0
-        )
+            block = np.asarray(block, dtype=np.float64)
+            block_n = len(block)
+            block_mean = block.mean(axis=0)
+            block_ss = np.square(block - block_mean).sum(axis=0)
+            delta = block_mean - means
+            combined_n = n_seen + block_n
+            centered_ss += block_ss + np.square(delta) * n_seen * block_n / combined_n
+            means += delta * block_n / combined_n
+            n_seen = combined_n
+        variances = centered_ss / (n_rows - 1)
         return means, variances
 
     def fit_pca(self, gene_indices, n_components=30):
@@ -236,6 +241,14 @@ def log_gene_pca_embedding(
         device=device,
     )
     means, variances = expression.mean_variance()
+    total_variance = float(variances.sum(dtype=np.float64))
+    mean_square = float(np.square(means).sum(dtype=np.float64))
+    relative_variance = total_variance / max(mean_square, np.finfo(float).tiny)
+    if not np.isfinite(relative_variance) or relative_variance <= 1e-8:
+        raise ValueError(
+            "normalized log-gene representation is collapsed: relative "
+            f"between-cell variance={relative_variance:.3g}"
+        )
     informative = np.isfinite(variances) & (variances > 0)
     candidates = np.flatnonzero(informative)
     if candidates.size == 0:
@@ -243,6 +256,11 @@ def log_gene_pca_embedding(
     n_hvg = min(int(n_hvg), len(candidates))
     selected = candidates[np.argsort(variances[candidates])[-n_hvg:][::-1]]
     embedding, pca = expression.fit_pca(selected, n_components=n_components)
+    selected_variance = float(variances[selected].sum(dtype=np.float64))
+    explained_variance = float(
+        np.asarray(pca.explained_variance_, dtype=np.float64).sum()
+        / selected_variance
+    )
     diagnostics = {
         "representation": "log1p_gene_pca",
         "target_sum": float(target_sum),
@@ -250,7 +268,9 @@ def log_gene_pca_embedding(
         "n_active_cells": int(expression.active.sum()),
         "n_hvg": int(n_hvg),
         "pca_components": int(embedding.shape[1]),
-        "pca_explained_variance": float(pca.explained_variance_ratio_.sum()),
+        "pca_explained_variance": float(np.clip(explained_variance, 0.0, 1.0)),
+        "total_gene_variance": total_variance,
+        "relative_gene_variance": relative_variance,
         "reconstruction_device": str(expression.device),
         "mean_library_total": float(np.mean(expression.row_totals[expression.active])),
     }
