@@ -461,6 +461,25 @@ longer part of stopping; convergence uses patient relative objective change.
 CV uses a 1e-4 tolerance and up to 1,024 atoms, while the selected all-cell fit
 allows 2,048 atoms with the same tolerance.
 
+The convergence-aware CV and dependent full fits completed. All seven FW
+candidates converged in every fold under objective-patience stopping. The raw
+minimum reconstruction loss remained at multiplier 256 for both designs, but
+the one-standard-error rule selected 0.25 for binary and 0 for weighted. Both
+selected all-cell fits converged in 50 iterations. The binary representation
+collapsed to relative between-cell gene variance 4.91e-14; weighted had no
+active cells because tau was zero. Neither could be scored for cell-type label
+recovery.
+
+The label benchmark therefore rejects reconstruction-loss one-standard-error
+selection for this application. Earlier non-CV penalized FW remains strongest:
+binary achieved balanced accuracy 0.309 and macro-F1 0.231, while weighted
+achieved 0.226 and 0.164. CV-selected ADMM was valid but weak (balanced
+accuracy 0.0547 binary and 0.0560 weighted) and both all-cell fits stopped at
+4,096 iterations without satisfying residual convergence. Selecting tau must
+include a non-collapse constraint or a cell-label-aware secondary criterion;
+fold-to-fold baseline variation makes the conventional one-standard-error
+threshold too permissive here.
+
 ## 2026-07-09 Salmon/Alevin Pipeline Recipes
 
 Pulled the useful microglia-less Salmon/Alevin pipeline pieces from the older
