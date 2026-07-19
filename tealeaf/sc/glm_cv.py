@@ -283,13 +283,21 @@ def cross_validate_glm(
             ):
                 glm_solvers._torch().cuda.empty_cache()
     means = {}
+    standard_errors = {}
+    candidate_converged = {}
     for multiplier in multipliers:
-        values = [
-            row["validation_loss_per_cell"]
-            for row in rows
-            if row["multiplier"] == float(multiplier)
+        candidate_rows = [
+            row for row in rows if row["multiplier"] == float(multiplier)
         ]
+        values = [row["validation_loss_per_cell"] for row in candidate_rows]
         means[float(multiplier)] = float(np.mean(values))
+        standard_errors[float(multiplier)] = float(
+            np.std(values, ddof=1) / np.sqrt(len(values))
+            if len(values) > 1 else 0.0
+        )
+        candidate_converged[float(multiplier)] = bool(
+            candidate_rows and all(row.get("converged") for row in candidate_rows)
+        )
     best_multiplier = min(means, key=means.get)
     best_on_boundary = _best_on_open_boundary(
         method, multipliers, best_multiplier
@@ -300,10 +308,56 @@ def cross_validate_glm(
         "multipliers": [float(value) for value in multipliers],
         "fold_scales": scales,
         "mean_validation_loss": means,
+        "validation_standard_error": standard_errors,
+        "candidate_converged": candidate_converged,
         "best_multiplier": best_multiplier,
         "best_on_boundary": best_on_boundary,
         "fold_results": rows,
     }
+
+
+def _apply_selection_rule(report, method, selection_rule, require_converged):
+    if selection_rule not in {"minimum", "one_standard_error"}:
+        raise ValueError(f"invalid CV selection rule: {selection_rule}")
+    candidates = [float(value) for value in report["multipliers"]]
+    eligible = [
+        value for value in candidates
+        if not require_converged or report["candidate_converged"].get(value, False)
+    ]
+    report["selection_rule"] = selection_rule
+    report["require_converged"] = bool(require_converged)
+    report["convergence_requirement_met"] = bool(eligible)
+    if not eligible:
+        report.update(
+            minimum_loss_multiplier=None,
+            selection_threshold=None,
+            best_multiplier=None,
+            best_on_boundary=False,
+        )
+        return report
+
+    minimum = min(eligible, key=report["mean_validation_loss"].get)
+    threshold = report["mean_validation_loss"][minimum]
+    if selection_rule == "one_standard_error":
+        threshold += report["validation_standard_error"][minimum]
+        regularization_order = sorted(
+            eligible, reverse=method == "admm_factorized"
+        )
+        selected = next(
+            value for value in regularization_order
+            if report["mean_validation_loss"][value] <= threshold
+        )
+    else:
+        selected = minimum
+    report.update(
+        minimum_loss_multiplier=minimum,
+        selection_threshold=threshold,
+        best_multiplier=selected,
+        best_on_boundary=_best_on_open_boundary(
+            method, candidates, selected
+        ),
+    )
+    return report
 
 
 def cross_validate_glm_adaptive_grid(
@@ -314,6 +368,8 @@ def cross_validate_glm_adaptive_grid(
     *,
     max_grid_expansions=4,
     grid_expansion_factor=4.0,
+    selection_rule="minimum",
+    require_converged=False,
     **kwargs,
 ):
     """Cross-validate and extend an open-boundary grid one candidate at a time."""
@@ -328,18 +384,22 @@ def cross_validate_glm_adaptive_grid(
     report = cross_validate_glm(
         counts, compatibility, method, candidates, **kwargs
     )
+    _apply_selection_rule(report, method, selection_rule, require_converged)
     history = [
         {
             "round": 0,
             "added_multiplier": None,
             "best_multiplier": report["best_multiplier"],
-            "boundary_direction": _open_boundary_direction(
-                method, candidates, report["best_multiplier"]
+            "boundary_direction": (
+                _open_boundary_direction(method, candidates, report["best_multiplier"])
+                if report["best_multiplier"] is not None else None
             ),
         }
     ]
     expansions = 0
     while expansions < int(max_grid_expansions):
+        if report["best_multiplier"] is None:
+            break
         direction = _open_boundary_direction(
             method, candidates, report["best_multiplier"]
         )
@@ -359,14 +419,14 @@ def cross_validate_glm_adaptive_grid(
         report["mean_validation_loss"][candidate] = extension[
             "mean_validation_loss"
         ][candidate]
-        report["best_multiplier"] = min(
-            report["mean_validation_loss"],
-            key=report["mean_validation_loss"].get,
-        )
+        report["validation_standard_error"][candidate] = extension[
+            "validation_standard_error"
+        ][candidate]
+        report["candidate_converged"][candidate] = extension[
+            "candidate_converged"
+        ][candidate]
         report["multipliers"] = candidates.copy()
-        report["best_on_boundary"] = _best_on_open_boundary(
-            method, candidates, report["best_multiplier"]
-        )
+        _apply_selection_rule(report, method, selection_rule, require_converged)
         expansions += 1
         history.append(
             {

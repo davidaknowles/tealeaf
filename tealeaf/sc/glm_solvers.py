@@ -773,25 +773,20 @@ def fit_frank_wolfe_penalized(
         gap = float(gap_tensor.item())
         initial_gap = gap if initial_gap is None else initial_gap
         relative_gap = gap / max(initial_gap, 1e-12)
-        if previous is None:
-            relative_change = None
-            stable = 0
-        else:
-            relative_change = abs(previous - objective) / max(abs(previous), 1.0)
-            stable = stable + 1 if (
-                relative_change <= tol and relative_gap <= tol
-            ) else 0
         diagnostics["objective"].append(objective)
-        diagnostics["objective_relative_change"].append(relative_change)
+        stop, stable = _objective_stop(
+            diagnostics, objective, previous, stable, iteration,
+            tol, int(min_iter), int(patience),
+        )
         diagnostics["candidate_gap"].append(gap)
         diagnostics["relative_candidate_gap"].append(relative_gap)
         diagnostics["line_search_step"].append(float(gamma.item()))
         diagnostics["oracle_singular_value"].append(float(singular.item()))
         diagnostics["oracle_relative_residual"].append(float(oracle_residual.item()))
-        if iteration + 1 >= int(min_iter) and stable >= int(patience):
+        if stop:
             diagnostics.update(
                 iterations=iteration + 1, converged=True,
-                convergence_reason="objective_and_candidate_gap_patience",
+                convergence_reason="objective_patience",
             )
             break
         previous = objective

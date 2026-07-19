@@ -452,6 +452,15 @@ results. Lambda fractions are capped at the closed lambda-max endpoint. Reports
 record each expansion and whether the configured expansion limit was exhausted;
 the all-cell fit is blocked only if the optimum remains on an open boundary.
 
+For constrained penalized Frank--Wolfe, selection now uses the
+one-standard-error rule: among candidates within one standard error of the
+minimum fold-mean loss, choose the smallest tau, which is the most regularized
+model. Candidates must satisfy the stopping rule in every fold. Because the
+penalized signed oracle's candidate gap is not a valid certificate, it is no
+longer part of stopping; convergence uses patient relative objective change.
+CV uses a 1e-4 tolerance and up to 1,024 atoms, while the selected all-cell fit
+allows 2,048 atoms with the same tolerance.
+
 ## 2026-07-09 Salmon/Alevin Pipeline Recipes
 
 Pulled the useful microglia-less Salmon/Alevin pipeline pieces from the older

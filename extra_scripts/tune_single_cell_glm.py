@@ -35,6 +35,13 @@ def main():
     parser.add_argument("--nonnegative-penalty", type=float, default=1.0)
     parser.add_argument("--max-grid-expansions", type=int, default=4)
     parser.add_argument("--grid-expansion-factor", type=float, default=4.0)
+    parser.add_argument(
+        "--selection-rule",
+        choices=["minimum", "one_standard_error"],
+        default="minimum",
+    )
+    parser.add_argument("--require-converged", action="store_true")
+    parser.add_argument("--tol", type=float, default=1e-5)
     args = parser.parse_args()
 
     prepared = glm_cv.prepare_alevin_glm_data(
@@ -53,7 +60,7 @@ def main():
         "max_iter": args.max_iter,
         "min_iter": min(50, args.max_iter),
         "patience": 10,
-        "tol": 1e-5,
+        "tol": args.tol,
     }
     if args.method == "admm_factorized":
         fit_kwargs.update(
@@ -81,6 +88,8 @@ def main():
         fit_kwargs=fit_kwargs,
         max_grid_expansions=args.max_grid_expansions,
         grid_expansion_factor=args.grid_expansion_factor,
+        selection_rule=args.selection_rule,
+        require_converged=args.require_converged,
     )
     full_scale = glm_cv.hyperparameter_scale(
         prepared.counts,
@@ -99,7 +108,10 @@ def main():
         n_equivalence_classes=int(prepared.counts.shape[1]),
         n_transcripts=int(prepared.compatibility.shape[1]),
         full_scale=full_scale,
-        selected_full_value=report["best_multiplier"] * full_scale,
+        selected_full_value=(
+            report["best_multiplier"] * full_scale
+            if report["best_multiplier"] is not None else None
+        ),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with open(args.output, "w") as handle:

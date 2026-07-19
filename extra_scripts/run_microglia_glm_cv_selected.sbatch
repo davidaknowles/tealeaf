@@ -23,15 +23,19 @@ import json, sys
 report = json.load(open(sys.argv[1]))
 if report.get("best_on_boundary"):
     raise SystemExit("CV optimum remains on an open boundary after automatic grid expansion")
+if not report.get("convergence_requirement_met", True):
+    raise SystemExit("No CV candidate satisfied the convergence requirement")
 print(report["selected_full_value"])
 ' "${REPORT}")
 
 method_args=()
 if [[ "${METHOD}" == admm_factorized ]]; then
   method_args+=(--nucnorm_lambda "${VALUE}" --nucnorm_max_iter 4096)
+  full_tol=1e-6
 else
-  method_args+=(--nucnorm_tau "${VALUE}" --nucnorm_max_iter 512)
-  method_args+=(--fw_max_atoms 512 --fw_power_iter 10 --fw_nonnegative_penalty 1.0)
+  method_args+=(--nucnorm_tau "${VALUE}" --nucnorm_max_iter 2048)
+  method_args+=(--fw_max_atoms 2048 --fw_power_iter 10 --fw_nonnegative_penalty 1.0)
+  full_tol=1e-4
 fi
 
 python -m tealeaf.sc.tealeaf_sc \
@@ -48,7 +52,7 @@ python -m tealeaf.sc.tealeaf_sc \
   --glm_no_write_chunks \
   --nucnorm_min_iter 50 \
   --nucnorm_patience 10 \
-  --nucnorm_tol 1e-6 \
+  --nucnorm_tol "${full_tol}" \
   --admm_rho 1.0 \
   --admm_rho_update_interval 10 \
   --admm_rho_balance 10 \

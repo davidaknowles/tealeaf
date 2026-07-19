@@ -82,6 +82,8 @@ class GLMCVTest(unittest.TestCase):
             "multipliers": [1.0, 2.0],
             "fold_scales": [1.0, 1.0],
             "mean_validation_loss": {1.0: 0.2, 2.0: 0.1},
+            "validation_standard_error": {1.0: 0.01, 2.0: 0.01},
+            "candidate_converged": {1.0: True, 2.0: True},
             "best_multiplier": 2.0,
             "best_on_boundary": True,
             "fold_results": [{"multiplier": 1.0}, {"multiplier": 2.0}],
@@ -92,6 +94,8 @@ class GLMCVTest(unittest.TestCase):
             "multipliers": [8.0],
             "fold_scales": [1.0, 1.0],
             "mean_validation_loss": {8.0: 0.3},
+            "validation_standard_error": {8.0: 0.01},
+            "candidate_converged": {8.0: True},
             "best_multiplier": 8.0,
             "best_on_boundary": False,
             "fold_results": [{"multiplier": 8.0}],
@@ -113,6 +117,24 @@ class GLMCVTest(unittest.TestCase):
         self.assertFalse(report["best_on_boundary"])
         self.assertFalse(report["grid_exhausted"])
         self.assertEqual(report["grid_expansions"], 1)
+
+    def test_one_se_selects_most_regularized_converged_candidate(self):
+        report = {
+            "multipliers": [1.0, 4.0, 16.0],
+            "mean_validation_loss": {1.0: 0.12, 4.0: 0.101, 16.0: 0.1},
+            "validation_standard_error": {1.0: 0.01, 4.0: 0.005, 16.0: 0.01},
+            "candidate_converged": {1.0: True, 4.0: True, 16.0: True},
+        }
+        glm_cv._apply_selection_rule(
+            report, "frank_wolfe_penalized", "one_standard_error", True
+        )
+        self.assertEqual(report["minimum_loss_multiplier"], 16.0)
+        self.assertEqual(report["best_multiplier"], 4.0)
+        report["candidate_converged"][4.0] = False
+        glm_cv._apply_selection_rule(
+            report, "frank_wolfe_penalized", "one_standard_error", True
+        )
+        self.assertEqual(report["best_multiplier"], 16.0)
 
     def test_cross_validation_reports_best_multiplier(self):
         report = glm_cv.cross_validate_glm(

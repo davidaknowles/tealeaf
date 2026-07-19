@@ -513,6 +513,16 @@ the existing candidates. Expansion stops at an interior optimum, at zero or
 \(\lambda/\lambda_{\max}=1\), or at a configured expansion limit; the full fit
 is rejected only in the last case.
 
+For the penalized Frank--Wolfe solver, model selection uses the
+one-standard-error rule. Let \(\hat h\) minimize mean validation loss and let
+\(s_{\hat h}\) be its fold standard error. Among converged candidates satisfying
+\(\overline{L}(h)\leq\overline{L}(\hat h)+s_{\hat h}\), the smallest nuclear
+radius is selected. This favors the most regularized statistically
+indistinguishable fit and prevents negligible endpoint improvements from
+driving indefinite grid expansion. The penalized oracle's candidate gap is
+diagnostic rather than a convergence certificate, so stopping uses patient
+relative objective change.
+
 \section*{Connecting to equivalence-class-based inference}
 
 The preceding derivation used geometric regions with entries

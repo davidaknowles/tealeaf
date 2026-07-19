@@ -221,6 +221,18 @@ class GLMSolverTest(unittest.TestCase):
             result.diagnostics["negative_l1_fraction"], 1.0
         )
 
+    def test_penalized_frank_wolfe_stops_on_objective_patience(self):
+        result = glm_solvers.fit_frank_wolfe_penalized(
+            self.counts, self.compatibility, rank=2, max_atoms=10,
+            max_iter=10, min_iter=4, patience=2, tol=1e6,
+            device="cpu", batch_cells=2,
+        )
+        self.assertTrue(result.diagnostics["converged"])
+        self.assertEqual(result.diagnostics["iterations"], 4)
+        self.assertEqual(
+            result.diagnostics["convergence_reason"], "objective_patience"
+        )
+
     def test_penalized_frank_wolfe_operator_matches_dense_gradient(self):
         torch = glm_solvers._torch()
         data = glm_solvers.SparseGLM(
