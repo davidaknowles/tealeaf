@@ -221,6 +221,8 @@ def cross_validate_glm(
     batch_cells=4096,
     power_iter=10,
     fit_kwargs=None,
+    min_profile_active_fraction=0.9,
+    min_profile_relative_variance=1e-6,
 ):
     """Tune a scale-free lambda fraction or tau multiplier by count folds."""
     fit_kwargs = dict(fit_kwargs or {})
@@ -265,6 +267,9 @@ def cross_validate_glm(
             validation_loss = validation.loss_for_factors(
                 result.left, result.right
             ) / validation.n_nonempty
+            profile = glm_solvers.factor_profile_diagnostics(
+                result, batch_cells=batch_cells
+            )
             rows.append(
                 {
                     "fold": fold_index,
@@ -274,6 +279,7 @@ def cross_validate_glm(
                     "validation_loss_per_cell": validation_loss,
                     "iterations": result.diagnostics.get("iterations"),
                     "converged": result.diagnostics.get("converged"),
+                    **profile,
                 }
             )
             del result
@@ -285,6 +291,7 @@ def cross_validate_glm(
     means = {}
     standard_errors = {}
     candidate_converged = {}
+    candidate_nondegenerate = {}
     for multiplier in multipliers:
         candidate_rows = [
             row for row in rows if row["multiplier"] == float(multiplier)
@@ -298,6 +305,15 @@ def cross_validate_glm(
         candidate_converged[float(multiplier)] = bool(
             candidate_rows and all(row.get("converged") for row in candidate_rows)
         )
+        candidate_nondegenerate[float(multiplier)] = bool(
+            candidate_rows and all(
+                row.get("normalized_profile_active_fraction", 0.0)
+                >= float(min_profile_active_fraction)
+                and row.get("normalized_profile_relative_variance", 0.0)
+                > float(min_profile_relative_variance)
+                for row in candidate_rows
+            )
+        )
     best_multiplier = min(means, key=means.get)
     best_on_boundary = _best_on_open_boundary(
         method, multipliers, best_multiplier
@@ -310,13 +326,15 @@ def cross_validate_glm(
         "mean_validation_loss": means,
         "validation_standard_error": standard_errors,
         "candidate_converged": candidate_converged,
+        "candidate_nondegenerate": candidate_nondegenerate,
         "best_multiplier": best_multiplier,
         "best_on_boundary": best_on_boundary,
         "fold_results": rows,
     }
 
 
-def _apply_selection_rule(report, method, selection_rule, require_converged):
+def _apply_selection_rule(report, method, selection_rule, require_converged,
+                          require_nondegenerate=False):
     if selection_rule not in {"minimum", "one_standard_error"}:
         raise ValueError(f"invalid CV selection rule: {selection_rule}")
     candidates = [float(value) for value in report["multipliers"]]
@@ -324,9 +342,17 @@ def _apply_selection_rule(report, method, selection_rule, require_converged):
         value for value in candidates
         if not require_converged or report["candidate_converged"].get(value, False)
     ]
+    convergence_met = bool(eligible)
+    if require_nondegenerate:
+        eligible = [
+            value for value in eligible
+            if report["candidate_nondegenerate"].get(value, False)
+        ]
     report["selection_rule"] = selection_rule
     report["require_converged"] = bool(require_converged)
-    report["convergence_requirement_met"] = bool(eligible)
+    report["convergence_requirement_met"] = convergence_met
+    report["require_nondegenerate"] = bool(require_nondegenerate)
+    report["nondegeneracy_requirement_met"] = bool(eligible)
     if not eligible:
         report.update(
             minimum_loss_multiplier=None,
@@ -370,6 +396,7 @@ def cross_validate_glm_adaptive_grid(
     grid_expansion_factor=4.0,
     selection_rule="minimum",
     require_converged=False,
+    require_nondegenerate=False,
     **kwargs,
 ):
     """Cross-validate and extend an open-boundary grid one candidate at a time."""
@@ -384,7 +411,10 @@ def cross_validate_glm_adaptive_grid(
     report = cross_validate_glm(
         counts, compatibility, method, candidates, **kwargs
     )
-    _apply_selection_rule(report, method, selection_rule, require_converged)
+    _apply_selection_rule(
+        report, method, selection_rule, require_converged,
+        require_nondegenerate,
+    )
     history = [
         {
             "round": 0,
@@ -425,8 +455,14 @@ def cross_validate_glm_adaptive_grid(
         report["candidate_converged"][candidate] = extension[
             "candidate_converged"
         ][candidate]
+        report["candidate_nondegenerate"][candidate] = extension[
+            "candidate_nondegenerate"
+        ][candidate]
         report["multipliers"] = candidates.copy()
-        _apply_selection_rule(report, method, selection_rule, require_converged)
+        _apply_selection_rule(
+            report, method, selection_rule, require_converged,
+            require_nondegenerate,
+        )
         expansions += 1
         history.append(
             {

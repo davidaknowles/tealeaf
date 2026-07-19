@@ -25,6 +25,8 @@ if report.get("best_on_boundary"):
     raise SystemExit("CV optimum remains on an open boundary after automatic grid expansion")
 if not report.get("convergence_requirement_met", True):
     raise SystemExit("No CV candidate satisfied the convergence requirement")
+if not report.get("nondegeneracy_requirement_met", True):
+    raise SystemExit("No CV candidate satisfied the nondegeneracy requirement")
 print(report["selected_full_value"])
 ' "${REPORT}")
 

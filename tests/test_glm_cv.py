@@ -84,6 +84,7 @@ class GLMCVTest(unittest.TestCase):
             "mean_validation_loss": {1.0: 0.2, 2.0: 0.1},
             "validation_standard_error": {1.0: 0.01, 2.0: 0.01},
             "candidate_converged": {1.0: True, 2.0: True},
+            "candidate_nondegenerate": {1.0: True, 2.0: True},
             "best_multiplier": 2.0,
             "best_on_boundary": True,
             "fold_results": [{"multiplier": 1.0}, {"multiplier": 2.0}],
@@ -96,6 +97,7 @@ class GLMCVTest(unittest.TestCase):
             "mean_validation_loss": {8.0: 0.3},
             "validation_standard_error": {8.0: 0.01},
             "candidate_converged": {8.0: True},
+            "candidate_nondegenerate": {8.0: True},
             "best_multiplier": 8.0,
             "best_on_boundary": False,
             "fold_results": [{"multiplier": 8.0}],
@@ -124,6 +126,7 @@ class GLMCVTest(unittest.TestCase):
             "mean_validation_loss": {1.0: 0.12, 4.0: 0.101, 16.0: 0.1},
             "validation_standard_error": {1.0: 0.01, 4.0: 0.005, 16.0: 0.01},
             "candidate_converged": {1.0: True, 4.0: True, 16.0: True},
+            "candidate_nondegenerate": {1.0: True, 4.0: True, 16.0: True},
         }
         glm_cv._apply_selection_rule(
             report, "frank_wolfe_penalized", "one_standard_error", True
@@ -133,6 +136,16 @@ class GLMCVTest(unittest.TestCase):
         report["candidate_converged"][4.0] = False
         glm_cv._apply_selection_rule(
             report, "frank_wolfe_penalized", "one_standard_error", True
+        )
+        self.assertEqual(report["best_multiplier"], 16.0)
+        report["candidate_converged"][4.0] = True
+        report["candidate_nondegenerate"][4.0] = False
+        glm_cv._apply_selection_rule(
+            report,
+            "frank_wolfe_penalized",
+            "one_standard_error",
+            True,
+            True,
         )
         self.assertEqual(report["best_multiplier"], 16.0)
 

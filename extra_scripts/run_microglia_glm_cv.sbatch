@@ -56,5 +56,6 @@ python /gpfs/commons/home/daknowles/projects/tealeaf/extra_scripts/tune_single_c
   --grid-expansion-factor "${expansion_factor}" \
   --selection-rule "${selection_rule}" \
   --require-converged \
+  --require-nondegenerate \
   --tol "${cv_tol}" \
   "${multiplier_args[@]}"

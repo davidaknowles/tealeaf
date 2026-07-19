@@ -855,6 +855,57 @@ def _factor_diagnostics(result: GLMResult):
     }
 
 
+def factor_profile_diagnostics(result: GLMResult, *, max_features=512,
+                               batch_cells=4096, target_sum=10_000.0):
+    """Measure variation after rectification and per-cell profile normalization."""
+    if result.left is None or result.right is None:
+        return {}
+    torch = _torch()
+    left = result.left.detach()
+    right = result.right.detach()
+    n_features = min(max(1, int(max_features)), left.shape[0])
+    loading_norms = left.square().sum(dim=1)
+    selected = torch.topk(loading_norms, n_features).indices
+    selected_left = left.index_select(0, selected)
+    sums = np.zeros(n_features, dtype=np.float64)
+    squared_sums = np.zeros(n_features, dtype=np.float64)
+    active_count = 0
+    for start in range(0, right.shape[0], max(1, int(batch_cells))):
+        stop = min(start + max(1, int(batch_cells)), right.shape[0])
+        abundance = torch.relu(right[start:stop] @ selected_left.T)
+        totals = abundance.sum(dim=1)
+        active = torch.isfinite(totals) & (totals > 0)
+        if not bool(active.any().item()):
+            continue
+        profile = abundance[active]
+        profile = torch.log1p(
+            profile * (float(target_sum) / totals[active])[:, None]
+        )
+        sums += profile.sum(dim=0).detach().cpu().numpy().astype(np.float64)
+        squared_sums += (
+            profile.square().sum(dim=0).detach().cpu().numpy().astype(np.float64)
+        )
+        active_count += int(active.sum().item())
+    if active_count < 2:
+        relative_variance = 0.0
+    else:
+        means = sums / active_count
+        variances = np.maximum(
+            (squared_sums - active_count * np.square(means)) / (active_count - 1),
+            0.0,
+        )
+        relative_variance = float(
+            variances.sum() / max(np.square(means).sum(), np.finfo(float).tiny)
+        )
+    return {
+        "normalized_profile_active_fraction": float(
+            active_count / max(right.shape[0], 1)
+        ),
+        "normalized_profile_relative_variance": relative_variance,
+        "normalized_profile_features": int(n_features),
+    }
+
+
 def write_chunked_result(result: GLMResult, output_prefix, barcodes, features,
                          batch_cells=4096, threshold=1e-8, write_chunks=True):
     """Write compact factors first and optional transcript estimates in blocks."""
@@ -870,6 +921,11 @@ def write_chunked_result(result: GLMResult, output_prefix, barcodes, features,
             right=result.right.detach().cpu().numpy(),
         )
     result.diagnostics.update(_factor_diagnostics(result))
+    result.diagnostics.update(
+        factor_profile_diagnostics(
+            result, batch_cells=batch_cells
+        )
+    )
     chunk_paths = []
     if write_chunks:
         for index, start in enumerate(range(0, n_cells, int(batch_cells))):

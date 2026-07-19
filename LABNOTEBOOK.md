@@ -480,6 +480,15 @@ include a non-collapse constraint or a cell-label-aware secondary criterion;
 fold-to-fold baseline variation makes the conventional one-standard-error
 threshold too permissive here.
 
+Added a scale-invariant non-collapse constraint to CV. For each candidate, the
+solver reconstructs the 512 transcripts with the largest loading norms in cell
+blocks, rectifies abundance, normalizes every active cell to a common library
+size, applies log1p, and computes relative between-cell profile variance. A
+candidate is eligible only if every fold has at least 90% active cells and
+relative variance above 1e-6. This rejects zero fits and rank-one solutions that
+encode only library size before applying the one-standard-error rule. The same
+diagnostics are written to full-fit manifests.
+
 ## 2026-07-09 Salmon/Alevin Pipeline Recipes
 
 Pulled the useful microglia-less Salmon/Alevin pipeline pieces from the older

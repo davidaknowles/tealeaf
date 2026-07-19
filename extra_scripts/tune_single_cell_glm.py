@@ -41,7 +41,10 @@ def main():
         default="minimum",
     )
     parser.add_argument("--require-converged", action="store_true")
+    parser.add_argument("--require-nondegenerate", action="store_true")
     parser.add_argument("--tol", type=float, default=1e-5)
+    parser.add_argument("--min-profile-active-fraction", type=float, default=0.9)
+    parser.add_argument("--min-profile-relative-variance", type=float, default=1e-6)
     args = parser.parse_args()
 
     prepared = glm_cv.prepare_alevin_glm_data(
@@ -86,10 +89,13 @@ def main():
         batch_cells=args.batch_cells,
         power_iter=args.scale_power_iter,
         fit_kwargs=fit_kwargs,
+        min_profile_active_fraction=args.min_profile_active_fraction,
+        min_profile_relative_variance=args.min_profile_relative_variance,
         max_grid_expansions=args.max_grid_expansions,
         grid_expansion_factor=args.grid_expansion_factor,
         selection_rule=args.selection_rule,
         require_converged=args.require_converged,
+        require_nondegenerate=args.require_nondegenerate,
     )
     full_scale = glm_cv.hyperparameter_scale(
         prepared.counts,

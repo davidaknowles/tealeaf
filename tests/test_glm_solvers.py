@@ -167,6 +167,32 @@ class GLMSolverTest(unittest.TestCase):
             places=6,
         )
 
+    def test_profile_diagnostics_reject_library_size_only_variation(self):
+        torch = glm_solvers._torch()
+        collapsed = glm_solvers.GLMResult(
+            "test",
+            torch.tensor([[1.0], [2.0]]),
+            torch.tensor([[1.0], [2.0], [3.0]]),
+            None,
+            {},
+        )
+        collapsed_stats = glm_solvers.factor_profile_diagnostics(collapsed)
+        self.assertEqual(collapsed_stats["normalized_profile_active_fraction"], 1.0)
+        self.assertLess(
+            collapsed_stats["normalized_profile_relative_variance"], 1e-6
+        )
+        variable = glm_solvers.GLMResult(
+            "test",
+            torch.eye(2),
+            torch.tensor([[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]]),
+            None,
+            {},
+        )
+        variable_stats = glm_solvers.factor_profile_diagnostics(variable)
+        self.assertGreater(
+            variable_stats["normalized_profile_relative_variance"], 1e-3
+        )
+
     def test_frank_wolfe(self):
         result = glm_solvers.fit_frank_wolfe(
             self.counts, self.compatibility, rank=3, max_iter=3, device="cpu", batch_cells=2

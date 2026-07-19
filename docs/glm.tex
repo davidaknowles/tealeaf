@@ -523,6 +523,14 @@ driving indefinite grid expansion. The penalized oracle's candidate gap is
 diagnostic rather than a convergence certificate, so stopping uses patient
 relative objective change.
 
+Statistical equivalence in reconstruction loss does not make a degenerate
+representation useful. Before applying the one-standard-error rule, each
+candidate is therefore screened after rectification, per-cell library
+normalization, and a log-one-plus transform on a fixed set of high-loading
+features. Every fold must retain the configured active-cell fraction and exceed
+a minimum relative between-cell profile variance. This scale-invariant check
+excludes zero solutions and rank-one factors that vary only by library size.
+
 \section*{Connecting to equivalence-class-based inference}
 
 The preceding derivation used geometric regions with entries
