@@ -64,6 +64,14 @@ labels are not used.
 Validation: the full suite passed 39 tests; the rank-CV launcher and Python
 entry point also passed shell and bytecode checks.
 
+Submitted all-eligible-cell direct-factorization rank CV:
+
+- `19282971`: binary EC design.
+- `19282972`: fixed-weighted EC design.
+
+Both jobs started running and write reports with suffix
+`_minumi500_all_rankcv.json`.
+
 ## 2026-07-08
 
 Created `REPO_NOTES.md` with a codebase overview for tealeaf.
