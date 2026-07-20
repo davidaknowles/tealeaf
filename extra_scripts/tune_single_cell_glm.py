@@ -22,7 +22,18 @@ def main():
     )
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--multiplier", action="append", required=True, type=float)
-    parser.add_argument("--cells", type=int, default=5_000)
+    parser.add_argument(
+        "--cells",
+        type=int,
+        default=5_000,
+        help="number of eligible CV cells to sample; use 0 for all",
+    )
+    parser.add_argument(
+        "--min-cell-umis",
+        type=float,
+        default=1,
+        help="minimum raw deduplicated UMI count per eligible cell",
+    )
     parser.add_argument("--folds", type=int, default=3)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--max-iter", type=int, default=128)
@@ -57,9 +68,21 @@ def main():
         regularization_target="theta",
         min_eq=args.min_eq,
     )
-    selected = glm_cv.sample_nonempty_cells(
-        prepared.counts, args.cells, seed=args.seed
+    eligible = glm_cv.sample_cells_by_count(
+        prepared.counts,
+        0,
+        min_count=args.min_cell_umis,
+        totals=prepared.cell_umi_totals,
     )
+    selected = glm_cv.sample_cells_by_count(
+        prepared.counts,
+        args.cells,
+        seed=args.seed,
+        min_count=args.min_cell_umis,
+        totals=prepared.cell_umi_totals,
+    )
+    if not len(selected):
+        raise ValueError("no cells meet the requested UMI threshold")
     counts = prepared.counts[selected]
     fit_kwargs = {
         "rank": args.rank,
@@ -101,8 +124,13 @@ def main():
         require_nondegenerate=args.require_nondegenerate,
         profile_variance_retention=args.profile_variance_retention,
     )
+    full_counts = (
+        counts
+        if len(selected) == len(eligible)
+        else prepared.counts[eligible].tocsr()
+    )
     full_scale = glm_cv.hyperparameter_scale(
-        prepared.counts,
+        full_counts,
         prepared.compatibility,
         args.method,
         device=args.device,
@@ -113,8 +141,11 @@ def main():
     report.update(
         design=args.design,
         regularization_target="theta",
+        min_cell_umis=float(args.min_cell_umis),
         n_cv_cells=int(len(selected)),
-        n_full_cells=int(prepared.counts.shape[0]),
+        n_eligible_cells=int(len(eligible)),
+        n_total_cells=int(prepared.counts.shape[0]),
+        n_full_cells=int(len(eligible)),
         n_equivalence_classes=int(prepared.counts.shape[1]),
         n_transcripts=int(prepared.compatibility.shape[1]),
         full_scale=full_scale,

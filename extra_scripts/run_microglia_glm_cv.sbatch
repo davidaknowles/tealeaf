@@ -3,7 +3,7 @@
 #SBATCH --gres gpu:l40s:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=128G
-#SBATCH -t 2-00:00:00
+#SBATCH -t 4-00:00:00
 #SBATCH -J tealeaf_glm_cv
 #SBATCH -o /gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/%x-%j.out
 #SBATCH -e /gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/%x-%j.err
@@ -16,6 +16,9 @@ export PYTHONPATH=/gpfs/commons/home/daknowles/projects/tealeaf:${PYTHONPATH:-}
 
 DESIGN=${DESIGN:?Set DESIGN to binary or weighted}
 METHOD=${METHOD:?Set METHOD to admm_factorized or frank_wolfe_penalized}
+CV_CELLS=${CV_CELLS:-5000}
+MIN_CELL_UMIS=${MIN_CELL_UMIS:-1}
+OUTPUT_TAG=${OUTPUT_TAG:-}
 RUN=/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run
 ALEVIN=/gpfs/commons/groups/knowles_lab/data/sc/splitpool/microglia_less_mice/salmon_spliceu_weighted_rad/out_permit_known_weighted/quant_t2t_dedup_parsimony_em/alevin
 REF=/gpfs/commons/home/daknowles/knowles_lab/index/salmon/mus_spliceu/spliceu.fa
@@ -43,8 +46,9 @@ python /gpfs/commons/home/daknowles/projects/tealeaf/extra_scripts/tune_single_c
   --salmon-ref "${REF}" \
   --design "${DESIGN}" \
   --method "${METHOD}" \
-  --output "${RUN}/cv_${DESIGN}_${METHOD}_theta.json" \
-  --cells 5000 \
+  --output "${RUN}/cv_${DESIGN}_${METHOD}_theta${OUTPUT_TAG}.json" \
+  --cells "${CV_CELLS}" \
+  --min-cell-umis "${MIN_CELL_UMIS}" \
   --folds 3 \
   --max-iter "${max_iter}" \
   --rank 64 \

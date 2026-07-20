@@ -19,6 +19,7 @@ class PreparedGLMData:
     compatibility: sp.csr_matrix
     barcodes: np.ndarray
     features: np.ndarray
+    cell_umi_totals: np.ndarray
 
 
 def prepare_alevin_glm_data(
@@ -71,6 +72,7 @@ def prepare_alevin_glm_data(
         cache_file=weight_cache,
     )
 
+    cell_umi_totals = np.asarray(counts.sum(axis=1)).ravel()
     aggregate = sc_utils.sparse_sum(counts, 0)
     transcript_count = aggregate @ ec_transcript
     ec_keep = aggregate >= float(min_eq)
@@ -88,18 +90,34 @@ def prepare_alevin_glm_data(
         normalize_columns=ec_design in {"binary", "weighted"},
     ).tocsr()
     return PreparedGLMData(
-        filtered_counts, compatibility, barcodes, filtered_features
+        filtered_counts,
+        compatibility,
+        barcodes,
+        filtered_features,
+        cell_umi_totals,
     )
+
+
+def sample_cells_by_count(counts, n_cells, seed=0, *, min_count=1, totals=None):
+    """Select cells meeting a count threshold, optionally subsampling them."""
+    if float(min_count) < 0:
+        raise ValueError("min_count must be nonnegative")
+    if totals is None:
+        totals = np.asarray(counts.sum(axis=1)).ravel()
+    else:
+        totals = np.asarray(totals).ravel()
+        if len(totals) != counts.shape[0]:
+            raise ValueError("totals must have one value per count-matrix row")
+    eligible = np.flatnonzero(totals >= float(min_count))
+    if n_cells is None or int(n_cells) <= 0 or int(n_cells) >= len(eligible):
+        return eligible
+    rng = np.random.default_rng(seed)
+    return np.sort(rng.choice(eligible, size=int(n_cells), replace=False))
 
 
 def sample_nonempty_cells(counts, n_cells, seed=0):
     """Select a reproducible random subset of nonempty cell rows."""
-    totals = np.asarray(counts.sum(axis=1)).ravel()
-    eligible = np.flatnonzero(totals > 0)
-    if n_cells is None or int(n_cells) >= len(eligible):
-        return eligible
-    rng = np.random.default_rng(seed)
-    return np.sort(rng.choice(eligible, size=int(n_cells), replace=False))
+    return sample_cells_by_count(counts, n_cells, seed=seed, min_count=1)
 
 
 def split_count_folds(counts, n_folds=3, seed=0):

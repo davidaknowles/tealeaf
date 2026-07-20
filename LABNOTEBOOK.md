@@ -1,5 +1,27 @@
 # Lab Notebook
 
+## 2026-07-20 UMI-Filtered Single-Cell CV
+
+Added raw per-cell UMI filtering to the reusable GLM CV preparation and
+sampling path. The threshold is evaluated from the unfiltered deduplicated
+cell-by-equivalence-class matrix, before globally rare equivalence classes are
+removed. This keeps the cell-depth definition independent of the GLM design
+filter.
+
+The tuning command now accepts `--min-cell-umis`; `--cells 0` uses every cell
+meeting that threshold. Reports distinguish total, threshold-eligible, and
+sampled CV cells, and convert the selected dimensionless multiplier using the
+scale of the full eligible population. The dataset launcher exposes these
+settings through environment variables and gives large CV runs a four-day
+ceiling.
+
+For the microglia-less data, 169,533 of 547,077 cells have at least 500 raw
+deduplicated UMIs. The planned rerun uses all 169,533 cells, three molecule
+count folds, no cell-type labels during selection, and the existing adaptive
+grids for binary and fixed-weighted penalized Frank--Wolfe and factorized ADMM.
+
+Validation: the full test suite passed 33 tests.
+
 ## 2026-07-08
 
 Created `REPO_NOTES.md` with a codebase overview for tealeaf.

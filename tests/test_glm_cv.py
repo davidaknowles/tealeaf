@@ -39,6 +39,22 @@ class GLMCVTest(unittest.TestCase):
         for observed, expected in zip(folds, repeated):
             np.testing.assert_array_equal(observed.toarray(), expected.toarray())
 
+    def test_cell_sampling_uses_supplied_raw_count_threshold(self):
+        raw_totals = np.array([10, 500, 499, 900])
+        selected = glm_cv.sample_cells_by_count(
+            self.counts,
+            0,
+            min_count=500,
+            totals=raw_totals,
+        )
+        np.testing.assert_array_equal(selected, [1, 3])
+
+    def test_cell_sampling_validates_supplied_totals(self):
+        with self.assertRaisesRegex(ValueError, "one value per"):
+            glm_cv.sample_cells_by_count(
+                self.counts, 0, min_count=1, totals=[1, 2]
+            )
+
     def test_hyperparameter_scales_are_positive(self):
         for method in ("admm_factorized", "frank_wolfe_penalized"):
             scale = glm_cv.hyperparameter_scale(
