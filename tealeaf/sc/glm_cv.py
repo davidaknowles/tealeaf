@@ -292,6 +292,8 @@ def cross_validate_glm(
     standard_errors = {}
     candidate_converged = {}
     candidate_nondegenerate = {}
+    mean_profile_variance = {}
+    minimum_profile_active_fraction = {}
     for multiplier in multipliers:
         candidate_rows = [
             row for row in rows if row["multiplier"] == float(multiplier)
@@ -314,6 +316,14 @@ def cross_validate_glm(
                 for row in candidate_rows
             )
         )
+        mean_profile_variance[float(multiplier)] = float(np.mean([
+            row.get("normalized_profile_relative_variance", 0.0)
+            for row in candidate_rows
+        ]))
+        minimum_profile_active_fraction[float(multiplier)] = float(min(
+            row.get("normalized_profile_active_fraction", 0.0)
+            for row in candidate_rows
+        ))
     best_multiplier = min(means, key=means.get)
     best_on_boundary = _best_on_open_boundary(
         method, multipliers, best_multiplier
@@ -327,6 +337,8 @@ def cross_validate_glm(
         "validation_standard_error": standard_errors,
         "candidate_converged": candidate_converged,
         "candidate_nondegenerate": candidate_nondegenerate,
+        "mean_profile_relative_variance": mean_profile_variance,
+        "minimum_profile_active_fraction": minimum_profile_active_fraction,
         "best_multiplier": best_multiplier,
         "best_on_boundary": best_on_boundary,
         "fold_results": rows,
@@ -334,9 +346,14 @@ def cross_validate_glm(
 
 
 def _apply_selection_rule(report, method, selection_rule, require_converged,
-                          require_nondegenerate=False):
-    if selection_rule not in {"minimum", "one_standard_error"}:
+                          require_nondegenerate=False,
+                          profile_variance_retention=0.9):
+    if selection_rule not in {
+        "minimum", "one_standard_error", "one_se_variance_retention",
+    }:
         raise ValueError(f"invalid CV selection rule: {selection_rule}")
+    if not 0 < float(profile_variance_retention) <= 1:
+        raise ValueError("profile_variance_retention must be in (0, 1]")
     candidates = [float(value) for value in report["multipliers"]]
     eligible = [
         value for value in candidates
@@ -364,20 +381,44 @@ def _apply_selection_rule(report, method, selection_rule, require_converged,
 
     minimum = min(eligible, key=report["mean_validation_loss"].get)
     threshold = report["mean_validation_loss"][minimum]
-    if selection_rule == "one_standard_error":
+    profile_threshold = None
+    if selection_rule in {"one_standard_error", "one_se_variance_retention"}:
         threshold += report["validation_standard_error"][minimum]
-        regularization_order = sorted(
-            eligible, reverse=method == "admm_factorized"
-        )
-        selected = next(
-            value for value in regularization_order
+        within_one_se = [
+            value for value in eligible
             if report["mean_validation_loss"][value] <= threshold
+        ]
+    if selection_rule == "one_standard_error":
+        regularization_order = sorted(
+            within_one_se, reverse=method == "admm_factorized"
         )
+        selected = regularization_order[0]
+    elif selection_rule == "one_se_variance_retention":
+        maximum_profile_variance = max(
+            report["mean_profile_relative_variance"][value]
+            for value in within_one_se
+        )
+        profile_threshold = (
+            float(profile_variance_retention) * maximum_profile_variance
+        )
+        structure_eligible = [
+            value for value in within_one_se
+            if report["mean_profile_relative_variance"][value]
+            >= profile_threshold
+        ]
+        selected = sorted(
+            structure_eligible, reverse=method == "admm_factorized"
+        )[0]
     else:
         selected = minimum
     report.update(
         minimum_loss_multiplier=minimum,
         selection_threshold=threshold,
+        profile_variance_retention=(
+            float(profile_variance_retention)
+            if selection_rule == "one_se_variance_retention" else None
+        ),
+        profile_variance_threshold=profile_threshold,
         best_multiplier=selected,
         best_on_boundary=_best_on_open_boundary(
             method, candidates, selected
@@ -397,6 +438,7 @@ def cross_validate_glm_adaptive_grid(
     selection_rule="minimum",
     require_converged=False,
     require_nondegenerate=False,
+    profile_variance_retention=0.9,
     **kwargs,
 ):
     """Cross-validate and extend an open-boundary grid one candidate at a time."""
@@ -413,7 +455,7 @@ def cross_validate_glm_adaptive_grid(
     )
     _apply_selection_rule(
         report, method, selection_rule, require_converged,
-        require_nondegenerate,
+        require_nondegenerate, profile_variance_retention,
     )
     history = [
         {
@@ -458,10 +500,16 @@ def cross_validate_glm_adaptive_grid(
         report["candidate_nondegenerate"][candidate] = extension[
             "candidate_nondegenerate"
         ][candidate]
+        report["mean_profile_relative_variance"][candidate] = extension[
+            "mean_profile_relative_variance"
+        ][candidate]
+        report["minimum_profile_active_fraction"][candidate] = extension[
+            "minimum_profile_active_fraction"
+        ][candidate]
         report["multipliers"] = candidates.copy()
         _apply_selection_rule(
             report, method, selection_rule, require_converged,
-            require_nondegenerate,
+            require_nondegenerate, profile_variance_retention,
         )
         expansions += 1
         history.append(

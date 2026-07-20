@@ -501,6 +501,15 @@ one-standard-error selection therefore still over-regularizes relative to the
 cell-type recovery objective; a label-aware secondary selection criterion is
 needed if label recovery is the target.
 
+Rather than tune directly on those labels, which would compromise their role as
+an external evaluation, selection now uses profile-variance retention within
+the reconstruction one-standard-error set. It finds the maximum mean normalized
+profile variance among statistically admissible, converged, nondegenerate
+candidates; retains candidates with at least 90% of that variance; and chooses
+the smallest tau among them. This is a two-objective rule: near-optimal held-out
+count reconstruction plus preservation of cell-to-cell structure. Applied to
+the completed folds, it selects multiplier 16 for binary and 64 for weighted.
+
 ## 2026-07-09 Salmon/Alevin Pipeline Recipes
 
 Pulled the useful microglia-less Salmon/Alevin pipeline pieces from the older

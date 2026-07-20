@@ -531,6 +531,18 @@ features. Every fold must retain the configured active-cell fraction and exceed
 a minimum relative between-cell profile variance. This scale-invariant check
 excludes zero solutions and rank-one factors that vary only by library size.
 
+Among the converged, nondegenerate candidates inside the reconstruction
+one-standard-error set, define \(v(h)\) as mean normalized profile variance.
+The implementation retains candidates satisfying
+\[
+  v(h) \geq \gamma \max_{h'} v(h'),
+\]
+with \(\gamma=0.9\) by default, and chooses the smallest retained nuclear
+radius. This preserves most observable cell-to-cell structure while retaining
+the strongest regularization compatible with both structure and held-out count
+prediction. Cell-type labels remain an external assessment rather than a
+hyperparameter input.
+
 \section*{Connecting to equivalence-class-based inference}
 
 The preceding derivation used geometric regions with entries

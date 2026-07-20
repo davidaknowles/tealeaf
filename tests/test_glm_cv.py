@@ -85,6 +85,8 @@ class GLMCVTest(unittest.TestCase):
             "validation_standard_error": {1.0: 0.01, 2.0: 0.01},
             "candidate_converged": {1.0: True, 2.0: True},
             "candidate_nondegenerate": {1.0: True, 2.0: True},
+            "mean_profile_relative_variance": {1.0: 0.1, 2.0: 0.2},
+            "minimum_profile_active_fraction": {1.0: 1.0, 2.0: 1.0},
             "best_multiplier": 2.0,
             "best_on_boundary": True,
             "fold_results": [{"multiplier": 1.0}, {"multiplier": 2.0}],
@@ -98,6 +100,8 @@ class GLMCVTest(unittest.TestCase):
             "validation_standard_error": {8.0: 0.01},
             "candidate_converged": {8.0: True},
             "candidate_nondegenerate": {8.0: True},
+            "mean_profile_relative_variance": {8.0: 0.3},
+            "minimum_profile_active_fraction": {8.0: 1.0},
             "best_multiplier": 8.0,
             "best_on_boundary": False,
             "fold_results": [{"multiplier": 8.0}],
@@ -148,6 +152,37 @@ class GLMCVTest(unittest.TestCase):
             True,
         )
         self.assertEqual(report["best_multiplier"], 16.0)
+
+    def test_variance_retention_avoids_over_regularized_profile(self):
+        report = {
+            "multipliers": [1.0, 4.0, 16.0, 64.0],
+            "mean_validation_loss": {
+                1.0: 0.11, 4.0: 0.105, 16.0: 0.101, 64.0: 0.1,
+            },
+            "validation_standard_error": {
+                1.0: 0.02, 4.0: 0.02, 16.0: 0.02, 64.0: 0.02,
+            },
+            "candidate_converged": {
+                1.0: True, 4.0: True, 16.0: True, 64.0: True,
+            },
+            "candidate_nondegenerate": {
+                1.0: True, 4.0: True, 16.0: True, 64.0: True,
+            },
+            "mean_profile_relative_variance": {
+                1.0: 0.2, 4.0: 0.91, 16.0: 1.0, 64.0: 0.98,
+            },
+        }
+        glm_cv._apply_selection_rule(
+            report,
+            "frank_wolfe_penalized",
+            "one_se_variance_retention",
+            True,
+            True,
+            0.9,
+        )
+        self.assertEqual(report["minimum_loss_multiplier"], 64.0)
+        self.assertEqual(report["best_multiplier"], 4.0)
+        self.assertAlmostEqual(report["profile_variance_threshold"], 0.9)
 
     def test_cross_validation_reports_best_multiplier(self):
         report = glm_cv.cross_validate_glm(

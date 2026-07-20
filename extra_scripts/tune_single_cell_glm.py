@@ -37,7 +37,9 @@ def main():
     parser.add_argument("--grid-expansion-factor", type=float, default=4.0)
     parser.add_argument(
         "--selection-rule",
-        choices=["minimum", "one_standard_error"],
+        choices=[
+            "minimum", "one_standard_error", "one_se_variance_retention",
+        ],
         default="minimum",
     )
     parser.add_argument("--require-converged", action="store_true")
@@ -45,6 +47,7 @@ def main():
     parser.add_argument("--tol", type=float, default=1e-5)
     parser.add_argument("--min-profile-active-fraction", type=float, default=0.9)
     parser.add_argument("--min-profile-relative-variance", type=float, default=1e-6)
+    parser.add_argument("--profile-variance-retention", type=float, default=0.9)
     args = parser.parse_args()
 
     prepared = glm_cv.prepare_alevin_glm_data(
@@ -96,6 +99,7 @@ def main():
         selection_rule=args.selection_rule,
         require_converged=args.require_converged,
         require_nondegenerate=args.require_nondegenerate,
+        profile_variance_retention=args.profile_variance_retention,
     )
     full_scale = glm_cv.hyperparameter_scale(
         prepared.counts,

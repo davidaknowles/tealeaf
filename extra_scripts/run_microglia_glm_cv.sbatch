@@ -30,7 +30,7 @@ else
   multipliers=(0 0.25 1 4 16 64 256)
   max_iter=1024
   expansion_factor=4
-  selection_rule=one_standard_error
+  selection_rule=one_se_variance_retention
   cv_tol=1e-4
 fi
 multiplier_args=()
@@ -58,4 +58,5 @@ python /gpfs/commons/home/daknowles/projects/tealeaf/extra_scripts/tune_single_c
   --require-converged \
   --require-nondegenerate \
   --tol "${cv_tol}" \
+  --profile-variance-retention 0.9 \
   "${multiplier_args[@]}"
