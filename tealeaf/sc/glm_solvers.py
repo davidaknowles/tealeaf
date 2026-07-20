@@ -171,6 +171,45 @@ def _initial_factors(data: SparseGLM, rank: int, seed: int):
     return left, right
 
 
+def _coerce_initial_factors(data, initial_factors, *, rank=None,
+                            nonnegative=False, prune_zeros=False):
+    """Copy and validate a compact coefficient factorization for continuation."""
+    if initial_factors is None:
+        return None
+    if len(initial_factors) != 2:
+        raise ValueError("initial_factors must contain left and right factors")
+    torch = data.torch
+    left = torch.as_tensor(
+        initial_factors[0], dtype=torch.float32, device=data.device
+    ).detach().clone()
+    right = torch.as_tensor(
+        initial_factors[1], dtype=torch.float32, device=data.device
+    ).detach().clone()
+    if left.ndim != 2 or right.ndim != 2:
+        raise ValueError("initial factors must be matrices")
+    if left.shape[0] != data.n_transcripts or right.shape[0] != data.n_cells:
+        raise ValueError("initial factor dimensions do not match the GLM")
+    if left.shape[1] != right.shape[1]:
+        raise ValueError("initial factors must have the same rank")
+    if rank is not None and left.shape[1] != int(rank):
+        raise ValueError("initial factor rank does not match rank")
+    if not bool(torch.isfinite(left).all() and torch.isfinite(right).all()):
+        raise ValueError("initial factors must be finite")
+    if nonnegative:
+        left.relu_()
+        right.relu_()
+    if prune_zeros and left.shape[1]:
+        contribution = (
+            torch.linalg.vector_norm(left, dim=0)
+            * torch.linalg.vector_norm(right, dim=0)
+        )
+        threshold = torch.finfo(left.dtype).eps * contribution.max().clamp_min(1.0)
+        keep = contribution > threshold
+        left = left[:, keep]
+        right = right[:, keep]
+    return left, right
+
+
 def _objective_stop(diagnostics, objective, previous, stable, iteration,
                     tol, min_iter, patience):
     """Update a patient relative-objective stopping rule."""
@@ -272,7 +311,7 @@ def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
                         device="auto", batch_cells=4096, seed=0,
                         min_iter=10, patience=5, adaptive_rho=True,
                         rho_update_interval=10, rho_balance=10.0,
-                        rho_scale=2.0):
+                        rho_scale=2.0, initial_factors=None):
     """Factor-sized ADMM split for nonnegative low-rank genome-wide fitting.
 
     This is deliberately distinct from :func:`fit_admm`: it uses the variational
@@ -285,7 +324,13 @@ def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
     rho = float(rho)
     data = SparseGLM(counts, compatibility, device, batch_cells)
     torch = data.torch
-    left, right = _initial_factors(data, rank, seed)
+    warm_factors = _coerce_initial_factors(
+        data, initial_factors, rank=rank, nonnegative=True
+    )
+    left, right = (
+        _initial_factors(data, rank, seed)
+        if warm_factors is None else warm_factors
+    )
     left_copy, right_copy = left.clone(), right.clone()
     left_dual, right_dual = torch.zeros_like(left), torch.zeros_like(right)
     diagnostics = {
@@ -299,6 +344,8 @@ def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
         "rho_update_interval": int(rho_update_interval),
         "rho_balance": float(rho_balance), "rho_scale": float(rho_scale),
         "min_iter": int(min_iter), "patience": int(patience), "tolerance": tol,
+        "warm_started": warm_factors is not None,
+        "warm_start_rank": 0 if warm_factors is None else int(left.shape[1]),
     }
     previous = None
     stable = 0
@@ -693,6 +740,7 @@ def fit_frank_wolfe_penalized(
     seed=0,
     min_iter=10,
     patience=5,
+    initial_factors=None,
 ):
     """Nuclear-ball Frank-Wolfe with a smooth negative-mass penalty.
 
@@ -708,11 +756,30 @@ def fit_frank_wolfe_penalized(
     max_atoms = int(rank if max_atoms is None else max_atoms)
     if max_atoms < 1 or int(power_iter) < 1:
         raise ValueError("max_atoms and power_iter must be positive")
-    max_iter = min(int(max_iter), max_atoms)
     tau = float(np.sqrt(data.n_cells) if tau is None else tau)
     penalty = float(nonnegative_penalty) * data.gram_lipschitz
-    left = torch.empty((data.n_transcripts, 0), device=data.device)
-    right = torch.empty((data.n_cells, 0), device=data.device)
+    warm_factors = _coerce_initial_factors(
+        data, initial_factors, prune_zeros=True
+    )
+    if warm_factors is None:
+        left = torch.empty((data.n_transcripts, 0), device=data.device)
+        right = torch.empty((data.n_cells, 0), device=data.device)
+    else:
+        left, right = warm_factors
+    initial_atoms = int(left.shape[1])
+    if initial_atoms > max_atoms:
+        raise ValueError("warm start exceeds max_atoms")
+    initial_nuclear_upper = float(
+        (
+            torch.linalg.vector_norm(left, dim=0)
+            * torch.linalg.vector_norm(right, dim=0)
+        ).sum().item()
+    )
+    if initial_nuclear_upper > tau:
+        scale = np.sqrt(tau / max(initial_nuclear_upper, 1e-12))
+        left *= scale
+        right *= scale
+    fit_iterations = min(int(max_iter), max_atoms - initial_atoms)
     generator = torch.Generator(device=data.device)
     generator.manual_seed(seed)
     diagnostics = {
@@ -727,12 +794,19 @@ def fit_frank_wolfe_penalized(
         "gram_lipschitz": data.gram_lipschitz,
         "min_iter": int(min_iter), "patience": int(patience), "tolerance": tol,
         "gap_is_certificate": False,
+        "warm_started": warm_factors is not None,
+        "warm_start_rank": initial_atoms,
+        "warm_start_nuclear_upper": initial_nuclear_upper,
     }
     initial_gap = None
     previous = None
+    if warm_factors is not None:
+        initial_stats = _negative_factor_stats(data, left, right)
+        previous = data.loss_for_factors(left, right)
+        previous += 0.5 * penalty * initial_stats["negative_squared_norm"]
     stable = 0
 
-    for iteration in range(max_iter):
+    for iteration in range(fit_iterations):
         vector = torch.randn(
             (data.n_cells, 1), generator=generator, device=data.device
         )
@@ -791,9 +865,13 @@ def fit_frank_wolfe_penalized(
             break
         previous = objective
     else:
-        reason = "atom_capacity" if max_iter == max_atoms else "max_iterations"
+        reason = (
+            "atom_capacity"
+            if initial_atoms + fit_iterations == max_atoms
+            else "max_iterations"
+        )
         diagnostics.update(
-            iterations=max_iter, converged=False, convergence_reason=reason,
+            iterations=fit_iterations, converged=False, convergence_reason=reason,
         )
     diagnostics.update(_negative_factor_stats(data, left, right))
     return GLMResult("frank_wolfe_penalized", left, right, None, diagnostics)
@@ -805,7 +883,7 @@ def fit_glm(counts, compatibility, method, **kwargs):
         allowed = {"rank", "regularization", "max_iter", "tol", "learning_rate", "device", "batch_cells", "seed", "min_iter", "patience"}
         return fit_factorized(counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed})
     if method == "admm_factorized":
-        allowed = {"rank", "regularization", "rho", "max_iter", "tol", "learning_rate", "device", "batch_cells", "seed", "min_iter", "patience", "adaptive_rho", "rho_update_interval", "rho_balance", "rho_scale"}
+        allowed = {"rank", "regularization", "rho", "max_iter", "tol", "learning_rate", "device", "batch_cells", "seed", "min_iter", "patience", "adaptive_rho", "rho_update_interval", "rho_balance", "rho_scale", "initial_factors"}
         return fit_factorized_admm(counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed})
     if method == "admm":
         allowed = {"regularization", "rho", "max_iter", "inner_iter", "tol", "max_dense_entries", "device", "batch_cells", "adaptive_rho", "rho_update_interval", "rho_balance", "rho_scale"}
@@ -817,7 +895,7 @@ def fit_glm(counts, compatibility, method, **kwargs):
         allowed = {
             "rank", "max_atoms", "tau", "nonnegative_penalty", "max_iter",
             "power_iter", "tol", "device", "batch_cells", "seed",
-            "min_iter", "patience",
+            "min_iter", "patience", "initial_factors",
         }
         return fit_frank_wolfe_penalized(
             counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed}

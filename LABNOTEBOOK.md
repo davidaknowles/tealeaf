@@ -30,6 +30,15 @@ Submitted four independent L40S jobs:
 - `19282600`: fixed-weighted factorized ADMM.
 
 Reports use the suffix `_minumi500_all.json`; all four jobs started running.
+These first submissions were cancelled after about two minutes when inspection
+showed that CV candidates were initialized independently. Fold-local
+continuation is now implemented: factorized ADMM traverses lambda multipliers
+from largest to smallest and carries nonnegative primal factors while resetting
+split copies and duals; penalized Frank--Wolfe traverses tau multipliers from
+smallest to largest and carries its nonzero atoms into the enlarged nuclear
+ball. Adaptive expansion replays the full candidate path to preserve this
+ordering when a new endpoint is added. Reports record the path and warm-start
+rank for each fold/candidate fit.
 
 ## 2026-07-08
 

@@ -91,7 +91,7 @@ class GLMCVTest(unittest.TestCase):
             1,
         )
 
-    def test_adaptive_grid_only_fits_new_boundary_candidate(self):
+    def test_adaptive_grid_replays_warm_start_path_after_expansion(self):
         initial = {
             "method": "frank_wolfe_penalized",
             "n_folds": 2,
@@ -110,17 +110,20 @@ class GLMCVTest(unittest.TestCase):
         extension = {
             "method": "frank_wolfe_penalized",
             "n_folds": 2,
-            "multipliers": [8.0],
+            "multipliers": [1.0, 2.0, 8.0],
             "fold_scales": [1.0, 1.0],
-            "mean_validation_loss": {8.0: 0.3},
-            "validation_standard_error": {8.0: 0.01},
-            "candidate_converged": {8.0: True},
-            "candidate_nondegenerate": {8.0: True},
-            "mean_profile_relative_variance": {8.0: 0.3},
-            "minimum_profile_active_fraction": {8.0: 1.0},
-            "best_multiplier": 8.0,
+            "mean_validation_loss": {1.0: 0.2, 2.0: 0.1, 8.0: 0.3},
+            "validation_standard_error": {1.0: 0.01, 2.0: 0.01, 8.0: 0.01},
+            "candidate_converged": {1.0: True, 2.0: True, 8.0: True},
+            "candidate_nondegenerate": {1.0: True, 2.0: True, 8.0: True},
+            "mean_profile_relative_variance": {1.0: 0.1, 2.0: 0.2, 8.0: 0.3},
+            "minimum_profile_active_fraction": {1.0: 1.0, 2.0: 1.0, 8.0: 1.0},
+            "best_multiplier": 2.0,
             "best_on_boundary": False,
-            "fold_results": [{"multiplier": 8.0}],
+            "fold_results": [
+                {"multiplier": 1.0}, {"multiplier": 2.0},
+                {"multiplier": 8.0},
+            ],
         }
         with mock.patch.object(
             glm_cv, "cross_validate_glm", side_effect=[initial, extension]
@@ -134,7 +137,7 @@ class GLMCVTest(unittest.TestCase):
                 grid_expansion_factor=4,
             )
         self.assertEqual(mocked.call_count, 2)
-        self.assertEqual(mocked.call_args_list[1].args[3], [8.0])
+        self.assertEqual(mocked.call_args_list[1].args[3], [1.0, 2.0, 8.0])
         self.assertEqual(report["best_multiplier"], 2.0)
         self.assertFalse(report["best_on_boundary"])
         self.assertFalse(report["grid_exhausted"])
@@ -211,8 +214,8 @@ class GLMCVTest(unittest.TestCase):
             batch_cells=2,
             power_iter=3,
             fit_kwargs={
-                "rank": 2,
-                "max_atoms": 2,
+                "rank": 4,
+                "max_atoms": 4,
                 "max_iter": 2,
                 "min_iter": 2,
                 "power_iter": 3,
@@ -221,6 +224,35 @@ class GLMCVTest(unittest.TestCase):
         self.assertIn(report["best_multiplier"], [0.5, 2.0])
         self.assertIsInstance(report["best_on_boundary"], bool)
         self.assertEqual(len(report["fold_results"]), 4)
+        self.assertEqual(report["regularization_path"], [0.5, 2.0])
+        for fold in range(2):
+            rows = [row for row in report["fold_results"] if row["fold"] == fold]
+            self.assertEqual([row["multiplier"] for row in rows], [0.5, 2.0])
+            self.assertFalse(rows[0]["warm_started"])
+            self.assertTrue(rows[1]["warm_started"])
+
+    def test_admm_path_runs_from_strong_to_weak_regularization(self):
+        report = glm_cv.cross_validate_glm(
+            self.counts,
+            self.compatibility,
+            "admm_factorized",
+            [0.0, 1e-4],
+            n_folds=2,
+            device="cpu",
+            batch_cells=2,
+            power_iter=2,
+            fit_kwargs={
+                "rank": 2,
+                "max_iter": 2,
+                "min_iter": 2,
+            },
+        )
+        self.assertEqual(report["regularization_path"], [1e-4, 0.0])
+        for fold in range(2):
+            rows = [row for row in report["fold_results"] if row["fold"] == fold]
+            self.assertEqual([row["multiplier"] for row in rows], [1e-4, 0.0])
+            self.assertFalse(rows[0]["warm_started"])
+            self.assertTrue(rows[1]["warm_started"])
 
 
 if __name__ == "__main__":

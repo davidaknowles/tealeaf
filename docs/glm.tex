@@ -484,9 +484,10 @@ the same design matrix:
 \]
 This tests prediction of independent molecules from the same cells while
 retaining every compatibility pattern in the design and avoiding a separate
-procedure for unseen cell factors. The current full-data workflow uses three
-folds on a reproducible cell subset, chooses the multiplier with minimum mean
-held-out loss, and then refits all cells.
+procedure for unseen cell factors. The workflow can use either a reproducible
+cell subset or every cell passing a raw molecule-count threshold. It uses three
+folds, selects a dimensionless multiplier from held-out loss and the
+representation diagnostics below, and then refits the eligible cells.
 
 Candidate values are dimensionless so that a subset-selected multiplier can be
 transferred to the complete dataset. For the penalized objective, define
@@ -506,10 +507,17 @@ is passed as the fixed \(\lambda\) or \(\tau\) for the final fit.
 The factorized implementation averages the complete left-factor block gradient,
 including its regularization and augmented-Lagrangian terms, by the number of
 nonempty cells. This preserves the relative scale of the objective terms when a
-multiplier selected on a subset is transferred to all cells. An optimum on an
-open boundary of the candidate grid triggers automatic geometric expansion.
-Only the new endpoint is fit in each round and its fold losses are merged with
-the existing candidates. Expansion stops at an interior optimum, at zero or
+multiplier selected on a subset is transferred to all cells. Within each fold,
+candidates follow a strong-to-weak regularization path. Factorized ADMM visits
+decreasing \(\lambda\) and initializes each candidate from the preceding primal
+factors while resetting the split dual variables. Frank--Wolfe visits
+increasing \(\tau\); the previous atom factorization is feasible in the enlarged
+nuclear-norm ball and is retained.
+
+An optimum on an open boundary of the candidate grid triggers automatic
+geometric expansion. The complete path is replayed so a newly added strong
+endpoint remains the start of the continuation and all candidate scores have
+the same path dependence. Expansion stops at an interior optimum, at zero or
 \(\lambda/\lambda_{\max}=1\), or at a configured expansion limit; the full fit
 is rejected only in the last case.
 

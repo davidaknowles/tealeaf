@@ -239,6 +239,7 @@ def cross_validate_glm(
     batch_cells=4096,
     power_iter=10,
     fit_kwargs=None,
+    warm_start=True,
     min_profile_active_fraction=0.9,
     min_profile_relative_variance=1e-6,
 ):
@@ -268,12 +269,19 @@ def cross_validate_glm(
             device=device,
             batch_cells=batch_cells,
         )
-        for multiplier in multipliers:
+        path_multipliers = sorted(
+            (float(value) for value in multipliers),
+            reverse=method == "admm_factorized",
+        )
+        warm_factors = None
+        for multiplier in path_multipliers:
             kwargs = dict(fit_kwargs)
             if method == "admm_factorized":
                 kwargs["regularization"] = float(multiplier) * scale
             elif method == "frank_wolfe_penalized":
                 kwargs["tau"] = float(multiplier) * scale
+            if warm_start and warm_factors is not None:
+                kwargs["initial_factors"] = warm_factors
             result = glm_solvers.fit_glm(
                 training_counts,
                 compatibility,
@@ -297,9 +305,15 @@ def cross_validate_glm(
                     "validation_loss_per_cell": validation_loss,
                     "iterations": result.diagnostics.get("iterations"),
                     "converged": result.diagnostics.get("converged"),
+                    "warm_started": result.diagnostics.get("warm_started", False),
+                    "warm_start_rank": result.diagnostics.get("warm_start_rank", 0),
                     **profile,
                 }
             )
+            if warm_start:
+                warm_factors = (
+                    result.left.detach(), result.right.detach()
+                )
             del result
             gc.collect()
             if device == "cuda" or (
@@ -348,6 +362,11 @@ def cross_validate_glm(
     )
     return {
         "method": method,
+        "warm_start": bool(warm_start),
+        "regularization_path": sorted(
+            (float(value) for value in multipliers),
+            reverse=method == "admm_factorized",
+        ),
         "n_folds": int(n_folds),
         "multipliers": [float(value) for value in multipliers],
         "fold_scales": scales,
@@ -500,31 +519,14 @@ def cross_validate_glm_adaptive_grid(
         )
         if candidate in candidates:
             break
-        extension = cross_validate_glm(
-            counts, compatibility, method, [candidate], **kwargs
-        )
         candidates.append(candidate)
         candidates.sort()
-        report["fold_results"].extend(extension["fold_results"])
-        report["mean_validation_loss"][candidate] = extension[
-            "mean_validation_loss"
-        ][candidate]
-        report["validation_standard_error"][candidate] = extension[
-            "validation_standard_error"
-        ][candidate]
-        report["candidate_converged"][candidate] = extension[
-            "candidate_converged"
-        ][candidate]
-        report["candidate_nondegenerate"][candidate] = extension[
-            "candidate_nondegenerate"
-        ][candidate]
-        report["mean_profile_relative_variance"][candidate] = extension[
-            "mean_profile_relative_variance"
-        ][candidate]
-        report["minimum_profile_active_fraction"][candidate] = extension[
-            "minimum_profile_active_fraction"
-        ][candidate]
-        report["multipliers"] = candidates.copy()
+        # Replay the path so a new strongest endpoint is always followed by
+        # strong-to-weak continuation, and every candidate has the same path
+        # dependence after grid expansion.
+        report = cross_validate_glm(
+            counts, compatibility, method, candidates, **kwargs
+        )
         _apply_selection_rule(
             report, method, selection_rule, require_converged,
             require_nondegenerate, profile_variance_retention,

@@ -150,6 +150,19 @@ class GLMSolverTest(unittest.TestCase):
         self.assertNotEqual(result.diagnostics["final_rho"], 1e-4)
         self.assertTrue(np.isfinite(result.diagnostics["final_rho"]))
 
+    def test_factorized_admm_accepts_primal_warm_start(self):
+        initial = glm_solvers.fit_factorized_admm(
+            self.counts, self.compatibility, rank=2, max_iter=2,
+            min_iter=2, device="cpu", batch_cells=2,
+        )
+        continued = glm_solvers.fit_factorized_admm(
+            self.counts, self.compatibility, rank=2, max_iter=2,
+            min_iter=2, device="cpu", batch_cells=2,
+            initial_factors=(initial.left, initial.right),
+        )
+        self.assertTrue(continued.diagnostics["warm_started"])
+        self.assertEqual(continued.diagnostics["warm_start_rank"], 2)
+
     def test_factor_loss_ignores_empty_response_cells(self):
         torch = glm_solvers._torch()
         counts = self.counts.copy().tolil()
@@ -257,6 +270,22 @@ class GLMSolverTest(unittest.TestCase):
         self.assertEqual(result.diagnostics["iterations"], 4)
         self.assertEqual(
             result.diagnostics["convergence_reason"], "objective_patience"
+        )
+
+    def test_penalized_frank_wolfe_continues_prior_atoms(self):
+        initial = glm_solvers.fit_frank_wolfe_penalized(
+            self.counts, self.compatibility, tau=0.5, max_atoms=6,
+            max_iter=2, min_iter=2, device="cpu", batch_cells=2,
+        )
+        continued = glm_solvers.fit_frank_wolfe_penalized(
+            self.counts, self.compatibility, tau=1.0, max_atoms=6,
+            max_iter=2, min_iter=2, device="cpu", batch_cells=2,
+            initial_factors=(initial.left, initial.right),
+        )
+        self.assertTrue(continued.diagnostics["warm_started"])
+        self.assertGreater(continued.diagnostics["warm_start_rank"], 0)
+        self.assertGreater(
+            continued.left.shape[1], continued.diagnostics["warm_start_rank"]
         )
 
     def test_penalized_frank_wolfe_operator_matches_dense_gradient(self):
