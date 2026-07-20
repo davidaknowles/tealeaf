@@ -40,6 +40,17 @@ ball. Adaptive expansion replays the full candidate path to preserve this
 ordering when a new endpoint is added. Reports record the path and warm-start
 rank for each fold/candidate fit.
 
+The continuation implementation and full suite passed 36 tests. Submitted the
+corrected all-eligible-cell jobs with separate output suffix
+`_minumi500_all_warmstart.json`:
+
+- `19282628`: binary penalized Frank--Wolfe.
+- `19282629`: fixed-weighted penalized Frank--Wolfe.
+- `19282631`: binary factorized ADMM.
+- `19282630`: fixed-weighted factorized ADMM.
+
+All four corrected jobs started running.
+
 ## 2026-07-08
 
 Created `REPO_NOTES.md` with a codebase overview for tealeaf.
