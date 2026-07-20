@@ -510,6 +510,16 @@ the smallest tau among them. This is a two-objective rule: near-optimal held-out
 count reconstruction plus preservation of cell-to-cell structure. Applied to
 the completed folds, it selects multiplier 16 for binary and 64 for weighted.
 
+The profile-variance-retention rerun selected those multipliers. Both all-cell
+fits converged in 50 iterations with all cells active. Binary achieved balanced
+accuracy 0.280, macro-F1 0.201, and reference-label silhouette -0.168; weighted
+achieved 0.217, 0.155, and -0.180. These recover most of the earlier
+larger-radius penalized FW performance (0.309/0.231 binary and 0.226/0.164
+weighted) while choosing parameters without using cell labels. Weighted label
+silhouette improved relative to the earlier fit (-0.180 versus -0.200). This
+supports variance retention over strict reconstruction minimization and
+conventional one-standard-error selection for representation-oriented fitting.
+
 ## 2026-07-09 Salmon/Alevin Pipeline Recipes
 
 Pulled the useful microglia-less Salmon/Alevin pipeline pieces from the older
