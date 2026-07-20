@@ -377,18 +377,19 @@ large-scale setting.
   fractions. The power-iteration candidate gap is a stopping diagnostic but is
   explicitly not labeled an exact dual certificate.
 
-  \item \textbf{Low-rank factorization.} Use the variational identity
+  \item \textbf{Low-rank factorization.} Optimize the rank-constrained
+  nonnegative least-squares problem
   \[
-    \|\Phi\|_*
-    =
-    \min_{\Phi=UV'}
-    \frac{1}{2}\left(\|U\|_F^2 + \|V\|_F^2\right)
+    \min_{U\geq0,\,V\geq0}
+    \frac{1}{2}\left\|C-AUV'\right\|_F^2,
+    \qquad \operatorname{rank}(UV')\leq r,
   \]
-  and optimize a fixed-rank approximation \(\Phi \approx UV'\), where
+  where
   \(U \in \mathbb{R}^{T \times r}\), \(V \in \mathbb{R}^{M \times r}\), and
   \(r \ll \min(T,M)\). This avoids full singular-value decompositions and
-  stores only \(O(r(T+M))\) parameters. The loss can be evaluated using \(B\)
-  and \(G\):
+  stores only \(O(r(T+M))\) parameters. There is no factor penalty or
+  regularization parameter in this direct method. The loss can be evaluated
+  using \(B\) and \(G\):
   \[
     \left\|C-AUV'\right\|_F^2
     =
@@ -399,8 +400,10 @@ large-scale setting.
   The implementation uses nonnegative factors and projected alternating
   updates. Gradients for the shared transcript factor are accumulated over
   sparse cell blocks and normalized by the number of nonempty cells; cell
-  factors are updated blockwise. Column normalization is applied after fitting
-  when isoform proportions are required.
+  factors are updated blockwise. Paired factor columns are rescaled after each
+  iteration to have equal norms while preserving \(UV'\), which controls the
+  otherwise arbitrary factor scale without changing the objective. Column
+  normalization is applied after fitting when isoform proportions are required.
 \end{itemize}
 
 The factorized and Frank-Wolfe approaches are the scalable choices for many
@@ -418,9 +421,10 @@ The single-cell command exposes the methods as
 \texttt{factorized}. The scalable methods use a
 PyTorch backend and select CUDA when available; NumPy/SciPy remains responsible
 for sparse input and compatibility-matrix construction. The rank, cell block
-size, convergence tolerance, regularization strength, ADMM penalty, and
-Frank--Wolfe radius are configurable. The default low-rank capacity is 64, and
-the default Frank--Wolfe radius is \(\sqrt{M}\). The
+size, convergence tolerance, ADMM regularization strength, ADMM penalty, and
+Frank--Wolfe radius are configurable. The direct factorization rank is selected
+by count-fold cross-validation; other factorized modes have a configurable
+rank. The default Frank--Wolfe radius is \(\sqrt{M}\). The
 \texttt{--regularization\_target} option selects \texttt{phi} or
 \texttt{theta}; it changes both the coefficient matrix receiving the penalty
 and the corresponding design matrix.
@@ -550,6 +554,14 @@ radius. This preserves most observable cell-to-cell structure while retaining
 the strongest regularization compatible with both structure and held-out count
 prediction. Cell-type labels remain an external assessment rather than a
 hyperparameter input.
+
+The direct nonnegative factorization has no \(\lambda\). Its rank is selected
+with the same held-out molecule folds. Within each fold the implementation
+visits candidate ranks from small to large, retains the fitted columns, and
+adds small positive columns when increasing rank. Among converged,
+nondegenerate candidates within one standard error of the minimum validation
+loss, it selects the smallest rank. If that rank is the largest candidate, the
+grid is doubled up to a configured cap and the complete path is replayed.
 
 \section*{Connecting to equivalence-class-based inference}
 

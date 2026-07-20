@@ -382,6 +382,223 @@ def cross_validate_glm(
     }
 
 
+def cross_validate_factorized_rank(
+    counts,
+    compatibility,
+    ranks,
+    *,
+    n_folds=3,
+    seed=0,
+    device="auto",
+    batch_cells=4096,
+    fit_kwargs=None,
+    selection_rule="one_standard_error",
+    require_converged=False,
+    require_nondegenerate=False,
+    min_profile_active_fraction=0.9,
+    min_profile_relative_variance=1e-6,
+):
+    """Select unregularized nonnegative factor rank by molecule-count folds."""
+    if selection_rule not in {"minimum", "one_standard_error"}:
+        raise ValueError(f"invalid rank selection rule: {selection_rule}")
+    ranks = sorted(set(int(value) for value in ranks))
+    if not ranks or ranks[0] < 1:
+        raise ValueError("rank candidates must be positive")
+    fit_kwargs = dict(fit_kwargs or {})
+    fit_kwargs.pop("rank", None)
+    folds = split_count_folds(counts, n_folds=n_folds, seed=seed)
+    rows = []
+    for fold_index, validation_counts in enumerate(folds):
+        training_counts = sum(
+            (fold for index, fold in enumerate(folds) if index != fold_index),
+            start=sp.csr_matrix(counts.shape),
+        ).tocsr()
+        validation = glm_solvers.SparseGLM(
+            validation_counts,
+            compatibility,
+            device=device,
+            batch_cells=batch_cells,
+        )
+        warm_factors = None
+        for rank in ranks:
+            kwargs = dict(fit_kwargs, rank=rank)
+            if warm_factors is not None:
+                kwargs["initial_factors"] = warm_factors
+            result = glm_solvers.fit_glm(
+                training_counts,
+                compatibility,
+                "factorized",
+                device=device,
+                batch_cells=batch_cells,
+                **kwargs,
+            )
+            validation_loss = validation.loss_for_factors(
+                result.left, result.right
+            ) / validation.n_nonempty
+            profile = glm_solvers.factor_profile_diagnostics(
+                result, batch_cells=batch_cells
+            )
+            rows.append(
+                {
+                    "fold": fold_index,
+                    "rank": rank,
+                    "validation_loss_per_cell": validation_loss,
+                    "iterations": result.diagnostics.get("iterations"),
+                    "converged": result.diagnostics.get("converged"),
+                    "warm_started": result.diagnostics.get(
+                        "warm_started", False
+                    ),
+                    "warm_start_rank": result.diagnostics.get(
+                        "warm_start_rank", 0
+                    ),
+                    **profile,
+                }
+            )
+            warm_factors = (result.left.detach(), result.right.detach())
+            del result
+            gc.collect()
+            if device == "cuda" or (
+                device == "auto" and glm_solvers._torch().cuda.is_available()
+            ):
+                glm_solvers._torch().cuda.empty_cache()
+
+    means = {}
+    standard_errors = {}
+    candidate_converged = {}
+    candidate_nondegenerate = {}
+    mean_profile_variance = {}
+    minimum_profile_active_fraction = {}
+    for rank in ranks:
+        candidate_rows = [row for row in rows if row["rank"] == rank]
+        values = [row["validation_loss_per_cell"] for row in candidate_rows]
+        means[rank] = float(np.mean(values))
+        standard_errors[rank] = float(
+            np.std(values, ddof=1) / np.sqrt(len(values))
+            if len(values) > 1 else 0.0
+        )
+        candidate_converged[rank] = bool(
+            candidate_rows and all(row.get("converged") for row in candidate_rows)
+        )
+        candidate_nondegenerate[rank] = bool(
+            candidate_rows and all(
+                row.get("normalized_profile_active_fraction", 0.0)
+                >= float(min_profile_active_fraction)
+                and row.get("normalized_profile_relative_variance", 0.0)
+                > float(min_profile_relative_variance)
+                for row in candidate_rows
+            )
+        )
+        mean_profile_variance[rank] = float(np.mean([
+            row.get("normalized_profile_relative_variance", 0.0)
+            for row in candidate_rows
+        ]))
+        minimum_profile_active_fraction[rank] = float(min(
+            row.get("normalized_profile_active_fraction", 0.0)
+            for row in candidate_rows
+        ))
+
+    eligible = [
+        rank for rank in ranks
+        if not require_converged or candidate_converged[rank]
+    ]
+    convergence_met = bool(eligible)
+    if require_nondegenerate:
+        eligible = [rank for rank in eligible if candidate_nondegenerate[rank]]
+    minimum = min(eligible, key=means.get) if eligible else None
+    threshold = None
+    best_rank = None
+    if minimum is not None:
+        threshold = means[minimum]
+        if selection_rule == "one_standard_error":
+            threshold += standard_errors[minimum]
+            best_rank = min(rank for rank in eligible if means[rank] <= threshold)
+        else:
+            best_rank = minimum
+    return {
+        "method": "factorized",
+        "tuning_parameter": "rank",
+        "regularization": None,
+        "warm_start": True,
+        "rank_path": ranks,
+        "ranks": ranks,
+        "n_folds": int(n_folds),
+        "mean_validation_loss": means,
+        "validation_standard_error": standard_errors,
+        "candidate_converged": candidate_converged,
+        "candidate_nondegenerate": candidate_nondegenerate,
+        "mean_profile_relative_variance": mean_profile_variance,
+        "minimum_profile_active_fraction": minimum_profile_active_fraction,
+        "selection_rule": selection_rule,
+        "require_converged": bool(require_converged),
+        "convergence_requirement_met": convergence_met,
+        "require_nondegenerate": bool(require_nondegenerate),
+        "nondegeneracy_requirement_met": bool(eligible),
+        "minimum_loss_rank": minimum,
+        "selection_threshold": threshold,
+        "best_rank": best_rank,
+        "best_on_boundary": best_rank == ranks[-1],
+        "fold_results": rows,
+    }
+
+
+def cross_validate_factorized_rank_adaptive(
+    counts,
+    compatibility,
+    ranks,
+    *,
+    max_rank=256,
+    max_grid_expansions=2,
+    **kwargs,
+):
+    """Expand and replay a small-to-large rank path if its endpoint is selected."""
+    candidates = sorted(set(int(value) for value in ranks))
+    if not candidates or candidates[0] < 1:
+        raise ValueError("rank candidates must be positive")
+    if int(max_grid_expansions) < 0:
+        raise ValueError("max_grid_expansions must be nonnegative")
+    if int(max_rank) < candidates[-1]:
+        raise ValueError("max_rank must not be below the initial rank grid")
+    report = cross_validate_factorized_rank(
+        counts, compatibility, candidates, **kwargs
+    )
+    history = [{"round": 0, "added_rank": None, "best_rank": report["best_rank"]}]
+    expansions = 0
+    while (
+        report["best_rank"] == candidates[-1]
+        and candidates[-1] < int(max_rank)
+        and expansions < int(max_grid_expansions)
+    ):
+        candidate = min(2 * candidates[-1], int(max_rank))
+        if candidate in candidates:
+            break
+        candidates.append(candidate)
+        report = cross_validate_factorized_rank(
+            counts, compatibility, candidates, **kwargs
+        )
+        expansions += 1
+        history.append(
+            {
+                "round": expansions,
+                "added_rank": candidate,
+                "best_rank": report["best_rank"],
+            }
+        )
+    report.update(
+        grid_expansions=expansions,
+        max_grid_expansions=int(max_grid_expansions),
+        max_rank=int(max_rank),
+        grid_exhausted=bool(
+            report["best_rank"] == candidates[-1]
+            and (
+                candidates[-1] == int(max_rank)
+                or expansions == int(max_grid_expansions)
+            )
+        ),
+        grid_history=history,
+    )
+    return report
+
+
 def _apply_selection_rule(report, method, selection_rule, require_converged,
                           require_nondegenerate=False,
                           profile_variance_retention=0.9):

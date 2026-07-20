@@ -51,6 +51,19 @@ corrected all-eligible-cell jobs with separate output suffix
 
 All four corrected jobs started running.
 
+Removed factor L2 regularization from the separate direct `factorized` solver.
+It now minimizes only EC reconstruction loss subject to nonnegative factors and
+a rank cap. Prediction-preserving column-norm balancing controls factor scale.
+Added molecule-count CV for rank with an ascending warm-start path: existing
+columns are retained and small positive columns are appended. Selection uses
+the smallest converged, nondegenerate rank within one standard error of the
+minimum held-out loss. The initial rank grid is 1, 2, 4, 8, 16, 32, 64, and
+128; a selected upper boundary expands to 256 and replays the path. Cell-type
+labels are not used.
+
+Validation: the full suite passed 39 tests; the rank-CV launcher and Python
+entry point also passed shell and bytecode checks.
+
 ## 2026-07-08
 
 Created `REPO_NOTES.md` with a codebase overview for tealeaf.

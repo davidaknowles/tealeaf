@@ -18,10 +18,12 @@ def main():
     parser.add_argument(
         "--method",
         required=True,
-        choices=["admm_factorized", "frank_wolfe_penalized"],
+        choices=["factorized", "admm_factorized", "frank_wolfe_penalized"],
     )
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--multiplier", action="append", required=True, type=float)
+    parser.add_argument("--multiplier", action="append", type=float)
+    parser.add_argument("--rank-candidate", action="append", type=int)
+    parser.add_argument("--max-rank", type=int, default=256)
     parser.add_argument(
         "--cells",
         type=int,
@@ -60,6 +62,11 @@ def main():
     parser.add_argument("--min-profile-relative-variance", type=float, default=1e-6)
     parser.add_argument("--profile-variance-retention", type=float, default=0.9)
     args = parser.parse_args()
+    if args.method == "factorized":
+        if not args.rank_candidate:
+            raise ValueError("factorized rank CV requires --rank-candidate")
+    elif not args.multiplier:
+        raise ValueError(f"{args.method} CV requires --multiplier")
 
     prepared = glm_cv.prepare_alevin_glm_data(
         args.alevin_dir,
@@ -98,46 +105,72 @@ def main():
             rho_balance=10.0,
             rho_scale=2.0,
         )
-    else:
+    elif args.method == "frank_wolfe_penalized":
         fit_kwargs.update(
             max_atoms=args.max_iter,
             power_iter=args.power_iter,
             nonnegative_penalty=args.nonnegative_penalty,
         )
-    report = glm_cv.cross_validate_glm_adaptive_grid(
-        counts,
-        prepared.compatibility,
-        args.method,
-        args.multiplier,
-        n_folds=args.folds,
-        seed=args.seed,
-        device=args.device,
-        batch_cells=args.batch_cells,
-        power_iter=args.scale_power_iter,
-        fit_kwargs=fit_kwargs,
-        min_profile_active_fraction=args.min_profile_active_fraction,
-        min_profile_relative_variance=args.min_profile_relative_variance,
-        max_grid_expansions=args.max_grid_expansions,
-        grid_expansion_factor=args.grid_expansion_factor,
-        selection_rule=args.selection_rule,
-        require_converged=args.require_converged,
-        require_nondegenerate=args.require_nondegenerate,
-        profile_variance_retention=args.profile_variance_retention,
-    )
-    full_counts = (
-        counts
-        if len(selected) == len(eligible)
-        else prepared.counts[eligible].tocsr()
-    )
-    full_scale = glm_cv.hyperparameter_scale(
-        full_counts,
-        prepared.compatibility,
-        args.method,
-        device=args.device,
-        batch_cells=args.batch_cells,
-        power_iter=args.scale_power_iter,
-        seed=args.seed,
-    )
+    if args.method == "factorized":
+        rank_selection_rule = (
+            args.selection_rule
+            if args.selection_rule in {"minimum", "one_standard_error"}
+            else "one_standard_error"
+        )
+        report = glm_cv.cross_validate_factorized_rank_adaptive(
+            counts,
+            prepared.compatibility,
+            args.rank_candidate,
+            n_folds=args.folds,
+            seed=args.seed,
+            device=args.device,
+            batch_cells=args.batch_cells,
+            fit_kwargs=fit_kwargs,
+            min_profile_active_fraction=args.min_profile_active_fraction,
+            min_profile_relative_variance=args.min_profile_relative_variance,
+            max_grid_expansions=args.max_grid_expansions,
+            max_rank=args.max_rank,
+            selection_rule=rank_selection_rule,
+            require_converged=args.require_converged,
+            require_nondegenerate=args.require_nondegenerate,
+        )
+    else:
+        report = glm_cv.cross_validate_glm_adaptive_grid(
+            counts,
+            prepared.compatibility,
+            args.method,
+            args.multiplier,
+            n_folds=args.folds,
+            seed=args.seed,
+            device=args.device,
+            batch_cells=args.batch_cells,
+            power_iter=args.scale_power_iter,
+            fit_kwargs=fit_kwargs,
+            min_profile_active_fraction=args.min_profile_active_fraction,
+            min_profile_relative_variance=args.min_profile_relative_variance,
+            max_grid_expansions=args.max_grid_expansions,
+            grid_expansion_factor=args.grid_expansion_factor,
+            selection_rule=args.selection_rule,
+            require_converged=args.require_converged,
+            require_nondegenerate=args.require_nondegenerate,
+            profile_variance_retention=args.profile_variance_retention,
+        )
+    full_scale = None
+    if args.method != "factorized":
+        full_counts = (
+            counts
+            if len(selected) == len(eligible)
+            else prepared.counts[eligible].tocsr()
+        )
+        full_scale = glm_cv.hyperparameter_scale(
+            full_counts,
+            prepared.compatibility,
+            args.method,
+            device=args.device,
+            batch_cells=args.batch_cells,
+            power_iter=args.scale_power_iter,
+            seed=args.seed,
+        )
     report.update(
         design=args.design,
         regularization_target="theta",
@@ -150,9 +183,10 @@ def main():
         n_transcripts=int(prepared.compatibility.shape[1]),
         full_scale=full_scale,
         selected_full_value=(
-            report["best_multiplier"] * full_scale
-            if report["best_multiplier"] is not None else None
+            report.get("best_multiplier") * full_scale
+            if report.get("best_multiplier") is not None else None
         ),
+        selected_rank=report.get("best_rank", args.rank),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with open(args.output, "w") as handle:

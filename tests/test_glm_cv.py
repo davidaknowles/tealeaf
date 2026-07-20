@@ -254,6 +254,27 @@ class GLMCVTest(unittest.TestCase):
             self.assertFalse(rows[0]["warm_started"])
             self.assertTrue(rows[1]["warm_started"])
 
+    def test_factorized_rank_cv_runs_from_few_to_many_factors(self):
+        report = glm_cv.cross_validate_factorized_rank(
+            self.counts,
+            self.compatibility,
+            [1, 2],
+            n_folds=2,
+            device="cpu",
+            batch_cells=2,
+            fit_kwargs={"max_iter": 2, "min_iter": 2},
+            selection_rule="one_standard_error",
+        )
+        self.assertEqual(report["rank_path"], [1, 2])
+        self.assertIn(report["best_rank"], [1, 2])
+        self.assertIsNone(report["regularization"])
+        for fold in range(2):
+            rows = [row for row in report["fold_results"] if row["fold"] == fold]
+            self.assertEqual([row["rank"] for row in rows], [1, 2])
+            self.assertFalse(rows[0]["warm_started"])
+            self.assertTrue(rows[1]["warm_started"])
+            self.assertEqual(rows[1]["warm_start_rank"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

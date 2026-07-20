@@ -231,20 +231,73 @@ def _validate_stopping(max_iter, min_iter, patience, tol):
         raise ValueError("tol must be nonnegative")
 
 
-def fit_factorized(counts, compatibility, *, rank=64, regularization=0.01,
-                   max_iter=100, tol=1e-4, learning_rate=0.05, device="auto",
-                   batch_cells=4096, seed=0, min_iter=10, patience=5):
+def _expand_initial_factors(data, rank, seed, initial_factors=None):
+    """Initialize a rank path, retaining existing columns and adding small ones."""
+    warm_factors = _coerce_initial_factors(
+        data, initial_factors, nonnegative=True
+    )
+    if warm_factors is None:
+        return (*_initial_factors(data, rank, seed), 0)
+    left, right = warm_factors
+    warm_rank = int(left.shape[1])
+    if warm_rank > int(rank):
+        raise ValueError("warm-start rank exceeds requested rank")
+    if warm_rank == int(rank):
+        return left, right, warm_rank
+    torch = data.torch
+    generator = torch.Generator(device=data.device)
+    generator.manual_seed(seed + warm_rank)
+    added_rank = int(rank) - warm_rank
+    scale = 1.0 / np.sqrt(max(int(rank) * data.n_transcripts, 1))
+    added_left = torch.rand(
+        (data.n_transcripts, added_rank),
+        generator=generator,
+        device=data.device,
+    ) * scale
+    added_right = torch.rand(
+        (data.n_cells, added_rank),
+        generator=generator,
+        device=data.device,
+    ) * scale
+    totals = np.asarray(data.counts.sum(axis=1)).ravel()
+    added_right[torch.as_tensor(totals <= 0, device=data.device)] = 0
+    return (
+        torch.cat((left, added_left), dim=1),
+        torch.cat((right, added_right), dim=1),
+        warm_rank,
+    )
+
+
+def _balance_factor_columns(left, right):
+    """Equalize paired column norms without changing their matrix product."""
+    torch = _torch()
+    left_norm = torch.linalg.vector_norm(left, dim=0)
+    right_norm = torch.linalg.vector_norm(right, dim=0)
+    active = (left_norm > 0) & (right_norm > 0)
+    scale = torch.ones_like(left_norm)
+    scale[active] = torch.sqrt(right_norm[active] / left_norm[active])
+    return left * scale, right / scale
+
+
+def fit_factorized(counts, compatibility, *, rank=64, max_iter=100,
+                   tol=1e-4, learning_rate=0.05, device="auto",
+                   batch_cells=4096, seed=0, min_iter=10, patience=5,
+                   initial_factors=None):
     """Projected alternating optimization of a genome-wide nonnegative factorization."""
     _validate_stopping(max_iter, min_iter, patience, tol)
     data = SparseGLM(counts, compatibility, device, batch_cells)
     torch = data.torch
-    left, right = _initial_factors(data, rank, seed)
+    left, right, warm_start_rank = _expand_initial_factors(
+        data, rank, seed, initial_factors
+    )
     diagnostics = {
         "objective": [], "objective_relative_change": [],
         "device": str(data.device), "rank": rank,
-        "regularization": float(regularization),
         "gram_lipschitz": data.gram_lipschitz,
         "min_iter": int(min_iter), "patience": int(patience), "tolerance": tol,
+        "warm_started": initial_factors is not None,
+        "warm_start_rank": warm_start_rank,
+        "factor_penalty": None,
     }
     previous = None
     stable = 0
@@ -254,14 +307,13 @@ def fit_factorized(counts, compatibility, *, rank=64, regularization=0.01,
         gram_left = left.T @ data.gram_times(left)
         right_lipschitz = float(
             torch.linalg.matrix_norm(gram_left, ord=2).item()
-        ) + regularization
+        )
         right_step = min(learning_rate, 1.0 / max(right_lipschitz, 1e-12))
         b_times_right = torch.zeros_like(left)
         right_gram = torch.zeros((rank, rank), device=data.device)
         for start, stop, block, nonempty in data.blocks():
             right_block = right[start:stop]
             gradient = right_block @ gram_left - torch.sparse.mm(block, au)
-            gradient += regularization * right_block
             right_block = torch.relu(right_block - right_step * gradient)
             right_block[~nonempty] = 0
             right[start:stop] = right_block
@@ -269,23 +321,22 @@ def fit_factorized(counts, compatibility, *, rank=64, regularization=0.01,
             b_times_right += data.at_times(
                 torch.sparse.mm(block.transpose(0, 1), right_block)
             )
-        # Average the complete block gradient. Averaging only the data term
-        # makes the effective nuclear penalty depend on the number of cells.
+        # Average the accumulated transcript-factor gradient so its step scale
+        # does not grow with the number of cells.
         gradient_left = (
             data.gram_times(left) @ right_gram
             - b_times_right
-            + regularization * left
         ) / data.n_nonempty
         left_lipschitz = (
             data.gram_lipschitz
             * float(torch.linalg.matrix_norm(right_gram, ord=2).item())
             / data.n_nonempty
-            + regularization / data.n_nonempty
         )
         left_step = min(learning_rate, 1.0 / max(left_lipschitz, 1e-12))
         left = torch.relu(left - left_step * gradient_left)
+        left, right = _balance_factor_columns(left, right)
 
-        objective = data.loss_for_factors(left, right, regularization)
+        objective = data.loss_for_factors(left, right)
         diagnostics["objective"].append(objective)
         stop, stable = _objective_stop(
             diagnostics, objective, previous, stable, iteration,
@@ -880,7 +931,7 @@ def fit_frank_wolfe_penalized(
 def fit_glm(counts, compatibility, method, **kwargs):
     """Dispatch a GLM method using a cells-by-EC sparse count matrix."""
     if method == "factorized":
-        allowed = {"rank", "regularization", "max_iter", "tol", "learning_rate", "device", "batch_cells", "seed", "min_iter", "patience"}
+        allowed = {"rank", "max_iter", "tol", "learning_rate", "device", "batch_cells", "seed", "min_iter", "patience", "initial_factors"}
         return fit_factorized(counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed})
     if method == "admm_factorized":
         allowed = {"rank", "regularization", "rho", "max_iter", "tol", "learning_rate", "device", "batch_cells", "seed", "min_iter", "patience", "adaptive_rho", "rho_update_interval", "rho_balance", "rho_scale", "initial_factors"}

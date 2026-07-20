@@ -111,9 +111,31 @@ class GLMSolverTest(unittest.TestCase):
             self.assertGreater(result.diagnostics["active_cell_fraction"], 0)
 
     def test_factorized(self):
-        self._assert_result(glm_solvers.fit_factorized(
+        result = glm_solvers.fit_factorized(
             self.counts, self.compatibility, rank=2, max_iter=8, device="cpu", batch_cells=2
-        ))
+        )
+        self._assert_result(result)
+        self.assertIsNone(result.diagnostics["factor_penalty"])
+        left_norm = np.linalg.norm(result.left.numpy(), axis=0)
+        right_norm = np.linalg.norm(result.right.numpy(), axis=0)
+        active = (left_norm > 0) & (right_norm > 0)
+        np.testing.assert_allclose(
+            left_norm[active], right_norm[active], rtol=1e-5, atol=1e-7
+        )
+
+    def test_factorized_expands_a_rank_warm_start(self):
+        initial = glm_solvers.fit_factorized(
+            self.counts, self.compatibility, rank=1, max_iter=2,
+            min_iter=2, device="cpu", batch_cells=2,
+        )
+        expanded = glm_solvers.fit_factorized(
+            self.counts, self.compatibility, rank=3, max_iter=2,
+            min_iter=2, device="cpu", batch_cells=2,
+            initial_factors=(initial.left, initial.right),
+        )
+        self.assertTrue(expanded.diagnostics["warm_started"])
+        self.assertEqual(expanded.diagnostics["warm_start_rank"], 1)
+        self.assertEqual(expanded.left.shape[1], 3)
 
     def test_factorized_uses_minimum_iterations_and_patience(self):
         result = glm_solvers.fit_factorized(
@@ -333,6 +355,18 @@ class GLMSolverTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             glm_solvers.fit_factorized(
                 self.counts, self.compatibility, max_iter=0, device="cpu"
+            )
+
+    def test_factorized_rejects_rank_reduction_warm_start(self):
+        initial = glm_solvers.fit_factorized(
+            self.counts, self.compatibility, rank=2, max_iter=1,
+            min_iter=1, device="cpu",
+        )
+        with self.assertRaisesRegex(ValueError, "exceeds requested rank"):
+            glm_solvers.fit_factorized(
+                self.counts, self.compatibility, rank=1, max_iter=1,
+                min_iter=1, device="cpu",
+                initial_factors=(initial.left, initial.right),
             )
 
     def test_dense_admm(self):
