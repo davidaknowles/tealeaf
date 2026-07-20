@@ -489,6 +489,18 @@ relative variance above 1e-6. This rejects zero fits and rank-one solutions that
 encode only library size before applying the one-standard-error rule. The same
 diagnostics are written to full-fit manifests.
 
+The non-collapse FW rerun completed. Binary excluded multipliers 0 and 0.25
+and selected 1.0; weighted excluded 0 and selected 0.25. Both all-cell fits
+converged in 50 iterations with all cells active. Their normalized profile
+relative variances were 0.00324 and 1.51e-5, and downstream log-gene relative
+variances were 0.00414 and 2.19e-5, so both passed scoring. Binary achieved
+balanced accuracy 0.182 and macro-F1 0.111; weighted achieved 0.168 and 0.112.
+This fixes degenerate selection but remains below the earlier larger-radius
+penalized FW fits (0.309/0.231 binary and 0.226/0.164 weighted). Reconstruction
+one-standard-error selection therefore still over-regularizes relative to the
+cell-type recovery objective; a label-aware secondary selection criterion is
+needed if label recovery is the target.
+
 ## 2026-07-09 Salmon/Alevin Pipeline Recipes
 
 Pulled the useful microglia-less Salmon/Alevin pipeline pieces from the older
