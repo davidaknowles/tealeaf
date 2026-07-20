@@ -22,6 +22,15 @@ grids for binary and fixed-weighted penalized Frank--Wolfe and factorized ADMM.
 
 Validation: the full test suite passed 33 tests.
 
+Submitted four independent L40S jobs:
+
+- `19282598`: binary penalized Frank--Wolfe.
+- `19282599`: fixed-weighted penalized Frank--Wolfe.
+- `19282601`: binary factorized ADMM.
+- `19282600`: fixed-weighted factorized ADMM.
+
+Reports use the suffix `_minumi500_all.json`; all four jobs started running.
+
 ## 2026-07-08
 
 Created `REPO_NOTES.md` with a codebase overview for tealeaf.
