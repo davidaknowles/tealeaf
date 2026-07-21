@@ -28,6 +28,19 @@ deterministic polishing, and incremental rank expansion. CUDA validation and
 representative batch-size profiling are queued until an existing GPU analysis
 releases an allocation; the four running analyses were left undisturbed.
 
+The single-cell fitting entry point now applies an optional raw-UMI threshold
+before constructing solver state and writes factors/barcodes only for retained
+cells. The selected-fit launcher uses the same 500-UMI population as CV,
+supports either a selected direct-factor rank or a selected factorized-ADMM
+penalty, and propagates the benchmark-selected cell batch size.
+
+Queued CUDA validation as job `19297650`. Binary and weighted representative
+old-versus-new benchmarks are jobs `19297651` and `19297652`; both depend on
+CUDA validation. Dependent job `19297657` will select the fastest batch size
+within 1% of the best short-run objective, submit four optimized all-cell CV
+jobs, then submit selected full fits and log-gene-PCA label and silhouette
+scoring. Existing long-running CV jobs remain active and were not cancelled.
+
 ## 2026-07-20 UMI-Filtered Single-Cell CV
 
 Added raw per-cell UMI filtering to the reusable GLM CV preparation and

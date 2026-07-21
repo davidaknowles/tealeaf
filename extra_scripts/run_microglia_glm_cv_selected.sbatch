@@ -15,9 +15,13 @@ source "${HOME}/venv/cpa_blackwell/bin/activate"
 export PYTHONPATH=/gpfs/commons/home/daknowles/projects/tealeaf:${PYTHONPATH:-}
 
 DESIGN=${DESIGN:?Set DESIGN to binary or weighted}
-METHOD=${METHOD:?Set METHOD to admm_factorized or frank_wolfe_penalized}
+METHOD=${METHOD:?Set METHOD to factorized, admm_factorized, or frank_wolfe_penalized}
+REPORT_TAG=${REPORT_TAG:-_minumi500_all_minibatch}
+BATCH_CELLS=${BATCH_CELLS:-16384}
+DATA_BACKEND=${DATA_BACKEND:-auto}
+MIN_CELL_UMIS=${MIN_CELL_UMIS:-500}
 RUN=/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run
-REPORT=${RUN}/cv_${DESIGN}_${METHOD}_theta.json
+REPORT=${RUN}/cv_${DESIGN}_${METHOD}_theta${REPORT_TAG}.json
 VALUE=$(python -c '
 import json, sys
 report = json.load(open(sys.argv[1]))
@@ -27,13 +31,21 @@ if not report.get("convergence_requirement_met", True):
     raise SystemExit("No CV candidate satisfied the convergence requirement")
 if not report.get("nondegeneracy_requirement_met", True):
     raise SystemExit("No CV candidate satisfied the nondegeneracy requirement")
-print(report["selected_full_value"])
+if report["method"] == "factorized":
+    print(report["selected_rank"])
+else:
+    print(report["selected_full_value"])
 ' "${REPORT}")
 
 method_args=()
+glm_rank=64
 if [[ "${METHOD}" == admm_factorized ]]; then
   method_args+=(--nucnorm_lambda "${VALUE}" --nucnorm_max_iter 4096)
   full_tol=1e-6
+elif [[ "${METHOD}" == factorized ]]; then
+  glm_rank=${VALUE}
+  method_args+=(--nucnorm_max_iter 2048)
+  full_tol=1e-5
 else
   method_args+=(--nucnorm_tau "${VALUE}" --nucnorm_max_iter 2048)
   method_args+=(--fw_max_atoms 2048 --fw_power_iter 10 --fw_nonnegative_penalty 1.0)
@@ -49,9 +61,12 @@ python -m tealeaf.sc.tealeaf_sc \
   --regularization_target theta \
   --ec_design "${DESIGN}" \
   --glm_device cuda \
-  --glm_rank 64 \
-  --glm_batch_cells 4096 \
+  --glm_rank "${glm_rank}" \
+  --glm_batch_cells "${BATCH_CELLS}" \
+  --glm_data_backend "${DATA_BACKEND}" \
+  --glm_polish_max_iter 32 \
   --glm_no_write_chunks \
+  --min_cell_umis "${MIN_CELL_UMIS}" \
   --nucnorm_min_iter 50 \
   --nucnorm_patience 10 \
   --nucnorm_tol "${full_tol}" \
@@ -61,4 +76,4 @@ python -m tealeaf.sc.tealeaf_sc \
   --admm_rho_scale 2 \
   --min_eq 5 \
   "${method_args[@]}" \
-  -o "${RUN}/single_cell_${DESIGN}_${METHOD}_cv_theta_"
+  -o "${RUN}/single_cell_${DESIGN}_${METHOD}_cv_minibatch_theta_"

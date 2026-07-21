@@ -661,8 +661,18 @@ def single_cell_glm_conversion(options):
         probability_file=options.eq_probabilities,
         weight_cache=options.eq_weight_cache,
     )
-    result = glm_solvers.fit_glm(
+    selected = glm_cv.sample_cells_by_count(
         prepared.counts,
+        0,
+        min_count=options.min_cell_umis,
+        totals=prepared.cell_umi_totals,
+    )
+    if not len(selected):
+        raise ValueError("no cells meet --min_cell_umis")
+    counts = prepared.counts[selected].tocsr()
+    barcodes = prepared.barcodes[selected]
+    result = glm_solvers.fit_glm(
+        counts,
         prepared.compatibility,
         options.quant_method,
         rank=options.glm_rank,
@@ -692,7 +702,7 @@ def single_cell_glm_conversion(options):
     glm_solvers.write_chunked_result(
         result,
         options.outprefix,
-        prepared.barcodes,
+        barcodes,
         prepared.features,
         batch_cells=options.glm_batch_cells,
         threshold=options.glm_output_threshold,
@@ -1047,6 +1057,9 @@ if __name__ == "__main__":
     parser.add_option("--cell_mode", dest="cell_mode", default='pseudobulk',
                   help="fit pseudobulks or raw cells: pseudobulk or single_cell (default: pseudobulk)")
 
+    parser.add_option("--min_cell_umis", dest="min_cell_umis", default=0, type="float",
+                  help="minimum raw UMI count for single-cell GLM fitting (default: 0)")
+
     parser.add_option("--glm_device", dest="glm_device", default='auto',
                   help="Torch device for scalable GLMs: auto, cuda, or cpu (default: auto)")
 
@@ -1252,6 +1265,5 @@ if __name__ == "__main__":
     write_options_to_file(options, record)
 
     tealeaf_sc(options)
-
 
 
