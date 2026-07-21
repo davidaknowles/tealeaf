@@ -275,6 +275,27 @@ class GLMCVTest(unittest.TestCase):
             self.assertTrue(rows[1]["warm_started"])
             self.assertEqual(rows[1]["warm_start_rank"], 1)
 
+    def test_adaptive_rank_cv_continues_without_replaying_completed_ranks(self):
+        initial = {"best_rank": 2}
+        extended = {"best_rank": 2}
+        state = {"continuation": True}
+        with mock.patch.object(
+            glm_cv,
+            "cross_validate_factorized_rank",
+            side_effect=[(initial, state), (extended, state)],
+        ) as mocked:
+            report = glm_cv.cross_validate_factorized_rank_adaptive(
+                self.counts,
+                self.compatibility,
+                [1, 2],
+                max_rank=8,
+                max_grid_expansions=2,
+            )
+        self.assertEqual(mocked.call_count, 2)
+        self.assertEqual(mocked.call_args_list[1].args[2], [1, 2, 4])
+        self.assertIs(mocked.call_args_list[1].kwargs["_state"], state)
+        self.assertEqual(report["grid_expansions"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

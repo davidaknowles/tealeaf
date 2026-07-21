@@ -19,6 +19,9 @@ METHOD=${METHOD:?Set METHOD to factorized, admm_factorized, or frank_wolfe_penal
 CV_CELLS=${CV_CELLS:-5000}
 MIN_CELL_UMIS=${MIN_CELL_UMIS:-1}
 OUTPUT_TAG=${OUTPUT_TAG:-}
+BATCH_CELLS=${BATCH_CELLS:-16384}
+DATA_BACKEND=${DATA_BACKEND:-auto}
+POLISH_MAX_ITER=${POLISH_MAX_ITER:-32}
 RUN=/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run
 ALEVIN=/gpfs/commons/groups/knowles_lab/data/sc/splitpool/microglia_less_mice/salmon_spliceu_weighted_rad/out_permit_known_weighted/quant_t2t_dedup_parsimony_em/alevin
 REF=/gpfs/commons/home/daknowles/knowles_lab/index/salmon/mus_spliceu/spliceu.fa
@@ -36,7 +39,7 @@ if [[ "${METHOD}" == factorized ]]; then
   done
 elif [[ "${METHOD}" == admm_factorized ]]; then
   multipliers=(0 1e-9 1e-8 1e-7 1e-6 1e-5)
-  max_iter=512
+  max_iter=2048
   expansion_factor=10
   selection_rule=minimum
   cv_tol=1e-5
@@ -67,7 +70,9 @@ python /gpfs/commons/home/daknowles/projects/tealeaf/extra_scripts/tune_single_c
   --max-rank 256 \
   --power-iter 5 \
   --scale-power-iter 10 \
-  --batch-cells 2048 \
+  --batch-cells "${BATCH_CELLS}" \
+  --data-backend "${DATA_BACKEND}" \
+  --polish-max-iter "${POLISH_MAX_ITER}" \
   --device cuda \
   --max-grid-expansions 4 \
   --grid-expansion-factor "${expansion_factor}" \

@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 from pathlib import Path
+import time
 from typing import Iterator
 
 import numpy as np
@@ -49,31 +50,55 @@ def _csr_to_torch(matrix: sp.spmatrix, device, dtype=None):
     matrix = matrix.tocsr()
     dtype = dtype or torch.float32
     return torch.sparse_csr_tensor(
-        torch.as_tensor(matrix.indptr, dtype=torch.int64, device=device),
-        torch.as_tensor(matrix.indices, dtype=torch.int64, device=device),
+        torch.as_tensor(matrix.indptr, device=device),
+        torch.as_tensor(matrix.indices, device=device),
         torch.as_tensor(matrix.data, dtype=dtype, device=device),
         size=matrix.shape,
         device=device,
     )
 
 
-def _normalized_block(counts: sp.csr_matrix, start: int, stop: int, device):
-    """Return a normalized cells-by-EC sparse COO block and nonempty mask."""
-    torch = _torch()
-    block = counts[start:stop].tocsr(copy=True).astype(np.float32)
-    totals = np.asarray(block.sum(axis=1)).ravel()
+def _normalized_counts(counts: sp.csr_matrix):
+    """Normalize CSR rows once while sharing the immutable sparse structure."""
+    counts = counts.tocsr()
+    totals = np.asarray(counts.sum(axis=1)).ravel()
     nonempty = totals > 0
     inverse = np.zeros_like(totals, dtype=np.float32)
     inverse[nonempty] = 1.0 / totals[nonempty]
-    block.data *= np.repeat(inverse, np.diff(block.indptr))
-    coo = block.tocoo()
+    values = counts.data.astype(np.float32, copy=True)
+    values *= np.repeat(inverse, np.diff(counts.indptr))
+    normalized = sp.csr_matrix(
+        (values, counts.indices, counts.indptr), shape=counts.shape, copy=False
+    )
+    return normalized, nonempty
+
+
+def _coo_components(matrix: sp.spmatrix, nonempty, *, pin=False):
+    """Build reusable CPU tensors for a sparse cell block."""
+    torch = _torch()
+    coo = matrix.tocoo(copy=False)
+    indices = torch.as_tensor(
+        np.vstack((coo.row, coo.col)), dtype=torch.int64
+    )
+    values = torch.as_tensor(coo.data, dtype=torch.float32)
+    mask = torch.as_tensor(nonempty, dtype=torch.bool)
+    if pin:
+        indices = indices.pin_memory()
+        values = values.pin_memory()
+        mask = mask.pin_memory()
+    return indices, values, mask, matrix.shape
+
+
+def _components_to_sparse(components, device, *, non_blocking=False):
+    torch = _torch()
+    indices, values, mask, shape = components
+    indices = indices.to(device, non_blocking=non_blocking)
+    values = values.to(device, non_blocking=non_blocking)
+    mask = mask.to(device, non_blocking=non_blocking)
     sparse = torch.sparse_coo_tensor(
-        torch.as_tensor(np.vstack((coo.row, coo.col)), dtype=torch.int64, device=device),
-        torch.as_tensor(coo.data, dtype=torch.float32, device=device),
-        size=block.shape,
-        device=device,
+        indices, values, size=shape, device=device
     ).coalesce()
-    return sparse, torch.as_tensor(nonempty, device=device)
+    return sparse, mask
 
 
 @dataclass
@@ -88,7 +113,9 @@ class GLMResult:
 class SparseGLM:
     """Sparse count access and low-rank objective helpers."""
 
-    def __init__(self, counts, compatibility, device="auto", batch_cells=4096):
+    def __init__(self, counts, compatibility, device="auto", batch_cells=4096,
+                 data_backend="auto"):
+        cache_started = time.perf_counter()
         self.torch = _torch()
         self.device = resolve_device(device)
         self.counts = counts.tocsr()
@@ -97,12 +124,47 @@ class SparseGLM:
         self.n_cells, self.n_ec = self.counts.shape
         self.n_transcripts = compatibility.shape[1]
         self.batch_cells = max(1, int(batch_cells))
-        self.n_nonempty = max(1, int(np.count_nonzero(np.asarray(self.counts.sum(axis=1)).ravel())))
+        self.normalized_counts, self.nonempty = _normalized_counts(self.counts)
+        self.n_nonempty = max(1, int(np.count_nonzero(self.nonempty)))
+        self.data_backend = self._resolve_data_backend(data_backend)
+        self._cell_batches = self._prepare_cell_batches()
+        self.cache_build_seconds = time.perf_counter() - cache_started
         self.gram_lipschitz = self._estimate_gram_lipschitz()
-        self.total_count_sq = float(np.square(self.counts.data / np.repeat(
-            np.maximum(np.asarray(self.counts.sum(axis=1)).ravel(), 1.0),
-            np.diff(self.counts.indptr),
-        )).sum())
+        self.total_count_sq = float(np.square(self.normalized_counts.data).sum())
+
+    def _resolve_data_backend(self, backend):
+        allowed = {"auto", "cuda", "pinned", "cpu"}
+        if backend not in allowed:
+            raise ValueError(f"data_backend must be one of {sorted(allowed)}")
+        if self.device.type != "cuda":
+            if backend in {"cuda", "pinned"}:
+                raise ValueError(f"data_backend={backend} requires a CUDA device")
+            return "cpu"
+        if backend == "cpu":
+            raise ValueError("data_backend=cpu is only valid with a CPU device")
+        if backend != "auto":
+            return backend
+        free_bytes, _ = self.torch.cuda.mem_get_info(self.device)
+        # Cached COO uses two int64 coordinates plus one float32 value.
+        estimated = int(self.normalized_counts.nnz) * 20 + self.n_cells
+        return "cuda" if estimated <= 0.7 * free_bytes else "pinned"
+
+    def _prepare_cell_batches(self):
+        batches = []
+        pin = self.data_backend == "pinned"
+        target = self.device if self.data_backend in {"cuda", "cpu"} else None
+        for start in range(0, self.n_cells, self.batch_cells):
+            stop = min(start + self.batch_cells, self.n_cells)
+            components = _coo_components(
+                self.normalized_counts[start:stop], self.nonempty[start:stop],
+                pin=pin,
+            )
+            payload = (
+                _components_to_sparse(components, target)
+                if target is not None else components
+            )
+            batches.append((start, stop, payload))
+        return batches
 
     def _estimate_gram_lipschitz(self, iterations=8):
         """Estimate the largest eigenvalue of A.T A with sparse power steps."""
@@ -119,11 +181,49 @@ class SparseGLM:
             vector = image / norm
         return float((vector * self.gram_times(vector)).sum().item())
 
-    def blocks(self) -> Iterator[tuple[int, int, object, object]]:
-        for start in range(0, self.n_cells, self.batch_cells):
-            stop = min(start + self.batch_cells, self.n_cells)
-            block, nonempty = _normalized_block(self.counts, start, stop, self.device)
+    def blocks(self, order=None) -> Iterator[tuple[int, int, object, object]]:
+        """Yield cached normalized blocks, optionally in a supplied batch order."""
+        indices = range(len(self._cell_batches)) if order is None else order
+        if self.data_backend != "pinned":
+            for index in indices:
+                start, stop, payload = self._cell_batches[int(index)]
+                block, nonempty = payload
+                yield start, stop, block, nonempty
+            return
+        # Copies are issued on a separate stream. The generator resumes only
+        # after the caller has queued work consuming the previously yielded block.
+        stream = self.torch.cuda.Stream(device=self.device)
+
+        def schedule(index):
+            start, stop, components = self._cell_batches[int(index)]
+            with self.torch.cuda.stream(stream):
+                loaded = _components_to_sparse(
+                    components, self.device, non_blocking=True
+                )
+                ready = self.torch.cuda.Event()
+                ready.record(stream)
+            return (start, stop, *loaded, ready)
+
+        iterator = iter(indices)
+        try:
+            pending = schedule(next(iterator))
+        except StopIteration:
+            return
+        for index in iterator:
+            following = schedule(index)
+            start, stop, block, nonempty, ready = pending
+            current = self.torch.cuda.current_stream(self.device)
+            current.wait_event(ready)
+            block.record_stream(current)
+            nonempty.record_stream(current)
             yield start, stop, block, nonempty
+            pending = following
+        start, stop, block, nonempty, ready = pending
+        current = self.torch.cuda.current_stream(self.device)
+        current.wait_event(ready)
+        block.record_stream(current)
+        nonempty.record_stream(current)
+        yield start, stop, block, nonempty
 
     def a_times(self, value):
         return self.torch.sparse.mm(self.a, value)
@@ -136,24 +236,47 @@ class SparseGLM:
 
     def b_times(self, right):
         """Compute ``A.T @ C @ right`` without forming ``C`` or ``A.T @ C``."""
-        result = self.torch.zeros((self.n_transcripts, right.shape[1]), device=self.device)
+        ec_cross = self.torch.zeros(
+            (self.n_ec, right.shape[1]), device=self.device
+        )
         for start, stop, block, _ in self.blocks():
-            result += self.at_times(self.torch.sparse.mm(block.transpose(0, 1), right[start:stop]))
-        return result
+            ec_cross += self.torch.sparse.mm(
+                block.transpose(0, 1), right[start:stop]
+            )
+        return self.at_times(ec_cross)
 
-    def loss_for_factors(self, left, right, regularization=0.0):
-        au = self.a_times(left)
-        cross = self.torch.zeros((), device=self.device)
-        right_gram = self.torch.zeros((right.shape[1], right.shape[1]), device=self.device)
+    def factor_statistics(self, right):
+        """Return V'V and C V, sufficient statistics for a fixed cell factor."""
+        rank = right.shape[1]
+        right_gram = self.torch.zeros((rank, rank), device=self.device)
+        ec_cross = self.torch.zeros((self.n_ec, rank), device=self.device)
         for start, stop, block, nonempty in self.blocks():
             right_block = right[start:stop] * nonempty[:, None]
-            cross += (self.torch.sparse.mm(block, au) * right_block).sum()
             right_gram += right_block.T @ right_block
-        left_gram = left.T @ self.gram_times(left)
-        loss = 0.5 * (self.total_count_sq - 2.0 * cross + (left_gram * right_gram).sum())
+            ec_cross += self.torch.sparse.mm(
+                block.transpose(0, 1), right_block
+            )
+        return right_gram, ec_cross
+
+    def loss_from_statistics(self, left, right_gram, ec_cross,
+                             regularization=0.0, right_sq=None):
+        au = self.a_times(left)
+        cross = (au * ec_cross).sum()
+        left_gram = left.T @ self.at_times(au)
+        loss = 0.5 * (
+            self.total_count_sq - 2.0 * cross
+            + (left_gram * right_gram).sum()
+        )
         if regularization:
-            loss += 0.5 * regularization * ((left * left).sum() + (right * right).sum())
+            right_sq = right_gram.trace() if right_sq is None else right_sq
+            loss += 0.5 * regularization * ((left * left).sum() + right_sq)
         return float(loss.detach().cpu())
+
+    def loss_for_factors(self, left, right, regularization=0.0):
+        right_gram, ec_cross = self.factor_statistics(right)
+        return self.loss_from_statistics(
+            left, right_gram, ec_cross, regularization
+        )
 
 
 def _initial_factors(data: SparseGLM, rank: int, seed: int):
@@ -279,14 +402,122 @@ def _balance_factor_columns(left, right):
     return left * scale, right / scale
 
 
-def fit_factorized(counts, compatibility, *, rank=64, max_iter=100,
+def _as_sparse_glm(counts, compatibility, device, batch_cells, data_backend):
+    if isinstance(counts, SparseGLM):
+        if compatibility is not None:
+            raise ValueError("compatibility must be omitted for a prepared SparseGLM")
+        return counts
+    if compatibility is None:
+        raise ValueError("compatibility is required with a raw count matrix")
+    return SparseGLM(
+        counts, compatibility, device, batch_cells, data_backend=data_backend
+    )
+
+
+def _factorized_exact_epoch(data, left, right, learning_rate):
+    """One exact alternating epoch with a single A.T application for C V."""
+    torch = data.torch
+    au = data.a_times(left)
+    gram_left_full = data.at_times(au)
+    gram_left = left.T @ gram_left_full
+    right_lipschitz = float(torch.linalg.matrix_norm(gram_left, ord=2).item())
+    right_step = min(learning_rate, 1.0 / max(right_lipschitz, 1e-12))
+    right_gram = torch.zeros(
+        (right.shape[1], right.shape[1]), device=data.device
+    )
+    ec_cross = torch.zeros((data.n_ec, right.shape[1]), device=data.device)
+    for start, stop, block, nonempty in data.blocks():
+        right_block = right[start:stop]
+        gradient = right_block @ gram_left - torch.sparse.mm(block, au)
+        right_block = torch.relu(right_block - right_step * gradient)
+        right_block[~nonempty] = 0
+        right[start:stop] = right_block
+        right_gram += right_block.T @ right_block
+        ec_cross += torch.sparse.mm(block.transpose(0, 1), right_block)
+    b_times_right = data.at_times(ec_cross)
+    gradient_left = (
+        gram_left_full @ right_gram - b_times_right
+    ) / data.n_nonempty
+    left_lipschitz = (
+        data.gram_lipschitz
+        * float(torch.linalg.matrix_norm(right_gram, ord=2).item())
+        / data.n_nonempty
+    )
+    left_step = min(learning_rate, 1.0 / max(left_lipschitz, 1e-12))
+    left = torch.relu(left - left_step * gradient_left)
+    objective = data.loss_from_statistics(left, right_gram, ec_cross)
+    left, right = _balance_factor_columns(left, right)
+    return left, right, objective
+
+
+def _factorized_minibatch_epoch(data, left, right, learning_rate, generator):
+    """Random-reshuffling projected updates of cell and transcript factors."""
+    torch = data.torch
+    order = torch.randperm(
+        len(data._cell_batches), generator=generator, device="cpu"
+    ).tolist()
+    epoch_right_gram = torch.zeros(
+        (right.shape[1], right.shape[1]), device=data.device
+    )
+    epoch_ec_cross = torch.zeros(
+        (data.n_ec, right.shape[1]), device=data.device
+    )
+    for start, stop, block, nonempty in data.blocks(order):
+        au = data.a_times(left)
+        gram_left_full = data.at_times(au)
+        gram_left = left.T @ gram_left_full
+        right_lipschitz = float(
+            torch.linalg.matrix_norm(gram_left, ord=2).item()
+        )
+        right_step = min(
+            learning_rate, 1.0 / max(right_lipschitz, 1e-12)
+        )
+        right_block = right[start:stop]
+        gradient = right_block @ gram_left - torch.sparse.mm(block, au)
+        right_block = torch.relu(right_block - right_step * gradient)
+        right_block[~nonempty] = 0
+        right[start:stop] = right_block
+
+        right_gram = right_block.T @ right_block
+        ec_cross = torch.sparse.mm(block.transpose(0, 1), right_block)
+        b_times_right = data.at_times(ec_cross)
+        batch_nonempty = nonempty.sum().clamp_min(1)
+        gradient_left = (
+            gram_left_full @ right_gram - b_times_right
+        ) / batch_nonempty
+        left_lipschitz = (
+            data.gram_lipschitz
+            * float(torch.linalg.matrix_norm(right_gram, ord=2).item())
+            / float(batch_nonempty.item())
+        )
+        left_step = min(
+            learning_rate, 1.0 / max(left_lipschitz, 1e-12)
+        )
+        left = torch.relu(left - left_step * gradient_left)
+        epoch_right_gram += right_gram
+        epoch_ec_cross += ec_cross
+    objective = data.loss_from_statistics(
+        left, epoch_right_gram, epoch_ec_cross
+    )
+    left, right = _balance_factor_columns(left, right)
+    return left, right, objective
+
+
+def fit_factorized(counts, compatibility=None, *, rank=64, max_iter=100,
                    tol=1e-4, learning_rate=0.05, device="auto",
                    batch_cells=4096, seed=0, min_iter=10, patience=5,
-                   initial_factors=None):
+                   initial_factors=None, minibatch=True, polish_max_iter=32,
+                   data_backend="auto"):
     """Projected alternating optimization of a genome-wide nonnegative factorization."""
     _validate_stopping(max_iter, min_iter, patience, tol)
-    data = SparseGLM(counts, compatibility, device, batch_cells)
+    if int(polish_max_iter) < 1:
+        raise ValueError("polish_max_iter must be positive")
+    data = _as_sparse_glm(
+        counts, compatibility, device, batch_cells, data_backend
+    )
     torch = data.torch
+    if data.device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats(data.device)
     left, right, warm_start_rank = _expand_initial_factors(
         data, rank, seed, initial_factors
     )
@@ -298,71 +529,95 @@ def fit_factorized(counts, compatibility, *, rank=64, max_iter=100,
         "warm_started": initial_factors is not None,
         "warm_start_rank": warm_start_rank,
         "factor_penalty": None,
+        "data_backend": data.data_backend,
+        "batch_cells": data.batch_cells,
+        "minibatch": bool(minibatch),
+        "polish_max_iter": int(polish_max_iter),
+        "phase": [], "epoch_seconds": [],
+        "cache_build_seconds": data.cache_build_seconds,
     }
     previous = None
     stable = 0
+    stochastic_stable = 0
+    phase = "minibatch" if minibatch else "polish"
+    polish_budget = min(
+        int(polish_max_iter), max(1, int(max_iter) // 4)
+    )
+    latest_polish_start = max(0, int(max_iter) - polish_budget)
+    generator = torch.Generator(device="cpu")
+    generator.manual_seed(seed)
 
     for iteration in range(int(max_iter)):
-        au = data.a_times(left)
-        gram_left = left.T @ data.gram_times(left)
-        right_lipschitz = float(
-            torch.linalg.matrix_norm(gram_left, ord=2).item()
-        )
-        right_step = min(learning_rate, 1.0 / max(right_lipschitz, 1e-12))
-        b_times_right = torch.zeros_like(left)
-        right_gram = torch.zeros((rank, rank), device=data.device)
-        for start, stop, block, nonempty in data.blocks():
-            right_block = right[start:stop]
-            gradient = right_block @ gram_left - torch.sparse.mm(block, au)
-            right_block = torch.relu(right_block - right_step * gradient)
-            right_block[~nonempty] = 0
-            right[start:stop] = right_block
-            right_gram += right_block.T @ right_block
-            b_times_right += data.at_times(
-                torch.sparse.mm(block.transpose(0, 1), right_block)
+        transition_after_epoch = False
+        if phase == "minibatch" and iteration >= latest_polish_start:
+            phase = "polish"
+            previous = None
+            stable = 0
+        started = time.perf_counter()
+        if phase == "minibatch":
+            left, right, objective = _factorized_minibatch_epoch(
+                data, left, right, learning_rate, generator
             )
-        # Average the accumulated transcript-factor gradient so its step scale
-        # does not grow with the number of cells.
-        gradient_left = (
-            data.gram_times(left) @ right_gram
-            - b_times_right
-        ) / data.n_nonempty
-        left_lipschitz = (
-            data.gram_lipschitz
-            * float(torch.linalg.matrix_norm(right_gram, ord=2).item())
-            / data.n_nonempty
-        )
-        left_step = min(learning_rate, 1.0 / max(left_lipschitz, 1e-12))
-        left = torch.relu(left - left_step * gradient_left)
-        left, right = _balance_factor_columns(left, right)
-
-        objective = data.loss_for_factors(left, right)
+        else:
+            left, right, objective = _factorized_exact_epoch(
+                data, left, right, learning_rate
+            )
+        diagnostics["phase"].append(phase)
+        diagnostics["epoch_seconds"].append(time.perf_counter() - started)
         diagnostics["objective"].append(objective)
-        stop, stable = _objective_stop(
-            diagnostics, objective, previous, stable, iteration,
-            tol, int(min_iter), int(patience),
-        )
-        if stop:
-            diagnostics.update(
-                iterations=iteration + 1, converged=True,
-                convergence_reason="objective_patience",
+        if phase == "minibatch":
+            relative_change = (
+                None if previous is None else
+                abs(previous - objective) / max(abs(previous), 1.0)
             )
-            break
-        previous = objective
+            diagnostics["objective_relative_change"].append(relative_change)
+            loose_tol = max(10.0 * float(tol), 1e-4)
+            stochastic_stable = (
+                stochastic_stable + 1
+                if relative_change is not None and relative_change <= loose_tol
+                else 0
+            )
+            if stochastic_stable >= 3:
+                phase = "polish"
+                stable = 0
+                transition_after_epoch = True
+        else:
+            stop, stable = _objective_stop(
+                diagnostics, objective, previous, stable, iteration,
+                tol, int(min_iter), int(patience),
+            )
+            if stop:
+                diagnostics.update(
+                    iterations=iteration + 1, converged=True,
+                    convergence_reason="objective_patience",
+                )
+                break
+        previous = None if transition_after_epoch else objective
     else:
         diagnostics.update(
             iterations=int(max_iter), converged=False,
             convergence_reason="max_iterations",
         )
+    diagnostics["minibatch_iterations"] = diagnostics["phase"].count("minibatch")
+    diagnostics["polish_iterations"] = diagnostics["phase"].count("polish")
+    diagnostics["cells_per_second"] = (
+        data.n_cells * diagnostics["iterations"]
+        / max(sum(diagnostics["epoch_seconds"]), 1e-12)
+    )
+    diagnostics["peak_cuda_memory_bytes"] = (
+        int(torch.cuda.max_memory_allocated(data.device))
+        if data.device.type == "cuda" else None
+    )
     return GLMResult("factorized", left, right, None, diagnostics)
 
 
-def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
+def fit_factorized_admm(counts, compatibility=None, *, rank=64, regularization=0.01,
                         rho=1.0, max_iter=100, tol=1e-4, learning_rate=0.05,
                         device="auto", batch_cells=4096, seed=0,
                         min_iter=10, patience=5, adaptive_rho=True,
                         rho_update_interval=10, rho_balance=10.0,
-                        rho_scale=2.0, initial_factors=None):
+                        rho_scale=2.0, initial_factors=None,
+                        data_backend="auto"):
     """Factor-sized ADMM split for nonnegative low-rank genome-wide fitting.
 
     This is deliberately distinct from :func:`fit_admm`: it uses the variational
@@ -373,8 +628,12 @@ def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
     if rho <= 0 or rho_update_interval < 1 or rho_balance <= 1 or rho_scale <= 1:
         raise ValueError("rho adaptation parameters are outside their valid range")
     rho = float(rho)
-    data = SparseGLM(counts, compatibility, device, batch_cells)
+    data = _as_sparse_glm(
+        counts, compatibility, device, batch_cells, data_backend
+    )
     torch = data.torch
+    if data.device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats(data.device)
     warm_factors = _coerce_initial_factors(
         data, initial_factors, rank=rank, nonnegative=True
     )
@@ -397,22 +656,28 @@ def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
         "min_iter": int(min_iter), "patience": int(patience), "tolerance": tol,
         "warm_started": warm_factors is not None,
         "warm_start_rank": 0 if warm_factors is None else int(left.shape[1]),
+        "data_backend": data.data_backend,
+        "batch_cells": data.batch_cells,
+        "epoch_seconds": [],
+        "cache_build_seconds": data.cache_build_seconds,
     }
     previous = None
     stable = 0
 
     for iteration in range(int(max_iter)):
+        started = time.perf_counter()
         au = data.a_times(left)
-        gram_left = left.T @ data.gram_times(left)
+        gram_left_full = data.at_times(au)
+        gram_left = left.T @ gram_left_full
         right_lipschitz = float(
             torch.linalg.matrix_norm(gram_left, ord=2).item()
         ) + regularization + rho
         right_step = min(learning_rate, 1.0 / max(right_lipschitz, 1e-12))
-        b_times_right = torch.zeros_like(left)
+        ec_cross = torch.zeros((data.n_ec, rank), device=data.device)
         right_gram = torch.zeros((rank, rank), device=data.device)
-        primal_sq = 0.0
-        dual_sq = 0.0
-        split_norm_sq = 0.0
+        primal_sq = torch.zeros((), device=data.device)
+        dual_sq = torch.zeros((), device=data.device)
+        split_norm_sq = torch.zeros((), device=data.device)
         for start, stop, block, nonempty in data.blocks():
             previous_right_copy = right_copy[start:stop].clone()
             right_block = right[start:stop]
@@ -423,21 +688,20 @@ def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
             right_copy[start:stop] = torch.relu(right_block + right_dual[start:stop])
             right_dual[start:stop] += right_block - right_copy[start:stop]
             right_copy[start:stop][~nonempty] = 0
-            primal_sq += float(
-                (right_block - right_copy[start:stop]).square().sum().item()
-            )
-            dual_sq += float(
-                (right_copy[start:stop] - previous_right_copy).square().sum().item()
-            )
-            split_norm_sq += float(right_copy[start:stop].square().sum().item())
+            primal_sq += (right_block - right_copy[start:stop]).square().sum()
+            dual_sq += (
+                right_copy[start:stop] - previous_right_copy
+            ).square().sum()
+            split_norm_sq += right_copy[start:stop].square().sum()
             right_gram += right_copy[start:stop].T @ right_copy[start:stop]
-            b_times_right += data.at_times(
-                torch.sparse.mm(block.transpose(0, 1), right_copy[start:stop])
+            ec_cross += torch.sparse.mm(
+                block.transpose(0, 1), right_copy[start:stop]
             )
+        b_times_right = data.at_times(ec_cross)
         # Keep the loss, regularization, and augmented-Lagrangian terms on the
         # same scale when stabilizing this block update by the cell count.
         gradient_left = (
-            data.gram_times(left) @ right_gram
+            gram_left_full @ right_gram
             - b_times_right
             + regularization * left
             + rho * (left - left_copy + left_dual)
@@ -453,17 +717,21 @@ def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
         left = left - left_step * gradient_left
         left_copy = torch.relu(left + left_dual)
         left_dual += left - left_copy
-        primal_sq += float((left - left_copy).square().sum().item())
-        dual_sq += float((left_copy - previous_left_copy).square().sum().item())
-        split_norm_sq += float(left_copy.square().sum().item())
-        primal_relative = np.sqrt(primal_sq) / max(np.sqrt(split_norm_sq), 1e-12)
-        dual_relative = rho * np.sqrt(dual_sq) / max(
-            rho * np.sqrt(split_norm_sq), 1e-12
-        )
+        primal_sq += (left - left_copy).square().sum()
+        dual_sq += (left_copy - previous_left_copy).square().sum()
+        split_norm_sq += left_copy.square().sum()
+        primal_norm = torch.sqrt(primal_sq)
+        dual_norm = rho * torch.sqrt(dual_sq)
+        split_norm = torch.sqrt(split_norm_sq).clamp_min(1e-12)
+        primal_relative = float((primal_norm / split_norm).item())
+        dual_relative = float((dual_norm / (rho * split_norm)).item())
         left = left_copy
         right = right_copy
 
-        objective = data.loss_for_factors(left, right, regularization)
+        objective = data.loss_from_statistics(
+            left, right_gram, ec_cross, regularization
+        )
+        diagnostics["epoch_seconds"].append(time.perf_counter() - started)
         diagnostics["objective"].append(objective)
         diagnostics["primal_relative_residual"].append(primal_relative)
         diagnostics["dual_relative_residual"].append(dual_relative)
@@ -482,8 +750,8 @@ def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
             )
             break
         if adaptive_rho and (iteration + 1) % int(rho_update_interval) == 0:
-            primal_residual = np.sqrt(primal_sq)
-            dual_residual = rho * np.sqrt(dual_sq)
+            primal_residual = float(primal_norm.item())
+            dual_residual = float(dual_norm.item())
             previous_rho = rho
             if primal_residual > float(rho_balance) * dual_residual:
                 rho *= float(rho_scale)
@@ -503,6 +771,14 @@ def fit_factorized_admm(counts, compatibility, *, rank=64, regularization=0.01,
             convergence_reason="max_iterations",
         )
     diagnostics["final_rho"] = rho
+    diagnostics["cells_per_second"] = (
+        data.n_cells * diagnostics["iterations"]
+        / max(sum(diagnostics["epoch_seconds"]), 1e-12)
+    )
+    diagnostics["peak_cuda_memory_bytes"] = (
+        int(torch.cuda.max_memory_allocated(data.device))
+        if data.device.type == "cuda" else None
+    )
     return GLMResult("admm_factorized", left, right, None, diagnostics)
 
 
@@ -931,10 +1207,20 @@ def fit_frank_wolfe_penalized(
 def fit_glm(counts, compatibility, method, **kwargs):
     """Dispatch a GLM method using a cells-by-EC sparse count matrix."""
     if method == "factorized":
-        allowed = {"rank", "max_iter", "tol", "learning_rate", "device", "batch_cells", "seed", "min_iter", "patience", "initial_factors"}
+        allowed = {
+            "rank", "max_iter", "tol", "learning_rate", "device",
+            "batch_cells", "seed", "min_iter", "patience",
+            "initial_factors", "minibatch", "polish_max_iter",
+            "data_backend",
+        }
         return fit_factorized(counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed})
     if method == "admm_factorized":
-        allowed = {"rank", "regularization", "rho", "max_iter", "tol", "learning_rate", "device", "batch_cells", "seed", "min_iter", "patience", "adaptive_rho", "rho_update_interval", "rho_balance", "rho_scale", "initial_factors"}
+        allowed = {
+            "rank", "regularization", "rho", "max_iter", "tol",
+            "learning_rate", "device", "batch_cells", "seed", "min_iter",
+            "patience", "adaptive_rho", "rho_update_interval",
+            "rho_balance", "rho_scale", "initial_factors", "data_backend",
+        }
         return fit_factorized_admm(counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed})
     if method == "admm":
         allowed = {"regularization", "rho", "max_iter", "inner_iter", "tol", "max_dense_entries", "device", "batch_cells", "adaptive_rho", "rho_update_interval", "rho_balance", "rho_scale"}

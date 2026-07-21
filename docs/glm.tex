@@ -324,6 +324,13 @@ large-scale setting.
   factorized formulation below, but it is non-convex and is not equivalent to
   the bounded convex ADMM reference.
 
+  Cell-factor primal, projected-copy, and dual rows are updated in cached
+  cell blocks. During one epoch the implementation accumulates
+  \(V'V\) and \(C V\), then applies \(A'\) once and updates the shared
+  transcript-factor primal, copy, and dual. Thus adaptive-\(\rho\) updates and
+  primal/dual residuals retain their full-epoch ADMM interpretation; the
+  shared split is not updated from a stochastic cell subset.
+
   Both ADMM implementations can adapt \(\rho\) by residual balancing. Every
   configured interval, let \(r\) be the primal split residual and \(s\) the
   dual residual. If \(\|r\|>\eta\|s\|\), multiply \(\rho\) by \(\kappa\); if
@@ -397,13 +404,17 @@ large-scale setting.
     -2\,\operatorname{tr}\!\left(VU'B\right)
     +\operatorname{tr}\!\left((U'GU)(V'V)\right).
   \]
-  The implementation uses nonnegative factors and projected alternating
-  updates. Gradients for the shared transcript factor are accumulated over
-  sparse cell blocks and normalized by the number of nonempty cells; cell
-  factors are updated blockwise. Paired factor columns are rescaled after each
-  iteration to have equal norms while preserving \(UV'\), which controls the
-  otherwise arbitrary factor scale without changing the objective. Column
-  normalization is applied after fitting when isoform proportions are required.
+  The implementation uses nonnegative factors and projected cell-minibatch
+  updates. In a stochastic epoch it visits every cached cell block once in a
+  seeded random order. Each block first updates its rows of \(V\), then gives
+  a cell-averaged incremental gradient update for the shared factor \(U\).
+  Curvature-bounded projected steps are used for both updates. Before a fit is
+  declared converged, it switches to deterministic full-gradient alternating
+  epochs and applies the patient objective stopping rule there. Paired factor
+  columns are rescaled after each epoch to have equal norms while preserving
+  \(UV'\), which controls the otherwise arbitrary factor scale without changing
+  the objective. Column normalization is applied after fitting when isoform
+  proportions are required.
 \end{itemize}
 
 The factorized and Frank-Wolfe approaches are the scalable choices for many
@@ -420,7 +431,12 @@ The single-cell command exposes the methods as
 \texttt{frank\_wolfe}, \texttt{frank\_wolfe\_penalized}, and
 \texttt{factorized}. The scalable methods use a
 PyTorch backend and select CUDA when available; NumPy/SciPy remains responsible
-for sparse input and compatibility-matrix construction. The rank, cell block
+for sparse input and compatibility-matrix construction. Response rows are
+normalized once and converted into reusable sparse blocks. The automatic data
+backend keeps those blocks on the GPU when their estimated storage fits within
+the configured memory margin; otherwise it keeps pinned host tensors and
+prefetches them asynchronously. Prepared fold contexts are reused across a
+complete warm-start path. The rank, cell minibatch
 size, convergence tolerance, ADMM regularization strength, ADMM penalty, and
 Frank--Wolfe radius are configurable. The direct factorization rank is selected
 by count-fold cross-validation; other factorized modes have a configurable
@@ -451,7 +467,10 @@ nonnegative orthant and collapsing an entire factor to zero when the design
 curvature is large.
 
 The factorized solvers stop only after a configured minimum iteration count
-and several consecutive relative-objective changes below tolerance.
+and several consecutive relative-objective changes below tolerance. Direct
+factorization can use noisy minibatch objectives to decide when to begin its
+deterministic polishing phase, but only polishing iterations establish final
+convergence.
 Factorized ADMM additionally requires its relative primal and dual split
 residuals to satisfy the tolerance. Penalized Frank--Wolfe requires both
 relative objective change and its approximate candidate gap to remain below
@@ -508,9 +527,9 @@ The search tunes \(\tau/\tau_1\). Both scales are estimated by streamed power
 iterations without materializing \(B\). After selecting a multiplier on the
 subset, the corresponding scale is recomputed using all cells and their product
 is passed as the fixed \(\lambda\) or \(\tau\) for the final fit.
-The factorized implementation averages the complete left-factor block gradient,
-including its regularization and augmented-Lagrangian terms, by the number of
-nonempty cells. This preserves the relative scale of the objective terms when a
+The factorized ADMM implementation averages the complete transcript-factor
+gradient, including its regularization and augmented-Lagrangian terms, by the
+number of nonempty cells. This preserves the relative scale of the objective terms when a
 multiplier selected on a subset is transferred to all cells. Within each fold,
 candidates follow a strong-to-weak regularization path. Factorized ADMM visits
 decreasing \(\lambda\) and initializes each candidate from the preceding primal
@@ -561,7 +580,9 @@ visits candidate ranks from small to large, retains the fitted columns, and
 adds small positive columns when increasing rank. Among converged,
 nondegenerate candidates within one standard error of the minimum validation
 loss, it selects the smallest rank. If that rank is the largest candidate, the
-grid is doubled up to a configured cap and the complete path is replayed.
+grid is doubled up to a configured cap. Each fold retains its largest fitted
+factorization on the CPU, expands that warm start, and evaluates only the newly
+added rank rather than replaying ranks that already have held-out scores.
 
 \section*{Connecting to equivalence-class-based inference}
 

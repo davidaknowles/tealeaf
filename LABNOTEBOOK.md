@@ -1,5 +1,33 @@
 # Lab Notebook
 
+## 2026-07-21 Cell-Minibatch Solver Optimization
+
+Implemented a reusable normalized sparse-data context for the scalable GLM
+solvers. Cell-by-EC response rows are normalized once, split into cached sparse
+blocks, and either retained on CUDA or staged from pinned host memory. Warm-start
+CV paths reuse the same prepared training context instead of rebuilding and
+transferring a fold for every candidate.
+
+The unregularized direct factorization now performs seeded random-reshuffling
+cell-minibatch updates of both cell and transcript factors. It reserves a final
+deterministic full-gradient polishing phase, and only that phase can satisfy the
+objective-patience convergence rule. Factorized ADMM keeps its global
+transcript split exact: cell primal/copy/dual rows are updated in blocks,
+sufficient statistics are accumulated across the complete epoch, and the
+transcript primal/copy/dual and adaptive rho are updated once per epoch.
+
+Both solvers now accumulate `C.T @ V` in EC space and apply `A.T` once per
+exact epoch instead of once per cell block. Exact losses are evaluated from
+`V.T @ V` and `C.T @ V`, repeated `A @ U` products are reused, and ADMM
+residual reductions remain on-device until the epoch boundary. Adaptive rank
+CV retains fold warm starts on CPU and evaluates only newly added larger ranks.
+
+CPU validation passes the full 43-test suite, including normalized
+cache reuse, sufficient-statistic loss equivalence, prepared-context fitting,
+deterministic polishing, and incremental rank expansion. CUDA validation and
+representative batch-size profiling are queued until an existing GPU analysis
+releases an allocation; the four running analyses were left undisturbed.
+
 ## 2026-07-20 UMI-Filtered Single-Cell CV
 
 Added raw per-cell UMI filtering to the reusable GLM CV preparation and

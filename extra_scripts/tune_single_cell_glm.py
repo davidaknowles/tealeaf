@@ -42,7 +42,13 @@ def main():
     parser.add_argument("--rank", type=int, default=64)
     parser.add_argument("--power-iter", type=int, default=10)
     parser.add_argument("--scale-power-iter", type=int, default=10)
-    parser.add_argument("--batch-cells", type=int, default=2_048)
+    parser.add_argument("--batch-cells", type=int, default=16_384)
+    parser.add_argument(
+        "--data-backend",
+        choices=["auto", "cuda", "pinned"],
+        default="auto",
+    )
+    parser.add_argument("--polish-max-iter", type=int, default=32)
     parser.add_argument("--min-eq", type=float, default=5)
     parser.add_argument("--device", default="auto")
     parser.add_argument("--nonnegative-penalty", type=float, default=1.0)
@@ -111,6 +117,11 @@ def main():
             power_iter=args.power_iter,
             nonnegative_penalty=args.nonnegative_penalty,
         )
+    elif args.method == "factorized":
+        fit_kwargs.update(
+            minibatch=True,
+            polish_max_iter=args.polish_max_iter,
+        )
     if args.method == "factorized":
         rank_selection_rule = (
             args.selection_rule
@@ -125,6 +136,7 @@ def main():
             seed=args.seed,
             device=args.device,
             batch_cells=args.batch_cells,
+            data_backend=args.data_backend,
             fit_kwargs=fit_kwargs,
             min_profile_active_fraction=args.min_profile_active_fraction,
             min_profile_relative_variance=args.min_profile_relative_variance,
@@ -144,6 +156,7 @@ def main():
             seed=args.seed,
             device=args.device,
             batch_cells=args.batch_cells,
+            data_backend=args.data_backend,
             power_iter=args.scale_power_iter,
             fit_kwargs=fit_kwargs,
             min_profile_active_fraction=args.min_profile_active_fraction,
@@ -170,6 +183,7 @@ def main():
             batch_cells=args.batch_cells,
             power_iter=args.scale_power_iter,
             seed=args.seed,
+            data_backend=args.data_backend,
         )
     report.update(
         design=args.design,
@@ -187,6 +201,8 @@ def main():
             if report.get("best_multiplier") is not None else None
         ),
         selected_rank=report.get("best_rank", args.rank),
+        data_backend=args.data_backend,
+        batch_cells=int(args.batch_cells),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with open(args.output, "w") as handle:

@@ -684,6 +684,8 @@ def single_cell_glm_conversion(options):
         nonnegative_penalty=options.fw_nonnegative_penalty,
         device=options.glm_device,
         batch_cells=options.glm_batch_cells,
+        data_backend=options.glm_data_backend,
+        polish_max_iter=options.glm_polish_max_iter,
     )
     result.diagnostics['regularization_target'] = options.regularization_target
     result.diagnostics['ec_design'] = options.ec_design
@@ -1049,7 +1051,13 @@ if __name__ == "__main__":
                   help="Torch device for scalable GLMs: auto, cuda, or cpu (default: auto)")
 
     parser.add_option("--glm_batch_cells", dest="glm_batch_cells", default=4096, type="int",
-                  help="number of cells transferred per Torch GLM block (default: 4096)")
+                  help="number of cells per Torch GLM optimization block (default: 4096)")
+
+    parser.add_option("--glm_data_backend", dest="glm_data_backend", default='auto',
+                  help="cell-block storage: auto, cuda, or pinned (default: auto)")
+
+    parser.add_option("--glm_polish_max_iter", dest="glm_polish_max_iter", default=32, type="int",
+                  help="maximum deterministic polishing iterations for direct factorization (default: 32)")
 
     parser.add_option("--glm_rank", dest="glm_rank", default=64, type="int",
                   help="low-rank capacity for factorized and Frank-Wolfe GLMs (default: 64)")
@@ -1235,13 +1243,15 @@ if __name__ == "__main__":
     if options.ec_design not in {'legacy', 'binary', 'weighted'}:
         sys.exit("Error: --ec_design must be legacy, binary, or weighted.\n")
 
+    if options.glm_data_backend not in {'auto', 'cuda', 'pinned'}:
+        sys.exit("Error: --glm_data_backend must be auto, cuda, or pinned.\n")
+
         
     record = f'{options.outprefix}clustering_parameters.txt'
     sys.stderr.write(f'Detailed parameters will be saved to {record}\n')
     write_options_to_file(options, record)
 
     tealeaf_sc(options)
-
 
 
 

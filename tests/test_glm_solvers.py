@@ -95,6 +95,54 @@ class GLMSolverTest(unittest.TestCase):
         np.testing.assert_allclose(output[3].sum(), 0.0, atol=1e-7)
         self.assertGreaterEqual(len(result.diagnostics["objective"]), 1)
 
+    def test_sparse_glm_caches_normalized_blocks(self):
+        data = glm_solvers.SparseGLM(
+            self.counts, self.compatibility, device="cpu", batch_cells=2
+        )
+        first = list(data.blocks())
+        second = list(data.blocks())
+        self.assertIs(first[0][2], second[0][2])
+        observed = np.vstack([block.to_dense().numpy() for _, _, block, _ in first])
+        expected = self.counts.toarray()
+        totals = expected.sum(axis=1, keepdims=True)
+        expected = np.divide(
+            expected, totals, out=np.zeros_like(expected), where=totals > 0
+        )
+        np.testing.assert_allclose(observed, expected, atol=1e-7)
+
+    def test_sufficient_statistic_loss_matches_streamed_loss(self):
+        torch = glm_solvers._torch()
+        data = glm_solvers.SparseGLM(
+            self.counts, self.compatibility, device="cpu", batch_cells=2
+        )
+        left = torch.tensor([[0.4, 0.1], [0.2, 0.3]])
+        right = torch.tensor(
+            [[0.2, 0.1], [0.3, 0.4], [0.1, 0.5], [0.0, 0.0]]
+        )
+        right_gram, ec_cross = data.factor_statistics(right)
+        self.assertAlmostEqual(
+            data.loss_for_factors(left, right),
+            data.loss_from_statistics(left, right_gram, ec_cross),
+            places=6,
+        )
+
+    def test_factorized_accepts_prepared_context_and_polishes(self):
+        data = glm_solvers.SparseGLM(
+            self.counts, self.compatibility, device="cpu", batch_cells=2
+        )
+        result = glm_solvers.fit_factorized(
+            data,
+            rank=2,
+            max_iter=12,
+            min_iter=12,
+            polish_max_iter=3,
+            device="cpu",
+        )
+        self.assertEqual(result.diagnostics["data_backend"], "cpu")
+        self.assertIn("minibatch", result.diagnostics["phase"])
+        self.assertEqual(result.diagnostics["phase"][-3:], ["polish"] * 3)
+        self.assertGreater(result.diagnostics["cells_per_second"], 0)
+
     def test_factor_only_output(self):
         result = glm_solvers.fit_factorized(
             self.counts, self.compatibility, rank=2, max_iter=2,

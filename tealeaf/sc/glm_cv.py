@@ -178,10 +178,15 @@ def estimate_b_spectral(data, power_iter=10, seed=0):
 
 
 def hyperparameter_scale(counts, compatibility, method, *, device="auto",
-                         batch_cells=4096, power_iter=10, seed=0):
+                         batch_cells=4096, power_iter=10, seed=0,
+                         data_backend="auto"):
     """Return lambda_max or a rank-one line-search tau reference."""
-    data = glm_solvers.SparseGLM(
-        counts, compatibility, device=device, batch_cells=batch_cells
+    data = (
+        counts if isinstance(counts, glm_solvers.SparseGLM)
+        else glm_solvers.SparseGLM(
+            counts, compatibility, device=device, batch_cells=batch_cells,
+            data_backend=data_backend,
+        )
     )
     singular, left, _ = estimate_b_spectral(data, power_iter, seed)
     if method == "admm_factorized":
@@ -237,6 +242,7 @@ def cross_validate_glm(
     seed=0,
     device="auto",
     batch_cells=4096,
+    data_backend="auto",
     power_iter=10,
     fit_kwargs=None,
     warm_start=True,
@@ -253,14 +259,26 @@ def cross_validate_glm(
             (fold for index, fold in enumerate(folds) if index != fold_index),
             start=sp.csr_matrix(counts.shape),
         ).tocsr()
+        training = (
+            glm_solvers.SparseGLM(
+                training_counts,
+                compatibility,
+                device=device,
+                batch_cells=batch_cells,
+                data_backend=data_backend,
+            )
+            if method == "admm_factorized" else training_counts
+        )
         scale = hyperparameter_scale(
-            training_counts,
-            compatibility,
+            training,
+            None if isinstance(training, glm_solvers.SparseGLM)
+            else compatibility,
             method,
             device=device,
             batch_cells=batch_cells,
             power_iter=power_iter,
             seed=seed + fold_index,
+            data_backend=data_backend,
         )
         scales.append(scale)
         validation = glm_solvers.SparseGLM(
@@ -268,6 +286,7 @@ def cross_validate_glm(
             compatibility,
             device=device,
             batch_cells=batch_cells,
+            data_backend=data_backend,
         )
         path_multipliers = sorted(
             (float(value) for value in multipliers),
@@ -283,8 +302,9 @@ def cross_validate_glm(
             if warm_start and warm_factors is not None:
                 kwargs["initial_factors"] = warm_factors
             result = glm_solvers.fit_glm(
-                training_counts,
-                compatibility,
+                training,
+                None if isinstance(training, glm_solvers.SparseGLM)
+                else compatibility,
                 method,
                 device=device,
                 batch_cells=batch_cells,
@@ -307,6 +327,14 @@ def cross_validate_glm(
                     "converged": result.diagnostics.get("converged"),
                     "warm_started": result.diagnostics.get("warm_started", False),
                     "warm_start_rank": result.diagnostics.get("warm_start_rank", 0),
+                    "data_backend": result.diagnostics.get("data_backend"),
+                    "cells_per_second": result.diagnostics.get("cells_per_second"),
+                    "mean_epoch_seconds": float(np.mean(
+                        result.diagnostics.get("epoch_seconds", [np.nan])
+                    )),
+                    "peak_cuda_memory_bytes": result.diagnostics.get(
+                        "peak_cuda_memory_bytes"
+                    ),
                     **profile,
                 }
             )
@@ -391,12 +419,15 @@ def cross_validate_factorized_rank(
     seed=0,
     device="auto",
     batch_cells=4096,
+    data_backend="auto",
     fit_kwargs=None,
     selection_rule="one_standard_error",
     require_converged=False,
     require_nondegenerate=False,
     min_profile_active_fraction=0.9,
     min_profile_relative_variance=1e-6,
+    _state=None,
+    _return_state=False,
 ):
     """Select unregularized nonnegative factor rank by molecule-count folds."""
     if selection_rule not in {"minimum", "one_standard_error"}:
@@ -406,27 +437,52 @@ def cross_validate_factorized_rank(
         raise ValueError("rank candidates must be positive")
     fit_kwargs = dict(fit_kwargs or {})
     fit_kwargs.pop("rank", None)
-    folds = split_count_folds(counts, n_folds=n_folds, seed=seed)
-    rows = []
+    folds = (
+        split_count_folds(counts, n_folds=n_folds, seed=seed)
+        if _state is None else _state["folds"]
+    )
+    rows = [] if _state is None else list(_state["rows"])
+    continued_factors = [None] * len(folds)
     for fold_index, validation_counts in enumerate(folds):
+        completed = {
+            row["rank"] for row in rows if row["fold"] == fold_index
+        }
+        pending_ranks = [rank for rank in ranks if rank not in completed]
+        if not pending_ranks:
+            continued_factors[fold_index] = (
+                None if _state is None else _state["warm_factors"][fold_index]
+            )
+            continue
         training_counts = sum(
             (fold for index, fold in enumerate(folds) if index != fold_index),
             start=sp.csr_matrix(counts.shape),
         ).tocsr()
+        training = glm_solvers.SparseGLM(
+            training_counts,
+            compatibility,
+            device=device,
+            batch_cells=batch_cells,
+            data_backend=data_backend,
+        )
         validation = glm_solvers.SparseGLM(
             validation_counts,
             compatibility,
             device=device,
             batch_cells=batch_cells,
+            data_backend=data_backend,
         )
-        warm_factors = None
-        for rank in ranks:
+        warm_factors = (
+            None if _state is None else _state["warm_factors"][fold_index]
+        )
+        if warm_factors is not None and pending_ranks[0] <= warm_factors[0].shape[1]:
+            raise ValueError("incremental rank candidates must increase")
+        for rank in pending_ranks:
             kwargs = dict(fit_kwargs, rank=rank)
             if warm_factors is not None:
                 kwargs["initial_factors"] = warm_factors
             result = glm_solvers.fit_glm(
-                training_counts,
-                compatibility,
+                training,
+                None,
                 "factorized",
                 device=device,
                 batch_cells=batch_cells,
@@ -451,6 +507,20 @@ def cross_validate_factorized_rank(
                     "warm_start_rank": result.diagnostics.get(
                         "warm_start_rank", 0
                     ),
+                    "data_backend": result.diagnostics.get("data_backend"),
+                    "cells_per_second": result.diagnostics.get("cells_per_second"),
+                    "mean_epoch_seconds": float(np.mean(
+                        result.diagnostics.get("epoch_seconds", [np.nan])
+                    )),
+                    "minibatch_iterations": result.diagnostics.get(
+                        "minibatch_iterations"
+                    ),
+                    "polish_iterations": result.diagnostics.get(
+                        "polish_iterations"
+                    ),
+                    "peak_cuda_memory_bytes": result.diagnostics.get(
+                        "peak_cuda_memory_bytes"
+                    ),
                     **profile,
                 }
             )
@@ -461,6 +531,15 @@ def cross_validate_factorized_rank(
                 device == "auto" and glm_solvers._torch().cuda.is_available()
             ):
                 glm_solvers._torch().cuda.empty_cache()
+        continued_factors[fold_index] = (
+            warm_factors[0].detach().cpu(), warm_factors[1].detach().cpu()
+        )
+        del training, validation
+        gc.collect()
+        if device == "cuda" or (
+            device == "auto" and glm_solvers._torch().cuda.is_available()
+        ):
+            glm_solvers._torch().cuda.empty_cache()
 
     means = {}
     standard_errors = {}
@@ -514,7 +593,7 @@ def cross_validate_factorized_rank(
             best_rank = min(rank for rank in eligible if means[rank] <= threshold)
         else:
             best_rank = minimum
-    return {
+    report = {
         "method": "factorized",
         "tuning_parameter": "rank",
         "regularization": None,
@@ -539,6 +618,13 @@ def cross_validate_factorized_rank(
         "best_on_boundary": best_rank == ranks[-1],
         "fold_results": rows,
     }
+    if not _return_state:
+        return report
+    return report, {
+        "folds": folds,
+        "rows": rows,
+        "warm_factors": continued_factors,
+    }
 
 
 def cross_validate_factorized_rank_adaptive(
@@ -550,7 +636,7 @@ def cross_validate_factorized_rank_adaptive(
     max_grid_expansions=2,
     **kwargs,
 ):
-    """Expand and replay a small-to-large rank path if its endpoint is selected."""
+    """Expand a small-to-large rank path without replaying completed ranks."""
     candidates = sorted(set(int(value) for value in ranks))
     if not candidates or candidates[0] < 1:
         raise ValueError("rank candidates must be positive")
@@ -558,8 +644,8 @@ def cross_validate_factorized_rank_adaptive(
         raise ValueError("max_grid_expansions must be nonnegative")
     if int(max_rank) < candidates[-1]:
         raise ValueError("max_rank must not be below the initial rank grid")
-    report = cross_validate_factorized_rank(
-        counts, compatibility, candidates, **kwargs
+    report, state = cross_validate_factorized_rank(
+        counts, compatibility, candidates, _return_state=True, **kwargs
     )
     history = [{"round": 0, "added_rank": None, "best_rank": report["best_rank"]}]
     expansions = 0
@@ -572,8 +658,13 @@ def cross_validate_factorized_rank_adaptive(
         if candidate in candidates:
             break
         candidates.append(candidate)
-        report = cross_validate_factorized_rank(
-            counts, compatibility, candidates, **kwargs
+        report, state = cross_validate_factorized_rank(
+            counts,
+            compatibility,
+            candidates,
+            _state=state,
+            _return_state=True,
+            **kwargs,
         )
         expansions += 1
         history.append(
