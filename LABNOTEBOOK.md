@@ -23,8 +23,26 @@ in 10.1 seconds, compared with 0.378 in 9.27 seconds for one inner step. This is
 about 90-fold more objective reduction per second. Continuing the saved binary
 fit converged after 1,800 exact epochs and 9.5 minutes of GPU optimization,
 with final objective 60.019 versus 143.140 before continuation. The complete
-46-test suite passes. Weighted continuation remains to be completed and both
-converged representations must be rescored.
+46-test suite passes.
+
+The weighted fit decreased from objective 151.950 to 58.911 in the first 2,048
+accelerated epochs. It was still making progress near the strict \(10^{-5}\)
+relative-objective threshold, so a second warm-started block was run without
+relaxing the tolerance. It satisfied the ten-epoch patience rule after another
+264 epochs at objective 58.753. The two weighted blocks took about 12 minutes
+end to end. An obsolete weighted factor-rank CV process using the superseded
+solver was stopped; the independent Frank--Wolfe CV processes remained active.
+
+Both converged representations were evaluated on all 27,383 paired cells with
+cell-type labels. Features were transcript estimates aggregated to genes,
+library-normalized to 10,000, transformed with \(\log(1+x)\), and reduced to 30
+principal components. Group-held-out multinomial prediction gave the binary
+fit accuracy 0.688, balanced accuracy 0.636, and macro-F1 0.567. The weighted
+fit gave accuracy 0.487, balanced accuracy 0.514, and macro-F1 0.439. Reference
+label silhouettes were -0.239 and -0.110, respectively; k-means cluster
+silhouettes were 0.352 and 0.252. Both representations had finite active
+profiles for every labeled cell. These results replace the scores from the
+unconverged 2,048-iteration fits.
 
 ## 2026-07-21 Paired Primer GLM
 
