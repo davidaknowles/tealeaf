@@ -41,6 +41,22 @@ Execution jobs: primer-design streaming build `19300273`; paired binary fit
 `19300274`; paired weighted fit `19300275`; dependent label/PCA/silhouette
 scoring `19300276`.
 
+All four jobs completed. The primer-specific design build took 7:22:26 and
+produced 948,916 by 116,918 matrices with 784,615 nonzeros for poly(dT) and
+883,909 for random hexamer. Binary and weighted rank-64 fits took 10:21 and
+35:22, respectively. Both used 2,048 iterations, including 32 deterministic
+polishing iterations, and both hit the iteration limit without satisfying the
+1e-5 objective tolerance. Their final relative objective changes were about
+9e-5, so the representations are provisional.
+
+Scoring used 27,383 labeled retained pairs. Binary achieved accuracy 0.0828,
+balanced accuracy 0.0908, macro-F1 0.0451, and reference-label silhouette
+-0.395. Weighted achieved accuracy 0.0994, balanced accuracy 0.1205,
+macro-F1 0.0635, and reference-label silhouette -0.302. Weighted therefore
+improves all supervised metrics and label silhouette relative to paired binary,
+but both are weak and neither fit has converged. Rank 64 was not selected by
+paired-data CV.
+
 ## 2026-07-21 Primer Half-Cell Audit
 
 The current alevin cell-by-EC matrix contains poly(dT)-primed and random-
