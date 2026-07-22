@@ -1,5 +1,31 @@
 # Lab Notebook
 
+## 2026-07-21 Primer Half-Cell Audit
+
+The current alevin cell-by-EC matrix contains poly(dT)-primed and random-
+hexamer-primed half-cells as separate rows. Its 547,077 row names do not match
+the biological-cell index in the standard AnnData object; 91,940 match its
+annotated `CB_polydT` values and 91,475 match `CB_ranhex`. The GLM does not
+currently pair these rows or include primer type as a covariate. It normalizes
+each retained half-cell response to unit mass, fits both primer types in one
+shared low-rank model, and partitions molecule counts within each half-cell for
+CV.
+
+At the 500-UMI threshold, the 169,533 retained GLM rows include 79,423
+annotated poly(dT) barcodes, 71,110 annotated random-hexamer barcodes, and
+19,000 rows not matched to either annotation barcode set. Across 109,275
+annotated biological-cell metadata records, 78,141 have both halves passing,
+18,166 have only poly(dT), 9,220 have only random hexamer, and 3,748 have
+neither. Median observed depth is 2,057 UMIs for poly(dT) and 1,935 for random
+hexamer; among retained halves the medians are 2,566 and 2,971, respectively.
+
+The label files assign paired barcodes the same cell-type and
+cluster-by-diagnosis-by-mouse group. Grouped classification therefore keeps
+paired halves in the same mouse fold, but scoring still treats each retained
+half as a separate observation. Earlier pseudobulk aggregation sums both
+barcodes into the same cluster-by-diagnosis-by-mouse group; the current
+single-cell GLM does not perform that merge.
+
 ## 2026-07-21 Cell-Minibatch Solver Optimization
 
 Implemented a reusable normalized sparse-data context for the scalable GLM
