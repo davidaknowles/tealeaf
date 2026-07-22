@@ -214,14 +214,16 @@ class SparseGLM:
             start, stop, block, nonempty, ready = pending
             current = self.torch.cuda.current_stream(self.device)
             current.wait_event(ready)
-            block.record_stream(current)
+            block._indices().record_stream(current)
+            block._values().record_stream(current)
             nonempty.record_stream(current)
             yield start, stop, block, nonempty
             pending = following
         start, stop, block, nonempty, ready = pending
         current = self.torch.cuda.current_stream(self.device)
         current.wait_event(ready)
-        block.record_stream(current)
+        block._indices().record_stream(current)
+        block._values().record_stream(current)
         nonempty.record_stream(current)
         yield start, stop, block, nonempty
 
