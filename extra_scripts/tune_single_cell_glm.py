@@ -49,6 +49,7 @@ def main():
         default="auto",
     )
     parser.add_argument("--polish-max-iter", type=int, default=32)
+    parser.add_argument("--exact-inner-steps", type=int, default=32)
     parser.add_argument("--min-eq", type=float, default=5)
     parser.add_argument("--device", default="auto")
     parser.add_argument("--nonnegative-penalty", type=float, default=1.0)
@@ -121,7 +122,7 @@ def main():
         fit_kwargs.update(
             minibatch=False,
             polish_max_iter=args.polish_max_iter,
-            exact_inner_steps=32,
+            exact_inner_steps=args.exact_inner_steps,
         )
     if args.method == "factorized":
         rank_selection_rule = (
@@ -146,6 +147,10 @@ def main():
             selection_rule=rank_selection_rule,
             require_converged=args.require_converged,
             require_nondegenerate=args.require_nondegenerate,
+            progress_callback=lambda row: print(
+                json.dumps({"event": "rank_fold_complete", **row}),
+                flush=True,
+            ),
         )
     else:
         report = glm_cv.cross_validate_glm_adaptive_grid(
@@ -204,6 +209,11 @@ def main():
         selected_rank=report.get("best_rank", args.rank),
         data_backend=args.data_backend,
         batch_cells=int(args.batch_cells),
+        max_iter=int(args.max_iter),
+        tolerance=float(args.tol),
+        exact_inner_steps=(
+            int(args.exact_inner_steps) if args.method == "factorized" else None
+        ),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with open(args.output, "w") as handle:

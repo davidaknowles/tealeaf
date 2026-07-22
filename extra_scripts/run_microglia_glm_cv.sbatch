@@ -22,6 +22,8 @@ OUTPUT_TAG=${OUTPUT_TAG:-}
 BATCH_CELLS=${BATCH_CELLS:-16384}
 DATA_BACKEND=${DATA_BACKEND:-auto}
 POLISH_MAX_ITER=${POLISH_MAX_ITER:-32}
+EXACT_INNER_STEPS=${EXACT_INNER_STEPS:-32}
+MAX_RANK=${MAX_RANK:-512}
 RUN=/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run
 ALEVIN=/gpfs/commons/groups/knowles_lab/data/sc/splitpool/microglia_less_mice/salmon_spliceu_weighted_rad/out_permit_known_weighted/quant_t2t_dedup_parsimony_em/alevin
 REF=/gpfs/commons/home/daknowles/knowles_lab/index/salmon/mus_spliceu/spliceu.fa
@@ -30,7 +32,7 @@ multiplier_args=()
 rank_args=()
 if [[ "${METHOD}" == factorized ]]; then
   ranks=(1 2 4 8 16 32 64 128)
-  max_iter=1024
+  max_iter=${MAX_ITER:-4096}
   expansion_factor=2
   selection_rule=one_standard_error
   cv_tol=1e-5
@@ -67,12 +69,13 @@ python /gpfs/commons/home/daknowles/projects/tealeaf/extra_scripts/tune_single_c
   --folds 3 \
   --max-iter "${max_iter}" \
   --rank 64 \
-  --max-rank 256 \
+  --max-rank "${MAX_RANK}" \
   --power-iter 5 \
   --scale-power-iter 10 \
   --batch-cells "${BATCH_CELLS}" \
   --data-backend "${DATA_BACKEND}" \
   --polish-max-iter "${POLISH_MAX_ITER}" \
+  --exact-inner-steps "${EXACT_INNER_STEPS}" \
   --device cuda \
   --max-grid-expansions 4 \
   --grid-expansion-factor "${expansion_factor}" \

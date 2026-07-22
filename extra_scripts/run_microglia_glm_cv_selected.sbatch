@@ -20,6 +20,9 @@ REPORT_TAG=${REPORT_TAG:-_minumi500_all_minibatch}
 BATCH_CELLS=${BATCH_CELLS:-16384}
 DATA_BACKEND=${DATA_BACKEND:-auto}
 MIN_CELL_UMIS=${MIN_CELL_UMIS:-500}
+FIT_TAG=${FIT_TAG:-cv_minibatch}
+EXACT_INNER_STEPS=${EXACT_INNER_STEPS:-32}
+FULL_MAX_ITER=${FULL_MAX_ITER:-8192}
 RUN=/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run
 REPORT=${RUN}/cv_${DESIGN}_${METHOD}_theta${REPORT_TAG}.json
 VALUE=$(python -c '
@@ -44,7 +47,8 @@ if [[ "${METHOD}" == admm_factorized ]]; then
   full_tol=1e-6
 elif [[ "${METHOD}" == factorized ]]; then
   glm_rank=${VALUE}
-  method_args+=(--nucnorm_max_iter 2048)
+  method_args+=(--nucnorm_max_iter "${FULL_MAX_ITER}")
+  method_args+=(--glm_no_minibatch --glm_exact_inner_steps "${EXACT_INNER_STEPS}")
   full_tol=1e-5
 else
   method_args+=(--nucnorm_tau "${VALUE}" --nucnorm_max_iter 2048)
@@ -76,4 +80,4 @@ python -m tealeaf.sc.tealeaf_sc \
   --admm_rho_scale 2 \
   --min_eq 5 \
   "${method_args[@]}" \
-  -o "${RUN}/single_cell_${DESIGN}_${METHOD}_cv_minibatch_theta_"
+  -o "${RUN}/single_cell_${DESIGN}_${METHOD}_${FIT_TAG}_theta_"

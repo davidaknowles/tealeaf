@@ -597,6 +597,7 @@ def cross_validate_factorized_rank(
     min_profile_active_fraction=0.9,
     min_profile_relative_variance=1e-6,
     _state=None,
+    progress_callback=None,
     _return_state=False,
 ):
     """Select unregularized nonnegative factor rank by molecule-count folds."""
@@ -664,36 +665,37 @@ def cross_validate_factorized_rank(
             profile = glm_solvers.factor_profile_diagnostics(
                 result, batch_cells=batch_cells
             )
-            rows.append(
-                {
-                    "fold": fold_index,
-                    "rank": rank,
-                    "validation_loss_per_cell": validation_loss,
-                    "iterations": result.diagnostics.get("iterations"),
-                    "converged": result.diagnostics.get("converged"),
-                    "warm_started": result.diagnostics.get(
-                        "warm_started", False
-                    ),
-                    "warm_start_rank": result.diagnostics.get(
-                        "warm_start_rank", 0
-                    ),
-                    "data_backend": result.diagnostics.get("data_backend"),
-                    "cells_per_second": result.diagnostics.get("cells_per_second"),
-                    "mean_epoch_seconds": float(np.mean(
-                        result.diagnostics.get("epoch_seconds", [np.nan])
-                    )),
-                    "minibatch_iterations": result.diagnostics.get(
-                        "minibatch_iterations"
-                    ),
-                    "polish_iterations": result.diagnostics.get(
-                        "polish_iterations"
-                    ),
-                    "peak_cuda_memory_bytes": result.diagnostics.get(
-                        "peak_cuda_memory_bytes"
-                    ),
-                    **profile,
-                }
-            )
+            row = {
+                "fold": fold_index,
+                "rank": rank,
+                "validation_loss_per_cell": validation_loss,
+                "iterations": result.diagnostics.get("iterations"),
+                "converged": result.diagnostics.get("converged"),
+                "warm_started": result.diagnostics.get(
+                    "warm_started", False
+                ),
+                "warm_start_rank": result.diagnostics.get(
+                    "warm_start_rank", 0
+                ),
+                "data_backend": result.diagnostics.get("data_backend"),
+                "cells_per_second": result.diagnostics.get("cells_per_second"),
+                "mean_epoch_seconds": float(np.mean(
+                    result.diagnostics.get("epoch_seconds", [np.nan])
+                )),
+                "minibatch_iterations": result.diagnostics.get(
+                    "minibatch_iterations"
+                ),
+                "polish_iterations": result.diagnostics.get(
+                    "polish_iterations"
+                ),
+                "peak_cuda_memory_bytes": result.diagnostics.get(
+                    "peak_cuda_memory_bytes"
+                ),
+                **profile,
+            }
+            rows.append(row)
+            if progress_callback is not None:
+                progress_callback(dict(row))
             warm_factors = (result.left.detach(), result.right.detach())
             del result
             gc.collect()

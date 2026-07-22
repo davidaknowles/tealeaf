@@ -253,6 +253,11 @@ and both halves share one coefficient vector:
 \]
 Here \(\bm\beta_m\) is \(\bm\phi_m\) or \(\bm\theta_m\), with the matching
 parameterization of each \(A_p\).
+Consequently, one column of the fitted coefficient matrix represents one
+biological cell, not one half-cell. The barcode-pair table supplies the mapping
+from the two observed half-cell columns to that shared fitted column. Pairs are
+required to be unambiguous within the experimental unit; reused pair keys that
+cannot identify one biological cell are excluded.
 The implemented equal-primer-weight objective is
 \[
   \frac{1}{8}\left(
@@ -274,6 +279,15 @@ by nuclear-norm regularization; paired-model
 The current complete-pair implementation requires both halves to pass a
 primer-specific UMI threshold. A future count-likelihood implementation can
 retain incomplete pairs by masking the absent primer loss.
+
+The same construction applies to every genome-wide solver below by replacing
+\((C,A)\) with \((\widetilde C,\widetilde A)\). In particular, direct
+factorization uses one shared cell-factor row in \(V\) for both primer
+observations. A penalty or constraint is applied once to the shared
+coefficient matrix, rather than separately to two half-cell estimates. Binary
+designs use primer-specific compatibility indicators followed by column
+normalization; fixed weighted designs use the primer-grouped conditional
+probabilities described next.
 
 The fixed weighted implementation estimates \(A_d\) and \(A_h\) separately by
 grouping the patched alevin-fry per-UMI probability sidecar according to the
@@ -456,16 +470,42 @@ large-scale setting.
     +\operatorname{tr}\!\left((U'GU)(V'V)\right).
   \]
   The default implementation uses deterministic alternating nonnegative
-  quadratic updates. For fixed \(U\), the cell-factor subproblem has Hessian
-  \(H_U=U'A'AU\) and linear term \(C'AU\). For fixed \(V\), the transcript-
+  quadratic updates accelerated by FISTA. For fixed \(U\), define
+  \[
+    H_U=U'A'AU,
+    \qquad K_V=C'AU.
+  \]
+  The cell-factor gradient is \(VH_U-K_V\), and its Lipschitz constant is
+  \(L_V=\lambda_{\max}(H_U)\). Starting with \(X_0=V\), \(Y_0=X_0\), and
+  \(t_0=1\), one projected FISTA step is
+  \[
+    X_{k+1}=\left[Y_k-L_V^{-1}(Y_kH_U-K_V)\right]_+,
+  \]
+  \[
+    t_{k+1}=\frac{1+\sqrt{1+4t_k^2}}{2},
+    \qquad
+    Y_{k+1}=X_{k+1}
+      +\frac{t_k-1}{t_{k+1}}(X_{k+1}-X_k),
+  \]
+  where \([\cdot]_+\) is elementwise projection onto the nonnegative orthant.
+  Cells with no retained molecules remain exactly zero.
+
+  After updating \(V\), define \(H_V=V'V\) and \(K_U=A'CV\). The transcript-
   factor gradient is
   \[
-    A'AU(V'V)-A'CV.
+    A'AU H_V-K_U.
   \]
-  Each subproblem is advanced by configurable FISTA iterations using its
-  Lipschitz curvature; sparse cell blocks provide \(C'AU\) and \(C'V\) without
-  materializing a dense transcript-by-cell matrix. The transcript step uses a
-  safety factor on the matrix-free power estimate of \(\|A'A\|_2\).
+  It uses the same projected FISTA recurrence with the left-acting gradient
+  above and step size
+  \[
+    L_U^{-1}
+    =\left(1.1\,\widehat{\|A'A\|_2}\,\|H_V\|_2\right)^{-1}.
+  \]
+  The factor 1.1 guards the matrix-free power estimate of \(\|A'A\|_2\).
+  Sparse cell blocks provide \(C'AU\) and \(CV\) without materializing a
+  dense transcript-by-cell matrix. A configurable number of inner FISTA steps
+  is applied to each subproblem before evaluating the exact sparse objective;
+  the implementation default is 32.
 
   An optional stochastic mode visits every cached cell block once in a seeded
   random order before deterministic polishing. It is retained for throughput
@@ -473,12 +513,14 @@ large-scale setting.
   identical to an exact epoch while its capped, cell-averaged transcript step
   converged slowly. Saved factors can be validated against cell and transcript
   identifiers and used as warm starts for deterministic continuation. The
-  patient objective stopping rule is applied only to deterministic epochs.
-  Paired factor
-  columns are rescaled after each epoch to have equal norms while preserving
-  \(UV'\), which controls the otherwise arbitrary factor scale without changing
-  the objective. Column normalization is applied after fitting when isoform
-  proportions are required.
+  patient objective stopping rule is applied only to deterministic epochs: a
+  fit converges after a configured minimum number of epochs followed by a
+  configured number of consecutive relative objective changes below the
+  tolerance. Hitting the iteration ceiling is reported as nonconvergence.
+  Factor columns are rescaled after each epoch to have equal norms while
+  preserving \(UV'\), which controls the otherwise arbitrary factor scale
+  without changing the objective. Column normalization is applied after
+  fitting when isoform proportions are required.
 \end{itemize}
 
 The factorized and Frank-Wolfe approaches are the scalable choices for many

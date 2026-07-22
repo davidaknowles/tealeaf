@@ -301,6 +301,7 @@ class GLMCVTest(unittest.TestCase):
             self.assertTrue(rows[1]["warm_started"])
 
     def test_factorized_rank_cv_runs_from_few_to_many_factors(self):
+        progress = []
         report = glm_cv.cross_validate_factorized_rank(
             self.counts,
             self.compatibility,
@@ -310,6 +311,7 @@ class GLMCVTest(unittest.TestCase):
             batch_cells=2,
             fit_kwargs={"max_iter": 2, "min_iter": 2},
             selection_rule="one_standard_error",
+            progress_callback=progress.append,
         )
         self.assertEqual(report["rank_path"], [1, 2])
         self.assertIn(report["best_rank"], [1, 2])
@@ -320,6 +322,10 @@ class GLMCVTest(unittest.TestCase):
             self.assertFalse(rows[0]["warm_started"])
             self.assertTrue(rows[1]["warm_started"])
             self.assertEqual(rows[1]["warm_start_rank"], 1)
+        self.assertEqual(
+            [(row["fold"], row["rank"]) for row in progress],
+            [(0, 1), (0, 2), (1, 1), (1, 2)],
+        )
 
     def test_adaptive_rank_cv_continues_without_replaying_completed_ranks(self):
         initial = {"best_rank": 2}
