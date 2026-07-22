@@ -41,6 +41,16 @@ within 1% of the best short-run objective, submit four optimized all-cell CV
 jobs, then submit selected full fits and log-gene-PCA label and silhouette
 scoring. Existing long-running CV jobs remain active and were not cancelled.
 
+The first CUDA validation reached both resident solver fits, then failed when
+the pinned backend called `record_stream` on a sparse CUDA wrapper. PyTorch
+does not implement that operation for the sparse backend. Stream lifetime
+tracking now records the COO index and value tensors plus the dense nonempty
+mask instead. Focused CPU validation passed 37 tests, and replacement CUDA job
+`19299162` completed successfully with identical resident and pinned objectives
+for direct factorization and factorized ADMM. Replacement binary and weighted
+benchmarks `19299163` and `19299164` are running; dependent selector job
+`19299165` replaces the blocked first submission chain.
+
 ## 2026-07-20 UMI-Filtered Single-Cell CV
 
 Added raw per-cell UMI filtering to the reusable GLM CV preparation and
