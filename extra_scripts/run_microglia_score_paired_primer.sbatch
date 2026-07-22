@@ -21,5 +21,5 @@ python /gpfs/commons/home/daknowles/projects/tealeaf/extra_scripts/score_single_
   --standard-h5ad /gpfs/commons/groups/knowles_lab/data/sc/splitpool/microglia_less_mice/salmon_per_sublib/t2g_permit_known_combined.h5ad \
   --output-dir "${RUN}/paired_primer_log_gene_pca_scores" \
   --device cuda \
-  --fit "paired_binary=${RUN}/paired_primer_binary_factorized_theta_" \
-  --fit "paired_weighted=${RUN}/paired_primer_weighted_factorized_theta_"
+  --fit "paired_binary_accelerated=${RUN}/paired_primer_binary_factorized_accelerated_theta_" \
+  --fit "paired_weighted_accelerated=${RUN}/paired_primer_weighted_factorized_accelerated_theta_"
