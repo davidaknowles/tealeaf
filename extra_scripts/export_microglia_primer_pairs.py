@@ -44,6 +44,27 @@ def main():
     if len({len(polydt), len(ranhex), len(labels), len(sublibraries)}) != 1:
         raise ValueError("AnnData observation columns have inconsistent lengths")
 
+    unique_pairs = {}
+    for index, (poly, hexa, label, sublibrary) in enumerate(
+        zip(polydt, ranhex, labels, sublibraries)
+    ):
+        if not poly or not hexa:
+            continue
+        record = unique_pairs.setdefault(
+            (poly, hexa),
+            {
+                "first_index": index,
+                "labels": set(),
+                "sublibraries": set(),
+                "source_count": 0,
+            },
+        )
+        record["source_count"] += 1
+        if label:
+            record["labels"].add(label)
+        if sublibrary:
+            record["sublibraries"].add(sublibrary)
+
     args.pairs.parent.mkdir(parents=True, exist_ok=True)
     retained_labels = 0
     with (
@@ -55,18 +76,22 @@ def main():
         label_writer = csv.writer(label_handle)
         group_writer = csv.writer(group_handle)
         pair_writer.writerow(("cell_id", "polydt_barcode", "ranhex_barcode"))
-        for index, (poly, hexa, label, sublibrary) in enumerate(
-            zip(polydt, ranhex, labels, sublibraries)
-        ):
-            if not poly or not hexa:
+        for (poly, hexa), record in unique_pairs.items():
+            if record["source_count"] != 1:
                 continue
-            cell_id = f"microglia_{index}"
+            cell_id = f"microglia_{record['first_index']}"
             pair_writer.writerow((cell_id, poly, hexa))
-            if label:
+            if len(record["labels"]) == 1 and len(record["sublibraries"]) == 1:
+                label = next(iter(record["labels"]))
+                sublibrary = next(iter(record["sublibraries"]))
                 label_writer.writerow((cell_id, label))
                 group_writer.writerow((cell_id, f"x__x__{sublibrary}"))
                 retained_labels += 1
-    print(f"pairs={len(polydt)}")
+    print(f"source_records={len(polydt)}")
+    unambiguous = sum(record["source_count"] == 1 for record in unique_pairs.values())
+    print(f"distinct_pair_keys={len(unique_pairs)}")
+    print(f"unambiguous_pairs={unambiguous}")
+    print(f"excluded_reused_pair_keys={len(unique_pairs) - unambiguous}")
     print(f"labeled_pairs={retained_labels}")
 
 

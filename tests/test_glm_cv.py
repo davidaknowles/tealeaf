@@ -37,6 +37,7 @@ class PairedPrimerPreparationTest(unittest.TestCase):
             pairs.write_text(
                 "cell_id\tpolydt_barcode\tranhex_barcode\n"
                 "cell1\tpoly1\thex1\n"
+                "cell1_duplicate\tpoly1\thex1\n"
                 "cell2\tpoly2\thex2\n"
             )
             prepared = glm_cv.prepare_paired_primer_glm_data(

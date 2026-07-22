@@ -41,7 +41,23 @@ def _read_primer_pairs(pair_file):
                 "primer pair table must contain cell_id, polydt_barcode, and "
                 "ranhex_barcode columns"
             )
-        rows = [tuple(row[name] for name in required) for row in reader]
+        rows = []
+        pair_to_cell = {}
+        half_to_pair = {}
+        for row in reader:
+            cell_id, polydt, ranhex = (row[name] for name in required)
+            pair = (polydt, ranhex)
+            if pair in pair_to_cell:
+                continue
+            for barcode in pair:
+                previous = half_to_pair.get(barcode)
+                if previous is not None and previous != pair:
+                    raise ValueError(
+                        "a half-cell barcode occurs in conflicting primer pairs"
+                    )
+                half_to_pair[barcode] = pair
+            pair_to_cell[pair] = cell_id
+            rows.append((cell_id, polydt, ranhex))
     if not rows:
         raise ValueError("primer pair table is empty")
     return rows
