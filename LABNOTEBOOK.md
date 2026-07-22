@@ -47,9 +47,13 @@ does not implement that operation for the sparse backend. Stream lifetime
 tracking now records the COO index and value tensors plus the dense nonempty
 mask instead. Focused CPU validation passed 37 tests, and replacement CUDA job
 `19299162` completed successfully with identical resident and pinned objectives
-for direct factorization and factorized ADMM. Replacement binary and weighted
-benchmarks `19299163` and `19299164` are running; dependent selector job
-`19299165` replaces the blocked first submission chain.
+for direct factorization and factorized ADMM. Binary and weighted jobs
+`19299163` and `19299164` completed the optimized benchmark phase and wrote
+valid results, but their legacy phase could not import the old worktree because
+it was local to the login node. The stale selectors and failed-dependency jobs
+were cancelled. The old commit is now on shared storage; legacy-only jobs
+`19299625` and `19299626` are running, with replacement selector `19299627`
+waiting on their successful completion.
 
 ## 2026-07-20 UMI-Filtered Single-Cell CV
 
