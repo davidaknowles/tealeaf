@@ -455,13 +455,26 @@ large-scale setting.
     -2\,\operatorname{tr}\!\left(VU'B\right)
     +\operatorname{tr}\!\left((U'GU)(V'V)\right).
   \]
-  The implementation uses nonnegative factors and projected cell-minibatch
-  updates. In a stochastic epoch it visits every cached cell block once in a
-  seeded random order. Each block first updates its rows of \(V\), then gives
-  a cell-averaged incremental gradient update for the shared factor \(U\).
-  Curvature-bounded projected steps are used for both updates. Before a fit is
-  declared converged, it switches to deterministic full-gradient alternating
-  epochs and applies the patient objective stopping rule there. Paired factor
+  The default implementation uses deterministic alternating nonnegative
+  quadratic updates. For fixed \(U\), the cell-factor subproblem has Hessian
+  \(H_U=U'A'AU\) and linear term \(C'AU\). For fixed \(V\), the transcript-
+  factor gradient is
+  \[
+    A'AU(V'V)-A'CV.
+  \]
+  Each subproblem is advanced by configurable FISTA iterations using its
+  Lipschitz curvature; sparse cell blocks provide \(C'AU\) and \(C'V\) without
+  materializing a dense transcript-by-cell matrix. The transcript step uses a
+  safety factor on the matrix-free power estimate of \(\|A'A\|_2\).
+
+  An optional stochastic mode visits every cached cell block once in a seeded
+  random order before deterministic polishing. It is retained for throughput
+  experiments, but is no longer the default because its epoch cost was nearly
+  identical to an exact epoch while its capped, cell-averaged transcript step
+  converged slowly. Saved factors can be validated against cell and transcript
+  identifiers and used as warm starts for deterministic continuation. The
+  patient objective stopping rule is applied only to deterministic epochs.
+  Paired factor
   columns are rescaled after each epoch to have equal norms while preserving
   \(UV'\), which controls the otherwise arbitrary factor scale without changing
   the objective. Column normalization is applied after fitting when isoform

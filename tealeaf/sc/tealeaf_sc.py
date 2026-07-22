@@ -683,6 +683,21 @@ def single_cell_glm_conversion(options):
         raise ValueError("no cells meet --min_cell_umis")
     counts = prepared.counts[selected].tocsr()
     barcodes = prepared.barcodes[selected]
+    initial_factors = None
+    if options.glm_initial_factors:
+        factor_path = Path(options.glm_initial_factors)
+        suffix = "glm_factors.npz"
+        if not factor_path.name.endswith(suffix):
+            raise ValueError("--glm_initial_factors must end in glm_factors.npz")
+        prefix = factor_path.parent / factor_path.name[:-len(suffix)]
+        initial_rows = np.loadtxt(f"{prefix}glm_rows.txt", dtype=str)
+        initial_cols = np.loadtxt(f"{prefix}glm_cols.txt", dtype=str)
+        if not np.array_equal(initial_rows, barcodes):
+            raise ValueError("warm-start cell rows do not match prepared GLM rows")
+        if not np.array_equal(initial_cols, prepared.features):
+            raise ValueError("warm-start transcript columns do not match prepared GLM columns")
+        with np.load(factor_path) as factors:
+            initial_factors = (factors["left"], factors["right"])
     result = glm_solvers.fit_glm(
         counts,
         prepared.compatibility,
@@ -708,6 +723,9 @@ def single_cell_glm_conversion(options):
         batch_cells=options.glm_batch_cells,
         data_backend=options.glm_data_backend,
         polish_max_iter=options.glm_polish_max_iter,
+        minibatch=options.glm_minibatch,
+        exact_inner_steps=options.glm_exact_inner_steps,
+        initial_factors=initial_factors,
     )
     result.diagnostics['regularization_target'] = options.regularization_target
     result.diagnostics['ec_design'] = options.ec_design
@@ -1095,6 +1113,20 @@ if __name__ == "__main__":
     parser.add_option("--glm_polish_max_iter", dest="glm_polish_max_iter", default=32, type="int",
                   help="maximum deterministic polishing iterations for direct factorization (default: 32)")
 
+    parser.add_option("--glm_exact_inner_steps", dest="glm_exact_inner_steps", default=32, type="int",
+                  help="FISTA steps per factor in each exact factorization epoch (default: 32)")
+
+    parser.add_option("--glm_minibatch", dest="glm_minibatch", default=False,
+                  action="store_true",
+                  help="use stochastic cell-minibatch epochs before deterministic polishing")
+
+    parser.add_option("--glm_no_minibatch", dest="glm_minibatch",
+                  action="store_false",
+                  help="use deterministic accelerated factorization epochs only (default)")
+
+    parser.add_option("--glm_initial_factors", dest="glm_initial_factors", default=None,
+                  help="existing glm_factors.npz to validate and continue")
+
     parser.add_option("--glm_rank", dest="glm_rank", default=64, type="int",
                   help="low-rank capacity for factorized and Frank-Wolfe GLMs (default: 64)")
 
@@ -1288,4 +1320,3 @@ if __name__ == "__main__":
     write_options_to_file(options, record)
 
     tealeaf_sc(options)
-

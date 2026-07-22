@@ -1,5 +1,31 @@
 # Lab Notebook
 
+## 2026-07-22 Accelerated Factorized Convergence
+
+Diagnosed the paired rank-64 fits that reached 2,048 iterations without
+converging. Minibatch and deterministic epochs had nearly identical costs
+(about 0.27 seconds binary and 0.56 seconds weighted), but the runs spent 2,016
+epochs in minibatch mode and only 32 in deterministic polishing. More
+importantly, the transcript-factor update divided its gradient by the number
+of cells and then capped the normalized step at 0.05. This made the effective
+raw-gradient step approximately 0.05 divided by the cell count rather than the
+scale-correct reciprocal-curvature step.
+
+Replaced the deterministic update with alternating nonnegative FISTA solves.
+The cell subproblem uses the exact rank-by-rank Hessian, and the transcript
+subproblem uses matrix-free products with \(A'A\), the cell-factor Gram matrix,
+and a safety-adjusted spectral estimate. Added configurable inner steps,
+deterministic fitting as the default, and factor-file continuation that checks
+both cell and transcript identifiers before loading a warm start.
+
+On the full paired binary data, 32 inner steps reduced the objective by 37.18
+in 10.1 seconds, compared with 0.378 in 9.27 seconds for one inner step. This is
+about 90-fold more objective reduction per second. Continuing the saved binary
+fit converged after 1,800 exact epochs and 9.5 minutes of GPU optimization,
+with final objective 60.019 versus 143.140 before continuation. The complete
+46-test suite passes. Weighted continuation remains to be completed and both
+converged representations must be rescored.
+
 ## 2026-07-21 Paired Primer GLM
 
 Implemented a paired-observation GLM for the poly(dT)- and random-hexamer-

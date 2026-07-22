@@ -119,8 +119,9 @@ def main():
         )
     elif args.method == "factorized":
         fit_kwargs.update(
-            minibatch=True,
+            minibatch=False,
             polish_max_iter=args.polish_max_iter,
+            exact_inner_steps=32,
         )
     if args.method == "factorized":
         rank_selection_rule = (

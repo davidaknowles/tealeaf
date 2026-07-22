@@ -167,6 +167,8 @@ class GLMSolverTest(unittest.TestCase):
             max_iter=12,
             min_iter=12,
             polish_max_iter=3,
+            minibatch=True,
+            exact_inner_steps=1,
             device="cpu",
         )
         self.assertEqual(result.diagnostics["data_backend"], "cpu")
@@ -201,6 +203,23 @@ class GLMSolverTest(unittest.TestCase):
         np.testing.assert_allclose(
             left_norm[active], right_norm[active], rtol=1e-5, atol=1e-7
         )
+
+    def test_accelerated_exact_factorization_improves_fixed_budget(self):
+        baseline = glm_solvers.fit_factorized(
+            self.counts, self.compatibility, rank=2, max_iter=8,
+            min_iter=8, patience=1, minibatch=False, exact_inner_steps=1,
+            device="cpu", batch_cells=2, seed=11,
+        )
+        accelerated = glm_solvers.fit_factorized(
+            self.counts, self.compatibility, rank=2, max_iter=8,
+            min_iter=8, patience=1, minibatch=False, exact_inner_steps=4,
+            device="cpu", batch_cells=2, seed=11,
+        )
+        self.assertLessEqual(
+            accelerated.diagnostics["objective"][-1],
+            baseline.diagnostics["objective"][-1] + 1e-6,
+        )
+        self.assertEqual(accelerated.diagnostics["exact_inner_steps"], 4)
 
     def test_factorized_expands_a_rank_warm_start(self):
         initial = glm_solvers.fit_factorized(

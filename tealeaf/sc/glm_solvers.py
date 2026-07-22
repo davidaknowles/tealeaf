@@ -416,37 +416,77 @@ def _as_sparse_glm(counts, compatibility, device, batch_cells, data_backend):
     )
 
 
-def _factorized_exact_epoch(data, left, right, learning_rate):
-    """One exact alternating epoch with a single A.T application for C V."""
+def _fista_quadratic_right(initial, gram, linear, step, iterations, active=None):
+    """Solve independent nonnegative quadratic rows with FISTA steps."""
+    torch = _torch()
+    current = initial
+    extrapolated = current
+    momentum_scale = 1.0
+    for _ in range(int(iterations)):
+        candidate = torch.relu(
+            extrapolated - step * (extrapolated @ gram - linear)
+        )
+        if active is not None:
+            candidate[~active] = 0
+        next_scale = 0.5 * (1.0 + np.sqrt(1.0 + 4.0 * momentum_scale ** 2))
+        extrapolated = candidate + (
+            (momentum_scale - 1.0) / next_scale
+        ) * (candidate - current)
+        current = candidate
+        momentum_scale = next_scale
+    return current
+
+
+def _fista_quadratic_left(data, initial, right_gram, linear, step, iterations):
+    """Solve the nonnegative transcript-factor quadratic with FISTA steps."""
+    torch = data.torch
+    current = initial
+    extrapolated = current
+    momentum_scale = 1.0
+    for _ in range(int(iterations)):
+        gradient = data.gram_times(extrapolated) @ right_gram - linear
+        candidate = torch.relu(extrapolated - step * gradient)
+        next_scale = 0.5 * (1.0 + np.sqrt(1.0 + 4.0 * momentum_scale ** 2))
+        extrapolated = candidate + (
+            (momentum_scale - 1.0) / next_scale
+        ) * (candidate - current)
+        current = candidate
+        momentum_scale = next_scale
+    return current
+
+
+def _factorized_exact_epoch(data, left, right, learning_rate, inner_steps=1):
+    """One exact alternating epoch with accelerated nonnegative subproblems."""
     torch = data.torch
     au = data.a_times(left)
     gram_left_full = data.at_times(au)
     gram_left = left.T @ gram_left_full
     right_lipschitz = float(torch.linalg.matrix_norm(gram_left, ord=2).item())
-    right_step = min(learning_rate, 1.0 / max(right_lipschitz, 1e-12))
+    right_step = 1.0 / max(right_lipschitz, 1e-12)
     right_gram = torch.zeros(
         (right.shape[1], right.shape[1]), device=data.device
     )
     ec_cross = torch.zeros((data.n_ec, right.shape[1]), device=data.device)
     for start, stop, block, nonempty in data.blocks():
         right_block = right[start:stop]
-        gradient = right_block @ gram_left - torch.sparse.mm(block, au)
-        right_block = torch.relu(right_block - right_step * gradient)
-        right_block[~nonempty] = 0
+        linear = torch.sparse.mm(block, au)
+        right_block = _fista_quadratic_right(
+            right_block, gram_left, linear, right_step, inner_steps, nonempty
+        )
         right[start:stop] = right_block
         right_gram += right_block.T @ right_block
         ec_cross += torch.sparse.mm(block.transpose(0, 1), right_block)
     b_times_right = data.at_times(ec_cross)
-    gradient_left = (
-        gram_left_full @ right_gram - b_times_right
-    ) / data.n_nonempty
     left_lipschitz = (
         data.gram_lipschitz
         * float(torch.linalg.matrix_norm(right_gram, ord=2).item())
-        / data.n_nonempty
     )
-    left_step = min(learning_rate, 1.0 / max(left_lipschitz, 1e-12))
-    left = torch.relu(left - left_step * gradient_left)
+    # The sparse power estimate is a lower bound on the true spectral norm;
+    # retain a small safety margin while taking a scale-correct Lipschitz step.
+    left_step = 1.0 / max(1.1 * left_lipschitz, 1e-12)
+    left = _fista_quadratic_left(
+        data, left, right_gram, b_times_right, left_step, inner_steps
+    )
     objective = data.loss_from_statistics(left, right_gram, ec_cross)
     left, right = _balance_factor_columns(left, right)
     return left, right, objective
@@ -508,12 +548,14 @@ def _factorized_minibatch_epoch(data, left, right, learning_rate, generator):
 def fit_factorized(counts, compatibility=None, *, rank=64, max_iter=100,
                    tol=1e-4, learning_rate=0.05, device="auto",
                    batch_cells=4096, seed=0, min_iter=10, patience=5,
-                   initial_factors=None, minibatch=True, polish_max_iter=32,
-                   data_backend="auto"):
+                   initial_factors=None, minibatch=False, polish_max_iter=32,
+                   data_backend="auto", exact_inner_steps=32):
     """Projected alternating optimization of a genome-wide nonnegative factorization."""
     _validate_stopping(max_iter, min_iter, patience, tol)
     if int(polish_max_iter) < 1:
         raise ValueError("polish_max_iter must be positive")
+    if int(exact_inner_steps) < 1:
+        raise ValueError("exact_inner_steps must be positive")
     data = _as_sparse_glm(
         counts, compatibility, device, batch_cells, data_backend
     )
@@ -535,6 +577,7 @@ def fit_factorized(counts, compatibility=None, *, rank=64, max_iter=100,
         "batch_cells": data.batch_cells,
         "minibatch": bool(minibatch),
         "polish_max_iter": int(polish_max_iter),
+        "exact_inner_steps": int(exact_inner_steps),
         "phase": [], "epoch_seconds": [],
         "cache_build_seconds": data.cache_build_seconds,
     }
@@ -562,7 +605,7 @@ def fit_factorized(counts, compatibility=None, *, rank=64, max_iter=100,
             )
         else:
             left, right, objective = _factorized_exact_epoch(
-                data, left, right, learning_rate
+                data, left, right, learning_rate, exact_inner_steps
             )
         diagnostics["phase"].append(phase)
         diagnostics["epoch_seconds"].append(time.perf_counter() - started)
@@ -1213,7 +1256,7 @@ def fit_glm(counts, compatibility, method, **kwargs):
             "rank", "max_iter", "tol", "learning_rate", "device",
             "batch_cells", "seed", "min_iter", "patience",
             "initial_factors", "minibatch", "polish_max_iter",
-            "data_backend",
+            "data_backend", "exact_inner_steps",
         }
         return fit_factorized(counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed})
     if method == "admm_factorized":
