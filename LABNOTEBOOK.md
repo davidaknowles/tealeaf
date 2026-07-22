@@ -1,5 +1,31 @@
 # Lab Notebook
 
+## 2026-07-22 Full Factorized FISTA Rerun
+
+The pre-FISTA all-cell rank-CV outputs are not reused. Added a fresh binary and
+fixed-weighted chain over all 169,533 cells with at least 500 raw UMIs. Each
+three-fold rank path starts at ranks 1, 2, 4, 8, 16, 32, 64, and 128, expands
+through 512 if the selected rank reaches the upper boundary, uses 32 exact
+inner FISTA steps, and allows up to 4,096 convergence-controlled epochs per
+candidate. Per-fold/rank completion records are flushed to the job logs.
+
+Selected full fits use a separate output tag, deterministic FISTA, the same
+UMI threshold, and an 8,192-epoch ceiling with objective-patience stopping.
+Dependent scoring uses library-normalized log1p gene expression followed by
+PCA and the existing mouse-group-held-out cell-type benchmark. Submitted
+binary CV and fit jobs `19305462 -> 19305463`, weighted jobs
+`19305464 -> 19305465`, and joint scoring job `19305466`. The CV roots are
+initially waiting for account GPU capacity. The independent pre-existing
+Frank--Wolfe CV jobs remain active because they do not use the corrected
+factorized update. Removed stale scoring job `19299644`, whose dependency could
+never be satisfied.
+
+Expanded `docs/glm.tex` with the paired-primer observation model and the exact
+projected FISTA recurrences, curvature choices, factor balancing, warm starts,
+and stopping rule. The full Python test suite passes 46 tests. A TeX engine is
+not available in the current module environment, so the document source was
+checked but not rendered here.
+
 ## 2026-07-22 Accelerated Factorized Convergence
 
 Diagnosed the paired rank-64 fits that reached 2,048 iterations without
