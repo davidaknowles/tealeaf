@@ -234,6 +234,57 @@ approximation, \(A_{\phi,st}=\tilde u_s/\tilde l_t\) and
 normalized only when producing relative-abundance output; the optimization
 itself remains nonnegative but unconstrained in column sum.
 
+\subsection*{Paired Primer Chemistries}
+
+When one biological cell is split into oligo(dT)-primed and random-hexamer-
+primed half-cells, the two observations should not be treated as independent
+cells and should not be forced through the same observation model. Let
+\(p\in\{d,h\}\) index the two primers and let \(A_p\) be the corresponding
+EC-by-transcript design. For cell \(m\), each retained half is normalized
+separately,
+\[
+  \bm c_{pm}=\bm n_{pm}/(\bm 1'\bm n_{pm}),
+\]
+and both halves share one coefficient vector:
+\[
+  \bm c_{dm}\approx A_d\bm\beta_m,
+  \qquad
+  \bm c_{hm}\approx A_h\bm\beta_m.
+\]
+Here \(\bm\beta_m\) is \(\bm\phi_m\) or \(\bm\theta_m\), with the matching
+parameterization of each \(A_p\).
+The implemented equal-primer-weight objective is
+\[
+  \frac{1}{8}\left(
+    \|C_d-A_d\Theta\|_F^2+
+    \|C_h-A_h\Theta\|_F^2
+  \right)+\mathcal R(\Theta),
+\]
+which is evaluated by stacking
+\[
+  \widetilde C=\frac{1}{2}\begin{bmatrix}C_d\\C_h\end{bmatrix},
+  \qquad
+  \widetilde A=\frac{1}{2}\begin{bmatrix}A_d\\A_h\end{bmatrix}.
+\]
+Each column of \(\widetilde C\) has unit mass. Each column of the stacked
+\(A_\phi\) also has unit mass; \(A_\theta\) has the effective-length scaling
+defined above. The factor of one half fixes the response and design scale used
+by nuclear-norm regularization; paired-model
+\(\lambda\) or \(\tau\) must therefore be selected on this response scale.
+The current complete-pair implementation requires both halves to pass a
+primer-specific UMI threshold. A future count-likelihood implementation can
+retain incomplete pairs by masking the absent primer loss.
+
+The fixed weighted implementation estimates \(A_d\) and \(A_h\) separately by
+grouping the patched alevin-fry per-UMI probability sidecar according to the
+half-cell barcode, averaging likelihood vectors within each primer and EC,
+and column-normalizing each design. This preserves primer-specific alignment
+evidence. It is not a full correction for oligo(dT) positional coverage bias:
+the current probability payload does not fit separate primer-specific fragment-
+start distributions. A full correction requires primer-separated Salmon
+\texttt{--posBias} models, or exporting RAD positions and evaluating a learned
+primer-specific positional model when constructing \(A_p\).
+
 \subsection*{Sparse Objective Evaluation}
 
 A scalable implementation should avoid forming the dense residual
@@ -627,15 +678,15 @@ which currently assumes one common \(A\) across cells. Using them exactly
 requires a cell-specific design operator rather than replacing \(A\) by a
 single averaged matrix.
 
-For a direct fixed-design comparison, the implementation also supports a
-globally weighted approximation. For each global EC, its per-UMI likelihood
-vectors are averaged over cells and UMIs; ECs without dumped vectors receive
-uniform weights over their compatible transcripts. The resulting sparse matrix
-is column-normalized over ECs for each transcript and cached. The binary
-comparator column-normalizes the binary EC membership matrix in the same way.
-This comparison isolates the effect of within-EC alignment evidence while
-retaining one shared design matrix. It is an empirical approximation to the
-cell-specific likelihoods, not an annotation-only conditional model.
+For a direct fixed-design comparison, the implementation supports globally or
+primer-grouped weighted approximations. For each global EC, its per-UMI
+likelihood vectors are averaged over the requested cells and UMIs; ECs without
+dumped vectors receive uniform weights over their compatible transcripts. Each
+resulting sparse matrix is column-normalized over ECs for each transcript and
+cached. The binary comparator column-normalizes the binary EC membership matrix
+in the same way. These comparisons isolate within-EC alignment evidence. They
+are empirical approximations to the molecule-specific likelihoods, not
+annotation-only conditional models or complete positional-bias corrections.
 
 If inference is desired directly on the relative abundance scale
 \(\boldsymbol{\theta}\), absorb transcript effective lengths into the design:

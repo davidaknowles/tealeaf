@@ -652,15 +652,27 @@ def single_cell_glm_conversion(options):
         raise ValueError(
             "--cell_mode single_cell requires a scalable GLM quantification method"
         )
-    prepared = glm_cv.prepare_alevin_glm_data(
-        options.alevin_dir,
-        options.salmon_ref,
-        ec_design=options.ec_design,
-        regularization_target=options.regularization_target,
-        min_eq=options.min_eq,
-        probability_file=options.eq_probabilities,
-        weight_cache=options.eq_weight_cache,
-    )
+    if options.primer_pairs:
+        prepared = glm_cv.prepare_paired_primer_glm_data(
+            options.alevin_dir,
+            options.salmon_ref,
+            options.primer_pairs,
+            ec_design=options.ec_design,
+            regularization_target=options.regularization_target,
+            min_eq=options.min_eq,
+            min_half_umis=options.min_half_umis,
+            probability_file=options.eq_probabilities,
+        )
+    else:
+        prepared = glm_cv.prepare_alevin_glm_data(
+            options.alevin_dir,
+            options.salmon_ref,
+            ec_design=options.ec_design,
+            regularization_target=options.regularization_target,
+            min_eq=options.min_eq,
+            probability_file=options.eq_probabilities,
+            weight_cache=options.eq_weight_cache,
+        )
     selected = glm_cv.sample_cells_by_count(
         prepared.counts,
         0,
@@ -699,6 +711,11 @@ def single_cell_glm_conversion(options):
     )
     result.diagnostics['regularization_target'] = options.regularization_target
     result.diagnostics['ec_design'] = options.ec_design
+    if prepared.metadata:
+        result.diagnostics.update({
+            key: value for key, value in prepared.metadata.items()
+            if key not in {"half_umi_totals", "source_rows"}
+        })
     glm_solvers.write_chunked_result(
         result,
         options.outprefix,
@@ -1060,6 +1077,12 @@ if __name__ == "__main__":
     parser.add_option("--min_cell_umis", dest="min_cell_umis", default=0, type="float",
                   help="minimum raw UMI count for single-cell GLM fitting (default: 0)")
 
+    parser.add_option("--primer_pairs", dest="primer_pairs", default=None,
+                  help="TSV pairing polydT and ranhex barcodes for a shared-cell GLM")
+
+    parser.add_option("--min_half_umis", dest="min_half_umis", default=500, type="float",
+                  help="minimum UMI count required in each paired primer half (default: 500)")
+
     parser.add_option("--glm_device", dest="glm_device", default='auto',
                   help="Torch device for scalable GLMs: auto, cuda, or cpu (default: auto)")
 
@@ -1265,5 +1288,4 @@ if __name__ == "__main__":
     write_options_to_file(options, record)
 
     tealeaf_sc(options)
-
 

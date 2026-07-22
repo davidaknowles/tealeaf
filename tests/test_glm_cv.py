@@ -2,6 +2,8 @@
 
 import unittest
 from unittest import mock
+from pathlib import Path
+import tempfile
 
 import numpy as np
 import scipy.sparse as sp
@@ -13,6 +15,49 @@ except ImportError:  # pragma: no cover
     TORCH_AVAILABLE = False
 else:
     TORCH_AVAILABLE = True
+
+
+class PairedPrimerPreparationTest(unittest.TestCase):
+    def test_paired_response_and_design_use_equal_primer_weight(self):
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            membership = sp.eye(2, format="csr")
+            counts = sp.csr_matrix(np.array(
+                [[8, 2], [2, 8], [4, 0], [0, 3]], dtype=np.int64
+            ))
+            sp.save_npz(directory / "gene_eqclass.npz", membership)
+            sp.save_npz(directory / "geqc_counts.npz", counts)
+            (directory / "quants_mat_cols.txt").write_text("tx1\ntx2\n")
+            (directory / "quants_mat_rows.txt").write_text(
+                "poly1\nhex1\npoly2\nhex2\n"
+            )
+            fasta = directory / "transcripts.fa"
+            fasta.write_text(">tx1\n" + "A" * 400 + "\n>tx2\n" + "C" * 400 + "\n")
+            pairs = directory / "pairs.tsv"
+            pairs.write_text(
+                "cell_id\tpolydt_barcode\tranhex_barcode\n"
+                "cell1\tpoly1\thex1\n"
+                "cell2\tpoly2\thex2\n"
+            )
+            prepared = glm_cv.prepare_paired_primer_glm_data(
+                directory,
+                fasta,
+                pairs,
+                ec_design="binary",
+                regularization_target="phi",
+                min_eq=1,
+                min_half_umis=5,
+            )
+            self.assertEqual(prepared.counts.shape, (1, 4))
+            np.testing.assert_allclose(
+                prepared.counts.toarray(), [[0.4, 0.1, 0.1, 0.4]]
+            )
+            np.testing.assert_allclose(
+                prepared.compatibility.toarray(),
+                [[0.5, 0], [0, 0.5], [0.5, 0], [0, 0.5]],
+            )
+            np.testing.assert_array_equal(prepared.barcodes, ["cell1"])
+            self.assertEqual(prepared.metadata["retained_pair_count"], 1)
 
 
 @unittest.skipUnless(TORCH_AVAILABLE, "Torch optional dependency is unavailable")

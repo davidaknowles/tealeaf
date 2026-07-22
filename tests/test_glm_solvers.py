@@ -76,6 +76,37 @@ class ParameterizationTest(unittest.TestCase):
             )
             np.testing.assert_allclose(cached.toarray(), design.toarray())
 
+    def test_probability_sidecar_builds_separate_group_designs(self):
+        membership = sp.csr_matrix(
+            np.array([[1, 1], [1, 0], [0, 1]], dtype=float)
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            probability_file = directory / "probs.tsv.gz"
+            caches = [directory / "poly.npz", directory / "hex.npz"]
+            with gzip.open(probability_file, "wt") as handle:
+                handle.write("cell_idx\teqid\tumi_rank\tprobs\n")
+                handle.write("0\t0\t0\t9e-1,1e-1\n")
+                handle.write("1\t0\t0\t2e-1,8e-1\n")
+                handle.write("0\t1\t0\t1e0\n")
+                handle.write("1\t2\t0\t1e0\n")
+                handle.write("2\t0\t0\t5e-1,5e-1\n")
+            designs = sc_utils.grouped_ec_probability_matrices(
+                probability_file,
+                membership,
+                cell_groups=[0, 1, -1],
+                n_groups=2,
+                cache_files=caches,
+            )
+            self.assertEqual(len(designs), 2)
+            for design in designs:
+                np.testing.assert_allclose(
+                    np.asarray(design.sum(axis=0)).ravel(), np.ones(2)
+                )
+            self.assertGreater(designs[0][0, 0], designs[1][0, 0])
+            self.assertLess(designs[0][0, 1], designs[1][0, 1])
+            self.assertTrue(all(path.is_file() for path in caches))
+
 
 @unittest.skipUnless(TORCH_AVAILABLE, "Torch optional dependency is unavailable")
 class GLMSolverTest(unittest.TestCase):

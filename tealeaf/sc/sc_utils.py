@@ -247,6 +247,99 @@ def averaged_ec_probability_matrix(probability_file, ec_transcript_mat, cache_fi
     return weighted
 
 
+def grouped_ec_probability_matrices(
+    probability_file,
+    ec_transcript_mat,
+    cell_groups,
+    n_groups,
+    cache_files=None,
+):
+    """Build fixed EC designs for groups of alevin-fry rows in one pass.
+
+    ``cell_groups[cell_idx]`` gives the design group for a probability-sidecar
+    row, or a negative value to exclude that cell. Probability vectors are
+    averaged within each group and EC, then each transcript column is
+    normalized. This is useful when library chemistries share EC definitions
+    but require different fixed conditional-probability matrices.
+    """
+    probability_file = Path(probability_file)
+    membership = ec_transcript_mat.tocsr()
+    groups = np.asarray(cell_groups, dtype=np.int64).ravel()
+    n_groups = int(n_groups)
+    if n_groups < 1:
+        raise ValueError("n_groups must be positive")
+    if np.any(groups >= n_groups):
+        raise ValueError("cell_groups contains a group outside n_groups")
+    if cache_files is not None:
+        cache_files = [Path(path) for path in cache_files]
+        if len(cache_files) != n_groups:
+            raise ValueError("cache_files must contain one path per group")
+        cached = []
+        for path in cache_files:
+            if not path.is_file() or path.stat().st_mtime < probability_file.stat().st_mtime:
+                break
+            matrix = sp.load_npz(path).tocsr()
+            if matrix.shape != membership.shape:
+                break
+            cached.append(matrix)
+        if len(cached) == n_groups:
+            return cached
+
+    sums = np.zeros((n_groups, membership.nnz), dtype=np.float64)
+    observations = np.zeros((n_groups, membership.shape[0]), dtype=np.uint64)
+    with gzip.open(probability_file, "rt") as handle:
+        header = next(handle, "").rstrip("\n")
+        if header != "cell_idx\teqid\tumi_rank\tprobs":
+            raise ValueError(f"Unexpected probability sidecar header: {header!r}")
+        for line_number, line in enumerate(handle, start=2):
+            fields = line.rstrip("\n").split("\t", 3)
+            if len(fields) != 4:
+                raise ValueError(f"Malformed probability row at line {line_number}")
+            cell_idx = int(fields[0])
+            if cell_idx < 0 or cell_idx >= len(groups):
+                raise ValueError(f"Cell index {cell_idx} is outside cell_groups")
+            group = groups[cell_idx]
+            if group < 0:
+                continue
+            eqid = int(fields[1])
+            if eqid < 0 or eqid >= membership.shape[0]:
+                raise ValueError(f"EC id {eqid} is outside the compatibility matrix")
+            start, stop = membership.indptr[eqid:eqid + 2]
+            probabilities = np.fromstring(fields[3], sep=",", dtype=np.float64)
+            if probabilities.size != stop - start:
+                raise ValueError(
+                    f"EC {eqid} has {stop - start} transcripts but probability row "
+                    f"has {probabilities.size} values"
+                )
+            sums[group, start:stop] += probabilities
+            observations[group, eqid] += 1
+
+    matrices = []
+    for group in range(n_groups):
+        values = sums[group]
+        for eqid in range(membership.shape[0]):
+            start, stop = membership.indptr[eqid:eqid + 2]
+            if start == stop:
+                continue
+            if observations[group, eqid] > 0:
+                values[start:stop] /= observations[group, eqid]
+            else:
+                values[start:stop] = 1.0 / (stop - start)
+        matrix = sp.csr_matrix(
+            (values, membership.indices.copy(), membership.indptr.copy()),
+            shape=membership.shape,
+        )
+        matrices.append(_column_normalize(matrix))
+
+    if cache_files is not None:
+        for path, matrix in zip(cache_files, matrices):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp.npz")
+            sp.save_npz(temporary, matrix)
+            os.replace(temporary, path)
+    return matrices
+
+
 def glm_design_matrix(ec_transcript_mat, w, parameterization="phi",
                       design="legacy", probability_file=None, cache_file=None):
     """Construct a fixed GLM design and apply the phi/theta parameterization."""
@@ -402,4 +495,3 @@ def NNLS_nucnorm(count_matrix, ec_transcript_mat, w, regularization=0.01,
     phi[:, positive] /= col_sums[positive]
     phi[:, ~nonzero] = 0
     return phi.T
-

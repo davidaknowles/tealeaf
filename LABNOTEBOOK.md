@@ -1,5 +1,34 @@
 # Lab Notebook
 
+## 2026-07-21 Paired Primer GLM
+
+Implemented a paired-observation GLM for the poly(dT)- and random-hexamer-
+primed halves of one biological cell. Each half is normalized independently,
+then the response and design are stacked with equal one-half weights. The two
+halves therefore share one genome-wide coefficient vector while using separate
+primer design matrices. The initial implementation retains complete pairs only
+and requires at least 500 UMIs in each half.
+
+Added a reusable pair-table interface to the package and kept the AnnData
+translation in a dataset-specific script. The exported table has 109,275
+annotated pairs; 51,294 have standard cluster labels for external accuracy and
+silhouette scoring. Separate weighted designs are built in one streaming pass
+over the alevin-fry probability sidecar by grouping rows according to the
+half-cell barcode. Binary and weighted paired factorization launchers use the
+same response and differ only in their EC designs.
+
+The weighted primer designs remain an empirical approximation. The patched RAD
+and alevin-fry path preserves alignment score and transcript-position evidence,
+but it does not fit separate primer-specific fragment-start distributions.
+Consequently, it can capture differences in within-EC alignment evidence but
+is not a complete correction for the strong poly(dT) 3-prime coverage bias. A
+full correction requires primer-separated Salmon positional-bias models or a
+RAD-position export consumed by a custom primer-specific design builder.
+
+The complete 45-test suite passed on a Slurm CPU node. Tests cover grouped
+probability designs, column normalization, complete-pair filtering, equal
+primer weighting, and the existing scalable solvers and CV paths.
+
 ## 2026-07-21 Primer Half-Cell Audit
 
 The current alevin cell-by-EC matrix contains poly(dT)-primed and random-

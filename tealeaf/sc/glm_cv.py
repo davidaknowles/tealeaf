@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import csv
 import gc
 from pathlib import Path
 
@@ -20,6 +21,159 @@ class PreparedGLMData:
     barcodes: np.ndarray
     features: np.ndarray
     cell_umi_totals: np.ndarray
+    metadata: dict | None = None
+
+
+def _row_normalize(matrix):
+    matrix = matrix.tocsr().astype(np.float32)
+    totals = np.asarray(matrix.sum(axis=1)).ravel()
+    inverse = np.zeros_like(totals, dtype=np.float32)
+    inverse[totals > 0] = 1.0 / totals[totals > 0]
+    return (sp.diags(inverse) @ matrix).tocsr(), totals
+
+
+def _read_primer_pairs(pair_file):
+    required = ("cell_id", "polydt_barcode", "ranhex_barcode")
+    with open(pair_file, newline="") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        if reader.fieldnames is None or any(name not in reader.fieldnames for name in required):
+            raise ValueError(
+                "primer pair table must contain cell_id, polydt_barcode, and "
+                "ranhex_barcode columns"
+            )
+        rows = [tuple(row[name] for name in required) for row in reader]
+    if not rows:
+        raise ValueError("primer pair table is empty")
+    return rows
+
+
+def prepare_paired_primer_glm_data(
+    alevin_dir,
+    salmon_ref,
+    pair_file,
+    *,
+    ec_design="weighted",
+    regularization_target="theta",
+    min_eq=5,
+    min_half_umis=500,
+    probability_file=None,
+    weight_caches=None,
+):
+    """Prepare paired primer observations with one latent row per cell.
+
+    Each retained biological cell contributes two equally weighted responses,
+    ``0.5 C_p / sum(C_p)``. The matching design is the vertical stack of
+    ``0.5 A_polydT`` and ``0.5 A_ranhex``. Both halves therefore estimate one
+    shared abundance vector while retaining primer-specific observation bias.
+    Only complete pairs meeting ``min_half_umis`` in both halves are retained.
+    """
+    if ec_design not in {"binary", "weighted"}:
+        raise ValueError("paired primer fitting requires binary or weighted design")
+    alevin_dir = Path(alevin_dir)
+    membership = sp.load_npz(alevin_dir / "gene_eqclass.npz").tocsr()
+    counts = sp.load_npz(alevin_dir / "geqc_counts.npz").tocsr()
+    with open(alevin_dir / "quants_mat_cols.txt") as handle:
+        features = np.asarray([line.strip() for line in handle])
+    with open(alevin_dir / "quants_mat_rows.txt") as handle:
+        barcodes = np.asarray([line.strip() for line in handle])
+    if counts.shape[0] != len(barcodes):
+        raise ValueError("count rows do not match alevin barcode rows")
+
+    barcode_to_row = {}
+    for index, barcode in enumerate(barcodes):
+        if barcode in barcode_to_row:
+            raise ValueError(f"duplicate alevin barcode: {barcode}")
+        barcode_to_row[barcode] = index
+    pairs = _read_primer_pairs(pair_file)
+    group_by_row = np.full(len(barcodes), -1, dtype=np.int8)
+    complete = []
+    seen_half_barcodes = set()
+    raw_totals = np.asarray(counts.sum(axis=1)).ravel()
+    for cell_id, polydt, ranhex in pairs:
+        if polydt in seen_half_barcodes or ranhex in seen_half_barcodes:
+            raise ValueError("a half-cell barcode occurs in more than one primer pair")
+        seen_half_barcodes.update((polydt, ranhex))
+        poly_row = barcode_to_row.get(polydt)
+        hex_row = barcode_to_row.get(ranhex)
+        if poly_row is not None:
+            group_by_row[poly_row] = 0
+        if hex_row is not None:
+            group_by_row[hex_row] = 1
+        if (
+            poly_row is not None and hex_row is not None
+            and raw_totals[poly_row] >= float(min_half_umis)
+            and raw_totals[hex_row] >= float(min_half_umis)
+        ):
+            complete.append((cell_id, poly_row, hex_row))
+    if not complete:
+        raise ValueError("no complete primer pairs meet min_half_umis")
+
+    poly_rows = np.asarray([row[1] for row in complete], dtype=np.int64)
+    hex_rows = np.asarray([row[2] for row in complete], dtype=np.int64)
+    aggregate = np.asarray(
+        counts[poly_rows].sum(axis=0) + counts[hex_rows].sum(axis=0)
+    ).ravel()
+    transcript_count = aggregate @ membership
+    ec_keep = aggregate >= float(min_eq)
+    feature_keep = np.asarray(transcript_count).ravel() > 0
+
+    transcript_lengths = sc_utils.get_transcript_lengths(Path(salmon_ref))
+    if ec_design == "binary":
+        base = sc_utils._column_normalize(membership.astype(float))
+        phi_designs = [base, base]
+    else:
+        probability_file = Path(probability_file or (
+            alevin_dir / "gene_eqclass_probs.tsv.gz"
+        ))
+        if weight_caches is None:
+            weight_caches = [
+                alevin_dir / "gene_eqclass_fixed_weights_polydt.npz",
+                alevin_dir / "gene_eqclass_fixed_weights_ranhex.npz",
+            ]
+        phi_designs = sc_utils.grouped_ec_probability_matrices(
+            probability_file,
+            membership,
+            group_by_row,
+            2,
+            cache_files=weight_caches,
+        )
+
+    filtered_features = features[feature_keep]
+    _, weights = sc_utils.get_feature_weights(filtered_features, transcript_lengths)
+    designs = []
+    for phi_design in phi_designs:
+        filtered = phi_design[ec_keep, :][:, feature_keep]
+        designs.append(sc_utils.parameterize_glm_design(
+            filtered,
+            weights,
+            regularization_target,
+            normalize_columns=True,
+        ))
+    compatibility = sp.vstack(
+        (0.5 * designs[0], 0.5 * designs[1]), format="csr"
+    )
+    poly_counts, poly_totals = _row_normalize(counts[poly_rows][:, ec_keep])
+    hex_counts, hex_totals = _row_normalize(counts[hex_rows][:, ec_keep])
+    paired_counts = sp.hstack(
+        (0.5 * poly_counts, 0.5 * hex_counts), format="csr"
+    )
+    pair_ids = np.asarray([row[0] for row in complete])
+    return PreparedGLMData(
+        paired_counts,
+        compatibility,
+        pair_ids,
+        filtered_features,
+        poly_totals + hex_totals,
+        metadata={
+            "paired_primers": True,
+            "primer_names": ["polydT", "ranhex"],
+            "min_half_umis": float(min_half_umis),
+            "half_umi_totals": np.column_stack((poly_totals, hex_totals)),
+            "source_rows": np.column_stack((poly_rows, hex_rows)),
+            "annotated_pair_count": len(pairs),
+            "retained_pair_count": len(complete),
+        },
+    )
 
 
 def prepare_alevin_glm_data(
