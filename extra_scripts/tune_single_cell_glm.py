@@ -21,6 +21,8 @@ def main():
         choices=["factorized", "admm_factorized", "frank_wolfe_penalized"],
     )
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--primer-pairs", type=Path)
+    parser.add_argument("--min-half-umis", type=float, default=500)
     parser.add_argument("--multiplier", action="append", type=float)
     parser.add_argument("--rank-candidate", action="append", type=int)
     parser.add_argument("--max-rank", type=int, default=256)
@@ -75,13 +77,24 @@ def main():
     elif not args.multiplier:
         raise ValueError(f"{args.method} CV requires --multiplier")
 
-    prepared = glm_cv.prepare_alevin_glm_data(
-        args.alevin_dir,
-        args.salmon_ref,
-        ec_design=args.design,
-        regularization_target="theta",
-        min_eq=args.min_eq,
-    )
+    if args.primer_pairs is None:
+        prepared = glm_cv.prepare_alevin_glm_data(
+            args.alevin_dir,
+            args.salmon_ref,
+            ec_design=args.design,
+            regularization_target="theta",
+            min_eq=args.min_eq,
+        )
+    else:
+        prepared = glm_cv.prepare_paired_primer_glm_data(
+            args.alevin_dir,
+            args.salmon_ref,
+            args.primer_pairs,
+            ec_design=args.design,
+            regularization_target="theta",
+            min_eq=args.min_eq,
+            min_half_umis=args.min_half_umis,
+        )
     eligible = glm_cv.sample_cells_by_count(
         prepared.counts,
         0,
@@ -213,6 +226,13 @@ def main():
         tolerance=float(args.tol),
         exact_inner_steps=(
             int(args.exact_inner_steps) if args.method == "factorized" else None
+        ),
+        paired_primers=args.primer_pairs is not None,
+        primer_pair_file=(
+            str(args.primer_pairs) if args.primer_pairs is not None else None
+        ),
+        min_half_umis=(
+            float(args.min_half_umis) if args.primer_pairs is not None else None
         ),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
