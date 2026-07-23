@@ -73,13 +73,26 @@ for design in binary weighted; do
   echo "${tag} ${design} factorized: CV=${tune} fit=${fit}"
 done
 
-fit_dependency=$(IFS=:; echo "${fit_jobs[*]}")
-score=$(sbatch --parsable --dependency="afterok:${fit_dependency}" \
-  --job-name=gse23_score_fits \
+score_jobs=()
+for index in "${!fit_jobs[@]}"; do
+  score=$(sbatch --parsable --dependency="afterok:${fit_jobs[index]}" \
+    --job-name="gse23_score_${index}" \
+    -o "${GLM_RUN}/logs/%x-%j.out" -e "${GLM_RUN}/logs/%x-%j.err" \
+    --export="ALL,REPO_ROOT=${REPO_ROOT},FITS_FILE=${fits_file},FIT_INDEX=${index},LABELS=${DATA_ROOT}/metadata/reference_annotation.csv,GROUPS=${DATA_ROOT}/metadata/reference_donor.csv,TRANSCRIPT_TO_GENE=${SALMON_REF}/spliceu_t2g.tsv,SCORE_OUTPUT=${GLM_RUN}/label_scores" \
+    "${REPO_ROOT}/extra_scripts/run_score_glm_fits.sbatch")
+  score_jobs+=("${score}")
+  printf 'score\tall\tall\tfit_%s\t%s\n' \
+    "${index}" "${score}" >> "${jobs_file}"
+  echo "score fit ${index}=${score}"
+done
+score_dependency=$(IFS=:; echo "${score_jobs[*]}")
+aggregate=$(sbatch --parsable --dependency="afterok:${score_dependency}" \
+  --job-name=gse23_aggregate_scores --cpus-per-task=1 --mem=2G \
+  --time=00:30:00 \
   -o "${GLM_RUN}/logs/%x-%j.out" -e "${GLM_RUN}/logs/%x-%j.err" \
-  --export="ALL,REPO_ROOT=${REPO_ROOT},FITS_FILE=${fits_file},LABELS=${DATA_ROOT}/metadata/reference_annotation.csv,GROUPS=${DATA_ROOT}/metadata/reference_donor.csv,TRANSCRIPT_TO_GENE=${SALMON_REF}/spliceu_t2g.tsv,SCORE_OUTPUT=${GLM_RUN}/label_scores" \
-  "${REPO_ROOT}/extra_scripts/run_score_glm_fits.sbatch")
-printf 'score\tall\tall\tall\t%s\n' "${score}" >> "${jobs_file}"
-echo "score=${score}"
+  --wrap "bash -lc 'module load python/3.10.8-GCCcore-12.2.0 && python ${REPO_ROOT}/extra_scripts/aggregate_glm_scores.py --fits-file ${fits_file} --score-output ${GLM_RUN}/label_scores'")
+printf 'aggregate_scores\tall\tall\tall\t%s\n' \
+  "${aggregate}" >> "${jobs_file}"
+echo "aggregate scores=${aggregate}"
 echo "job manifest=${jobs_file}"
 echo "fit manifest=${fits_file}"

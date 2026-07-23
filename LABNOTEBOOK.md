@@ -1054,3 +1054,8 @@ feature identifiers, all expected run prefixes, the weighted probability
 sidecar, complete primer pairs, cells above the UMI threshold, and overlap with
 published reference labels. Downstream design construction does not start
 unless this gate passes.
+
+Representation scoring is submitted independently for each selected fit and
+depends only on that fit, rather than serializing all reconstructions after the
+slowest method. A final CPU task combines the per-fit summaries after all eight
+scoring jobs finish.
