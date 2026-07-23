@@ -1076,6 +1076,12 @@ branch depends on completion of the download, and merge depends on both fry
 branches. Early fry can overlap Salmon processing of the remaining
 sublibraries without duplicate writers.
 
+Within each branch, fry uses Slurm's corresponding-array dependency rather
+than waiting for every Salmon task in the branch. Each sublibrary can
+therefore enter permit-list generation, collation, and quantification as soon
+as its own RAD output is complete; the merge gate still requires all fry
+tasks.
+
 Historical weighted full-dataset runs peaked near 28 GB RAM for both Salmon
 and alevin-fry. Independent sublibrary tasks therefore request 48 GB for
 Salmon and 40 GB for fry rather than the earlier 164/96 GB reservations.
