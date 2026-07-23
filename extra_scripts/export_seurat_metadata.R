@@ -25,7 +25,7 @@ write.table(
   metadata,
   file = connection,
   sep = "\t",
-  quote = FALSE,
+  quote = TRUE,
   row.names = FALSE,
   col.names = TRUE,
   na = ""

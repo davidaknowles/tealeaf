@@ -22,6 +22,12 @@ def main():
     parser.add_argument("--batch-column", default="Batch")
     parser.add_argument("--label-column", default="annotation")
     parser.add_argument("--group-column", default="CaseNum")
+    parser.add_argument(
+        "--parse-rt-barcodes",
+        type=Path,
+        help="ordered 96-barcode Parse RT list; expands each published cell "
+        "into its poly(dT) and random-hexamer alevin barcodes",
+    )
     parser.add_argument("--batch-map", action="append", required=True, type=mapping)
     parser.add_argument("--labels-output", required=True, type=Path)
     parser.add_argument("--groups-output", required=True, type=Path)
@@ -31,6 +37,13 @@ def main():
     }
     if len(published_to_internal) != len(args.batch_map):
         raise ValueError("published batch names must be unique")
+    rt_pairs = None
+    if args.parse_rt_barcodes is not None:
+        with open(args.parse_rt_barcodes) as handle:
+            rt = [line.strip() for line in handle if line.strip()]
+        if len(rt) != 96 or len(set(rt)) != 96:
+            raise ValueError("the Parse RT list must contain 96 unique barcodes")
+        rt_pairs = list(zip(rt[:48], rt[48:]))
 
     labels = {}
     groups = {}
@@ -50,19 +63,36 @@ def main():
             internal_batch = published_to_internal.get(published_batch)
             if internal_batch is None:
                 continue
-            barcode = row[args.cell_barcode_column]
+            published_barcode = row[args.cell_barcode_column]
             label = row[args.label_column]
             group = row[args.group_column]
-            if not barcode or not label:
+            if not published_barcode or not label:
                 continue
-            cell_id = f"{internal_batch}:{barcode}"
-            previous = labels.setdefault(cell_id, label)
-            if previous != label:
-                raise ValueError(f"conflicting labels for {cell_id}")
-            if group:
-                previous_group = groups.setdefault(cell_id, group)
-                if previous_group != group:
-                    raise ValueError(f"conflicting groups for {cell_id}")
+            if rt_pairs is None:
+                barcodes = [published_barcode]
+            else:
+                sequence, separator, well_text = published_barcode.rpartition("_")
+                if not separator:
+                    raise ValueError(
+                        f"published Parse barcode has no well suffix: "
+                        f"{published_barcode}"
+                    )
+                well = int(well_text)
+                if well < 0 or well >= len(rt_pairs):
+                    raise ValueError(
+                        f"published Parse RT well is out of range: "
+                        f"{published_barcode}"
+                    )
+                barcodes = [sequence + rt for rt in rt_pairs[well]]
+            for barcode in barcodes:
+                cell_id = f"{internal_batch}:{barcode}"
+                previous = labels.setdefault(cell_id, label)
+                if previous != label:
+                    raise ValueError(f"conflicting labels for {cell_id}")
+                if group:
+                    previous_group = groups.setdefault(cell_id, group)
+                    if previous_group != group:
+                        raise ValueError(f"conflicting groups for {cell_id}")
     if not labels:
         raise ValueError("no metadata rows matched the batch mapping")
 
