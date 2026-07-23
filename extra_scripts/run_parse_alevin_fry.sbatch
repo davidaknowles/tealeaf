@@ -17,11 +17,17 @@ MIN_READS=${MIN_READS:-100}
 THREADS=${SLURM_CPUS_PER_TASK:-8}
 COMPLETE_MARKER="${OUT_DIR}/.tealeaf_complete"
 
-if [[
-  -s "${COMPLETE_MARKER}"
-  && -s "${OUT_DIR}/alevin/quants_mat_rows.txt"
-  && -s "${OUT_DIR}/alevin/gene_eqclass_probs.tsv.gz"
-]]; then
+quantification_files_exist() {
+  [[
+    -s "${OUT_DIR}/alevin/quants_mat_rows.txt"
+    && -s "${OUT_DIR}/alevin/quants_mat_cols.txt"
+    && -s "${OUT_DIR}/alevin/geqc_counts.mtx"
+    && -s "${OUT_DIR}/alevin/gene_eqclass.txt.gz"
+    && -s "${OUT_DIR}/alevin/gene_eqclass_probs.tsv.gz"
+  ]]
+}
+
+if [[ -s "${COMPLETE_MARKER}" ]] && quantification_files_exist; then
   echo "Reusing completed alevin-fry output: ${OUT_DIR}"
   exit 0
 fi
@@ -47,10 +53,7 @@ fi
   -r parsimony-em \
   --use-mtx \
   --dump-eqclasses
-if [[
-  ! -s "${OUT_DIR}/alevin/quants_mat_rows.txt"
-  || ! -s "${OUT_DIR}/alevin/gene_eqclass_probs.tsv.gz"
-]]; then
+if ! quantification_files_exist; then
   echo "alevin-fry completed without required matrix/probability outputs" >&2
   exit 1
 fi
