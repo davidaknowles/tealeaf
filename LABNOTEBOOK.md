@@ -1041,3 +1041,9 @@ normalization and `log1p`, computes a high-variable-gene PCA representation,
 and measures donor-held-out label prediction and silhouette scores. When no
 external gene universe is supplied, scoring uses all genes represented by the
 transcript-to-gene map.
+
+The corrected execution graph was submitted with 40 independent Salmon tasks,
+40 dependent alevin-fry tasks, a streaming merge, all eight CV/full-fit
+analysis pairs, and a final joint representation-scoring task. Job and fit
+manifests are written for each submission so status checks and evaluation do
+not depend on parsing console output.
