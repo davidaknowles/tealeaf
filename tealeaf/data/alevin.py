@@ -240,7 +240,7 @@ def merge_alevin_quantifications(inputs, output_dir) -> dict:
     ]
     if all(path.is_file() for path in probability_inputs):
         probability_output = output_dir / "gene_eqclass_probs.tsv.gz"
-        with gzip.open(probability_output, "wt") as output:
+        with gzip.open(probability_output, "wt", compresslevel=1) as output:
             output.write("cell_idx\teqid\tumi_rank\tprobs\n")
             for probability_path, ec_remap, offset, (_, input_path) in zip(
                 probability_inputs, ec_remaps, cell_offsets, inputs
@@ -250,6 +250,21 @@ def merge_alevin_quantifications(inputs, output_dir) -> dict:
                     [feature_to_global[feature] for feature in features],
                     dtype=np.int64,
                 )
+                probability_orders = []
+                probability_sizes = []
+                for ecid in range(local_membership.shape[0]):
+                    start, stop = local_membership.indptr[ecid : ecid + 2]
+                    global_features = local_to_global_feature[
+                        local_membership.indices[start:stop]
+                    ]
+                    identity = bool(
+                        global_features.size < 2
+                        or np.all(global_features[:-1] <= global_features[1:])
+                    )
+                    probability_orders.append(
+                        None if identity else np.argsort(global_features)
+                    )
+                    probability_sizes.append(global_features.size)
                 with gzip.open(probability_path, "rt") as source:
                     header = next(source, "").rstrip("\n")
                     if header != "cell_idx\teqid\tumi_rank\tprobs":
@@ -259,20 +274,21 @@ def merge_alevin_quantifications(inputs, output_dir) -> dict:
                     for line in source:
                         cell, ecid, rank, values = line.rstrip("\n").split("\t", 3)
                         ecid = int(ecid)
-                        probabilities = np.fromstring(values, sep=",")
-                        start, stop = local_membership.indptr[ecid : ecid + 2]
-                        order = np.argsort(
-                            local_to_global_feature[
-                                local_membership.indices[start:stop]
-                            ]
-                        )
-                        if probabilities.size != order.size:
+                        order = probability_orders[ecid]
+                        probability_count = values.count(",") + 1
+                        if probability_count != probability_sizes[ecid]:
                             raise ValueError(
                                 f"probability length mismatch for EC {ecid} "
                                 f"in {probability_path}"
                             )
-                        reordered = probabilities[order]
-                        encoded = ",".join(f"{value:.9g}" for value in reordered)
+                        if order is None:
+                            encoded = values
+                        else:
+                            probabilities = np.fromstring(values, sep=",")
+                            reordered = probabilities[order]
+                            encoded = ",".join(
+                                f"{value:.17g}" for value in reordered
+                            )
                         output.write(
                             f"{int(cell) + offset}\t{ec_remap[ecid]}\t"
                             f"{rank}\t{encoded}\n"

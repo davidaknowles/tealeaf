@@ -1015,6 +1015,12 @@ matrix directory. The resulting merged count matrix and fixed weighted design
 support binary, weighted, and paired-primer genome-wide fits using the same
 reusable CV and scoring code as the initial dataset.
 
+Probability remapping precomputes transcript permutations once per local EC.
+Vectors whose local and merged transcript order already agree are copied
+without numeric parsing; only reordered ECs are parsed and permuted. The
+merged temporary sidecar uses fast gzip compression because it is consumed
+into sparse fixed-design caches.
+
 The public processed Seurat object and case table will supply reference cell
 types, subjects, and diagnoses for external representation scoring. Labels are
 reserved for evaluation and are not used to select rank or regularization.

@@ -30,7 +30,7 @@ def test_merge_aligns_features_ecs_and_probabilities(tmp_path):
         ["cell"],
         [[2, 3]],
         [[1, 1], [1, 0]],
-        [(0, 0, 0, "0.25,0.75")],
+        [(0, 0, 0, "0.25000000000000001,0.74999999999999999")],
     )
     _write_quant(
         second,
@@ -55,8 +55,11 @@ def test_merge_aligns_features_ecs_and_probabilities(tmp_path):
     np.testing.assert_array_equal(counts[1], [5, 0, 7])
     with gzip.open(output / "gene_eqclass_probs.tsv.gz", "rt") as handle:
         rows = handle.read().splitlines()
-    assert rows[1].split("\t")[-1] == "0.25,0.75"
-    assert rows[2].split("\t")[-1] == "0.4,0.6"
+    assert rows[1].split("\t")[-1] == "0.25000000000000001,0.74999999999999999"
+    np.testing.assert_allclose(
+        np.fromstring(rows[2].split("\t")[-1], sep=","),
+        [0.4, 0.6],
+    )
 
 
 def test_merge_accepts_alevin_fry_output_root(tmp_path):
