@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import gzip
 import os
 from pathlib import Path
@@ -60,6 +61,98 @@ def _load_counts(path):
     if counts.shape[0] != len(barcodes):
         raise ValueError(f"inconsistent count dimensions in {path}")
     return barcodes, counts
+
+
+def validate_alevin_quantification(
+    path,
+    *,
+    expected_prefixes=None,
+    reference_ids=None,
+    primer_pair_file=None,
+    min_cell_umis=500,
+    min_reference_overlap=1,
+):
+    """Validate a merged quantification before downstream model fitting."""
+    path = _resolve_quantification_dir(path)
+    features, membership = _load_structure(path)
+    barcodes, counts = _load_counts(path)
+    if counts.shape[1] != membership.shape[0]:
+        raise ValueError("count columns do not match equivalence classes")
+    if len(features) != membership.shape[1]:
+        raise ValueError("feature rows do not match the compatibility matrix")
+    if len(barcodes) != len(set(barcodes)):
+        raise ValueError("cell identifiers are not unique")
+    if len(features) != len(set(features)):
+        raise ValueError("feature identifiers are not unique")
+    if np.any(counts.data < 0) or np.any(membership.data < 0):
+        raise ValueError("quantification matrices contain negative values")
+    if counts.nnz == 0 or membership.nnz == 0:
+        raise ValueError("quantification matrices are empty")
+
+    barcode_set = set(barcodes)
+    observed_prefixes = {
+        barcode.split(":", 1)[0] for barcode in barcodes if ":" in barcode
+    }
+    expected_prefixes = set(expected_prefixes or ())
+    missing_prefixes = sorted(expected_prefixes - observed_prefixes)
+    if missing_prefixes:
+        raise ValueError(f"missing expected cell prefixes: {missing_prefixes}")
+
+    totals = np.asarray(counts.sum(axis=1)).ravel()
+    eligible = int(np.count_nonzero(totals >= float(min_cell_umis)))
+    if eligible == 0:
+        raise ValueError(f"no cells have at least {min_cell_umis:g} UMIs")
+
+    reference_ids = set(reference_ids or ())
+    reference_overlap = len(barcode_set & reference_ids)
+    if reference_ids and reference_overlap < int(min_reference_overlap):
+        raise ValueError(
+            f"only {reference_overlap} reference IDs overlap; "
+            f"minimum is {min_reference_overlap}"
+        )
+
+    primer_pairs = complete_primer_pairs = 0
+    if primer_pair_file is not None:
+        with open(primer_pair_file, newline="") as handle:
+            for row in csv.DictReader(handle, delimiter="\t"):
+                primer_pairs += 1
+                if (
+                    row["polydt_barcode"] in barcode_set
+                    and row["ranhex_barcode"] in barcode_set
+                ):
+                    complete_primer_pairs += 1
+        if primer_pairs == 0 or complete_primer_pairs == 0:
+            raise ValueError("no complete primer pairs are represented")
+
+    probability_file = path / "gene_eqclass_probs.tsv.gz"
+    if not probability_file.is_file():
+        raise FileNotFoundError(
+            f"missing weighted probability sidecar: {probability_file}"
+        )
+    with gzip.open(probability_file, "rt") as handle:
+        header = next(handle, "").rstrip("\n")
+        first_probability = next(handle, "").rstrip("\n")
+    if header != "cell_idx\teqid\tumi_rank\tprobs":
+        raise ValueError(f"unexpected probability sidecar header: {header!r}")
+    if not first_probability:
+        raise ValueError("weighted probability sidecar has no data rows")
+
+    return {
+        "cells": int(counts.shape[0]),
+        "equivalence_classes": int(counts.shape[1]),
+        "features": int(membership.shape[1]),
+        "count_nonzeros": int(counts.nnz),
+        "compatibility_nonzeros": int(membership.nnz),
+        "molecules": float(totals.sum()),
+        "min_cell_umis": float(min_cell_umis),
+        "eligible_cells": eligible,
+        "observed_prefixes": len(observed_prefixes),
+        "expected_prefixes": len(expected_prefixes),
+        "reference_ids": len(reference_ids),
+        "reference_overlap": reference_overlap,
+        "primer_pairs": primer_pairs,
+        "complete_primer_pairs": complete_primer_pairs,
+    }
 
 
 def merge_alevin_quantifications(inputs, output_dir) -> dict:

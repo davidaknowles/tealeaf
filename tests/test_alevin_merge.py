@@ -3,7 +3,10 @@ import gzip
 import numpy as np
 import scipy.sparse as sp
 
-from tealeaf.data.alevin import merge_alevin_quantifications
+from tealeaf.data.alevin import (
+    merge_alevin_quantifications,
+    validate_alevin_quantification,
+)
 
 
 def _write_quant(path, features, barcodes, counts, membership, probabilities):
@@ -74,3 +77,32 @@ def test_merge_accepts_alevin_fry_output_root(tmp_path):
         "run1:cell1",
         "run2:cell2",
     ]
+
+
+def test_validate_merged_quantification(tmp_path):
+    quant = tmp_path / "quant"
+    _write_quant(
+        quant,
+        ["tx1"],
+        ["run1:cell1", "run1:cell2"],
+        [[500], [20]],
+        [[1]],
+        [(0, 0, 0, "1")],
+    )
+    pairs = tmp_path / "pairs.tsv"
+    pairs.write_text(
+        "cell_id\tpolydt_barcode\tranhex_barcode\n"
+        "run1:cell1\trun1:cell1\trun1:cell2\n"
+    )
+
+    report = validate_alevin_quantification(
+        quant,
+        expected_prefixes={"run1"},
+        reference_ids={"run1:cell1"},
+        primer_pair_file=pairs,
+        min_cell_umis=500,
+    )
+
+    assert report["eligible_cells"] == 1
+    assert report["reference_overlap"] == 1
+    assert report["complete_primer_pairs"] == 1

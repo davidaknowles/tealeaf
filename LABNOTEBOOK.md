@@ -1048,3 +1048,9 @@ The corrected execution graph was submitted with 40 independent Salmon tasks,
 analysis pairs, and a final joint representation-scoring task. Job and fit
 manifests are written for each submission so status checks and evaluation do
 not depend on parsing console output.
+
+A post-merge validation gate checks sparse matrix dimensions, unique cell and
+feature identifiers, all expected run prefixes, the weighted probability
+sidecar, complete primer pairs, cells above the UMI threshold, and overlap with
+published reference labels. Downstream design construction does not start
+unless this gate passes.
