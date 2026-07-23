@@ -1213,3 +1213,13 @@ aggregated transcript loadings to genes, formed a `log1p` gene-PCA embedding,
 and computed donor-held-out classification and silhouette metrics. The
 bounded fit used two iterations and is only an interface test; its scores are
 not biological results.
+
+The production Python environment is built against Python 3.12. Dataset
+launchers previously mixed that interpreter with a Python 3.10 module, and the
+preprocessing gate loaded no Python module. This did not affect Salmon or fry,
+but it caused the historical fry jobs to fail when they reached the Python
+count validator despite having complete quantifications. The Python module is
+now declared once in the dataset configuration and loaded consistently by
+preprocessing, merge, metadata, validation, and GLM submission scripts. The
+configured interpreter was checked by importing NumPy, SciPy, and PyTorch
+after loading that module.

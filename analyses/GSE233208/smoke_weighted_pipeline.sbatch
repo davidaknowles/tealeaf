@@ -8,7 +8,7 @@ set -euo pipefail
 CONFIG=${CONFIG:-/gpfs/commons/home/daknowles/projects/tealeaf/analyses/GSE233208/config.env}
 source "${CONFIG}"
 module load SeqKit/2.9.0
-module load python/3.10.8-GCCcore-12.2.0
+module load "${PYTHON_MODULE}"
 export PYTHON_BIN
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 

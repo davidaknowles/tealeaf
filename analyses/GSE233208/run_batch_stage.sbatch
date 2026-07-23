@@ -6,7 +6,7 @@
 set -euo pipefail
 CONFIG=${CONFIG:-/gpfs/commons/home/daknowles/projects/tealeaf/analyses/GSE233208/config.env}
 source "${CONFIG}"
-module load python/3.10.8-GCCcore-12.2.0
+module load "${PYTHON_MODULE}"
 export PYTHON_BIN
 PYTHON_BIN=${PYTHON_BIN:-$(command -v python3)}
 task=${SLURM_ARRAY_TASK_ID:?array index is required}

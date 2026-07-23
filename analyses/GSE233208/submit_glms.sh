@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 source "$(dirname "$0")/config.env"
+module load "${PYTHON_MODULE}"
 
 MERGE_JOB=${MERGE_JOB:?set MERGE_JOB to the successful/pending merge job id}
 ALEVIN_DIR="${DATA_ROOT}/processed/merged_alevin"

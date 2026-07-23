@@ -7,6 +7,7 @@
 set -euo pipefail
 CONFIG=${CONFIG:-/gpfs/commons/home/daknowles/projects/tealeaf/analyses/GSE233208/config.env}
 source "${CONFIG}"
+module load "${PYTHON_MODULE}"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 
 "${PYTHON_BIN}" "${REPO_ROOT}/extra_scripts/validate_parse_preprocessing.py" \

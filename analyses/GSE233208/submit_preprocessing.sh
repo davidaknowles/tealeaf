@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 source "$(dirname "$0")/config.env"
-module load python/3.10.8-GCCcore-12.2.0
+module load "${PYTHON_MODULE}"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 mkdir -p "${DATA_ROOT}/manifest" "${RUN_ROOT}/logs"
 
