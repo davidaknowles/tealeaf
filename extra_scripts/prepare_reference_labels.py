@@ -7,6 +7,7 @@ import argparse
 import csv
 import gzip
 from pathlib import Path
+import sqlite3
 
 
 def mapping(value):
@@ -30,14 +31,40 @@ def main():
         "into its poly(dT) and random-hexamer alevin barcodes",
     )
     parser.add_argument("--batch-map", action="append", required=True, type=mapping)
+    parser.add_argument(
+        "--ena-manifest",
+        type=Path,
+        help="ENA manifest used to prefix IDs by run accession and disambiguate "
+        "Parse sublibraries",
+    )
     parser.add_argument("--labels-output", required=True, type=Path)
     parser.add_argument("--groups-output", required=True, type=Path)
+    parser.add_argument(
+        "--conflict-db",
+        type=Path,
+        help="persistent SQLite audit cache; defaults beside labels output",
+    )
     args = parser.parse_args()
     published_to_internal = {
         published: internal for internal, published in args.batch_map
     }
     if len(published_to_internal) != len(args.batch_map):
         raise ValueError("published batch names must be unique")
+    run_lookup = None
+    if args.ena_manifest is not None:
+        run_lookup = {}
+        with open(args.ena_manifest, newline="") as handle:
+            for row in csv.DictReader(handle, delimiter="\t"):
+                if int(row["read"]) != 1:
+                    continue
+                sublibrary = row["sample_title"]
+                if sublibrary.startswith("batch5_"):
+                    sublibrary = sublibrary[len("batch5_") :]
+                sublibrary = sublibrary.rsplit("_L", 1)[0]
+                key = (row["batch"], sublibrary)
+                previous = run_lookup.setdefault(key, row["run_accession"])
+                if previous != row["run_accession"]:
+                    raise ValueError(f"conflicting runs for {key}")
     rt_pairs = None
     if args.parse_rt_barcodes is not None:
         with open(args.parse_rt_barcodes) as handle:
@@ -46,8 +73,16 @@ def main():
             raise ValueError("the Parse RT list must contain 96 unique barcodes")
         rt_pairs = list(zip(rt[:48], rt[48:]))
 
-    labels = {}
-    groups = {}
+    conflict_db = args.conflict_db or args.labels_output.with_suffix(".sqlite")
+    conflict_db.parent.mkdir(parents=True, exist_ok=True)
+    if conflict_db.exists():
+        raise FileExistsError(f"refusing to overwrite conflict database: {conflict_db}")
+    database = sqlite3.connect(conflict_db)
+    database.execute(
+        "CREATE TABLE metadata "
+        "(cell_id TEXT PRIMARY KEY, label TEXT NOT NULL, group_id TEXT)"
+    )
+    inserted = 0
     opener = gzip.open if args.metadata.suffix == ".gz" else open
     with opener(args.metadata, "rt", newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
@@ -57,6 +92,8 @@ def main():
             args.label_column,
             args.group_column,
         }
+        if run_lookup is not None:
+            required.add("Sublibrary")
         missing = required - set(reader.fieldnames or ())
         if missing:
             raise ValueError(f"metadata is missing columns: {sorted(missing)}")
@@ -65,6 +102,15 @@ def main():
             internal_batch = published_to_internal.get(published_batch)
             if internal_batch is None:
                 continue
+            if run_lookup is None:
+                prefix = internal_batch
+            else:
+                prefix = run_lookup.get((internal_batch, row["Sublibrary"]))
+                if prefix is None:
+                    raise ValueError(
+                        "no ENA run for published batch/sublibrary "
+                        f"{published_batch}/{row['Sublibrary']}"
+                    )
             published_barcode = row[args.cell_barcode_column]
             label = row[args.label_column]
             group = row[args.group_column]
@@ -87,26 +133,48 @@ def main():
                     )
                 barcodes = [sequence + rt for rt in rt_pairs[well]]
             for barcode in barcodes:
-                cell_id = f"{internal_batch}:{barcode}"
-                previous = labels.setdefault(cell_id, label)
-                if previous != label:
-                    raise ValueError(f"conflicting labels for {cell_id}")
-                if group:
-                    previous_group = groups.setdefault(cell_id, group)
-                    if previous_group != group:
-                        raise ValueError(f"conflicting groups for {cell_id}")
-    if not labels:
+                cell_id = f"{prefix}:{barcode}"
+                cursor = database.execute(
+                    "INSERT OR IGNORE INTO metadata VALUES (?, ?, ?)",
+                    (cell_id, label, group or None),
+                )
+                if cursor.rowcount:
+                    inserted += 1
+                else:
+                    previous = database.execute(
+                        "SELECT label, group_id FROM metadata WHERE cell_id = ?",
+                        (cell_id,),
+                    ).fetchone()
+                    if previous != (label, group or None):
+                        raise ValueError(f"conflicting metadata for {cell_id}")
+                if inserted % 10_000 == 0:
+                    database.commit()
+    database.commit()
+    if not inserted:
         raise ValueError("no metadata rows matched the batch mapping")
 
     args.labels_output.parent.mkdir(parents=True, exist_ok=True)
     with open(args.labels_output, "w", newline="") as handle:
         writer = csv.writer(handle)
-        writer.writerows(sorted(labels.items()))
+        writer.writerows(
+            database.execute(
+                "SELECT cell_id, label FROM metadata ORDER BY cell_id"
+            )
+        )
     args.groups_output.parent.mkdir(parents=True, exist_ok=True)
     with open(args.groups_output, "w", newline="") as handle:
         writer = csv.writer(handle)
-        writer.writerows(sorted(groups.items()))
-    print(f"labels={len(labels)} groups={len(groups)}")
+        writer.writerows(
+            database.execute(
+                "SELECT cell_id, group_id FROM metadata "
+                "WHERE group_id IS NOT NULL ORDER BY cell_id"
+            )
+        )
+    group_count = database.execute(
+        "SELECT COUNT(*) FROM metadata WHERE group_id IS NOT NULL"
+    ).fetchone()[0]
+    database.close()
+    print(f"labels={inserted} groups={group_count} conflict_db={conflict_db}")
 
 
 if __name__ == "__main__":

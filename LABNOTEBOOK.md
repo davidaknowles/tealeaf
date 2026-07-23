@@ -995,18 +995,23 @@ Added reusable acquisition and processing components:
 - Parameterized Salmon weighted-RAD and alevin-fry scripts replace
   microglia-specific paths.
 - `tealeaf.data.alevin.merge_alevin_quantifications` merges independently
-  processed biological batches. It aligns transcript features and ECs by
+  processed sublibraries. It aligns transcript features and ECs by
   transcript identity, prefixes cell barcodes with batch, and remaps the
   patched per-UMI probability sidecars into the merged EC coordinate system.
 - `tealeaf.data.parse` derives batch-aware poly(dT)/random-hexamer half-cell
   pairs from the ordered Parse RT barcode list.
 
-Each biological batch is quantified independently because combinatorial cell
-barcodes may recur across experiments. Merging only after alevin-fry preserves
-cell identity without introducing separate batch-specific observation blocks
-into the genome-wide GLM. The resulting merged count matrix and fixed weighted
-design support binary, weighted, and paired-primer genome-wide fits using the
-same reusable CV and scoring code as the initial dataset.
+Each of the 40 sublibraries is quantified independently. Inspection of the
+published metadata showed that combinatorial barcodes recur between
+sublibraries, including sublibraries in the same biological batch. Pooling the
+eight sublibraries in a batch would therefore collapse distinct nuclei before
+cell calling. Merging only after alevin-fry preserves cell identity by
+prefixing it with the ENA run accession without introducing separate
+sublibrary-specific observation blocks into the genome-wide GLM. The merger
+streams one sublibrary structure or count matrix at a time to bound peak
+memory. The resulting merged count matrix and fixed weighted design support
+binary, weighted, and paired-primer genome-wide fits using the same reusable
+CV and scoring code as the initial dataset.
 
 The public processed Seurat object and case table will supply reference cell
 types, subjects, and diagnoses for external representation scoring. Labels are
@@ -1017,9 +1022,12 @@ contains `cell_barcode`, `Batch`, `annotation`, `subtype`, diagnosis, and case
 metadata. Published batch numbering follows the original sequencing lanes,
 not GEO accession order: the five internal manifest groups map to published
 Batch1, Batch4, Batch2, Batch3, and Batch5, respectively. Evaluation therefore
-joins on the explicit `(published batch, cell_barcode)` key after applying this
-map. Fine `annotation` labels are the primary classification and silhouette
-target; case identity is the cross-validation grouping variable.
+joins each `(published batch, sublibrary, cell_barcode)` key to its ENA run
+accession after applying this map. Each annotated published barcode is
+expanded to its poly(dT) and random-hexamer RT barcode, producing 792,554
+primer-specific reference IDs from 396,277 annotated nuclei. Fine
+`annotation` labels are the primary classification and silhouette target;
+case identity is the cross-validation grouping variable.
 
 Genome-wide jobs are chained after preprocessing for binary and weighted
 designs using rank-CV factorization, adaptive-rho ADMM, and penalized

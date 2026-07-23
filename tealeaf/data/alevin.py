@@ -18,16 +18,9 @@ def _read_lines(path):
         return [line.rstrip("\n") for line in handle]
 
 
-def _load_quantification(path):
+def _load_structure(path):
     path = Path(path)
     features = _read_lines(path / "quants_mat_cols.txt")
-    barcodes = _read_lines(path / "quants_mat_rows.txt")
-    count_cache = path / "geqc_counts.npz"
-    counts = (
-        sp.load_npz(count_cache).tocsr()
-        if count_cache.is_file()
-        else scipy.io.mmread(path / "geqc_counts.mtx").tocsr()
-    )
     map_cache = path / "gene_eqclass.npz"
     if map_cache.is_file():
         membership = sp.load_npz(map_cache).tocsr()
@@ -37,11 +30,23 @@ def _load_quantification(path):
             [ecs[index] for index in range(len(ecs))],
             shape=(len(ecs), len(features)),
         ).tocsr()
-    if counts.shape != (len(barcodes), membership.shape[0]):
-        raise ValueError(f"inconsistent count dimensions in {path}")
     if membership.shape[1] != len(features):
         raise ValueError(f"inconsistent feature dimensions in {path}")
-    return features, barcodes, counts, membership
+    return features, membership
+
+
+def _load_counts(path):
+    path = Path(path)
+    barcodes = _read_lines(path / "quants_mat_rows.txt")
+    count_cache = path / "geqc_counts.npz"
+    counts = (
+        sp.load_npz(count_cache).tocsr()
+        if count_cache.is_file()
+        else scipy.io.mmread(path / "geqc_counts.mtx").tocsr()
+    )
+    if counts.shape[0] != len(barcodes):
+        raise ValueError(f"inconsistent count dimensions in {path}")
+    return barcodes, counts
 
 
 def merge_alevin_quantifications(inputs, output_dir) -> dict:
@@ -60,28 +65,21 @@ def merge_alevin_quantifications(inputs, output_dir) -> dict:
     if len({name for name, _ in inputs}) != len(inputs):
         raise ValueError("batch names must be unique")
 
-    loaded = [_load_quantification(path) for _, path in inputs]
     feature_order = []
-    feature_seen = set()
-    for features, _, _, _ in loaded:
-        for feature in features:
-            if feature not in feature_seen:
-                feature_seen.add(feature)
-                feature_order.append(feature)
-    feature_to_global = {feature: i for i, feature in enumerate(feature_order)}
-
+    feature_to_global = {}
     ec_to_global = {}
     ec_features = []
-    remapped = []
-    probability_remaps = []
-    all_barcodes = []
-    cell_offset = 0
-    for (batch, _), (features, barcodes, counts, membership) in zip(inputs, loaded):
+    ec_remaps = []
+    for _, path in inputs:
+        features, membership = _load_structure(path)
+        for feature in features:
+            if feature not in feature_to_global:
+                feature_to_global[feature] = len(feature_order)
+                feature_order.append(feature)
         local_to_global_feature = np.asarray(
             [feature_to_global[feature] for feature in features], dtype=np.int64
         )
         local_ec_to_global = np.empty(membership.shape[0], dtype=np.int64)
-        local_probability_orders = []
         for ecid in range(membership.shape[0]):
             start, stop = membership.indptr[ecid : ecid + 2]
             local_global_features = local_to_global_feature[
@@ -95,29 +93,28 @@ def merge_alevin_quantifications(inputs, output_dir) -> dict:
                 ec_to_global[key] = global_ecid
                 ec_features.append(key)
             local_ec_to_global[ecid] = global_ecid
-            local_probability_orders.append(order)
+        ec_remaps.append(local_ec_to_global)
+
+    remapped = []
+    all_barcodes = []
+    cell_offsets = []
+    cell_offset = 0
+    n_ec = len(ec_features)
+    for (batch, path), local_ec_to_global in zip(inputs, ec_remaps):
+        barcodes, counts = _load_counts(path)
+        if counts.shape[1] != local_ec_to_global.size:
+            raise ValueError(f"inconsistent count/EC dimensions in {path}")
         coo = counts.tocoo()
         remapped.append(
             sp.csr_matrix(
                 (coo.data, (coo.row, local_ec_to_global[coo.col])),
-                shape=(counts.shape[0], len(ec_features)),
+                shape=(counts.shape[0], n_ec),
             )
         )
         all_barcodes.extend(f"{batch}:{barcode}" for barcode in barcodes)
-        probability_remaps.append(
-            (local_ec_to_global, local_probability_orders, cell_offset)
-        )
+        cell_offsets.append(cell_offset)
         cell_offset += len(barcodes)
 
-    n_ec = len(ec_features)
-    remapped = [
-        matrix if matrix.shape[1] == n_ec else
-        sp.csr_matrix(
-            (matrix.data, matrix.indices, matrix.indptr),
-            shape=(matrix.shape[0], n_ec),
-        )
-        for matrix in remapped
-    ]
     counts = sp.vstack(remapped, format="csr")
     membership = sc_utils.to_coo(
         ec_features, shape=(n_ec, len(feature_order))
@@ -137,11 +134,14 @@ def merge_alevin_quantifications(inputs, output_dir) -> dict:
         probability_output = output_dir / "gene_eqclass_probs.tsv.gz"
         with gzip.open(probability_output, "wt") as output:
             output.write("cell_idx\teqid\tumi_rank\tprobs\n")
-            for probability_path, (
-                ec_remap,
-                probability_orders,
-                offset,
-            ) in zip(probability_inputs, probability_remaps):
+            for probability_path, ec_remap, offset, (_, input_path) in zip(
+                probability_inputs, ec_remaps, cell_offsets, inputs
+            ):
+                features, local_membership = _load_structure(input_path)
+                local_to_global_feature = np.asarray(
+                    [feature_to_global[feature] for feature in features],
+                    dtype=np.int64,
+                )
                 with gzip.open(probability_path, "rt") as source:
                     header = next(source, "").rstrip("\n")
                     if header != "cell_idx\teqid\tumi_rank\tprobs":
@@ -152,7 +152,12 @@ def merge_alevin_quantifications(inputs, output_dir) -> dict:
                         cell, ecid, rank, values = line.rstrip("\n").split("\t", 3)
                         ecid = int(ecid)
                         probabilities = np.fromstring(values, sep=",")
-                        order = probability_orders[ecid]
+                        start, stop = local_membership.indptr[ecid : ecid + 2]
+                        order = np.argsort(
+                            local_to_global_feature[
+                                local_membership.indices[start:stop]
+                            ]
+                        )
                         if probabilities.size != order.size:
                             raise ValueError(
                                 f"probability length mismatch for EC {ecid} "

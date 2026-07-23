@@ -11,9 +11,13 @@ module load python/3.10.8-GCCcore-12.2.0
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 mkdir -p "${RUN_ROOT}/logs"
 inputs=()
-for batch in "${BATCHES[@]}"; do
-  inputs+=(--input "${batch}=${DATA_ROOT}/processed/${batch}/alevin_quant")
-done
+while IFS=$'\t' read -r batch run_accession; do
+  inputs+=(
+    --input
+    "${run_accession}=${DATA_ROOT}/processed/${batch}/${run_accession}/alevin_quant"
+  )
+done < <(awk -F '\t' 'NR > 1 && $7 == 1 {print $1 "\t" $2}' \
+  "${DATA_ROOT}/manifest/ena_fastqs.tsv")
 python "${REPO_ROOT}/extra_scripts/merge_alevin_batches.py" \
   "${inputs[@]}" \
   --output "${DATA_ROOT}/processed/merged_alevin"
