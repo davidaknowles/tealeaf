@@ -340,6 +340,117 @@ def grouped_ec_probability_matrices(
     return matrices
 
 
+def combined_ec_probability_matrices(
+    probability_file,
+    ec_transcript_mat,
+    cell_groups,
+    n_groups,
+    *,
+    overall_cache_file=None,
+    group_cache_files=None,
+):
+    """Build overall and grouped fixed EC designs in one sidecar pass."""
+    probability_file = Path(probability_file)
+    membership = ec_transcript_mat.tocsr()
+    groups = np.asarray(cell_groups, dtype=np.int64).ravel()
+    n_groups = int(n_groups)
+    if n_groups < 1:
+        raise ValueError("n_groups must be positive")
+    if np.any(groups >= n_groups):
+        raise ValueError("cell_groups contains a group outside n_groups")
+    overall_cache_file = (
+        Path(overall_cache_file) if overall_cache_file is not None else None
+    )
+    if group_cache_files is not None:
+        group_cache_files = [Path(path) for path in group_cache_files]
+        if len(group_cache_files) != n_groups:
+            raise ValueError("group_cache_files must contain one path per group")
+    cache_files = [
+        overall_cache_file,
+        *(group_cache_files or [None] * n_groups),
+    ]
+    if all(
+        path is not None
+        and path.is_file()
+        and path.stat().st_mtime >= probability_file.stat().st_mtime
+        for path in cache_files
+    ):
+        cached = [sp.load_npz(path).tocsr() for path in cache_files]
+        if all(matrix.shape == membership.shape for matrix in cached):
+            return cached[0], cached[1:]
+
+    group_sums = np.zeros((n_groups, membership.nnz), dtype=np.float64)
+    group_observations = np.zeros(
+        (n_groups, membership.shape[0]), dtype=np.uint64
+    )
+    all_cells_grouped = bool(np.all(groups >= 0))
+    if not all_cells_grouped:
+        overall_sums = np.zeros(membership.nnz, dtype=np.float64)
+        overall_observations = np.zeros(membership.shape[0], dtype=np.uint64)
+    with gzip.open(probability_file, "rt") as handle:
+        header = next(handle, "").rstrip("\n")
+        if header != "cell_idx\teqid\tumi_rank\tprobs":
+            raise ValueError(f"Unexpected probability sidecar header: {header!r}")
+        for line_number, line in enumerate(handle, start=2):
+            fields = line.rstrip("\n").split("\t", 3)
+            if len(fields) != 4:
+                raise ValueError(f"Malformed probability row at line {line_number}")
+            cell_idx = int(fields[0])
+            if cell_idx < 0 or cell_idx >= len(groups):
+                raise ValueError(f"Cell index {cell_idx} is outside cell_groups")
+            eqid = int(fields[1])
+            if eqid < 0 or eqid >= membership.shape[0]:
+                raise ValueError(f"EC id {eqid} is outside the compatibility matrix")
+            start, stop = membership.indptr[eqid:eqid + 2]
+            probabilities = np.fromstring(fields[3], sep=",", dtype=np.float64)
+            if probabilities.size != stop - start:
+                raise ValueError(
+                    f"EC {eqid} has {stop - start} transcripts but probability row "
+                    f"has {probabilities.size} values"
+                )
+            group = groups[cell_idx]
+            if group >= 0:
+                group_sums[group, start:stop] += probabilities
+                group_observations[group, eqid] += 1
+            if not all_cells_grouped:
+                overall_sums[start:stop] += probabilities
+                overall_observations[eqid] += 1
+
+    if all_cells_grouped:
+        overall_sums = group_sums.sum(axis=0)
+        overall_observations = group_observations.sum(axis=0)
+
+    def finish(sums, observations):
+        for eqid in range(membership.shape[0]):
+            start, stop = membership.indptr[eqid:eqid + 2]
+            if start == stop:
+                continue
+            if observations[eqid] > 0:
+                sums[start:stop] /= observations[eqid]
+            else:
+                sums[start:stop] = 1.0 / (stop - start)
+        return _column_normalize(sp.csr_matrix(
+            (sums, membership.indices.copy(), membership.indptr.copy()),
+            shape=membership.shape,
+        ))
+
+    overall = finish(overall_sums, overall_observations)
+    grouped = [
+        finish(group_sums[group], group_observations[group])
+        for group in range(n_groups)
+    ]
+    outputs = [overall, *grouped]
+    if any(path is not None for path in cache_files):
+        for path, matrix in zip(cache_files, outputs):
+            if path is None:
+                continue
+            path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp.npz")
+            sp.save_npz(temporary, matrix)
+            os.replace(temporary, path)
+    return overall, grouped
+
+
 def glm_design_matrix(ec_transcript_mat, w, parameterization="phi",
                       design="legacy", probability_file=None, cache_file=None):
     """Construct a fixed GLM design and apply the phi/theta parameterization."""

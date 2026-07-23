@@ -107,6 +107,53 @@ class ParameterizationTest(unittest.TestCase):
             self.assertLess(designs[0][0, 1], designs[1][0, 1])
             self.assertTrue(all(path.is_file() for path in caches))
 
+    def test_probability_sidecar_builds_overall_and_groups_in_one_pass(self):
+        membership = sp.csr_matrix(
+            np.array([[1, 1], [1, 0], [0, 1]], dtype=float)
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            probability_file = directory / "probs.tsv.gz"
+            overall_cache = directory / "all.npz"
+            group_caches = [directory / "poly.npz", directory / "hex.npz"]
+            with gzip.open(probability_file, "wt") as handle:
+                handle.write("cell_idx\teqid\tumi_rank\tprobs\n")
+                handle.write("0\t0\t0\t9e-1,1e-1\n")
+                handle.write("1\t0\t0\t2e-1,8e-1\n")
+                handle.write("2\t0\t0\t5e-1,5e-1\n")
+                handle.write("0\t1\t0\t1e0\n")
+                handle.write("1\t2\t0\t1e0\n")
+            overall, grouped = sc_utils.combined_ec_probability_matrices(
+                probability_file,
+                membership,
+                cell_groups=[0, 1, -1],
+                n_groups=2,
+                overall_cache_file=overall_cache,
+                group_cache_files=group_caches,
+            )
+            expected = sc_utils.averaged_ec_probability_matrix(
+                probability_file, membership
+            )
+            np.testing.assert_allclose(overall.toarray(), expected.toarray())
+            self.assertGreater(grouped[0][0, 0], grouped[1][0, 0])
+            self.assertTrue(overall_cache.is_file())
+            self.assertTrue(all(path.is_file() for path in group_caches))
+            cached_overall, cached_grouped = (
+                sc_utils.combined_ec_probability_matrices(
+                    probability_file,
+                    membership,
+                    cell_groups=[0, 1, -1],
+                    n_groups=2,
+                    overall_cache_file=overall_cache,
+                    group_cache_files=group_caches,
+                )
+            )
+            np.testing.assert_allclose(
+                cached_overall.toarray(), overall.toarray()
+            )
+            for cached, design in zip(cached_grouped, grouped):
+                np.testing.assert_allclose(cached.toarray(), design.toarray())
+
 
 @unittest.skipUnless(TORCH_AVAILABLE, "Torch optional dependency is unavailable")
 class GLMSolverTest(unittest.TestCase):

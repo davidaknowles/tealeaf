@@ -4,10 +4,15 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 from pathlib import Path
 
+import numpy as np
+import scipy.sparse as sp
+
 from tealeaf.sc import glm_cv
+from tealeaf.sc import sc_utils
 
 
 def main():
@@ -17,6 +22,43 @@ def main():
     parser.add_argument("--primer-pairs", type=Path)
     parser.add_argument("--min-half-umis", type=float, default=500)
     args = parser.parse_args()
+    if args.primer_pairs is not None:
+        with open(args.alevin_dir / "quants_mat_rows.txt") as handle:
+            barcodes = [line.strip() for line in handle]
+        barcode_to_row = {barcode: index for index, barcode in enumerate(barcodes)}
+        if len(barcode_to_row) != len(barcodes):
+            raise ValueError("alevin barcode rows are not unique")
+        groups = np.full(len(barcodes), -1, dtype=np.int8)
+        with open(args.primer_pairs, newline="") as handle:
+            for row in csv.DictReader(handle, delimiter="\t"):
+                for column, group in (
+                    ("polydt_barcode", 0),
+                    ("ranhex_barcode", 1),
+                ):
+                    index = barcode_to_row.get(row[column])
+                    if index is None:
+                        continue
+                    if groups[index] >= 0 and groups[index] != group:
+                        raise ValueError(
+                            f"conflicting primer groups for {row[column]}"
+                        )
+                    groups[index] = group
+        membership = sp.load_npz(
+            args.alevin_dir / "gene_eqclass.npz"
+        ).tocsr()
+        sc_utils.combined_ec_probability_matrices(
+            args.alevin_dir / "gene_eqclass_probs.tsv.gz",
+            membership,
+            groups,
+            2,
+            overall_cache_file=(
+                args.alevin_dir / "gene_eqclass_fixed_weights.npz"
+            ),
+            group_cache_files=[
+                args.alevin_dir / "gene_eqclass_fixed_weights_polydt.npz",
+                args.alevin_dir / "gene_eqclass_fixed_weights_ranhex.npz",
+            ],
+        )
     standard = glm_cv.prepare_alevin_glm_data(
         args.alevin_dir,
         args.salmon_ref,
