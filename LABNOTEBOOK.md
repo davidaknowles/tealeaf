@@ -1035,4 +1035,9 @@ Frank-Wolfe. Paired-primer binary and weighted factorized fits use independent
 rank CV. All CV runs include every eligible observation with at least 500 raw
 UMIs (and at least 500 UMIs in each primer half for paired fits), use held-out
 molecule reconstruction rather than labels, and refit the selected value on
-all eligible observations.
+all eligible observations. After all selected fits finish, the common scoring
+launcher reconstructs gene-level expression, applies library-size
+normalization and `log1p`, computes a high-variable-gene PCA representation,
+and measures donor-held-out label prediction and silhouette scores. When no
+external gene universe is supplied, scoring uses all genes represented by the
+transcript-to-gene map.

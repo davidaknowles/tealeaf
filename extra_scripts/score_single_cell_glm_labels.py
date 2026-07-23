@@ -26,7 +26,7 @@ def main():
     parser.add_argument("--labels", required=True, type=Path)
     parser.add_argument("--groups", type=Path)
     parser.add_argument("--transcript-to-gene", required=True, type=Path)
-    eligible = parser.add_mutually_exclusive_group(required=True)
+    eligible = parser.add_mutually_exclusive_group()
     eligible.add_argument("--standard-h5ad", type=Path)
     eligible.add_argument(
         "--eligible-genes",
@@ -70,7 +70,7 @@ def main():
             raise ValueError("standard AnnData var must contain gene_id")
         eligible_genes = standard.var["gene_id"].astype(str).to_numpy()
         standard.file.close()
-    else:
+    elif args.eligible_genes is not None:
         eligible_genes = (
             pd.read_csv(
                 args.eligible_genes,
@@ -83,6 +83,10 @@ def main():
             .dropna()
             .drop_duplicates()
             .to_numpy()
+        )
+    else:
+        eligible_genes = (
+            transcript_to_gene["gene_id"].dropna().drop_duplicates().to_numpy()
         )
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
