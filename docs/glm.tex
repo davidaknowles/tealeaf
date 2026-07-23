@@ -530,11 +530,73 @@ convex reference for smaller matrices, but its repeated singular-value
 thresholding and dense primal state make it unsuitable for a million-cell
 matrix.
 
+\subsection*{Full-Data Validation}
+
+The deterministic FISTA implementation was evaluated genome-wide on a
+Parse-style single-cell dataset after retaining 169,533 cells with at least
+500 raw UMIs. Three-fold molecule-count cross-validation followed an ascending
+warm-start path over ranks 1, 2, 4, 8, 16, 32, 64, and 128. Every fold/rank fit
+met the objective-patience stopping rule. Rank 1 failed the profile-variance
+nondegeneracy criterion for both binary and fixed-weighted designs; all larger
+ranks passed. Although mean validation loss continued to decrease through
+rank 128, the one-standard-error rule selected rank 32 for both designs without
+hitting the rank-grid boundary.
+
+The selected all-cell fits also converged by objective patience. Cell-type
+labels were not used for rank selection: they were used only afterward as an
+external evaluation on the 78,552 filtered cells with annotations. The
+evaluation library-normalizes fitted transcript expression, aggregates it to
+genes, applies \(\log(1+x)\), computes 30 principal components, and performs
+group-held-out multinomial prediction. Table~\ref{tab:fista-validation}
+summarizes the results.
+
+\begin{table}[h]
+  \centering
+  \footnotesize
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    Design & Rank & Epochs & Objective & Balanced acc. & Macro-F1 & Label silhouette \\
+    \midrule
+    Binary         & 32 & 204 & 1278.199 & 0.471 & 0.410 & -0.212 \\
+    Fixed weighted & 32 & 465 &  690.490 & 0.386 & 0.309 & -0.305 \\
+    \bottomrule
+  \end{tabular}
+  \caption{Genome-wide factorized FISTA fits after count-based rank selection.}
+  \label{tab:fista-validation}
+\end{table}
+
+The paired-primer construction was evaluated separately on 48,568 complete
+biological-cell pairs, of which 27,383 had reference labels. These fits used
+rank 64 and shared one coefficient vector across the two primer observations.
+Both converged, and every labeled fitted profile was active and finite
+(Table~\ref{tab:paired-validation}). The paired and unpaired rows involve
+different cell populations, and objectives from binary and weighted designs
+use different observation matrices, so neither the objectives nor the label
+scores should be interpreted as controlled head-to-head comparisons.
+
+\begin{table}[h]
+  \centering
+  \footnotesize
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    Design & Rank & Objective & Balanced acc. & Macro-F1 & Label silhouette & Labeled cells \\
+    \midrule
+    Paired binary         & 64 & 60.019 & 0.636 & 0.567 & -0.239 & 27,383 \\
+    Paired fixed weighted & 64 & 58.753 & 0.514 & 0.439 & -0.110 & 27,383 \\
+    \bottomrule
+  \end{tabular}
+  \caption{External label evaluation of converged paired-primer fits.}
+  \label{tab:paired-validation}
+\end{table}
+
 \subsection*{Software Interface and Output}
 
-The single-cell command exposes the methods as
-\texttt{--quant\_method admm}, \texttt{admm\_factorized},
-\texttt{frank\_wolfe}, \texttt{frank\_wolfe\_penalized}, and
+The single-cell command exposes five methods through the
+\texttt{--quant\_}\allowbreak\texttt{method} option:
+\texttt{admm},
+\texttt{admm\_}\allowbreak\texttt{factorized},
+\texttt{frank\_}\allowbreak\texttt{wolfe},
+\texttt{frank\_}\allowbreak\texttt{wolfe\_}\allowbreak\texttt{penalized}, and
 \texttt{factorized}. The scalable methods use a
 PyTorch backend and select CUDA when available; NumPy/SciPy remains responsible
 for sparse input and compatibility-matrix construction. Response rows are
@@ -547,7 +609,7 @@ size, convergence tolerance, ADMM regularization strength, ADMM penalty, and
 Frank--Wolfe radius are configurable. The direct factorization rank is selected
 by count-fold cross-validation; other factorized modes have a configurable
 rank. The default Frank--Wolfe radius is \(\sqrt{M}\). The
-\texttt{--regularization\_target} option selects \texttt{phi} or
+\texttt{--regularization\_}\allowbreak\texttt{target} option selects \texttt{phi} or
 \texttt{theta}; it changes both the coefficient matrix receiving the penalty
 and the corresponding design matrix.
 

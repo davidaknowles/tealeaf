@@ -44,9 +44,10 @@ and 0.286, respectively. Every labeled fitted profile was active and finite.
 
 Expanded `docs/glm.tex` with the paired-primer observation model and the exact
 projected FISTA recurrences, curvature choices, factor balancing, warm starts,
-and stopping rule. The full Python test suite passes 46 tests. A TeX engine is
-not available in the current module environment, so the document source was
-checked but not rendered here.
+and stopping rule. Added full-data validation tables for the count-selected
+rank-32 fits and the paired-primer fits. Rebuilt `docs/glm.pdf` with Tectonic;
+the final compile has no box, reference, or TeX warnings. The full Python test
+suite passes 46 tests.
 
 ## 2026-07-22 Accelerated Factorized Convergence
 
