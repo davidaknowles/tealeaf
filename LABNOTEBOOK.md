@@ -1084,6 +1084,12 @@ node, while the old 20-core request allowed one. Salmon used its assigned cores
 but gains aggregate throughput from run-level parallelism; fry historically
 used about eight cores despite a 20-core allocation.
 
+A bounded real-data integration job uses one million paired reads from a
+checksum-verified GSE233208 sublibrary. It runs the same patched Salmon,
+alevin-fry, probability dump, and validation components as production. This is
+an interface check alongside, not a replacement for, the full 40-sublibrary
+analysis.
+
 The fixed-weight cache stage computes the overall, poly(dT), and
 random-hexamer EC probability averages in one streaming pass over the merged
 per-UMI sidecar. Cells outside the primer groups are still included in the
