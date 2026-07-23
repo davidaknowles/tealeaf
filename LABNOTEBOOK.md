@@ -1067,6 +1067,13 @@ required outputs. A repeated task reuses marked output and rejects an
 unmarked directory, permitting restart-safe arrays without treating partial
 tool output as complete.
 
+While the remaining public FASTQs were downloading, early arrays were
+submitted for the 30 sublibraries whose read pairs had already passed size and
+MD5 verification. The original complete Salmon and fry arrays retain all 40
+indices but also depend on the corresponding early arrays; they therefore
+reuse marked early outputs without concurrent writers. Early fry can overlap
+Salmon processing of the remaining sublibraries.
+
 The fixed-weight cache stage computes the overall, poly(dT), and
 random-hexamer EC probability averages in one streaming pass over the merged
 per-UMI sidecar. Cells outside the primer groups are still included in the
