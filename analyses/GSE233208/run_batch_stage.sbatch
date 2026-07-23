@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G
-#SBATCH --time=4-00:00:00
+#SBATCH --time=16:00:00
 
 set -euo pipefail
 CONFIG=${CONFIG:-/gpfs/commons/home/daknowles/projects/tealeaf/analyses/GSE233208/config.env}
