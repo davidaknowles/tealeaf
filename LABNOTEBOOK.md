@@ -979,3 +979,35 @@ Full-data status:
 - Moved the partial failed quant output to scratch and submitted retry chain
   `18772912 -> 18772913 -> 18772914` for portable rebuild, weighted
   alevin-fry quantification, and all-variant tealeaf GLM.
+
+## 2026-07-22 GSE233208 Parse Replication
+
+Selected GSE233208 as a public human-brain Parse Evercode WT v1 replication
+dataset. ENA exposes 40 paired snRNA-seq runs in five batches of eight
+sublibraries, totaling 1.000 TB of compressed FASTQs. A streaming probe found
+74 nt read-1 cDNA and 86 nt read-2 barcode/UMI reads, matching Salmon's
+Split-seq v2 geometry.
+
+Added reusable acquisition and processing components:
+
+- `tealeaf.data.ena` queries ENA, validates paired runs, writes normalized
+  manifests, and performs resumable size- and MD5-verified FASTQ downloads.
+- Parameterized Salmon weighted-RAD and alevin-fry scripts replace
+  microglia-specific paths.
+- `tealeaf.data.alevin.merge_alevin_quantifications` merges independently
+  processed biological batches. It aligns transcript features and ECs by
+  transcript identity, prefixes cell barcodes with batch, and remaps the
+  patched per-UMI probability sidecars into the merged EC coordinate system.
+- `tealeaf.data.parse` derives batch-aware poly(dT)/random-hexamer half-cell
+  pairs from the ordered Parse RT barcode list.
+
+Each biological batch is quantified independently because combinatorial cell
+barcodes may recur across experiments. Merging only after alevin-fry preserves
+cell identity without introducing separate batch-specific observation blocks
+into the genome-wide GLM. The resulting merged count matrix and fixed weighted
+design support binary, weighted, and paired-primer genome-wide fits using the
+same reusable CV and scoring code as the initial dataset.
+
+The public processed Seurat object and case table will supply reference cell
+types, subjects, and diagnoses for external representation scoring. Labels are
+reserved for evaluation and are not used to select rank or regularization.
