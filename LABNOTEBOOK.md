@@ -12,13 +12,35 @@ candidate. Per-fold/rank completion records are flushed to the job logs.
 Selected full fits use a separate output tag, deterministic FISTA, the same
 UMI threshold, and an 8,192-epoch ceiling with objective-patience stopping.
 Dependent scoring uses library-normalized log1p gene expression followed by
-PCA and the existing mouse-group-held-out cell-type benchmark. Submitted
-binary CV and fit jobs `19305462 -> 19305463`, weighted jobs
-`19305464 -> 19305465`, and joint scoring job `19305466`. The CV roots are
-initially waiting for account GPU capacity. The independent pre-existing
-Frank--Wolfe CV jobs remain active because they do not use the corrected
-factorized update. Removed stale scoring job `19299644`, whose dependency could
-never be satisfied.
+PCA and the existing mouse-group-held-out cell-type benchmark. Binary CV and
+fit jobs `19305462 -> 19305463`, weighted jobs `19305464 -> 19305465`, and
+joint scoring job `19305466` all completed successfully. Removed stale scoring
+job `19299644`, whose dependency could never be satisfied. The independent
+pre-existing Frank--Wolfe CV jobs remain active because they do not use the
+corrected factorized update.
+
+All 24 fold-by-rank fits converged. Rank 1 failed the profile-variance
+nondegeneracy criterion for both designs, while every rank from 2 through 128
+passed. Mean held-out loss decreased through rank 128, but the
+one-standard-error rule selected rank 32 for both binary and weighted designs.
+The selected ranks were not on the search boundary, so no grid expansion was
+needed. Binary rank CV completed in 9 minutes and weighted rank CV in 59
+minutes, compared with the pre-FISTA runs that took more than a day and either
+failed convergence selection or reached the maximum tested rank.
+
+The selected all-cell fits contain 169,533 cells and 99,679 transcripts. The
+binary rank-32 fit converged by objective patience after 204 epochs at objective
+1,278.199 and completed in 2 minutes. The weighted rank-32 fit converged after
+465 epochs at objective 690.490 and completed in 21 minutes. Both have all
+cells active; normalized profile relative variance is 0.0305 for binary and
+0.00294 for weighted.
+
+Of the filtered cells, 78,552 have reference cell-type labels. Group-held-out
+multinomial prediction from 30-dimensional log1p gene PCA gave binary accuracy
+0.502, balanced accuracy 0.471, and macro-F1 0.410. Weighted gave accuracy
+0.363, balanced accuracy 0.386, and macro-F1 0.309. Reference-label
+silhouettes were -0.212 and -0.305, and k-means cluster silhouettes were 0.297
+and 0.286, respectively. Every labeled fitted profile was active and finite.
 
 Expanded `docs/glm.tex` with the paired-primer observation model and the exact
 projected FISTA recurrences, curvature choices, factor balancing, warm starts,
