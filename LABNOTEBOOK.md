@@ -1090,11 +1090,14 @@ node, while the old 20-core request allowed one. Salmon used its assigned cores
 but gains aggregate throughput from run-level parallelism; fry historically
 used about eight cores despite a 20-core allocation.
 
-Per-sublibrary Salmon and fry limits are 16 hours. The earlier four-day limit
+Per-sublibrary Salmon and fry limits are six hours. The earlier four-day limit
 was based on whole-dataset processing and prevented useful backfill. A prior
 weighted run processed roughly 5.6 billion fragments in 17 hours on 20 CPUs;
-each public sublibrary is much smaller, leaving margin at eight CPUs while
-making placement around higher-priority reservations practical.
+the corrected fry stage for the same data completed in 28 minutes. The first
+public Salmon tasks sustained millions of fragments per minute, and even the
+slowest initial task projected below three hours. Six hours leaves margin at
+eight CPUs while making placement around higher-priority reservations
+practical.
 
 A bounded real-data integration job uses one million paired reads from a
 checksum-verified GSE233208 sublibrary. It runs the same patched Salmon,
