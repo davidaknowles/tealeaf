@@ -1122,6 +1122,14 @@ The merge depends on this content-based gate after all array attempts finish,
 so a recovered post-quantification launcher failure does not invalidate
 validated data and any unrecovered task still stops the graph.
 
+Slurm snapshots a submitted batch script, so updating the launcher did not
+change already-pending fry array elements. Those elements can still complete
+quantification but fail when their stored launcher reaches validation. Two
+one-time recovery arrays run the corrected launcher after the original early
+and remaining fry arrays finish. Complete quantifications are only validated;
+missing ones are processed normally. The live content gate depends on these
+recovery arrays rather than the historical array exit states.
+
 A bounded real-data integration job uses one million paired reads from a
 checksum-verified GSE233208 sublibrary. It runs the same patched Salmon,
 alevin-fry, probability dump, and validation components as production. This is
