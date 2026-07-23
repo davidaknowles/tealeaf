@@ -26,7 +26,13 @@ def main():
     parser.add_argument("--labels", required=True, type=Path)
     parser.add_argument("--groups", type=Path)
     parser.add_argument("--transcript-to-gene", required=True, type=Path)
-    parser.add_argument("--standard-h5ad", required=True, type=Path)
+    eligible = parser.add_mutually_exclusive_group(required=True)
+    eligible.add_argument("--standard-h5ad", type=Path)
+    eligible.add_argument(
+        "--eligible-genes",
+        type=Path,
+        help="one gene id per line, or a TSV whose first column contains gene ids",
+    )
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--folds", type=int, default=5)
     parser.add_argument("--pca-components", type=int, default=30)
@@ -37,8 +43,6 @@ def main():
     parser.add_argument("--device", default="auto")
     args = parser.parse_args()
 
-    import anndata as ad
-
     labels = pd.read_csv(
         args.labels, header=None, names=["cell_id", "label"], dtype=str
     )
@@ -47,10 +51,9 @@ def main():
         group_table = pd.read_csv(
             args.groups, header=None, names=["cell_id", "combined"], dtype=str
         )
-        split = group_table["combined"].str.rsplit("__", n=2, expand=True)
-        if split.shape[1] != 3:
-            raise ValueError("group values must have label__condition__sample format")
-        groups = group_table[["cell_id"]].assign(group=split.iloc[:, 2])
+        groups = group_table[["cell_id"]].assign(
+            group=group_table["combined"].str.rsplit("__", n=1).str[-1]
+        )
 
     transcript_to_gene = pd.read_csv(
         args.transcript_to_gene,
@@ -59,11 +62,28 @@ def main():
         names=["transcript_id", "gene_id"],
         dtype=str,
     )
-    standard = ad.read_h5ad(args.standard_h5ad, backed="r")
-    if "gene_id" not in standard.var:
-        raise ValueError("standard AnnData var must contain gene_id")
-    eligible_genes = standard.var["gene_id"].astype(str).to_numpy()
-    standard.file.close()
+    if args.standard_h5ad is not None:
+        import anndata as ad
+
+        standard = ad.read_h5ad(args.standard_h5ad, backed="r")
+        if "gene_id" not in standard.var:
+            raise ValueError("standard AnnData var must contain gene_id")
+        eligible_genes = standard.var["gene_id"].astype(str).to_numpy()
+        standard.file.close()
+    else:
+        eligible_genes = (
+            pd.read_csv(
+                args.eligible_genes,
+                sep="\t",
+                header=None,
+                usecols=[0],
+                dtype=str,
+            )
+            .iloc[:, 0]
+            .dropna()
+            .drop_duplicates()
+            .to_numpy()
+        )
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     summaries = []

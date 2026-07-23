@@ -1011,3 +1011,20 @@ same reusable CV and scoring code as the initial dataset.
 The public processed Seurat object and case table will supply reference cell
 types, subjects, and diagnoses for external representation scoring. Labels are
 reserved for evaluation and are not used to select rank or regularization.
+
+The authors' public analysis repository confirms that the processed object
+contains `cell_barcode`, `Batch`, `annotation`, `subtype`, diagnosis, and case
+metadata. Published batch numbering follows the original sequencing lanes,
+not GEO accession order: the five internal manifest groups map to published
+Batch1, Batch4, Batch2, Batch3, and Batch5, respectively. Evaluation therefore
+joins on the explicit `(published batch, cell_barcode)` key after applying this
+map. Fine `annotation` labels are the primary classification and silhouette
+target; case identity is the cross-validation grouping variable.
+
+Genome-wide jobs are chained after preprocessing for binary and weighted
+designs using rank-CV factorization, adaptive-rho ADMM, and penalized
+Frank-Wolfe. Paired-primer binary and weighted factorized fits use independent
+rank CV. All CV runs include every eligible observation with at least 500 raw
+UMIs (and at least 500 UMIs in each primer half for paired fits), use held-out
+molecule reconstruction rather than labels, and refit the selected value on
+all eligible observations.
