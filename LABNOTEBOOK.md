@@ -1069,10 +1069,12 @@ tool output as complete.
 
 While the remaining public FASTQs were downloading, early arrays were
 submitted for the 30 sublibraries whose read pairs had already passed size and
-MD5 verification. The original complete Salmon and fry arrays retain all 40
-indices but also depend on the corresponding early arrays; they therefore
-reuse marked early outputs without concurrent writers. Early fry can overlap
-Salmon processing of the remaining sublibraries.
+MD5 verification. Preprocessing was split into disjoint 30-run and 10-run
+Salmon/fry branches after scheduler estimates showed that serializing the
+remaining runs behind the early branch would delay completion. The second
+branch depends on completion of the download, and merge depends on both fry
+branches. Early fry can overlap Salmon processing of the remaining
+sublibraries without duplicate writers.
 
 Historical weighted full-dataset runs peaked near 28 GB RAM for both Salmon
 and alevin-fry. Independent sublibrary tasks therefore request 48 GB for
