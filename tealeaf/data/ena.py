@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import csv
 import hashlib
+import json
 import os
 from pathlib import Path
 import re
@@ -209,6 +210,85 @@ def read_manifest(path) -> list[dict]:
         row["read"] = int(row["read"])
         row["bytes"] = int(row["bytes"])
     return rows
+
+
+def validate_completed_quantifications(manifest, processed_root) -> dict:
+    """Validate restart markers and count reports for every manifest run."""
+    rows = read_manifest(manifest)
+    runs = {
+        (row["batch"], row["run_accession"])
+        for row in rows
+        if row["read"] == 1
+    }
+    if not runs:
+        raise ValueError("manifest contains no read-1 runs")
+
+    reports = []
+    failures = []
+    for batch, accession in sorted(runs):
+        run_dir = Path(processed_root) / batch / accession
+        salmon_dir = run_dir / "salmon_rad"
+        fry_dir = run_dir / "alevin_quant"
+        required = (
+            salmon_dir / ".tealeaf_complete",
+            salmon_dir / "map.rad",
+            salmon_dir / "aux_info" / "meta_info.json",
+            fry_dir / ".tealeaf_complete",
+            fry_dir / "validation.json",
+        )
+        missing = [str(path) for path in required if not path.is_file() or path.stat().st_size == 0]
+        if missing:
+            failures.append(f"{accession}: missing {', '.join(missing)}")
+            continue
+        with open(salmon_dir / "aux_info" / "meta_info.json") as handle:
+            salmon = json.load(handle)
+        with open(fry_dir / "validation.json") as handle:
+            fry = json.load(handle)
+        mapped = salmon.get("num_mapped")
+        molecules = fry.get("molecules")
+        cells = fry.get("cells")
+        equivalence_classes = fry.get("equivalence_classes")
+        compatibility_nonzeros = fry.get("compatibility_nonzeros")
+        if not isinstance(mapped, (int, float)) or mapped <= 0:
+            failures.append(f"{accession}: invalid Salmon num_mapped")
+            continue
+        if not isinstance(molecules, (int, float)) or not 0 < molecules <= mapped:
+            failures.append(
+                f"{accession}: molecule count {molecules!r} exceeds mapped count {mapped!r}"
+            )
+            continue
+        if not isinstance(cells, int) or cells <= 0:
+            failures.append(f"{accession}: invalid cell count {cells!r}")
+            continue
+        if not isinstance(equivalence_classes, int) or equivalence_classes <= 0:
+            failures.append(
+                f"{accession}: invalid equivalence-class count {equivalence_classes!r}"
+            )
+            continue
+        if not isinstance(compatibility_nonzeros, int) or compatibility_nonzeros <= 0:
+            failures.append(
+                f"{accession}: invalid compatibility count {compatibility_nonzeros!r}"
+            )
+            continue
+        reports.append(
+            {
+                "batch": batch,
+                "run_accession": accession,
+                "mapped_fragments": mapped,
+                "molecules": molecules,
+                "cells": cells,
+                "equivalence_classes": equivalence_classes,
+            }
+        )
+    if failures:
+        raise ValueError("incomplete quantifications:\n" + "\n".join(failures))
+    return {
+        "runs": len(reports),
+        "mapped_fragments": sum(item["mapped_fragments"] for item in reports),
+        "molecules": sum(item["molecules"] for item in reports),
+        "cells": sum(item["cells"] for item in reports),
+        "quantifications": reports,
+    }
 
 
 def file_md5(path, block_size: int = 8 * 1024 * 1024) -> str:

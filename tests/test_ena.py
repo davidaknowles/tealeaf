@@ -1,4 +1,5 @@
 import hashlib
+import json
 from pathlib import Path
 
 from tealeaf.data import ena
@@ -45,3 +46,60 @@ def test_download_fastq_from_file_url(tmp_path, monkeypatch):
         lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError()),
     )
     assert ena.download_fastq(row, tmp_path / "downloads") == output
+
+
+def test_validate_completed_quantifications(tmp_path):
+    runs = ena.select_paired_runs(
+        ena.parse_ena_report(REPORT),
+        batch_from_run=lambda run: "batch1",
+    )
+    manifest = tmp_path / "manifest.tsv"
+    ena.write_manifest(runs, manifest)
+    run_dir = tmp_path / "processed" / "batch1" / "SRR1"
+    salmon = run_dir / "salmon_rad"
+    fry = run_dir / "alevin_quant"
+    (salmon / "aux_info").mkdir(parents=True)
+    fry.mkdir()
+    for path in (
+        salmon / ".tealeaf_complete",
+        salmon / "map.rad",
+        fry / ".tealeaf_complete",
+    ):
+        path.write_text("complete\n")
+    (salmon / "aux_info" / "meta_info.json").write_text(
+        json.dumps({"num_mapped": 100})
+    )
+    (fry / "validation.json").write_text(
+        json.dumps(
+            {
+                "molecules": 60,
+                "cells": 4,
+                "equivalence_classes": 8,
+                "compatibility_nonzeros": 12,
+            }
+        )
+    )
+
+    report = ena.validate_completed_quantifications(
+        manifest,
+        tmp_path / "processed",
+    )
+    assert report["runs"] == 1
+    assert report["molecules"] == 60
+
+    (fry / "validation.json").write_text(
+        json.dumps(
+            {
+                "molecules": 101,
+                "cells": 4,
+                "equivalence_classes": 8,
+                "compatibility_nonzeros": 12,
+            }
+        )
+    )
+    try:
+        ena.validate_completed_quantifications(manifest, tmp_path / "processed")
+    except ValueError as error:
+        assert "exceeds mapped count" in str(error)
+    else:
+        raise AssertionError("inflated molecule count was accepted")

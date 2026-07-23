@@ -1114,6 +1114,14 @@ script also recognizes complete matrix and probability output without a
 marker, validates it, and writes the marker. This makes failures between tool
 completion and validation restartable without repeating quantification.
 
+A reusable pre-merge gate reads the ENA manifest and requires nonempty Salmon
+and fry completion markers, RAD and metadata files, and per-run validation
+reports. It independently rechecks positive cells, ECs, weighted
+compatibilities, and molecule counts no larger than Salmon mapped fragments.
+The merge depends on this content-based gate after all array attempts finish,
+so a recovered post-quantification launcher failure does not invalidate
+validated data and any unrecovered task still stops the graph.
+
 A bounded real-data integration job uses one million paired reads from a
 checksum-verified GSE233208 sublibrary. It runs the same patched Salmon,
 alevin-fry, probability dump, and validation components as production. This is

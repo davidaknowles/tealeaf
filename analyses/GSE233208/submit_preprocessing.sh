@@ -29,10 +29,14 @@ fry=$(sbatch --parsable --array=0-39 --dependency="aftercorr:${salmon}" \
   -e "${RUN_ROOT}/logs/fry-%A_%a.err" \
   --export=ALL,STAGE=fry \
   "${REPO_ROOT}/analyses/GSE233208/run_batch_stage.sbatch")
-merge=$(sbatch --parsable --dependency="afterok:${fry}" \
+gate=$(sbatch --parsable --dependency="afterany:${fry}" \
+  -o "${RUN_ROOT}/logs/preprocessing-gate-%j.out" \
+  -e "${RUN_ROOT}/logs/preprocessing-gate-%j.err" \
+  "${REPO_ROOT}/analyses/GSE233208/validate_preprocessing.sbatch")
+merge=$(sbatch --parsable --dependency="afterok:${gate}" \
   -o "${RUN_ROOT}/logs/merge-%j.out" \
   -e "${RUN_ROOT}/logs/merge-%j.err" \
   "${REPO_ROOT}/analyses/GSE233208/merge_batches.sbatch")
 
-printf 'download=%s\nsalmon=%s\nfry=%s\nmerge=%s\n' \
-  "${download}" "${salmon}" "${fry}" "${merge}"
+printf 'download=%s\nsalmon=%s\nfry=%s\ngate=%s\nmerge=%s\n' \
+  "${download}" "${salmon}" "${fry}" "${gate}" "${merge}"
