@@ -1130,6 +1130,17 @@ and remaining fry arrays finish. Complete quantifications are only validated;
 missing ones are processed normally. The live content gate depends on these
 recovery arrays rather than the historical array exit states.
 
+The 30-run early branch completed with all per-run count and structure checks
+passing. It contains 1,738,306 called primer half-cells and 1,799,846,896
+deduplicated molecules from 4,898,240,110 Salmon-mapped fragments. The slowest
+Salmon task took 2 hours 41 minutes, confirming the six-hour limit has useful
+margin. The final fry task was run in the existing compute allocation rather
+than waiting several days for a 40 GB backfill slot; it completed in about 12
+minutes and retained 60,985,855 molecules from 206,595,909 mapped fragments.
+After all 30 outputs had validated markers, the stale early fry and recovery
+jobs were cancelled. The content gate now waits only for the remaining
+10-run branch.
+
 A bounded real-data integration job uses one million paired reads from a
 checksum-verified GSE233208 sublibrary. It runs the same patched Salmon,
 alevin-fry, probability dump, and validation components as production. This is
