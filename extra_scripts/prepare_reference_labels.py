@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import gzip
 from pathlib import Path
 
 
@@ -47,7 +48,8 @@ def main():
 
     labels = {}
     groups = {}
-    with open(args.metadata, newline="") as handle:
+    opener = gzip.open if args.metadata.suffix == ".gz" else open
+    with opener(args.metadata, "rt", newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
         required = {
             args.cell_barcode_column,
