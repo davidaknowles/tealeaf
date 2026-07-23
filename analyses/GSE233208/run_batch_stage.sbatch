@@ -4,7 +4,8 @@
 #SBATCH --time=4-00:00:00
 
 set -euo pipefail
-source "$(dirname "$0")/config.env"
+CONFIG=${CONFIG:-/gpfs/commons/home/daknowles/projects/tealeaf/analyses/GSE233208/config.env}
+source "${CONFIG}"
 batch=${BATCHES[${SLURM_ARRAY_TASK_ID:?array index is required}]}
 stage=${STAGE:?set STAGE to salmon or fry}
 mkdir -p "${RUN_ROOT}/logs" "${DATA_ROOT}/processed/${batch}"

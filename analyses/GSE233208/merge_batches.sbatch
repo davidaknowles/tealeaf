@@ -5,7 +5,8 @@
 #SBATCH --time=1-00:00:00
 
 set -euo pipefail
-source "$(dirname "$0")/config.env"
+CONFIG=${CONFIG:-/gpfs/commons/home/daknowles/projects/tealeaf/analyses/GSE233208/config.env}
+source "${CONFIG}"
 module load python/3.10.8-GCCcore-12.2.0
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 mkdir -p "${RUN_ROOT}/logs"

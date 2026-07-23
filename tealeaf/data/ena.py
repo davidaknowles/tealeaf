@@ -242,6 +242,8 @@ def download_fastq(row: dict, destination, *, retries: int = 5) -> Path:
             "curl",
             "--fail",
             "--location",
+            "--silent",
+            "--show-error",
             "--retry",
             "8",
             "--retry-all-errors",
