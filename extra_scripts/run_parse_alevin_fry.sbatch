@@ -19,7 +19,11 @@ COMPLETE_MARKER="${OUT_DIR}/.tealeaf_complete"
 VALIDATION_REPORT="${OUT_DIR}/validation.json"
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "${SCRIPT_DIR}/.." && pwd)
-PYTHON_BIN=${PYTHON_BIN:-python}
+PYTHON_BIN=${PYTHON_BIN:-$(command -v python3 || command -v python || true)}
+if [[ -z "${PYTHON_BIN}" ]]; then
+  echo "Could not resolve a Python interpreter for validation" >&2
+  exit 1
+fi
 
 quantification_files_exist() {
   [[
@@ -40,7 +44,7 @@ if [[ ! -s "${PERMIT_DIR}/map.collated.rad" ]]; then
   "${ALEVIN_FRY_BIN}" collate \
     -r "${SALMON_DIR}" -t "${THREADS}" -i "${PERMIT_DIR}"
 fi
-if [[ -s "${COMPLETE_MARKER}" ]] && quantification_files_exist; then
+if quantification_files_exist; then
   if [[ ! -s "${VALIDATION_REPORT}" ]]; then
     PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}" "${PYTHON_BIN}" \
       "${SCRIPT_DIR}/validate_alevin_quantification.py" \
@@ -49,7 +53,10 @@ if [[ -s "${COMPLETE_MARKER}" ]] && quantification_files_exist; then
       --salmon-meta "${SALMON_DIR}/aux_info/meta_info.json" \
       --output "${VALIDATION_REPORT}"
   fi
-  echo "Reusing completed alevin-fry output: ${OUT_DIR}"
+  if [[ ! -s "${COMPLETE_MARKER}" ]]; then
+    printf 'alevin_fry_complete\n' > "${COMPLETE_MARKER}"
+  fi
+  echo "Reusing validated alevin-fry output: ${OUT_DIR}"
   exit 0
 fi
 

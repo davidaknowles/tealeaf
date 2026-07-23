@@ -1104,6 +1104,15 @@ seconds. It processed 387,223,905 fragments, mapped 143,163,109, and wrote a
 9.0 GB RAD plus valid metadata and a completion marker. Its corresponding fry
 array element was released independently as intended.
 
+That first fry task completed quantification in 4 minutes 41 seconds but then
+failed because the validation launcher relied on a non-absolute `python`
+command inherited through the batch environment. The dataset stage now
+resolves `python3` after loading its module and passes the absolute interpreter
+path to the reusable fry script. The fry script also recognizes complete
+matrix and probability output without a marker, validates it, and writes the
+marker. This makes failures between tool completion and validation restartable
+without repeating quantification.
+
 A bounded real-data integration job uses one million paired reads from a
 checksum-verified GSE233208 sublibrary. It runs the same patched Salmon,
 alevin-fry, probability dump, and validation components as production. This is
