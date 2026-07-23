@@ -1075,9 +1075,12 @@ reuse marked early outputs without concurrent writers. Early fry can overlap
 Salmon processing of the remaining sublibraries.
 
 Historical weighted full-dataset runs peaked near 28 GB RAM for both Salmon
-and alevin-fry. Independent sublibrary tasks therefore request 64 GB for
-Salmon and 48 GB for fry rather than the earlier 164/96 GB reservations,
-retaining headroom while improving scheduler placement.
+and alevin-fry. Independent sublibrary tasks therefore request 48 GB for
+Salmon and 40 GB for fry rather than the earlier 164/96 GB reservations.
+Common CPU nodes have 28 cores: eight-core tasks allow three sublibraries per
+node, while the old 20-core request allowed one. Salmon used its assigned cores
+but gains aggregate throughput from run-level parallelism; fry historically
+used about eight cores despite a 20-core allocation.
 
 The fixed-weight cache stage computes the overall, poly(dT), and
 random-hexamer EC probability averages in one streaming pass over the merged

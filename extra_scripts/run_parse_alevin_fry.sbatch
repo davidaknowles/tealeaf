@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=parse_alevin_fry
-#SBATCH --cpus-per-task=20
-#SBATCH --mem=48G
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=40G
 #SBATCH --time=4-00:00:00
 
 set -euo pipefail
@@ -14,7 +14,7 @@ set -euo pipefail
 MAPPING=${MAPPING:-t2t_dedup_v2.tsv}
 PERMIT_DIR=${PERMIT_DIR:-"${SALMON_DIR}/permit_known"}
 MIN_READS=${MIN_READS:-100}
-THREADS=${SLURM_CPUS_PER_TASK:-20}
+THREADS=${SLURM_CPUS_PER_TASK:-8}
 COMPLETE_MARKER="${OUT_DIR}/.tealeaf_complete"
 
 if [[

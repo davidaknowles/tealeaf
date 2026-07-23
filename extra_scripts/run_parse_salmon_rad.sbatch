@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=parse_salmon_rad
-#SBATCH --cpus-per-task=20
-#SBATCH --mem=64G
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=48G
 #SBATCH --time=4-00:00:00
 
 set -euo pipefail
@@ -9,7 +9,7 @@ set -euo pipefail
 : "${INDEX:?set INDEX}"
 : "${OUT_DIR:?set OUT_DIR}"
 : "${SALMON_BIN:?set SALMON_BIN}"
-THREADS=${SLURM_CPUS_PER_TASK:-20}
+THREADS=${SLURM_CPUS_PER_TASK:-8}
 COMPLETE_MARKER="${OUT_DIR}/.tealeaf_complete"
 
 if [[ -s "${COMPLETE_MARKER}" && -s "${OUT_DIR}/map.rad" ]]; then
