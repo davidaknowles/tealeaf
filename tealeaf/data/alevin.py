@@ -250,8 +250,8 @@ def merge_alevin_quantifications(inputs, output_dir) -> dict:
                     [feature_to_global[feature] for feature in features],
                     dtype=np.int64,
                 )
-                probability_orders = []
-                probability_sizes = []
+                probability_orders = {}
+                probability_sizes = np.diff(local_membership.indptr)
                 for ecid in range(local_membership.shape[0]):
                     start, stop = local_membership.indptr[ecid : ecid + 2]
                     global_features = local_to_global_feature[
@@ -261,10 +261,8 @@ def merge_alevin_quantifications(inputs, output_dir) -> dict:
                         global_features.size < 2
                         or np.all(global_features[:-1] <= global_features[1:])
                     )
-                    probability_orders.append(
-                        None if identity else np.argsort(global_features)
-                    )
-                    probability_sizes.append(global_features.size)
+                    if not identity:
+                        probability_orders[ecid] = np.argsort(global_features)
                 with gzip.open(probability_path, "rt") as source:
                     header = next(source, "").rstrip("\n")
                     if header != "cell_idx\teqid\tumi_rank\tprobs":
@@ -274,7 +272,7 @@ def merge_alevin_quantifications(inputs, output_dir) -> dict:
                     for line in source:
                         cell, ecid, rank, values = line.rstrip("\n").split("\t", 3)
                         ecid = int(ecid)
-                        order = probability_orders[ecid]
+                        order = probability_orders.get(ecid)
                         probability_count = values.count(",") + 1
                         if probability_count != probability_sizes[ecid]:
                             raise ValueError(
