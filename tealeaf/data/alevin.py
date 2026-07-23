@@ -34,7 +34,7 @@ def _resolve_quantification_dir(path):
 
 def load_alevin_structure(path):
     """Load transcript labels and the EC compatibility matrix."""
-    path = Path(path)
+    path = _resolve_quantification_dir(path)
     features = _read_lines(path / "quants_mat_cols.txt")
     map_cache = path / "gene_eqclass.npz"
     if map_cache.is_file():
@@ -50,8 +50,9 @@ def load_alevin_structure(path):
     return features, membership
 
 
-def _load_counts(path):
-    path = Path(path)
+def load_alevin_counts(path):
+    """Load cell labels and the cell-by-EC count matrix."""
+    path = _resolve_quantification_dir(path)
     barcodes = _read_lines(path / "quants_mat_rows.txt")
     count_cache = path / "geqc_counts.npz"
     counts = (
@@ -77,7 +78,7 @@ def validate_alevin_quantification(
     """Validate a merged quantification before downstream model fitting."""
     path = _resolve_quantification_dir(path)
     features, membership = load_alevin_structure(path)
-    barcodes, counts = _load_counts(path)
+    barcodes, counts = load_alevin_counts(path)
     if counts.shape[1] != membership.shape[0]:
         raise ValueError("count columns do not match equivalence classes")
     if len(features) != membership.shape[1]:
@@ -220,7 +221,7 @@ def merge_alevin_quantifications(inputs, output_dir) -> dict:
     cell_offset = 0
     n_ec = len(ec_features)
     for (batch, path), local_ec_to_global in zip(inputs, ec_remaps):
-        barcodes, counts = _load_counts(path)
+        barcodes, counts = load_alevin_counts(path)
         if counts.shape[1] != local_ec_to_global.size:
             raise ValueError(f"inconsistent count/EC dimensions in {path}")
         coo = counts.tocoo()

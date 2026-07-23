@@ -2,9 +2,12 @@ import gzip
 
 import numpy as np
 import pytest
+import scipy.io
 import scipy.sparse as sp
 
 from tealeaf.data.alevin import (
+    load_alevin_counts,
+    load_alevin_structure,
     merge_alevin_quantifications,
     validate_alevin_quantification,
 )
@@ -81,6 +84,28 @@ def test_merge_accepts_alevin_fry_output_root(tmp_path):
         "run1:cell1",
         "run2:cell2",
     ]
+
+
+def test_loaders_accept_uncached_alevin_fry_output_root(tmp_path):
+    root = tmp_path / "quant"
+    quant = root / "alevin"
+    quant.mkdir(parents=True)
+    (quant / "quants_mat_cols.txt").write_text("tx1\ntx2\n")
+    (quant / "quants_mat_rows.txt").write_text("cell1\ncell2\n")
+    scipy.io.mmwrite(
+        quant / "geqc_counts.mtx",
+        sp.csr_matrix([[2, 0], [0, 3]], dtype=np.int64),
+    )
+    with gzip.open(quant / "gene_eqclass.txt.gz", "wt") as handle:
+        handle.write("2\n2\n0\t0\n1\t1\n")
+
+    features, membership = load_alevin_structure(root)
+    barcodes, counts = load_alevin_counts(root)
+
+    assert features == ["tx1", "tx2"]
+    assert barcodes == ["cell1", "cell2"]
+    np.testing.assert_array_equal(membership.toarray(), np.eye(2))
+    np.testing.assert_array_equal(counts.toarray(), [[2, 0], [0, 3]])
 
 
 def test_validate_merged_quantification(tmp_path):

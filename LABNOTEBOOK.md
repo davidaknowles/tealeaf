@@ -1126,7 +1126,8 @@ assumptions that unit-level synthetic data had not exposed:
 - The design-cache command required merge-generated sparse `.npz` caches even
   though raw alevin-fry output only guarantees Matrix Market and EC text
   files. It now uses the shared format-aware alevin structure loader and works
-  on either raw or merged quantifications.
+  on either raw or merged quantifications. Paired preparation uses the same
+  public structure and count loaders, including nested alevin output roots.
 - Paired-primer responses have fractional entries because each primer half is
   normalized to mass 0.5. Generic molecule-fold CV correctly rejected those
   entries as non-integer but left both submitted paired CV jobs unable to run.

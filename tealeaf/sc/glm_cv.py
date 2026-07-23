@@ -11,6 +11,7 @@ import numpy as np
 import scipy.io
 import scipy.sparse as sp
 
+from tealeaf.data.alevin import load_alevin_counts, load_alevin_structure
 from tealeaf.sc import glm_solvers, sc_utils
 
 
@@ -87,12 +88,10 @@ def prepare_paired_primer_glm_data(
     if ec_design not in {"binary", "weighted"}:
         raise ValueError("paired primer fitting requires binary or weighted design")
     alevin_dir = Path(alevin_dir)
-    membership = sp.load_npz(alevin_dir / "gene_eqclass.npz").tocsr()
-    counts = sp.load_npz(alevin_dir / "geqc_counts.npz").tocsr()
-    with open(alevin_dir / "quants_mat_cols.txt") as handle:
-        features = np.asarray([line.strip() for line in handle])
-    with open(alevin_dir / "quants_mat_rows.txt") as handle:
-        barcodes = np.asarray([line.strip() for line in handle])
+    features, membership = load_alevin_structure(alevin_dir)
+    barcodes, counts = load_alevin_counts(alevin_dir)
+    features = np.asarray(features)
+    barcodes = np.asarray(barcodes)
     if counts.shape[0] != len(barcodes):
         raise ValueError("count rows do not match alevin barcode rows")
 
