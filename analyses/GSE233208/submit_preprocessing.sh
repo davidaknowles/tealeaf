@@ -24,7 +24,7 @@ salmon=$(sbatch --parsable --array=0-39 --dependency="afterok:${download}" \
   --export=ALL,STAGE=salmon \
   "${REPO_ROOT}/analyses/GSE233208/run_batch_stage.sbatch")
 fry=$(sbatch --parsable --array=0-39 --dependency="aftercorr:${salmon}" \
-  --job-name=gse233208_fry --mem=40G \
+  --job-name=gse233208_fry --mem=40G --time=02:00:00 \
   -o "${RUN_ROOT}/logs/fry-%A_%a.out" \
   -e "${RUN_ROOT}/logs/fry-%A_%a.err" \
   --export=ALL,STAGE=fry \
