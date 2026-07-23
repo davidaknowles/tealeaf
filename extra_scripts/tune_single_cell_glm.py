@@ -111,6 +111,15 @@ def main():
     if not len(selected):
         raise ValueError("no cells meet the requested UMI threshold")
     counts = prepared.counts[selected]
+    fold_pairs = None
+    if prepared.metadata and prepared.metadata.get("paired_primers"):
+        if prepared.cv_raw_counts is None:
+            raise ValueError("paired-primer CV requires raw molecule counts")
+        fold_pairs = glm_cv.paired_primer_count_fold_pairs(
+            prepared.cv_raw_counts[selected],
+            n_folds=args.folds,
+            seed=args.seed,
+        )
     fit_kwargs = {
         "rank": args.rank,
         "max_iter": args.max_iter,
@@ -160,6 +169,7 @@ def main():
             selection_rule=rank_selection_rule,
             require_converged=args.require_converged,
             require_nondegenerate=args.require_nondegenerate,
+            fold_pairs=fold_pairs,
             progress_callback=lambda row: print(
                 json.dumps({"event": "rank_fold_complete", **row}),
                 flush=True,
@@ -186,6 +196,7 @@ def main():
             require_converged=args.require_converged,
             require_nondegenerate=args.require_nondegenerate,
             profile_variance_retention=args.profile_variance_retention,
+            fold_pairs=fold_pairs,
         )
     full_scale = None
     if args.method != "factorized":

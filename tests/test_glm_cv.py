@@ -59,6 +59,32 @@ class PairedPrimerPreparationTest(unittest.TestCase):
             )
             np.testing.assert_array_equal(prepared.barcodes, ["cell1"])
             self.assertEqual(prepared.metadata["retained_pair_count"], 1)
+            np.testing.assert_array_equal(
+                prepared.cv_raw_counts.toarray(),
+                [[8, 2, 2, 8]],
+            )
+
+    def test_paired_count_folds_split_raw_molecules_before_normalizing(self):
+        raw = sp.csr_matrix(
+            np.array([[8, 2, 2, 8], [4, 6, 7, 3]], dtype=np.int64)
+        )
+        pairs = glm_cv.paired_primer_count_fold_pairs(
+            raw, n_folds=2, seed=3
+        )
+        self.assertEqual(len(pairs), 2)
+        for training, validation in pairs:
+            np.testing.assert_allclose(
+                np.asarray(training[:, :2].sum(axis=1)).ravel(), 0.5
+            )
+            np.testing.assert_allclose(
+                np.asarray(training[:, 2:].sum(axis=1)).ravel(), 0.5
+            )
+            np.testing.assert_allclose(
+                np.asarray(validation[:, :2].sum(axis=1)).ravel(), 0.5
+            )
+            np.testing.assert_allclose(
+                np.asarray(validation[:, 2:].sum(axis=1)).ravel(), 0.5
+            )
 
 
 @unittest.skipUnless(TORCH_AVAILABLE, "Torch optional dependency is unavailable")

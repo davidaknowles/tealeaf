@@ -32,7 +32,8 @@ def _resolve_quantification_dir(path):
     )
 
 
-def _load_structure(path):
+def load_alevin_structure(path):
+    """Load transcript labels and the EC compatibility matrix."""
     path = Path(path)
     features = _read_lines(path / "quants_mat_cols.txt")
     map_cache = path / "gene_eqclass.npz"
@@ -75,7 +76,7 @@ def validate_alevin_quantification(
 ):
     """Validate a merged quantification before downstream model fitting."""
     path = _resolve_quantification_dir(path)
-    features, membership = _load_structure(path)
+    features, membership = load_alevin_structure(path)
     barcodes, counts = _load_counts(path)
     if counts.shape[1] != membership.shape[0]:
         raise ValueError("count columns do not match equivalence classes")
@@ -189,7 +190,7 @@ def merge_alevin_quantifications(inputs, output_dir) -> dict:
     ec_features = []
     ec_remaps = []
     for _, path in inputs:
-        features, membership = _load_structure(path)
+        features, membership = load_alevin_structure(path)
         for feature in features:
             if feature not in feature_to_global:
                 feature_to_global[feature] = len(feature_order)
@@ -255,7 +256,7 @@ def merge_alevin_quantifications(inputs, output_dir) -> dict:
             for probability_path, ec_remap, offset, (_, input_path) in zip(
                 probability_inputs, ec_remaps, cell_offsets, inputs
             ):
-                features, local_membership = _load_structure(input_path)
+                features, local_membership = load_alevin_structure(input_path)
                 local_to_global_feature = np.asarray(
                     [feature_to_global[feature] for feature in features],
                     dtype=np.int64,

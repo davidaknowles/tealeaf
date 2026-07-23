@@ -9,8 +9,8 @@ import json
 from pathlib import Path
 
 import numpy as np
-import scipy.sparse as sp
 
+from tealeaf.data.alevin import load_alevin_structure
 from tealeaf.sc import glm_cv
 from tealeaf.sc import sc_utils
 
@@ -43,9 +43,7 @@ def main():
                             f"conflicting primer groups for {row[column]}"
                         )
                     groups[index] = group
-        membership = sp.load_npz(
-            args.alevin_dir / "gene_eqclass.npz"
-        ).tocsr()
+        _, membership = load_alevin_structure(args.alevin_dir)
         sc_utils.combined_ec_probability_matrices(
             args.alevin_dir / "gene_eqclass_probs.tsv.gz",
             membership,

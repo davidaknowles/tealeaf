@@ -1117,3 +1117,28 @@ quantification validator accepts a maximum total molecule count, and the
 bounded real-data integration job sets that maximum to its input read-pair
 count. This provides a regression check for stale state or other count
 inflation before a patched binary is used for full data.
+
+The corrected real-data output was also carried through primer pairing,
+weighted-design caching, paired rank CV, a bounded genome-wide factorized fit,
+and representation scoring. This integration pass found two downstream
+assumptions that unit-level synthetic data had not exposed:
+
+- The design-cache command required merge-generated sparse `.npz` caches even
+  though raw alevin-fry output only guarantees Matrix Market and EC text
+  files. It now uses the shared format-aware alevin structure loader and works
+  on either raw or merged quantifications.
+- Paired-primer responses have fractional entries because each primer half is
+  normalized to mass 0.5. Generic molecule-fold CV correctly rejected those
+  entries as non-integer but left both submitted paired CV jobs unable to run.
+  Paired CV now partitions the original integer molecules within each primer
+  half, then independently normalizes each training and validation partition
+  to equal primer mass. Raw fold counts live in a dedicated, non-serialized
+  preparation field so fit manifests remain JSON-compatible.
+
+With these corrections, a two-fold paired weighted rank path completed on 50
+real cells and warm-started rank two from rank one. A bounded rank-two fit
+wrote compact factors and the scorer aligned 2,993 published annotations,
+aggregated transcript loadings to genes, formed a `log1p` gene-PCA embedding,
+and computed donor-held-out classification and silhouette metrics. The
+bounded fit used two iterations and is only an interface test; its scores are
+not biological results.

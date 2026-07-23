@@ -22,6 +22,7 @@ class PreparedGLMData:
     features: np.ndarray
     cell_umi_totals: np.ndarray
     metadata: dict | None = None
+    cv_raw_counts: sp.csr_matrix | None = None
 
 
 def _row_normalize(matrix):
@@ -168,8 +169,10 @@ def prepare_paired_primer_glm_data(
     compatibility = sp.vstack(
         (0.5 * designs[0], 0.5 * designs[1]), format="csr"
     )
-    poly_counts, poly_totals = _row_normalize(counts[poly_rows][:, ec_keep])
-    hex_counts, hex_totals = _row_normalize(counts[hex_rows][:, ec_keep])
+    raw_poly_counts = counts[poly_rows][:, ec_keep].tocsr()
+    raw_hex_counts = counts[hex_rows][:, ec_keep].tocsr()
+    poly_counts, poly_totals = _row_normalize(raw_poly_counts)
+    hex_counts, hex_totals = _row_normalize(raw_hex_counts)
     paired_counts = sp.hstack(
         (0.5 * poly_counts, 0.5 * hex_counts), format="csr"
     )
@@ -189,6 +192,9 @@ def prepare_paired_primer_glm_data(
             "annotated_pair_count": len(pairs),
             "retained_pair_count": len(complete),
         },
+        cv_raw_counts=sp.hstack(
+            (raw_poly_counts, raw_hex_counts), format="csr"
+        ),
     )
 
 
@@ -317,6 +323,64 @@ def split_count_folds(counts, n_folds=3, seed=0):
     return folds
 
 
+def _standard_count_fold_pairs(counts, n_folds=3, seed=0):
+    validation_folds = split_count_folds(counts, n_folds=n_folds, seed=seed)
+    return [
+        (
+            sum(
+                (
+                    fold
+                    for index, fold in enumerate(validation_folds)
+                    if index != fold_index
+                ),
+                start=sp.csr_matrix(counts.shape),
+            ).tocsr(),
+            validation_counts,
+        )
+        for fold_index, validation_counts in enumerate(validation_folds)
+    ]
+
+
+def _normalize_paired_primer_counts(counts):
+    """Give each primer half equal mass within every nonempty cell."""
+    counts = counts.tocsr()
+    if counts.shape[1] % 2:
+        raise ValueError("paired-primer count matrices need two equal-width halves")
+    half = counts.shape[1] // 2
+    polydt, _ = _row_normalize(counts[:, :half])
+    ranhex, _ = _row_normalize(counts[:, half:])
+    return sp.hstack((0.5 * polydt, 0.5 * ranhex), format="csr")
+
+
+def paired_primer_count_fold_pairs(raw_counts, n_folds=3, seed=0):
+    """Split raw molecules, then equalize primer mass within each CV partition."""
+    raw_counts = raw_counts.tocsr()
+    raw_pairs = _standard_count_fold_pairs(
+        raw_counts, n_folds=n_folds, seed=seed
+    )
+    return [
+        (
+            _normalize_paired_primer_counts(training),
+            _normalize_paired_primer_counts(validation),
+        )
+        for training, validation in raw_pairs
+    ]
+
+
+def _resolve_count_fold_pairs(counts, n_folds, seed, fold_pairs):
+    pairs = (
+        _standard_count_fold_pairs(counts, n_folds=n_folds, seed=seed)
+        if fold_pairs is None
+        else list(fold_pairs)
+    )
+    if len(pairs) != int(n_folds):
+        raise ValueError("fold_pairs must contain n_folds train/validation pairs")
+    for training, validation in pairs:
+        if training.shape != counts.shape or validation.shape != counts.shape:
+            raise ValueError("fold-pair matrices must match the response shape")
+    return pairs
+
+
 def _b_transpose_times(data, vectors):
     result = data.torch.zeros(
         (data.n_cells, vectors.shape[1]), device=data.device
@@ -418,17 +482,16 @@ def cross_validate_glm(
     warm_start=True,
     min_profile_active_fraction=0.9,
     min_profile_relative_variance=1e-6,
+    fold_pairs=None,
 ):
     """Tune a scale-free lambda fraction or tau multiplier by count folds."""
     fit_kwargs = dict(fit_kwargs or {})
-    folds = split_count_folds(counts, n_folds=n_folds, seed=seed)
+    fold_pairs = _resolve_count_fold_pairs(
+        counts, n_folds, seed, fold_pairs
+    )
     rows = []
     scales = []
-    for fold_index, validation_counts in enumerate(folds):
-        training_counts = sum(
-            (fold for index, fold in enumerate(folds) if index != fold_index),
-            start=sp.csr_matrix(counts.shape),
-        ).tocsr()
+    for fold_index, (training_counts, validation_counts) in enumerate(fold_pairs):
         training = (
             glm_solvers.SparseGLM(
                 training_counts,
@@ -599,6 +662,7 @@ def cross_validate_factorized_rank(
     _state=None,
     progress_callback=None,
     _return_state=False,
+    fold_pairs=None,
 ):
     """Select unregularized nonnegative factor rank by molecule-count folds."""
     if selection_rule not in {"minimum", "one_standard_error"}:
@@ -608,13 +672,13 @@ def cross_validate_factorized_rank(
         raise ValueError("rank candidates must be positive")
     fit_kwargs = dict(fit_kwargs or {})
     fit_kwargs.pop("rank", None)
-    folds = (
-        split_count_folds(counts, n_folds=n_folds, seed=seed)
-        if _state is None else _state["folds"]
+    fold_pairs = (
+        _resolve_count_fold_pairs(counts, n_folds, seed, fold_pairs)
+        if _state is None else _state["fold_pairs"]
     )
     rows = [] if _state is None else list(_state["rows"])
-    continued_factors = [None] * len(folds)
-    for fold_index, validation_counts in enumerate(folds):
+    continued_factors = [None] * len(fold_pairs)
+    for fold_index, (training_counts, validation_counts) in enumerate(fold_pairs):
         completed = {
             row["rank"] for row in rows if row["fold"] == fold_index
         }
@@ -624,10 +688,6 @@ def cross_validate_factorized_rank(
                 None if _state is None else _state["warm_factors"][fold_index]
             )
             continue
-        training_counts = sum(
-            (fold for index, fold in enumerate(folds) if index != fold_index),
-            start=sp.csr_matrix(counts.shape),
-        ).tocsr()
         training = glm_solvers.SparseGLM(
             training_counts,
             compatibility,
@@ -793,7 +853,7 @@ def cross_validate_factorized_rank(
     if not _return_state:
         return report
     return report, {
-        "folds": folds,
+        "fold_pairs": fold_pairs,
         "rows": rows,
         "warm_factors": continued_factors,
     }
