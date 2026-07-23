@@ -10,6 +10,16 @@ set -euo pipefail
 : "${OUT_DIR:?set OUT_DIR}"
 : "${SALMON_BIN:?set SALMON_BIN}"
 THREADS=${SLURM_CPUS_PER_TASK:-20}
+COMPLETE_MARKER="${OUT_DIR}/.tealeaf_complete"
+
+if [[ -s "${COMPLETE_MARKER}" && -s "${OUT_DIR}/map.rad" ]]; then
+  echo "Reusing completed Salmon RAD output: ${OUT_DIR}"
+  exit 0
+fi
+if [[ -e "${OUT_DIR}" ]]; then
+  echo "Refusing incomplete or unmarked Salmon output: ${OUT_DIR}" >&2
+  exit 1
+fi
 
 if [[ -n "${FASTQ_R1:-}" || -n "${FASTQ_R2:-}" ]]; then
   : "${FASTQ_R1:?set both FASTQ_R1 and FASTQ_R2}"
@@ -35,3 +45,8 @@ fi
   --splitseqV2 \
   --rad \
   -o "${OUT_DIR}"
+if [[ ! -s "${OUT_DIR}/map.rad" ]]; then
+  echo "Salmon completed without a nonempty map.rad" >&2
+  exit 1
+fi
+printf 'salmon_rad_complete\n' > "${COMPLETE_MARKER}"

@@ -15,6 +15,16 @@ MAPPING=${MAPPING:-t2t_dedup_v2.tsv}
 PERMIT_DIR=${PERMIT_DIR:-"${SALMON_DIR}/permit_known"}
 MIN_READS=${MIN_READS:-100}
 THREADS=${SLURM_CPUS_PER_TASK:-20}
+COMPLETE_MARKER="${OUT_DIR}/.tealeaf_complete"
+
+if [[
+  -s "${COMPLETE_MARKER}"
+  && -s "${OUT_DIR}/alevin/quants_mat_rows.txt"
+  && -s "${OUT_DIR}/alevin/gene_eqclass_probs.tsv.gz"
+]]; then
+  echo "Reusing completed alevin-fry output: ${OUT_DIR}"
+  exit 0
+fi
 
 if [[ ! -s "${PERMIT_DIR}/permit_freq.bin" ]]; then
   "${ALEVIN_FRY_BIN}" generate-permit-list \
@@ -37,3 +47,11 @@ fi
   -r parsimony-em \
   --use-mtx \
   --dump-eqclasses
+if [[
+  ! -s "${OUT_DIR}/alevin/quants_mat_rows.txt"
+  || ! -s "${OUT_DIR}/alevin/gene_eqclass_probs.tsv.gz"
+]]; then
+  echo "alevin-fry completed without required matrix/probability outputs" >&2
+  exit 1
+fi
+printf 'alevin_fry_complete\n' > "${COMPLETE_MARKER}"

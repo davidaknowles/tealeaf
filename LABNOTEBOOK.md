@@ -1062,6 +1062,11 @@ sidecar, complete primer pairs, cells above the UMI threshold, and overlap with
 published reference labels. Downstream design construction does not start
 unless this gate passes.
 
+Salmon and alevin-fry stages write completion markers only after checking their
+required outputs. A repeated task reuses marked output and rejects an
+unmarked directory, permitting restart-safe arrays without treating partial
+tool output as complete.
+
 The fixed-weight cache stage computes the overall, poly(dT), and
 random-hexamer EC probability averages in one streaming pass over the merged
 per-UMI sidecar. Cells outside the primer groups are still included in the
