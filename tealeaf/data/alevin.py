@@ -1,4 +1,4 @@
-"""Utilities for combining independently quantified alevin-fry batches."""
+"""Utilities for combining independent alevin-fry quantifications."""
 
 from __future__ import annotations
 
@@ -16,6 +16,19 @@ from tealeaf.sc import sc_utils
 def _read_lines(path):
     with open(path) as handle:
         return [line.rstrip("\n") for line in handle]
+
+
+def _resolve_quantification_dir(path):
+    """Return the directory containing alevin matrix and EC files."""
+    path = Path(path)
+    if (path / "quants_mat_rows.txt").is_file():
+        return path
+    nested = path / "alevin"
+    if (nested / "quants_mat_rows.txt").is_file():
+        return nested
+    raise FileNotFoundError(
+        f"no alevin quantification found in {path} or {nested}"
+    )
 
 
 def _load_structure(path):
@@ -50,16 +63,18 @@ def _load_counts(path):
 
 
 def merge_alevin_quantifications(inputs, output_dir) -> dict:
-    """Merge batches by transcript-set EC identity and prefix cell barcodes.
+    """Merge runs by transcript-set EC identity and prefix cell barcodes.
 
     Parameters
     ----------
     inputs
-        Sequence of ``(batch_name, quantification_directory)`` pairs.
+        Sequence of ``(run_name, quantification_directory)`` pairs.
     output_dir
         New directory receiving sparse caches and row/column labels.
     """
-    inputs = [(str(name), Path(path)) for name, path in inputs]
+    inputs = [
+        (str(name), _resolve_quantification_dir(path)) for name, path in inputs
+    ]
     if not inputs:
         raise ValueError("at least one alevin quantification is required")
     if len({name for name, _ in inputs}) != len(inputs):
@@ -170,7 +185,7 @@ def merge_alevin_quantifications(inputs, output_dir) -> dict:
                             f"{rank}\t{encoded}\n"
                         )
     return {
-        "batches": len(inputs),
+        "quantifications": len(inputs),
         "cells": counts.shape[0],
         "equivalence_classes": counts.shape[1],
         "features": membership.shape[1],

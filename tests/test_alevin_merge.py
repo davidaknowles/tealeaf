@@ -54,3 +54,23 @@ def test_merge_aligns_features_ecs_and_probabilities(tmp_path):
         rows = handle.read().splitlines()
     assert rows[1].split("\t")[-1] == "0.25,0.75"
     assert rows[2].split("\t")[-1] == "0.4,0.6"
+
+
+def test_merge_accepts_alevin_fry_output_root(tmp_path):
+    first = tmp_path / "first" / "alevin"
+    second = tmp_path / "second" / "alevin"
+    first.parent.mkdir()
+    second.parent.mkdir()
+    _write_quant(first, ["tx1"], ["cell1"], [[2]], [[1]], [])
+    _write_quant(second, ["tx1"], ["cell2"], [[3]], [[1]], [])
+
+    output = tmp_path / "merged"
+    report = merge_alevin_quantifications(
+        [("run1", first.parent), ("run2", second.parent)], output
+    )
+
+    assert report["cells"] == 2
+    assert (output / "quants_mat_rows.txt").read_text().splitlines() == [
+        "run1:cell1",
+        "run2:cell2",
+    ]

@@ -1009,9 +1009,10 @@ cell calling. Merging only after alevin-fry preserves cell identity by
 prefixing it with the ENA run accession without introducing separate
 sublibrary-specific observation blocks into the genome-wide GLM. The merger
 streams one sublibrary structure or count matrix at a time to bound peak
-memory. The resulting merged count matrix and fixed weighted design support
-binary, weighted, and paired-primer genome-wide fits using the same reusable
-CV and scoring code as the initial dataset.
+memory and accepts either an alevin-fry output root or its nested `alevin`
+matrix directory. The resulting merged count matrix and fixed weighted design
+support binary, weighted, and paired-primer genome-wide fits using the same
+reusable CV and scoring code as the initial dataset.
 
 The public processed Seurat object and case table will supply reference cell
 types, subjects, and diagnoses for external representation scoring. Labels are
