@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=parse_alevin_fry
 #SBATCH --cpus-per-task=20
-#SBATCH --mem=96G
+#SBATCH --mem=48G
 #SBATCH --time=4-00:00:00
 
 set -euo pipefail

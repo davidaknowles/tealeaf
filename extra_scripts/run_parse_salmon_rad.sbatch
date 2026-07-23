@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=parse_salmon_rad
 #SBATCH --cpus-per-task=20
-#SBATCH --mem=164G
+#SBATCH --mem=64G
 #SBATCH --time=4-00:00:00
 
 set -euo pipefail
