@@ -13,7 +13,13 @@ printf 'stage\ttag\tdesign\tmethod\tjob_id\n' > "${jobs_file}"
 : > "${fits_file}"
 
 common="ALL,REPO_ROOT=${REPO_ROOT},ALEVIN_DIR=${ALEVIN_DIR},SALMON_REF=${SALMON_REF}/spliceu.fa,RUN_DIR=${GLM_RUN},CV_CELLS=0,MIN_CELL_UMIS=500"
-cache=$(sbatch --parsable --dependency="afterok:${MERGE_JOB}" \
+validation=$(sbatch --parsable --dependency="afterok:${MERGE_JOB}" \
+  --job-name=gse233208_validate \
+  -o "${GLM_RUN}/logs/%x-%j.out" -e "${GLM_RUN}/logs/%x-%j.err" \
+  "${REPO_ROOT}/analyses/GSE233208/validate_merged.sbatch")
+printf 'validate\tall\tall\tall\t%s\n' "${validation}" >> "${jobs_file}"
+echo "merged data validation=${validation}"
+cache=$(sbatch --parsable --dependency="afterok:${validation}" \
   --job-name=gse23_cache_designs --cpus-per-task=8 --mem=192G \
   --time=2-00:00:00 \
   -o "${GLM_RUN}/logs/%x-%j.out" -e "${GLM_RUN}/logs/%x-%j.err" \
