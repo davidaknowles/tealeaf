@@ -1141,6 +1141,14 @@ After all 30 outputs had validated markers, the stale early fry and recovery
 jobs were cancelled. The content gate now waits only for the remaining
 10-run branch.
 
+All 80 FASTQs are now present with their manifest sizes and checksums. ENA
+limited individual HTTPS streams to roughly 1 MB/s. The final 13.6 GB file was
+therefore fetched as eight HTTP byte ranges, assembled in byte order, and
+accepted only after its total size and published MD5 matched exactly. The
+single-stream partial was moved aside rather than deleted. This reduced the
+last transfer from a projected tens of minutes to about 20 minutes and
+released the remaining 10-run Salmon branch.
+
 A bounded real-data integration job uses one million paired reads from a
 checksum-verified GSE233208 sublibrary. It runs the same patched Salmon,
 alevin-fry, probability dump, and validation components as production. This is
