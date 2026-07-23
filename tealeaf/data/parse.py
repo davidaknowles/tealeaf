@@ -23,26 +23,34 @@ def parse_primer_pairs(cell_barcodes, rt_barcodes):
     rt_barcodes = list(rt_barcodes)
     if not rt_barcodes or len(rt_barcodes) % 2:
         raise ValueError("the Parse RT list must contain two equal halves")
+    if len(rt_barcodes) != len(set(rt_barcodes)):
+        raise ValueError("the Parse RT list contains duplicate barcodes")
     half = len(rt_barcodes) // 2
     poly_to_hex = dict(zip(rt_barcodes[:half], rt_barcodes[half:]))
     hex_to_poly = {value: key for key, value in poly_to_hex.items()}
+    rt_to_poly = {
+        **{barcode: barcode for barcode in poly_to_hex},
+        **hex_to_poly,
+    }
+    rt_lengths = sorted({len(barcode) for barcode in rt_barcodes}, reverse=True)
     known = set(cell_barcodes)
     pairs = {}
     for barcode in cell_barcodes:
-        matched = False
-        for rt in rt_barcodes:
-            if not barcode.endswith(rt):
-                continue
-            prefix = barcode[: -len(rt)]
-            poly_rt = rt if rt in poly_to_hex else hex_to_poly[rt]
-            polydt = prefix + poly_rt
-            ranhex = prefix + poly_to_hex[poly_rt]
-            cell_id = polydt
-            pairs[cell_id] = (polydt, ranhex)
-            matched = True
-            break
-        if not matched:
+        matches = [
+            barcode[-length:]
+            for length in rt_lengths
+            if len(barcode) >= length and barcode[-length:] in rt_to_poly
+        ]
+        if not matches:
             raise ValueError(f"cell barcode has no known Parse RT suffix: {barcode}")
+        if len(matches) > 1:
+            raise ValueError(f"cell barcode has ambiguous Parse RT suffix: {barcode}")
+        rt = matches[0]
+        prefix = barcode[: -len(rt)]
+        poly_rt = rt_to_poly[rt]
+        polydt = prefix + poly_rt
+        ranhex = prefix + poly_to_hex[poly_rt]
+        pairs[polydt] = (polydt, ranhex)
     return [
         (cell_id, polydt, ranhex)
         for cell_id, (polydt, ranhex) in sorted(pairs.items())

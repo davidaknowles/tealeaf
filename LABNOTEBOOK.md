@@ -999,7 +999,8 @@ Added reusable acquisition and processing components:
   transcript identity, prefixes cell barcodes with batch, and remaps the
   patched per-UMI probability sidecars into the merged EC coordinate system.
 - `tealeaf.data.parse` derives batch-aware poly(dT)/random-hexamer half-cell
-  pairs from the ordered Parse RT barcode list.
+  pairs from the ordered Parse RT barcode list using indexed suffix lookup,
+  making pairing linear in the number of called half cells.
 
 Each of the 40 sublibraries is quantified independently. Inspection of the
 published metadata showed that combinatorial barcodes recur between
