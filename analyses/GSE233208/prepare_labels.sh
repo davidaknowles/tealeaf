@@ -6,7 +6,7 @@ module load python/3.10.8-GCCcore-12.2.0
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 
 metadata="${DATA_ROOT}/metadata/GSE233208_Human_snRNA-Seq_ADDS_metadata.tsv.gz"
-python "${REPO_ROOT}/extra_scripts/prepare_reference_labels.py" \
+"${PYTHON_BIN}" "${REPO_ROOT}/extra_scripts/prepare_reference_labels.py" \
   --metadata "${metadata}" \
   --label-column annotation \
   --group-column CaseNum \

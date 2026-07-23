@@ -23,7 +23,7 @@ cache=$(sbatch --parsable --dependency="afterok:${validation}" \
   --job-name=gse23_cache_designs --cpus-per-task=8 --mem=192G \
   --time=2-00:00:00 \
   -o "${GLM_RUN}/logs/%x-%j.out" -e "${GLM_RUN}/logs/%x-%j.err" \
-  --wrap "bash -lc 'module load python/3.10.8-GCCcore-12.2.0 && export PYTHONPATH=${REPO_ROOT} && python ${REPO_ROOT}/extra_scripts/cache_alevin_glm_designs.py --alevin-dir ${ALEVIN_DIR} --salmon-ref ${SALMON_REF}/spliceu.fa --primer-pairs ${ALEVIN_DIR}/primer_pairs.tsv --min-half-umis 500'")
+  --wrap "bash -lc 'export PYTHONPATH=${REPO_ROOT} && ${PYTHON_BIN} ${REPO_ROOT}/extra_scripts/cache_alevin_glm_designs.py --alevin-dir ${ALEVIN_DIR} --salmon-ref ${SALMON_REF}/spliceu.fa --primer-pairs ${ALEVIN_DIR}/primer_pairs.tsv --min-half-umis 500'")
 echo "fixed weighted design cache=${cache}"
 printf 'cache\tall\tall\tall\t%s\n' "${cache}" >> "${jobs_file}"
 fit_jobs=()
@@ -90,7 +90,7 @@ aggregate=$(sbatch --parsable --dependency="afterok:${score_dependency}" \
   --job-name=gse23_aggregate_scores --cpus-per-task=1 --mem=2G \
   --time=00:30:00 \
   -o "${GLM_RUN}/logs/%x-%j.out" -e "${GLM_RUN}/logs/%x-%j.err" \
-  --wrap "bash -lc 'module load python/3.10.8-GCCcore-12.2.0 && python ${REPO_ROOT}/extra_scripts/aggregate_glm_scores.py --fits-file ${fits_file} --score-output ${GLM_RUN}/label_scores'")
+  --wrap "bash -lc '${PYTHON_BIN} ${REPO_ROOT}/extra_scripts/aggregate_glm_scores.py --fits-file ${fits_file} --score-output ${GLM_RUN}/label_scores'")
 printf 'aggregate_scores\tall\tall\tall\t%s\n' \
   "${aggregate}" >> "${jobs_file}"
 echo "aggregate scores=${aggregate}"

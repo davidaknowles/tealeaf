@@ -9,6 +9,7 @@ CONFIG=${CONFIG:-/gpfs/commons/home/daknowles/projects/tealeaf/analyses/GSE23320
 source "${CONFIG}"
 module load SeqKit/2.9.0
 module load python/3.10.8-GCCcore-12.2.0
+export PYTHON_BIN
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 
 RUN_ACCESSION=${RUN_ACCESSION:-SRR24710695}
@@ -40,7 +41,7 @@ export ALEVIN_FRY_BIN
 export MIN_READS=5
 bash "${REPO_ROOT}/extra_scripts/run_parse_alevin_fry.sbatch"
 
-python "${REPO_ROOT}/extra_scripts/validate_alevin_quantification.py" \
+"${PYTHON_BIN}" "${REPO_ROOT}/extra_scripts/validate_alevin_quantification.py" \
   --alevin-dir "${SMOKE_ROOT}/alevin_quant" \
   --min-cell-umis 1 \
   --max-total-molecules "${READ_PAIRS}" \

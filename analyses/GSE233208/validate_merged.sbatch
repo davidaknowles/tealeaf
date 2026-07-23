@@ -10,7 +10,7 @@ source "${CONFIG}"
 module load python/3.10.8-GCCcore-12.2.0
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 
-python "${REPO_ROOT}/extra_scripts/validate_alevin_quantification.py" \
+"${PYTHON_BIN}" "${REPO_ROOT}/extra_scripts/validate_alevin_quantification.py" \
   --alevin-dir "${DATA_ROOT}/processed/merged_alevin" \
   --manifest "${DATA_ROOT}/manifest/ena_fastqs.tsv" \
   --reference-labels "${DATA_ROOT}/metadata/reference_annotation.csv" \

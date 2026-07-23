@@ -8,7 +8,7 @@ CONFIG=${CONFIG:-/gpfs/commons/home/daknowles/projects/tealeaf/analyses/GSE23320
 source "${CONFIG}"
 module load python/3.10.8-GCCcore-12.2.0
 export PYTHON_BIN
-PYTHON_BIN=$(command -v python3)
+PYTHON_BIN=${PYTHON_BIN:-$(command -v python3)}
 task=${SLURM_ARRAY_TASK_ID:?array index is required}
 manifest="${DATA_ROOT}/manifest/ena_fastqs.tsv"
 row=$(awk -F '\t' -v target="$((task + 1))" '

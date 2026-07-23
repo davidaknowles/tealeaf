@@ -5,7 +5,7 @@ module load python/3.10.8-GCCcore-12.2.0
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 mkdir -p "${DATA_ROOT}/manifest" "${RUN_ROOT}/logs"
 
-python "${REPO_ROOT}/analyses/GSE233208/prepare_manifest.py" \
+"${PYTHON_BIN}" "${REPO_ROOT}/analyses/GSE233208/prepare_manifest.py" \
   --output "${DATA_ROOT}/manifest/ena_fastqs.tsv"
 
 download=${DOWNLOAD_JOB:-}
@@ -15,7 +15,7 @@ if [[ -z "${download}" ]]; then
     --time=3-00:00:00 \
     -o "${RUN_ROOT}/logs/download-%j.out" \
     -e "${RUN_ROOT}/logs/download-%j.err" \
-    --wrap "bash -lc 'module load python/3.10.8-GCCcore-12.2.0 && export PYTHONPATH=${REPO_ROOT} && cd ${REPO_ROOT} && python extra_scripts/fetch_ena_fastqs.py --manifest ${DATA_ROOT}/manifest/ena_fastqs.tsv --destination ${DATA_ROOT}/fastq --workers 8'")
+    --wrap "bash -lc 'export PYTHONPATH=${REPO_ROOT} && cd ${REPO_ROOT} && ${PYTHON_BIN} extra_scripts/fetch_ena_fastqs.py --manifest ${DATA_ROOT}/manifest/ena_fastqs.tsv --destination ${DATA_ROOT}/fastq --workers 8'")
 fi
 salmon=$(sbatch --parsable --array=0-39 --dependency="afterok:${download}" \
   --job-name=gse233208_salmon \
