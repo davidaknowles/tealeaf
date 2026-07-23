@@ -16,6 +16,10 @@ PERMIT_DIR=${PERMIT_DIR:-"${SALMON_DIR}/permit_known"}
 MIN_READS=${MIN_READS:-100}
 THREADS=${SLURM_CPUS_PER_TASK:-8}
 COMPLETE_MARKER="${OUT_DIR}/.tealeaf_complete"
+VALIDATION_REPORT="${OUT_DIR}/validation.json"
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+REPO_ROOT=$(cd "${SCRIPT_DIR}/.." && pwd)
+PYTHON_BIN=${PYTHON_BIN:-python}
 
 quantification_files_exist() {
   [[
@@ -27,11 +31,6 @@ quantification_files_exist() {
   ]]
 }
 
-if [[ -s "${COMPLETE_MARKER}" ]] && quantification_files_exist; then
-  echo "Reusing completed alevin-fry output: ${OUT_DIR}"
-  exit 0
-fi
-
 if [[ ! -s "${PERMIT_DIR}/permit_freq.bin" ]]; then
   "${ALEVIN_FRY_BIN}" generate-permit-list \
     -d both -i "${SALMON_DIR}" -o "${PERMIT_DIR}" \
@@ -41,6 +40,19 @@ if [[ ! -s "${PERMIT_DIR}/map.collated.rad" ]]; then
   "${ALEVIN_FRY_BIN}" collate \
     -r "${SALMON_DIR}" -t "${THREADS}" -i "${PERMIT_DIR}"
 fi
+if [[ -s "${COMPLETE_MARKER}" ]] && quantification_files_exist; then
+  if [[ ! -s "${VALIDATION_REPORT}" ]]; then
+    PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}" "${PYTHON_BIN}" \
+      "${SCRIPT_DIR}/validate_alevin_quantification.py" \
+      --alevin-dir "${OUT_DIR}" \
+      --min-cell-umis 1 \
+      --salmon-meta "${SALMON_DIR}/aux_info/meta_info.json" \
+      --output "${VALIDATION_REPORT}"
+  fi
+  echo "Reusing completed alevin-fry output: ${OUT_DIR}"
+  exit 0
+fi
+
 if [[ -e "${OUT_DIR}" ]]; then
   echo "Refusing to overwrite existing output: ${OUT_DIR}" >&2
   exit 1
@@ -57,4 +69,10 @@ if ! quantification_files_exist; then
   echo "alevin-fry completed without required matrix/probability outputs" >&2
   exit 1
 fi
+PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}" "${PYTHON_BIN}" \
+  "${SCRIPT_DIR}/validate_alevin_quantification.py" \
+  --alevin-dir "${OUT_DIR}" \
+  --min-cell-umis 1 \
+  --salmon-meta "${SALMON_DIR}/aux_info/meta_info.json" \
+  --output "${VALIDATION_REPORT}"
 printf 'alevin_fry_complete\n' > "${COMPLETE_MARKER}"

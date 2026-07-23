@@ -156,6 +156,11 @@ def validate_alevin_quantification(
         "count_nonzeros": int(counts.nnz),
         "compatibility_nonzeros": int(membership.nnz),
         "molecules": total_molecules,
+        "max_total_molecules": (
+            None
+            if max_total_molecules is None
+            else float(max_total_molecules)
+        ),
         "min_cell_umis": float(min_cell_umis),
         "eligible_cells": eligible,
         "observed_prefixes": len(observed_prefixes),

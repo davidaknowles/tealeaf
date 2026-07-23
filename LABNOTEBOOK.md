@@ -1133,6 +1133,11 @@ bounded real-data integration job sets that maximum to its input read-pair
 count. This provides a regression check for stale state or other count
 inflation before a patched binary is used for full data.
 
+Every production fry task now applies the same count-conservation gate using
+Salmon's authoritative `num_mapped` value. Matrix structure, weighted
+probability output, nonnegative counts, nonempty cells, and total molecule
+mass are validated before the per-run completion marker is written.
+
 The corrected real-data output was also carried through primer pairing,
 weighted-design caching, paired rank CV, a bounded genome-wide factorized fit,
 and representation scoring. This integration pass found two downstream

@@ -135,6 +135,7 @@ def test_validate_merged_quantification(tmp_path):
     assert report["eligible_cells"] == 1
     assert report["reference_overlap"] == 1
     assert report["complete_primer_pairs"] == 1
+    assert report["max_total_molecules"] is None
 
     with pytest.raises(ValueError, match="exceeding the limit"):
         validate_alevin_quantification(
