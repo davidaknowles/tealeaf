@@ -33,6 +33,7 @@ def main():
     parser.add_argument("--primer-pairs", type=Path)
     parser.add_argument("--min-cell-umis", type=float, default=500)
     parser.add_argument("--min-reference-overlap", type=int, default=1)
+    parser.add_argument("--max-total-molecules", type=float)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
 
@@ -48,6 +49,7 @@ def main():
         primer_pair_file=args.primer_pairs,
         min_cell_umis=args.min_cell_umis,
         min_reference_overlap=args.min_reference_overlap,
+        max_total_molecules=args.max_total_molecules,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with open(args.output, "w") as handle:

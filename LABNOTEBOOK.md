@@ -1100,3 +1100,20 @@ Representation scoring is submitted independently for each selected fit and
 depends only on that fit, rather than serializing all reconstructions after the
 slowest method. A final CPU task combines the per-fit summaries after all eight
 scoring jobs finish.
+
+The first million-read weighted integration run exposed a count-conservation
+failure: fry reported 362,310 processed records, but the dumped EC matrix
+contained 3,570,371 molecules. The patched probability-bearing record path
+disabled the small-cell shortcut, while the inherited cleanup still cleared
+the reusable per-worker EC map only for cells above the shortcut size
+threshold. Small cells therefore retained preceding cells' EC state and
+re-emitted cumulative counts.
+
+The alevin-fry patch now clears the EC map whenever `used_fast_path` is false,
+independent of cell size. Rebuilding and repeating the same integration run
+produced 336,260 deduplicated molecules from 362,310 processed records, with
+309,373 rather than 2,956,669 nonzero cell-by-EC entries. The reusable
+quantification validator accepts a maximum total molecule count, and the
+bounded real-data integration job sets that maximum to its input read-pair
+count. This provides a regression check for stale state or other count
+inflation before a patched binary is used for full data.

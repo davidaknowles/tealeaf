@@ -71,7 +71,7 @@ index d954d41..1d5dd1f 100644
                      let eqmap_deref = shared.eqid_map_lock.lock();
                      let geqmap = &mut *eqmap_deref.unwrap();
                      // the next available global id for a gene-level
-@@ -1247,23 +1250,46 @@ where
+@@ -1247,28 +1250,49 @@ where
                      let mut next_id = geqmap.global_eqc.len() as u64;
                      for (labels, payload) in gene_eqc.iter() {
                          let count = payload.count();
@@ -127,9 +127,17 @@ index d954d41..1d5dd1f 100644
 +                        }
 +                    }
                  }
-                 // Reset the gene eqc map only if it was used (i.e., NOT the fast path).
-                 // For fast-path cells (nrec < SMALL_CELL_FAST_THRESHOLD), gene_eqc was
-@@ -1615,6 +1641,16 @@ where
+-                // Reset the gene eqc map only if it was used (i.e., NOT the fast path).
+-                // For fast-path cells (nrec < SMALL_CELL_FAST_THRESHOLD), gene_eqc was
+-                // never touched, so clearing it is pure waste — and the O(capacity) clear
+-                // was the 95% bottleneck when processing millions of tiny cells.
+-                if nrec >= SMALL_CELL_FAST_THRESHOLD as u32 {
++                // Reset the gene eqc map whenever this cell used it. Probability-carrying
++                // records cannot use the small-cell fast path, regardless of cell size.
++                if !used_fast_path {
+                     if gene_eqc.capacity() > 256 {
+                         gene_eqc = HashMap::with_hasher(ahash::RandomState::with_seeds(
+@@ -1615,6 +1639,16 @@ where
          row_index: 0usize,
      }));
 
@@ -146,7 +154,7 @@ index d954d41..1d5dd1f 100644
      let mmrate = Arc::new(Mutex::new(vec![0f64; num_cells as usize]));
 
      type WorkerResult = (usize, Vec<(usize, usize, f32)>, BootstrapHelper);
-@@ -1650,6 +1686,7 @@ where
+@@ -1650,6 +1684,7 @@ where
          let bcout = bc_writer.clone();
          // global gene-level eqc map
          let eqid_map_lockc = eqid_map_lock.clone();
@@ -154,7 +162,7 @@ index d954d41..1d5dd1f 100644
          // and will need to know the barcode length
          let alt_res_cells = alt_res_cells.clone();
          let empty_resolved_cells = empty_resolved_cells.clone();
-@@ -1707,6 +1744,7 @@ where
+@@ -1707,6 +1742,7 @@ where
              cells_remaining,
              bcout,
              eqid_map_lock: eqid_map_lockc,

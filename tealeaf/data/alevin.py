@@ -71,6 +71,7 @@ def validate_alevin_quantification(
     primer_pair_file=None,
     min_cell_umis=500,
     min_reference_overlap=1,
+    max_total_molecules=None,
 ):
     """Validate a merged quantification before downstream model fitting."""
     path = _resolve_quantification_dir(path)
@@ -99,6 +100,15 @@ def validate_alevin_quantification(
         raise ValueError(f"missing expected cell prefixes: {missing_prefixes}")
 
     totals = np.asarray(counts.sum(axis=1)).ravel()
+    total_molecules = float(totals.sum())
+    if (
+        max_total_molecules is not None
+        and total_molecules > float(max_total_molecules)
+    ):
+        raise ValueError(
+            f"quantification has {total_molecules:g} molecules, exceeding "
+            f"the limit {float(max_total_molecules):g}"
+        )
     eligible = int(np.count_nonzero(totals >= float(min_cell_umis)))
     if eligible == 0:
         raise ValueError(f"no cells have at least {min_cell_umis:g} UMIs")
@@ -143,7 +153,7 @@ def validate_alevin_quantification(
         "features": int(membership.shape[1]),
         "count_nonzeros": int(counts.nnz),
         "compatibility_nonzeros": int(membership.nnz),
-        "molecules": float(totals.sum()),
+        "molecules": total_molecules,
         "min_cell_umis": float(min_cell_umis),
         "eligible_cells": eligible,
         "observed_prefixes": len(observed_prefixes),

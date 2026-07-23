@@ -43,4 +43,5 @@ bash "${REPO_ROOT}/extra_scripts/run_parse_alevin_fry.sbatch"
 python "${REPO_ROOT}/extra_scripts/validate_alevin_quantification.py" \
   --alevin-dir "${SMOKE_ROOT}/alevin_quant" \
   --min-cell-umis 1 \
+  --max-total-molecules "${READ_PAIRS}" \
   --output "${SMOKE_ROOT}/validation.json"
