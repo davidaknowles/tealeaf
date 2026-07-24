@@ -1405,3 +1405,46 @@ sets. Skipping weight-vector allocation for irrelevant rows reduced a
 single-file profile from 220 to 142 seconds and from 5.4 to 4.9 GB peak
 memory. A Slurm-requeued task left 32 KB of partial output, which was moved to
 scratch before its clean retry.
+
+All 40 validated runs conserved 13,614,523,624 input read pairs and assigned
+10,712,743,461 (78.69 percent) to one primer. Salmon processed 6.89 billion
+poly(dT) and 3.82 billion random-hexamer reads, mapping 48.46 and 50.41
+percent, respectively. Every run retained all 243,927 reference targets and
+the required unstranded library type.
+
+The genome-wide reducer produced two finite, nonnegative
+9,048,099-by-243,927 primer designs with 73,276,245 nonzeros each and 238,282
+active transcript columns. Exact transcript-set joins covered 23.31 percent of
+distinct poly(dT) ECs and 16.15 percent of random-hexamer ECs, but represented
+97.92 and 98.86 percent of the corresponding molecule mass. The unmatched
+tail therefore uses the documented effective-length fallback without
+controlling the fitted signal.
+
+For oligo(dT), the primary theta model treats expected UMI abundance as
+proportional to latent transcript molecule fraction, or TPM scale, with no
+additional transcript-length exposure. Anchored priming provides
+approximately one UMI-generating opportunity per captured polyadenylated
+molecule. Primer-specific effective lengths remain part of Salmon's
+alignment, positional-bias, and fallback-weight calculations; they are not
+multiplied into the oligo(dT) response model again. This does not assert equal
+capture efficiency across transcripts: poly(A)-tail state, degradation,
+internal priming, end annotation, and mappability can still introduce
+transcript-specific effects. Random-hexamer counts retain relative
+effective-length exposure because longer molecules provide more priming
+opportunities.
+
+The first complete positional-design CV branch used all 201,023 paired cells
+passing 500 UMIs in each primer half. Direct nonnegative factorization
+converged for ranks 1 through 128 in every count fold. Mean held-out loss
+decreased from 0.006700 at rank 1 to 0.006663 at rank 128; the
+one-standard-error rule selected rank 32 without using cell-type labels. The
+selected all-cell rank-32 fit converged by objective patience after 273
+iterations, with finite factors, effectively complete active-cell coverage,
+and 26.4 GB peak CUDA allocation.
+
+The corresponding log1p gene-PCA benchmark scored all 157,006 labeled cells.
+Five-fold held-out label prediction had mean accuracy 0.4935, balanced
+accuracy 0.5641, and macro F1 0.5077. The reference-label silhouette was
+-0.3029 and the k-means silhouette was 0.2876. These are intermediate
+factorization results; ADMM and penalized Frank--Wolfe CV, their selected
+fits, and the aggregate standard-analysis comparison remain in progress.
