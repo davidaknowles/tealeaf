@@ -20,9 +20,8 @@ Console commands are exposed through `tealeaf/__main__.py`:
 - `tealeaf-sc`: runs the single-cell alevin-fry pipeline.
 - `tealeaf-ggsashimi`: plots tealeaf intron/exon counts in a sashimi-style view.
 
-Packaging is defined in both `pyproject.toml` and `setup.py`. Note that
-`pyproject.toml` appears to misspell the ggsashimi entry point as
-`tealeaf_ggshashimi`; `setup.py` uses the correct `tealeaf_ggsashimi`.
+Packaging is defined in both `pyproject.toml` and `setup.py`; both expose the
+same `tealeaf-ggsashimi` entry point.
 
 ## Main Data Flow
 
@@ -90,6 +89,62 @@ After transcript quantification, `sc_intron_count()` multiplies the pseudobulk
 transcript matrix by the reference isoform-intron and isoform-exon sparse
 matrices. This produces the same `{prefix}count_intron` and
 `{prefix}count_exon` files consumed by the shared clustering code.
+
+### Genome-Wide Single-Cell GLMs
+
+`tealeaf/sc/glm_solvers.py` implements memory-bounded transcript-by-cell
+models without materializing that full matrix:
+
+- `factorized` fits nonnegative low-rank factors with alternating projected
+  FISTA updates. Its rank is selected by held-out molecule-count CV.
+- `admm_factorized` applies adaptive-rho ADMM to nonnegative factors and tunes
+  a dimensionless fraction of the nuclear-norm zero-solution threshold.
+- `frank_wolfe_penalized` builds a signed low-rank atom representation inside
+  a nuclear-norm ball and uses a smooth penalty for negative fitted mass.
+
+`tealeaf/sc/glm_cv.py` prepares standard or paired-primer responses, creates
+deterministic molecule-count folds, follows warm-start paths, expands open
+hyperparameter grids, and rejects nonconverged or degenerate candidates.
+Responses are normalized per cell. Paired poly(dT) and random-hexamer halves
+have separate observation designs but share one latent abundance row.
+
+The corrected positional design is primer-specific. Salmon supplies
+conditional transcript weights, learned positional bias, and effective
+lengths. The primary theta model treats poly(dT) UMIs as proportional to
+transcript molecule fraction without another length exposure; random-hexamer
+UMIs retain relative effective-length exposure.
+
+Compact outputs contain transcript and cell factors, row and column labels,
+and a JSON manifest with convergence, throughput, memory, normalization, and
+primer-model diagnostics.
+
+### Public Parse Pipeline
+
+Reusable data components live under `tealeaf/data/`:
+
+- `ena.py` builds validated ENA manifests and performs resumable,
+  checksum-verified FASTQ downloads.
+- `alevin.py` merges sublibrary quantifications by transcript-set EC identity,
+  prefixes recurring barcodes by run, and remaps fixed-probability sidecars.
+- `parse.py` pairs poly(dT) and random-hexamer half cells and streams Parse
+  reads into primer-specific Salmon processes without materializing split
+  FASTQs.
+- `salmon.py` validates and reduces primer-specific rich-EC and positional-bias
+  output into sparse genome-wide designs.
+
+Dataset orchestration belongs under `analyses/`; reusable processing,
+validation, fitting, and scoring logic remains in the package or
+`extra_scripts/`.
+
+### Representation Evaluation
+
+`tealeaf/sc/representation_scoring.py` aggregates transcript loadings to
+genes, reconstructs cells in batches, applies library-size normalization and
+`log1p`, selects variable genes, and computes a 30-dimensional PCA. Evaluation
+uses group-held-out label prediction plus label and k-means silhouette scores,
+ARI, and NMI. Labels are not used for GLM rank or regularization selection.
+An external reference embedding can be mapped onto the same eligible cells to
+provide a matched standard-analysis baseline.
 
 ### 4. Shared Clustering and PSI Calculation
 
@@ -184,7 +239,6 @@ the fourth colon-delimited field.
 
 ## Notes and Potential Issues
 
-- `pyproject.toml` has a likely typo in the `tealeaf-ggsashimi` script target.
 - `cluster_def` is parsed in the bulk and single-cell CLIs, but the current calls
   to `process_clusters()` do not pass `mode=options.cluster_def`, so mode `3`
   is always used.
