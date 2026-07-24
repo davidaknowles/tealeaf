@@ -1223,3 +1223,12 @@ now declared once in the dataset configuration and loaded consistently by
 preprocessing, merge, metadata, validation, and GLM submission scripts. The
 configured interpreter was checked by importing NumPy, SciPy, and PyTorch
 after loading that module.
+
+All 40 public GSE233208 sublibraries passed the content gate. Together they
+contain 2,520,302 called primer half-cells and 2,185,504,840 deduplicated
+molecules from 6,050,007,444 Salmon-mapped fragments. Because the queued merge
+would have waited several days for a large-memory slot, the same merge launcher
+was run in an existing compute allocation with sufficient memory. The GLM
+submitter now supports either a pending merge dependency or an already
+materialized merged count matrix, so a completed external merge can root the
+validation and fitting graph without a placeholder job.

@@ -3,7 +3,7 @@ set -euo pipefail
 source "$(dirname "$0")/config.env"
 module load "${PYTHON_MODULE}"
 
-MERGE_JOB=${MERGE_JOB:?set MERGE_JOB to the successful/pending merge job id}
+MERGE_JOB=${MERGE_JOB:-}
 ALEVIN_DIR="${DATA_ROOT}/processed/merged_alevin"
 GLM_RUN="${RUN_ROOT}/glm"
 mkdir -p "${GLM_RUN}/logs"
@@ -13,8 +13,14 @@ fits_file="${GLM_RUN}/submitted_fits_${stamp}.tsv"
 printf 'stage\ttag\tdesign\tmethod\tjob_id\n' > "${jobs_file}"
 : > "${fits_file}"
 
-common="ALL,REPO_ROOT=${REPO_ROOT},ALEVIN_DIR=${ALEVIN_DIR},SALMON_REF=${SALMON_REF}/spliceu.fa,RUN_DIR=${GLM_RUN},CV_CELLS=0,MIN_CELL_UMIS=500"
-validation=$(sbatch --parsable --dependency="afterok:${MERGE_JOB}" \
+merge_dependency=()
+if [[ -n "${MERGE_JOB}" ]]; then
+  merge_dependency+=(--dependency="afterok:${MERGE_JOB}")
+elif [[ ! -s "${ALEVIN_DIR}/geqc_counts.npz" ]]; then
+  echo "Merged counts are absent; set MERGE_JOB to a pending merge job" >&2
+  exit 1
+fi
+validation=$(sbatch --parsable "${merge_dependency[@]}" \
   --job-name=gse233208_validate \
   -o "${GLM_RUN}/logs/%x-%j.out" -e "${GLM_RUN}/logs/%x-%j.err" \
   "${REPO_ROOT}/analyses/GSE233208/validate_merged.sbatch")
