@@ -43,13 +43,14 @@ def test_build_positional_design_collapses_rows_and_falls_back(tmp_path):
     # range-factorized instances of the same transcript set.
     with gzip.open(quant / "aux_info" / "eq_classes.txt.gz", "wt") as handle:
         handle.write(
-            "3\n3\n"
+            "3\n4\n"
             "tx2\n"
             "tx0\n"
             "tx1\n"
             "2\t1\t2\t0.8\t0.2\t3\n"
             "2\t2\t1\t0.6\t0.4\t1\n"
             "1\t1\t1.0\t2\n"
+            "2\t1\t0\t0.5\t0.5\t7\n"
         )
     quant2 = tmp_path / "quant2"
     (quant2 / "aux_info").mkdir(parents=True)
@@ -92,6 +93,9 @@ def test_build_positional_design_collapses_rows_and_falls_back(tmp_path):
     expected = raw / raw.sum(axis=0)
     np.testing.assert_allclose(design.toarray(), expected, rtol=1e-6)
     assert stats["salmon_duplicate_rows"] == 2
+    assert stats["salmon_rows"] == 5
+    assert stats["salmon_retained_rows"] == 4
+    assert stats["alevin_unique_transcript_sets"] == 3
     assert stats["salmon_quantifications"] == 2
     assert stats["matched_alevin_ecs"] == 2
     assert stats["fallback_alevin_ecs"] == 1

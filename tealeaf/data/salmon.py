@@ -35,9 +35,16 @@ class WeightedEC:
         return self.weighted_sum / self.count
 
 
-def read_salmon_weighted_eqclasses(path, feature_to_index):
+def read_salmon_weighted_eqclasses(
+    path,
+    feature_to_index,
+    *,
+    allowed_keys=None,
+):
     """Read and count-collapse Salmon rich ECs keyed by global transcript IDs."""
     feature_to_index = dict(feature_to_index)
+    if allowed_keys is not None and not isinstance(allowed_keys, (set, frozenset)):
+        allowed_keys = set(allowed_keys)
     by_key = {}
     with _open_text(path) as handle:
         num_targets = int(next(handle))
@@ -53,6 +60,7 @@ def read_salmon_weighted_eqclasses(path, feature_to_index):
             [feature_to_index[name] for name in names], dtype=np.int64
         )
         observed_rows = 0
+        retained_rows = 0
         for line_number, line in enumerate(handle, start=num_targets + 3):
             fields = line.split()
             if not fields:
@@ -77,6 +85,9 @@ def read_salmon_weighted_eqclasses(path, feature_to_index):
             if total <= 0:
                 raise ValueError(f"zero Salmon EC weight on line {line_number}")
             weights /= total
+            observed_rows += 1
+            if allowed_keys is not None and key not in allowed_keys:
+                continue
             contribution = count * weights
             existing = by_key.get(key)
             if existing is None:
@@ -85,7 +96,7 @@ def read_salmon_weighted_eqclasses(path, feature_to_index):
                 existing.weighted_sum += contribution
                 existing.count += count
                 existing.rows += 1
-            observed_rows += 1
+            retained_rows += 1
     if observed_rows != num_rows:
         raise ValueError(
             f"Salmon header reports {num_rows} EC rows, parsed {observed_rows}"
@@ -93,8 +104,9 @@ def read_salmon_weighted_eqclasses(path, feature_to_index):
     return by_key, {
         "salmon_targets": num_targets,
         "salmon_rows": observed_rows,
+        "salmon_retained_rows": retained_rows,
         "salmon_unique_transcript_sets": len(by_key),
-        "salmon_duplicate_rows": observed_rows - len(by_key),
+        "salmon_duplicate_rows": retained_rows - len(by_key),
     }
 
 
@@ -326,6 +338,10 @@ def build_positional_ec_design(
     feature_to_index = {name: index for index, name in enumerate(features)}
     if len(feature_to_index) != len(features):
         raise ValueError("alevin transcript features are not unique")
+    allowed_keys = {
+        tuple(membership.indices[start:stop])
+        for start, stop in zip(membership.indptr[:-1], membership.indptr[1:])
+    }
     eqclass_paths = (
         list(salmon_eqclasses)
         if isinstance(salmon_eqclasses, (list, tuple))
@@ -342,16 +358,21 @@ def build_positional_ec_design(
     stats = {
         "salmon_targets": len(features),
         "salmon_rows": 0,
+        "salmon_retained_rows": 0,
         "salmon_duplicate_rows": 0,
         "salmon_quantifications": len(quant_paths),
+        "alevin_unique_transcript_sets": len(allowed_keys),
     }
     effective_sum = np.zeros(len(features), dtype=np.float64)
     effective_weight = np.zeros(len(features), dtype=np.float64)
     for eqclasses, quant in zip(eqclass_paths, quant_paths):
         run_ecs, run_stats = read_salmon_weighted_eqclasses(
-            eqclasses, feature_to_index
+            eqclasses,
+            feature_to_index,
+            allowed_keys=allowed_keys,
         )
         stats["salmon_rows"] += run_stats["salmon_rows"]
+        stats["salmon_retained_rows"] += run_stats["salmon_retained_rows"]
         stats["salmon_duplicate_rows"] += run_stats["salmon_duplicate_rows"]
         for key, weighted in run_ecs.items():
             existing = salmon_ecs.get(key)

@@ -1324,3 +1324,14 @@ ranhex auto-detection would remove alignments that remain in the EC response.
 The first wave was stopped before completing any run and its 168 KB of partial
 metadata was moved to scratch. Both bulk primer runs now explicitly use
 single-end unstranded type `U`, and the validation gate requires that type.
+
+The first completed unstranded run conserved all 350,606,188 input pairs and
+assigned 257,601,910 (73.5 percent) to a primer. Poly(dT) and random hexamer
+mapping rates were 43.3 and 43.5 percent. Both outputs contained all 243,927
+targets and valid rich EC and positional-model products. The compressed rich
+EC files contained 3,451,554 poly(dT) rows and 1,269,938 random-hexamer rows.
+To keep the 40-run reduction bounded, the parser now retains only transcript
+sets present in the 948,916-row alevin EC universe. On the first poly(dT)
+file, this reduced 3,451,554 range-factorized rows to 555,814 relevant unique
+sets and used 5.4 GB peak memory. A Slurm-requeued task left 32 KB of partial
+output, which was moved to scratch before its clean retry.
