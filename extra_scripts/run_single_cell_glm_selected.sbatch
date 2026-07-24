@@ -89,6 +89,7 @@ python -m tealeaf.sc.tealeaf_sc \
   --admm_rho_update_interval 10 \
   --admm_rho_balance 10 \
   --admm_rho_scale 2 \
+  --admm_residual_tol "${ADMM_RESIDUAL_TOL:-1e-3}" \
   --min_eq 5 \
   "${primer_args[@]}" \
   "${method_args[@]}" \

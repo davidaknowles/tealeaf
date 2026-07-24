@@ -1474,3 +1474,12 @@ data backend for explicit fallback if the cache-bounded rerun requires it.
 Scoring failures now remain inspectable as `status=invalid` artifacts but
 produce a nonzero process exit. Aggregation independently rejects every
 non-`ok` row, preventing a failed fit from satisfying the evaluation graph.
+
+The first positional ADMM signal-bearing candidate showed why one tolerance
+should not control both optimization and split feasibility. At 4,096
+iterations its relative objective change was 6.7e-6 and primal residual
+5.6e-5, while the dual residual was 7.0e-4. The objective was stable, but the
+candidate was excluded under a shared 1e-4 cutoff. Factorized ADMM now retains
+a 1e-4 patient objective tolerance and uses a separate 1e-3 split-residual
+tolerance for production CV and full fitting. Candidate progress records both
+tolerances, final residuals, final rho, and the number of adaptive-rho updates.

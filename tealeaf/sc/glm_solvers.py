@@ -662,7 +662,7 @@ def fit_factorized_admm(counts, compatibility=None, *, rank=64, regularization=0
                         min_iter=10, patience=5, adaptive_rho=True,
                         rho_update_interval=10, rho_balance=10.0,
                         rho_scale=2.0, initial_factors=None,
-                        data_backend="auto"):
+                        data_backend="auto", residual_tol=None):
     """Factor-sized ADMM split for nonnegative low-rank genome-wide fitting.
 
     This is deliberately distinct from :func:`fit_admm`: it uses the variational
@@ -672,6 +672,9 @@ def fit_factorized_admm(counts, compatibility=None, *, rank=64, regularization=0
     _validate_stopping(max_iter, min_iter, patience, tol)
     if rho <= 0 or rho_update_interval < 1 or rho_balance <= 1 or rho_scale <= 1:
         raise ValueError("rho adaptation parameters are outside their valid range")
+    residual_tol = float(tol if residual_tol is None else residual_tol)
+    if not np.isfinite(residual_tol) or residual_tol <= 0:
+        raise ValueError("residual_tol must be positive and finite")
     rho = float(rho)
     data = _as_sparse_glm(
         counts, compatibility, device, batch_cells, data_backend
@@ -699,6 +702,7 @@ def fit_factorized_admm(counts, compatibility=None, *, rank=64, regularization=0
         "rho_update_interval": int(rho_update_interval),
         "rho_balance": float(rho_balance), "rho_scale": float(rho_scale),
         "min_iter": int(min_iter), "patience": int(patience), "tolerance": tol,
+        "residual_tolerance": residual_tol,
         "warm_started": warm_factors is not None,
         "warm_start_rank": 0 if warm_factors is None else int(left.shape[1]),
         "data_backend": data.data_backend,
@@ -785,7 +789,7 @@ def fit_factorized_admm(counts, compatibility=None, *, rank=64, regularization=0
             diagnostics, objective, previous, stable, iteration,
             tol, int(min_iter), int(patience),
         )
-        if max(primal_relative, dual_relative) > tol:
+        if max(primal_relative, dual_relative) > residual_tol:
             stable = 0
             stop = False
         if stop:
@@ -1284,6 +1288,7 @@ def fit_glm(counts, compatibility, method, **kwargs):
             "learning_rate", "device", "batch_cells", "seed", "min_iter",
             "patience", "adaptive_rho", "rho_update_interval",
             "rho_balance", "rho_scale", "initial_factors", "data_backend",
+            "residual_tol",
         }
         return fit_factorized_admm(counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed})
     if method == "admm":

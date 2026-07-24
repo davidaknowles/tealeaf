@@ -77,6 +77,7 @@ def main():
     parser.add_argument("--require-converged", action="store_true")
     parser.add_argument("--require-nondegenerate", action="store_true")
     parser.add_argument("--tol", type=float, default=1e-5)
+    parser.add_argument("--admm-residual-tol", type=float)
     parser.add_argument("--min-profile-active-fraction", type=float, default=0.9)
     parser.add_argument("--min-profile-relative-variance", type=float, default=1e-6)
     parser.add_argument("--profile-variance-retention", type=float, default=0.9)
@@ -179,6 +180,7 @@ def main():
             rho_update_interval=10,
             rho_balance=10.0,
             rho_scale=2.0,
+            residual_tol=args.admm_residual_tol,
         )
     elif args.method == "frank_wolfe_penalized":
         fit_kwargs.update(

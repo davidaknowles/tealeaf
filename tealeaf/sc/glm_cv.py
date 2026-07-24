@@ -751,6 +751,9 @@ def cross_validate_glm(
                     result.diagnostics.get("objective_relative_change") or [None]
                 )[-1],
                 "final_rho": result.diagnostics.get("final_rho"),
+                "residual_tolerance": result.diagnostics.get(
+                    "residual_tolerance"
+                ),
                 "rho_update_count": len(
                     result.diagnostics.get("rho_updates", [])
                 ),

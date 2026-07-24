@@ -294,9 +294,24 @@ class GLMSolverTest(unittest.TestCase):
         )
 
     def test_factorized_admm(self):
-        self._assert_result(glm_solvers.fit_factorized_admm(
+        result = glm_solvers.fit_factorized_admm(
             self.counts, self.compatibility, rank=2, max_iter=8, device="cpu", batch_cells=2
-        ))
+        )
+        self._assert_result(result)
+        self.assertEqual(result.diagnostics["residual_tolerance"], 1e-4)
+
+    def test_factorized_admm_accepts_separate_residual_tolerance(self):
+        result = glm_solvers.fit_factorized_admm(
+            self.counts,
+            self.compatibility,
+            rank=2,
+            max_iter=8,
+            residual_tol=1e-2,
+            device="cpu",
+            batch_cells=2,
+        )
+        self.assertEqual(result.diagnostics["tolerance"], 1e-4)
+        self.assertEqual(result.diagnostics["residual_tolerance"], 1e-2)
 
     def test_factorized_admm_adapts_rho_and_rescales_duals(self):
         result = glm_solvers.fit_factorized_admm(

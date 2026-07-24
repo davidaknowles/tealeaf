@@ -710,6 +710,7 @@ def single_cell_glm_conversion(options):
         rho_update_interval=options.admm_rho_update_interval,
         rho_balance=options.admm_rho_balance,
         rho_scale=options.admm_rho_scale,
+        residual_tol=options.admm_residual_tol,
         max_iter=options.nucnorm_max_iter,
         min_iter=options.nucnorm_min_iter,
         patience=options.nucnorm_patience,
@@ -1207,6 +1208,9 @@ if __name__ == "__main__":
 
     parser.add_option("--admm_rho_scale", dest="admm_rho_scale", default=2.0, type="float",
                   help="multiplicative adaptive ADMM rho update (default: 2)")
+
+    parser.add_option("--admm_residual_tol", dest="admm_residual_tol", default=None, type="float",
+                  help="ADMM split-residual tolerance; defaults to nucnorm_tol")
 
     parser.add_option("--admm_inner_iter", dest="admm_inner_iter", default=25, type="int",
                   help="projected-gradient inner iterations for dense admm (default: 25)")

@@ -96,6 +96,7 @@ python "${REPO_ROOT}/extra_scripts/tune_single_cell_glm.py" \
   --require-converged \
   --require-nondegenerate \
   --tol "${cv_tol}" \
+  --admm-residual-tol "${ADMM_RESIDUAL_TOL:-1e-3}" \
   --profile-variance-retention 0.9 \
   "${primer_args[@]}" \
   "${multiplier_args[@]}" \
