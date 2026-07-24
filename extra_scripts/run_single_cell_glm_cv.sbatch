@@ -41,13 +41,13 @@ if [[ "${METHOD}" == factorized ]]; then
   cv_tol=1e-5
 elif [[ "${METHOD}" == admm_factorized ]]; then
   BATCH_CELLS=${BATCH_CELLS:-16384}
-  for value in 0 1e-9 1e-8 1e-7 1e-6 1e-5; do
+  for value in 0 1e-4 1e-3 1e-2 1e-1 1; do
     multiplier_args+=(--multiplier "${value}")
   done
   max_iter=${MAX_ITER:-4096}
   expansion_factor=10
   selection_rule=minimum
-  cv_tol=1e-5
+  cv_tol=1e-4
 elif [[ "${METHOD}" == frank_wolfe_penalized ]]; then
   BATCH_CELLS=${BATCH_CELLS:-4096}
   for value in 0 0.25 1 4 16 64 256; do

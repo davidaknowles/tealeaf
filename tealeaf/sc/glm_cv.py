@@ -728,6 +728,9 @@ def cross_validate_glm(
                 "validation_loss_per_cell": validation_loss,
                 "iterations": result.diagnostics.get("iterations"),
                 "converged": result.diagnostics.get("converged"),
+                "convergence_reason": result.diagnostics.get(
+                    "convergence_reason"
+                ),
                 "warm_started": result.diagnostics.get("warm_started", False),
                 "warm_start_rank": result.diagnostics.get("warm_start_rank", 0),
                 "data_backend": result.diagnostics.get("data_backend"),
@@ -737,6 +740,19 @@ def cross_validate_glm(
                 )),
                 "peak_cuda_memory_bytes": result.diagnostics.get(
                     "peak_cuda_memory_bytes"
+                ),
+                "final_primal_relative_residual": (
+                    result.diagnostics.get("primal_relative_residual") or [None]
+                )[-1],
+                "final_dual_relative_residual": (
+                    result.diagnostics.get("dual_relative_residual") or [None]
+                )[-1],
+                "final_objective_relative_change": (
+                    result.diagnostics.get("objective_relative_change") or [None]
+                )[-1],
+                "final_rho": result.diagnostics.get("final_rho"),
+                "rho_update_count": len(
+                    result.diagnostics.get("rho_updates", [])
                 ),
                 **profile,
             }

@@ -48,7 +48,7 @@ if [[ "${METHOD}" == factorized ]]; then
 elif [[ "${METHOD}" == admm_factorized ]]; then
   BATCH_CELLS=${BATCH_CELLS:-16384}
   method_args+=(--nucnorm_lambda "${VALUE}" --nucnorm_max_iter 8192)
-  full_tol=1e-6
+  full_tol=1e-4
 elif [[ "${METHOD}" == frank_wolfe_penalized ]]; then
   BATCH_CELLS=${BATCH_CELLS:-4096}
   method_args+=(--nucnorm_tau "${VALUE}" --nucnorm_max_iter 4096)

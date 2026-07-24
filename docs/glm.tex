@@ -708,9 +708,9 @@ factorization can use noisy minibatch objectives to decide when to begin its
 deterministic polishing phase, but only polishing iterations establish final
 convergence.
 Factorized ADMM additionally requires its relative primal and dual split
-residuals to satisfy the tolerance. Penalized Frank--Wolfe requires both
-relative objective change and its approximate candidate gap to remain below
-tolerance; this candidate gap is not presented as a certificate.
+residuals to satisfy the tolerance. Penalized Frank--Wolfe uses patient
+relative-objective change because its approximate candidate gap is not a
+valid certificate.
 Its atom capacity is configured separately from the fixed rank used by the
 factorized methods, and additional power iterations can improve the approximate
 linear oracle. Every manifest records the stopping history, convergence reason,

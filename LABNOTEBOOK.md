@@ -743,10 +743,13 @@ widened. Zero is an explicit baseline, and lambda/lambda-max equal to one is a
 valid terminal candidate because it is the zero-solution threshold.
 Validation loss ignores cells with no molecules in that held-out count fold,
 rather than treating their unavailable response as an observed all-zero row.
-The all-cell binary smoke calculation estimated lambda-max at approximately
-2.18e5. The production ADMM grid therefore includes zero and fractions from
-1e-9 through 1e-5; larger initial fractions overwhelm the current low-rank
-initialization. Automatic expansion starts if 1e-5 wins.
+The initial all-cell binary smoke calculation estimated lambda-max at
+approximately 2.18e5 and motivated fractions from 1e-9 through 1e-5. That
+range became obsolete after correcting cell scaling and changing to the
+primer-specific positional design. Production CV now spans zero, 1e-4, 1e-3,
+1e-2, 1e-1, and the closed lambda-max endpoint. Strong-to-weak continuation
+starts from the zero-solution threshold, and zero remains the unregularized
+endpoint.
 
 CV now expands an open grid boundary automatically. It evaluates only one new
 candidate per round, multiplying an upper endpoint or dividing a lower endpoint
