@@ -71,23 +71,24 @@ def read_salmon_weighted_eqclasses(
                     f"Salmon EC line {line_number} lacks rich weights"
                 )
             local_ids = np.asarray(fields[1:1 + size], dtype=np.int64)
-            weights = np.asarray(
-                fields[1 + size:1 + 2 * size], dtype=np.float64
-            )
             count = float(fields[-1])
-            if count <= 0 or np.any(weights < 0) or not np.all(np.isfinite(weights)):
-                raise ValueError(f"invalid Salmon EC values on line {line_number}")
+            if not np.isfinite(count) or count <= 0:
+                raise ValueError(f"invalid Salmon EC count on line {line_number}")
             global_ids = local_to_global[local_ids]
             order = np.argsort(global_ids)
             key = tuple(global_ids[order])
-            weights = weights[order]
+            observed_rows += 1
+            if allowed_keys is not None and key not in allowed_keys:
+                continue
+            weights = np.asarray(
+                fields[1 + size:1 + 2 * size], dtype=np.float64
+            )[order]
+            if np.any(weights < 0) or not np.all(np.isfinite(weights)):
+                raise ValueError(f"invalid Salmon EC weights on line {line_number}")
             total = weights.sum()
             if total <= 0:
                 raise ValueError(f"zero Salmon EC weight on line {line_number}")
             weights /= total
-            observed_rows += 1
-            if allowed_keys is not None and key not in allowed_keys:
-                continue
             contribution = count * weights
             existing = by_key.get(key)
             if existing is None:

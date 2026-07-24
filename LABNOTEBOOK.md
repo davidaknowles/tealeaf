@@ -1333,5 +1333,7 @@ EC files contained 3,451,554 poly(dT) rows and 1,269,938 random-hexamer rows.
 To keep the 40-run reduction bounded, the parser now retains only transcript
 sets present in the 948,916-row alevin EC universe. On the first poly(dT)
 file, this reduced 3,451,554 range-factorized rows to 555,814 relevant unique
-sets and used 5.4 GB peak memory. A Slurm-requeued task left 32 KB of partial
-output, which was moved to scratch before its clean retry.
+sets. Skipping weight-vector allocation for irrelevant rows reduced a
+single-file profile from 220 to 142 seconds and from 5.4 to 4.9 GB peak
+memory. A Slurm-requeued task left 32 KB of partial output, which was moved to
+scratch before its clean retry.
