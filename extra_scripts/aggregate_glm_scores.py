@@ -31,6 +31,9 @@ def main():
         row = fit_rows[0]
         if row.get("name") != name:
             raise ValueError(f"summary name mismatch in {summary}")
+        if row.get("status") != "ok":
+            detail = row.get("error", "no error detail")
+            raise ValueError(f"fit {name} has status {row.get('status')!r}: {detail}")
         rows.append(row)
         for field in row:
             if field not in fieldnames:

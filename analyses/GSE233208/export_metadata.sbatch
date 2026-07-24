@@ -10,4 +10,6 @@ source "${CONFIG}"
 module load R/4.3.2
 Rscript "${REPO_ROOT}/extra_scripts/export_seurat_metadata.R" \
   "${DATA_ROOT}/metadata/GSE233208_Human_snRNA-Seq_ADDS_integrated.rds.gz" \
-  "${DATA_ROOT}/metadata/GSE233208_Human_snRNA-Seq_ADDS_metadata.tsv.gz"
+  "${DATA_ROOT}/metadata/GSE233208_Human_snRNA-Seq_ADDS_metadata.tsv.gz" \
+  "${DATA_ROOT}/metadata/GSE233208_Human_snRNA-Seq_ADDS_scvi.tsv.gz" \
+  scvi

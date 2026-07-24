@@ -91,6 +91,7 @@ def main():
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     summaries = []
+    invalid = []
     for name, prefix in args.fit:
         output_prefix = args.output_dir / f"{name}_"
         left = right = None
@@ -141,6 +142,7 @@ def main():
         except (OSError, ValueError, RuntimeError) as error:
             report = {"status": "invalid", "error": str(error)}
             folds = pd.DataFrame()
+            invalid.append((name, str(error)))
         report.update(name=name, fit_prefix=str(prefix))
         representation_scoring.write_score(report, folds, output_prefix)
         summaries.append(report)
@@ -148,6 +150,9 @@ def main():
         left = right = None
         gc.collect()
     pd.DataFrame(summaries).to_csv(args.output_dir / "label_score_summary.csv", index=False)
+    if invalid:
+        details = "; ".join(f"{name}: {error}" for name, error in invalid)
+        raise SystemExit(f"{len(invalid)} fit score(s) were invalid: {details}")
 
 
 if __name__ == "__main__":

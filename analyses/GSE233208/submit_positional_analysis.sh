@@ -56,6 +56,16 @@ for index in "${!fit_jobs[@]}"; do
   score_jobs+=("${score}")
   printf 'score\t%s\t%s\n' "${index}" "${score}" >> "${jobs_file}"
 done
+reference_name=published_scvi
+reference_score=$(sbatch --parsable --dependency="afterok:${fit_jobs[0]}" \
+  --job-name=gse23_score_reference \
+  -o "${GLM_RUN}/logs/%x-%j.out" -e "${GLM_RUN}/logs/%x-%j.err" \
+  --export="ALL,REPO_ROOT=${REPO_ROOT},EMBEDDING=${DATA_ROOT}/metadata/GSE233208_Human_snRNA-Seq_ADDS_scvi.tsv.gz,CELL_MAP=${DATA_ROOT}/metadata/reference_cell_map.csv,LABELS=${DATA_ROOT}/metadata/reference_annotation.csv,GROUPS=${DATA_ROOT}/metadata/reference_donor.csv,ELIGIBLE_CELLS=${GLM_RUN}/paired_posbias_positional_factorized_theta_glm_rows.txt,SCORE_OUTPUT=${GLM_RUN}/label_scores,REFERENCE_NAME=${reference_name},REFERENCE_REPRESENTATION=published_scvi" \
+  "${REPO_ROOT}/extra_scripts/run_score_reference_embedding.sbatch")
+score_jobs+=("${reference_score}")
+printf 'score\t%s\t%s\n' "${reference_name}" "${reference_score}" >> "${jobs_file}"
+printf '%s\t%s\n' "${reference_name}" \
+  "${DATA_ROOT}/metadata/GSE233208_Human_snRNA-Seq_ADDS_scvi_" >> "${fits_file}"
 score_dependency=$(IFS=:; echo "${score_jobs[*]}")
 aggregate=$(sbatch --parsable --dependency="afterok:${score_dependency}" \
   --job-name=gse23_aggregate_pos --cpus-per-task=1 --mem=2G \

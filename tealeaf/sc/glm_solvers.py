@@ -1009,8 +1009,8 @@ def _penalized_fw_q_times(data, left, right, vectors, penalty):
         )
         if penalty and left.shape[1]:
             phi_block = left @ right[start:stop].T
-            negative = torch.minimum(phi_block, torch.zeros_like(phi_block))
-            result -= penalty * negative @ vector_block
+            phi_block.clamp_max_(0)
+            result -= penalty * phi_block @ vector_block
     return result
 
 
@@ -1025,8 +1025,9 @@ def _penalized_fw_qt_times(data, left, right, vectors, penalty):
         result[start:stop] += torch.sparse.mm(block, au)
         if penalty and left.shape[1]:
             phi_block = left @ right[start:stop].T
+            phi_block.clamp_max_(0)
             result[start:stop] -= penalty * (
-                torch.minimum(phi_block, torch.zeros_like(phi_block)).T @ vectors
+                phi_block.T @ vectors
             )
     return result
 
@@ -1045,11 +1046,10 @@ def _penalized_fw_direction(data, left, right, atom_left, atom_right, penalty):
         ).sum()
         if penalty and left.shape[1]:
             phi_block = left @ right[start:stop].T
+            phi_block.clamp_max_(0)
             direction_block = direction_left @ direction_right[start:stop].T
-            penalty_dot_direction += (
-                torch.minimum(phi_block, torch.zeros_like(phi_block))
-                * direction_block
-            ).sum()
+            direction_block.mul_(phi_block)
+            penalty_dot_direction += direction_block.sum()
     if left.shape[1]:
         cross = (
             direction_left.T @ data.gram_times(left)
@@ -1079,11 +1079,11 @@ def _negative_factor_stats(data, left, right):
     for start in range(0, data.n_cells, data.batch_cells):
         stop = min(start + data.batch_cells, data.n_cells)
         block = left @ right[start:stop].T
-        negative = torch.minimum(block, torch.zeros_like(block))
-        negative_sq += negative.square().sum()
         total_sq += block.square().sum()
-        negative_l1 -= negative.sum()
         total_l1 += block.abs().sum()
+        block.clamp_max_(0)
+        negative_sq += block.square().sum()
+        negative_l1 -= block.sum()
     return {
         "negative_squared_norm": float(negative_sq.item()),
         "fitted_squared_norm": float(total_sq.item()),

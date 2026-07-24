@@ -1448,3 +1448,26 @@ accuracy 0.5641, and macro F1 0.5077. The reference-label silhouette was
 -0.3029 and the k-means silhouette was 0.2876. These are intermediate
 factorization results; ADMM and penalized Frank--Wolfe CV, their selected
 fits, and the aggregate standard-analysis comparison remain in progress.
+
+The published Seurat object contains a 30-dimensional scVI representation
+rather than a PCA reduction. A reusable reference-embedding scorer maps the
+published nucleus IDs to internal poly(dT) IDs and applies the same donor-held-
+out classifier and silhouette implementation after restricting to the exact
+paired-GLM cell set. On the same 157,006 labeled nuclei, published scVI
+achieved 0.9525 accuracy, 0.9731 balanced accuracy, 0.9528 macro F1, and
+0.1920 label silhouette. This establishes a matched standard-analysis
+baseline without using labels in GLM fitting or hyperparameter selection.
+
+The first full penalized Frank--Wolfe CV attempt exhausted CUDA memory after
+three fold-zero candidates. Its 16,384-cell block created a
+236,543-by-16,384 fitted-value workspace of approximately 14.4 GiB; the
+nonnegativity calculations held multiple such workspaces while the sparse
+response cache was resident. The solver now clamps temporary negative blocks
+in place and multiplies the direction workspace in place. Frank--Wolfe
+launchers use 4,096-cell blocks by default, while factorization and ADMM retain
+their 16,384-cell throughput setting. The CV launcher also exposes the sparse
+data backend for explicit fallback if the cache-bounded rerun requires it.
+
+Scoring failures now remain inspectable as `status=invalid` artifacts but
+produce a nonzero process exit. Aggregation independently rejects every
+non-`ok` row, preventing a failed fit from satisfying the evaluation graph.

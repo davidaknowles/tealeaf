@@ -110,3 +110,44 @@ def test_prepare_reference_labels_uses_run_for_sublibrary(tmp_path):
         check=True,
     )
     assert labels.read_text().splitlines()[0].startswith("SRR1:")
+
+
+def test_prepare_reference_labels_writes_polydt_cell_map(tmp_path):
+    metadata = tmp_path / "metadata.tsv"
+    metadata.write_text(
+        "cell_id\tcell_barcode\tSublibrary\tBatch\tannotation\tCaseNum\n"
+        "published_1\tAACCGGTTAACCGGTT_1\tSublibrary_1_S1\tBatch5\tEX1\tdonor1\n"
+    )
+    manifest = tmp_path / "manifest.tsv"
+    manifest.write_text(
+        "batch\trun_accession\tsample_title\tread\n"
+        "batch5\tSRR1\tbatch5_Sublibrary_1_S1_L004\t1\n"
+    )
+    rt_file = tmp_path / "rt.txt"
+    rt_file.write_text("\n".join(f"{value:08d}" for value in range(96)) + "\n")
+    cell_map = tmp_path / "cell_map.csv"
+    subprocess.run(
+        [
+            sys.executable,
+            "extra_scripts/prepare_reference_labels.py",
+            "--metadata",
+            str(metadata),
+            "--batch-map",
+            "batch5=Batch5",
+            "--ena-manifest",
+            str(manifest),
+            "--parse-rt-barcodes",
+            str(rt_file),
+            "--labels-output",
+            str(tmp_path / "labels.csv"),
+            "--groups-output",
+            str(tmp_path / "groups.csv"),
+            "--cell-map-output",
+            str(cell_map),
+        ],
+        check=True,
+    )
+    assert cell_map.read_text().splitlines() == [
+        "source_cell_id,target_cell_id",
+        "published_1,SRR1:AACCGGTTAACCGGTT00000001",
+    ]

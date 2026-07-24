@@ -21,6 +21,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--metadata", required=True, type=Path)
     parser.add_argument("--cell-barcode-column", default="cell_barcode")
+    parser.add_argument(
+        "--source-cell-column",
+        default="cell_id",
+        help="published cell identifier used by --cell-map-output",
+    )
     parser.add_argument("--batch-column", default="Batch")
     parser.add_argument("--label-column", default="annotation")
     parser.add_argument("--group-column", default="CaseNum")
@@ -39,6 +44,11 @@ def main():
     )
     parser.add_argument("--labels-output", required=True, type=Path)
     parser.add_argument("--groups-output", required=True, type=Path)
+    parser.add_argument(
+        "--cell-map-output",
+        type=Path,
+        help="optional two-column source-to-poly(dT) cell map",
+    )
     parser.add_argument(
         "--conflict-db",
         type=Path,
@@ -82,6 +92,11 @@ def main():
         "CREATE TABLE metadata "
         "(cell_id TEXT PRIMARY KEY, label TEXT NOT NULL, group_id TEXT)"
     )
+    if args.cell_map_output is not None:
+        database.execute(
+            "CREATE TABLE cell_map "
+            "(source_id TEXT PRIMARY KEY, target_id TEXT NOT NULL UNIQUE)"
+        )
     inserted = 0
     opener = gzip.open if args.metadata.suffix == ".gz" else open
     with opener(args.metadata, "rt", newline="") as handle:
@@ -94,6 +109,8 @@ def main():
         }
         if run_lookup is not None:
             required.add("Sublibrary")
+        if args.cell_map_output is not None:
+            required.add(args.source_cell_column)
         missing = required - set(reader.fieldnames or ())
         if missing:
             raise ValueError(f"metadata is missing columns: {sorted(missing)}")
@@ -149,6 +166,22 @@ def main():
                         raise ValueError(f"conflicting metadata for {cell_id}")
                 if inserted % 10_000 == 0:
                     database.commit()
+            if args.cell_map_output is not None:
+                source_id = row[args.source_cell_column]
+                if not source_id:
+                    raise ValueError("published metadata contains an empty source cell ID")
+                target_id = f"{prefix}:{barcodes[0]}"
+                cursor = database.execute(
+                    "INSERT OR IGNORE INTO cell_map VALUES (?, ?)",
+                    (source_id, target_id),
+                )
+                if not cursor.rowcount:
+                    previous = database.execute(
+                        "SELECT target_id FROM cell_map WHERE source_id = ?",
+                        (source_id,),
+                    ).fetchone()
+                    if previous != (target_id,):
+                        raise ValueError(f"conflicting cell map for {source_id}")
     database.commit()
     if not inserted:
         raise ValueError("no metadata rows matched the batch mapping")
@@ -170,6 +203,16 @@ def main():
                 "WHERE group_id IS NOT NULL ORDER BY cell_id"
             )
         )
+    if args.cell_map_output is not None:
+        args.cell_map_output.parent.mkdir(parents=True, exist_ok=True)
+        with open(args.cell_map_output, "w", newline="") as handle:
+            writer = csv.writer(handle)
+            writer.writerow(["source_cell_id", "target_cell_id"])
+            writer.writerows(
+                database.execute(
+                    "SELECT source_id, target_id FROM cell_map ORDER BY source_id"
+                )
+            )
     group_count = database.execute(
         "SELECT COUNT(*) FROM metadata WHERE group_id IS NOT NULL"
     ).fetchone()[0]

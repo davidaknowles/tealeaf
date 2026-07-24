@@ -18,4 +18,5 @@ metadata="${DATA_ROOT}/metadata/GSE233208_Human_snRNA-Seq_ADDS_metadata.tsv.gz"
   --ena-manifest "${DATA_ROOT}/manifest/ena_fastqs.tsv" \
   --parse-rt-barcodes "${PARSE_RT_BARCODES}" \
   --labels-output "${DATA_ROOT}/metadata/reference_annotation.csv" \
-  --groups-output "${DATA_ROOT}/metadata/reference_donor.csv"
+  --groups-output "${DATA_ROOT}/metadata/reference_donor.csv" \
+  --cell-map-output "${DATA_ROOT}/metadata/reference_cell_map.csv"

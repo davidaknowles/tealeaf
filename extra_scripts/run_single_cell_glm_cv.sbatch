@@ -22,7 +22,7 @@ CV_CELLS=${CV_CELLS:-0}
 MIN_CELL_UMIS=${MIN_CELL_UMIS:-500}
 MIN_HALF_UMIS=${MIN_HALF_UMIS:-500}
 PRIMER_SAMPLING_MODEL=${PRIMER_SAMPLING_MODEL:-oligodt_tpm}
-BATCH_CELLS=${BATCH_CELLS:-16384}
+BATCH_CELLS=${BATCH_CELLS:-}
 MAX_RANK=${MAX_RANK:-512}
 EXACT_INNER_STEPS=${EXACT_INNER_STEPS:-32}
 ANALYSIS_TAG=${ANALYSIS_TAG:-standard}
@@ -31,6 +31,7 @@ REPORT="${RUN_DIR}/cv_${ANALYSIS_TAG}_${DESIGN}_${METHOD}_theta.json"
 multiplier_args=()
 rank_args=()
 if [[ "${METHOD}" == factorized ]]; then
+  BATCH_CELLS=${BATCH_CELLS:-16384}
   for value in 1 2 4 8 16 32 64 128; do
     rank_args+=(--rank-candidate "${value}")
   done
@@ -39,6 +40,7 @@ if [[ "${METHOD}" == factorized ]]; then
   selection_rule=one_standard_error
   cv_tol=1e-5
 elif [[ "${METHOD}" == admm_factorized ]]; then
+  BATCH_CELLS=${BATCH_CELLS:-16384}
   for value in 0 1e-9 1e-8 1e-7 1e-6 1e-5; do
     multiplier_args+=(--multiplier "${value}")
   done
@@ -47,6 +49,7 @@ elif [[ "${METHOD}" == admm_factorized ]]; then
   selection_rule=minimum
   cv_tol=1e-5
 elif [[ "${METHOD}" == frank_wolfe_penalized ]]; then
+  BATCH_CELLS=${BATCH_CELLS:-4096}
   for value in 0 0.25 1 4 16 64 256; do
     multiplier_args+=(--multiplier "${value}")
   done
@@ -83,7 +86,7 @@ python "${REPO_ROOT}/extra_scripts/tune_single_cell_glm.py" \
   --power-iter 5 \
   --scale-power-iter 10 \
   --batch-cells "${BATCH_CELLS}" \
-  --data-backend auto \
+  --data-backend "${DATA_BACKEND:-auto}" \
   --polish-max-iter 32 \
   --exact-inner-steps "${EXACT_INNER_STEPS}" \
   --device cuda \

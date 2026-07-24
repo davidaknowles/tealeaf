@@ -35,19 +35,22 @@ print(report["selected_rank"] if report["method"] == "factorized"
 MIN_CELL_UMIS=${MIN_CELL_UMIS:-500}
 MIN_HALF_UMIS=${MIN_HALF_UMIS:-500}
 PRIMER_SAMPLING_MODEL=${PRIMER_SAMPLING_MODEL:-oligodt_tpm}
-BATCH_CELLS=${BATCH_CELLS:-16384}
+BATCH_CELLS=${BATCH_CELLS:-}
 EXACT_INNER_STEPS=${EXACT_INNER_STEPS:-32}
 method_args=()
 glm_rank=64
 if [[ "${METHOD}" == factorized ]]; then
+  BATCH_CELLS=${BATCH_CELLS:-16384}
   glm_rank=${VALUE}
   method_args+=(--nucnorm_max_iter 8192)
   method_args+=(--glm_no_minibatch --glm_exact_inner_steps "${EXACT_INNER_STEPS}")
   full_tol=1e-5
 elif [[ "${METHOD}" == admm_factorized ]]; then
+  BATCH_CELLS=${BATCH_CELLS:-16384}
   method_args+=(--nucnorm_lambda "${VALUE}" --nucnorm_max_iter 8192)
   full_tol=1e-6
 elif [[ "${METHOD}" == frank_wolfe_penalized ]]; then
+  BATCH_CELLS=${BATCH_CELLS:-4096}
   method_args+=(--nucnorm_tau "${VALUE}" --nucnorm_max_iter 4096)
   method_args+=(--fw_max_atoms 4096 --fw_power_iter 10)
   full_tol=1e-4
@@ -76,7 +79,7 @@ python -m tealeaf.sc.tealeaf_sc \
   --glm_device cuda \
   --glm_rank "${glm_rank}" \
   --glm_batch_cells "${BATCH_CELLS}" \
-  --glm_data_backend auto \
+  --glm_data_backend "${DATA_BACKEND:-auto}" \
   --glm_no_write_chunks \
   --min_cell_umis "${MIN_CELL_UMIS}" \
   --nucnorm_min_iter 50 \
