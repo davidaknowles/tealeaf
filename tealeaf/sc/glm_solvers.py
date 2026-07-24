@@ -657,7 +657,7 @@ def fit_factorized(counts, compatibility=None, *, rank=64, max_iter=100,
 
 
 def fit_factorized_admm(counts, compatibility=None, *, rank=64, regularization=0.01,
-                        rho=1.0, max_iter=100, tol=1e-4, learning_rate=0.05,
+                        rho=1.0, max_iter=100, tol=1e-4, learning_rate=1.0,
                         device="auto", batch_cells=4096, seed=0,
                         min_iter=10, patience=5, adaptive_rho=True,
                         rho_update_interval=10, rho_balance=10.0,
@@ -672,6 +672,8 @@ def fit_factorized_admm(counts, compatibility=None, *, rank=64, regularization=0
     _validate_stopping(max_iter, min_iter, patience, tol)
     if rho <= 0 or rho_update_interval < 1 or rho_balance <= 1 or rho_scale <= 1:
         raise ValueError("rho adaptation parameters are outside their valid range")
+    if not np.isfinite(learning_rate) or not 0 < learning_rate <= 1:
+        raise ValueError("ADMM learning_rate must lie in (0, 1]")
     residual_tol = float(tol if residual_tol is None else residual_tol)
     if not np.isfinite(residual_tol) or residual_tol <= 0:
         raise ValueError("residual_tol must be positive and finite")
@@ -703,6 +705,9 @@ def fit_factorized_admm(counts, compatibility=None, *, rank=64, regularization=0
         "rho_balance": float(rho_balance), "rho_scale": float(rho_scale),
         "min_iter": int(min_iter), "patience": int(patience), "tolerance": tol,
         "residual_tolerance": residual_tol,
+        "primal_relaxation": float(learning_rate),
+        "right_primal_update": "exact_cholesky",
+        "left_primal_update": "lipschitz_gradient",
         "warm_started": warm_factors is not None,
         "warm_start_rank": 0 if warm_factors is None else int(left.shape[1]),
         "data_backend": data.data_backend,
@@ -718,10 +723,10 @@ def fit_factorized_admm(counts, compatibility=None, *, rank=64, regularization=0
         au = data.a_times(left)
         gram_left_full = data.at_times(au)
         gram_left = left.T @ gram_left_full
-        right_lipschitz = float(
-            torch.linalg.matrix_norm(gram_left, ord=2).item()
-        ) + regularization + rho
-        right_step = min(learning_rate, 1.0 / max(right_lipschitz, 1e-12))
+        right_system = gram_left + (
+            regularization + rho
+        ) * torch.eye(rank, device=data.device)
+        right_cholesky = torch.linalg.cholesky(right_system)
         ec_cross = torch.zeros((data.n_ec, rank), device=data.device)
         right_gram = torch.zeros((rank, rank), device=data.device)
         primal_sq = torch.zeros((), device=data.device)
@@ -729,10 +734,15 @@ def fit_factorized_admm(counts, compatibility=None, *, rank=64, regularization=0
         split_norm_sq = torch.zeros((), device=data.device)
         for start, stop, block, nonempty in data.blocks():
             previous_right_copy = right_copy[start:stop].clone()
-            right_block = right[start:stop]
-            gradient = right_block @ gram_left - torch.sparse.mm(block, au)
-            gradient += regularization * right_block + rho * (right_block - right_copy[start:stop] + right_dual[start:stop])
-            right_block = right_block - right_step * gradient
+            right_target = right_copy[start:stop] - right_dual[start:stop]
+            right_rhs = torch.sparse.mm(block, au) + rho * right_target
+            solved_right = torch.cholesky_solve(
+                right_rhs.T, right_cholesky
+            ).T
+            right_block = (
+                right[start:stop]
+                + learning_rate * (solved_right - right[start:stop])
+            )
             right[start:stop] = right_block
             right_copy[start:stop] = torch.relu(right_block + right_dual[start:stop])
             right_dual[start:stop] += right_block - right_copy[start:stop]
@@ -761,7 +771,10 @@ def fit_factorized_admm(counts, compatibility=None, *, rank=64, regularization=0
             / data.n_nonempty
             + (regularization + rho) / data.n_nonempty
         )
-        left_step = min(learning_rate, 1.0 / max(left_lipschitz, 1e-12))
+        # The gradient and curvature are both averaged by the cell count.
+        # Capping this step by an absolute learning rate would shrink the
+        # update in proportion to the number of cells.
+        left_step = learning_rate / max(1.1 * left_lipschitz, 1e-12)
         previous_left_copy = left_copy.clone()
         left = left - left_step * gradient_left
         left_copy = torch.relu(left + left_dual)

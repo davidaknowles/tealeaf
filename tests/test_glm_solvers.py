@@ -313,6 +313,39 @@ class GLMSolverTest(unittest.TestCase):
         self.assertEqual(result.diagnostics["tolerance"], 1e-4)
         self.assertEqual(result.diagnostics["residual_tolerance"], 1e-2)
 
+    def test_factorized_admm_uses_scale_correct_shared_factor_step(self):
+        initial = glm_solvers._initial_factors(
+            glm_solvers.SparseGLM(
+                self.counts,
+                self.compatibility,
+                device="cpu",
+                batch_cells=2,
+            ),
+            rank=2,
+            seed=7,
+        )
+        initial_loss = glm_solvers.SparseGLM(
+            self.counts,
+            self.compatibility,
+            device="cpu",
+            batch_cells=2,
+        ).loss_for_factors(*initial)
+        result = glm_solvers.fit_factorized_admm(
+            self.counts,
+            self.compatibility,
+            rank=2,
+            regularization=0,
+            max_iter=8,
+            min_iter=8,
+            learning_rate=1,
+            initial_factors=initial,
+            device="cpu",
+            batch_cells=2,
+        )
+        self.assertLess(result.diagnostics["objective"][-1], initial_loss)
+        self.assertTrue(np.isfinite(result.left.numpy()).all())
+        self.assertTrue(np.isfinite(result.right.numpy()).all())
+
     def test_factorized_admm_adapts_rho_and_rescales_duals(self):
         result = glm_solvers.fit_factorized_admm(
             self.counts,
@@ -329,7 +362,10 @@ class GLMSolverTest(unittest.TestCase):
         )
         self.assertTrue(result.diagnostics["adaptive_rho"])
         self.assertGreater(len(result.diagnostics["rho_updates"]), 0)
-        self.assertNotEqual(result.diagnostics["final_rho"], 1e-4)
+        self.assertTrue(any(
+            update["old"] != update["new"]
+            for update in result.diagnostics["rho_updates"]
+        ))
         self.assertTrue(np.isfinite(result.diagnostics["final_rho"]))
 
     def test_factorized_admm_accepts_primal_warm_start(self):

@@ -1506,3 +1506,20 @@ previous factors with the spectral descent seed, resets ADMM split state, and
 records the initializer, objective, residuals, rho updates, and convergence
 status in the final manifest. This makes the full refit follow the same
 warm-start policy used for model selection.
+
+The corrected continuation run completed in 10 minutes 37 seconds and all six
+stages met the objective and split-residual rules, but downstream evaluation
+showed that this was not sufficient evidence of optimization. Its final
+objective was 1326.64 versus 1278.73 for direct factorization, mean
+reconstructed library mass was 0.014 rather than approximately one, and
+donor-held-out label accuracy was 0.169. The shared transcript-factor gradient
+had been divided by 201,023 cells while its mathematically corresponding step
+was still capped at 0.05. Split feasibility could therefore converge while
+the data-fitting update remained microscopic.
+
+Factorized ADMM now solves the cell-factor primal block exactly using one
+rank-by-rank Cholesky factorization per epoch. Its shared-factor step uses the
+reciprocal of the Lipschitz curvature after applying the same cell-count
+scaling as the gradient. The low-accuracy fit is diagnostic only and is not
+accepted as the final ADMM result; CV, selected continuation, and scoring must
+be rerun with the corrected updates.

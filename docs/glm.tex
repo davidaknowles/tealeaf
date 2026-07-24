@@ -464,6 +464,15 @@ large-scale setting.
   primal/dual residuals retain their full-epoch ADMM interpretation; the
   shared split is not updated from a stochastic cell subset.
 
+  Conditional on the transcript factors, the cell-factor primal subproblem has
+  only an \(r\)-by-\(r\) Hessian. The implementation Cholesky-factorizes this
+  Hessian once per epoch and solves every cached cell block exactly. The
+  transcript-factor gradient and its Lipschitz curvature are both divided by
+  the number of nonempty cells; its step is therefore the reciprocal of the
+  correspondingly scaled curvature. An absolute step cap after this averaging
+  would make optimization slower in direct proportion to the dataset size
+  while allowing the split residuals to become small, so no such cap is used.
+
   Both ADMM implementations can adapt \(\rho\) by residual balancing. Every
   configured interval, let \(r\) be the primal split residual and \(s\) the
   dual residual. If \(\|r\|>\eta\|s\|\), multiply \(\rho\) by \(\kappa\); if
