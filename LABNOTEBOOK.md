@@ -1285,7 +1285,10 @@ Salmon effective-length exposure, normalized by its median over retained
 transcripts so the two separately normalized primer losses have comparable
 units. The reusable API also exposes the previous effective-length model for
 both primers and a TPM model for both. CV reports and fit diagnostics record
-the selected model and scale constants.
+the selected model and scale constants. The paired-data API and both command
+line interfaces default to this primary model. This also ensures previously
+submitted Slurm launchers that did not include the newer explicit option
+resolve the intended model from the live Python implementation.
 
 Because each primer response is normalized separately, the exact ranhex mean
 contains a cell-specific denominator equal to the abundance-weighted effective

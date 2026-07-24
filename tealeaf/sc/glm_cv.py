@@ -80,7 +80,7 @@ def prepare_paired_primer_glm_data(
     regularization_target="theta",
     min_eq=5,
     min_half_umis=500,
-    primer_sampling_model="effective_length",
+    primer_sampling_model="oligodt_tpm",
     probability_file=None,
     weight_caches=None,
     length_caches=None,

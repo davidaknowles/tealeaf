@@ -28,7 +28,7 @@ def main():
     parser.add_argument(
         "--primer-sampling-model",
         choices=["effective_length", "oligodt_tpm", "all_tpm"],
-        default="effective_length",
+        default="oligodt_tpm",
     )
     parser.add_argument("--multiplier", action="append", type=float)
     parser.add_argument("--rank-candidate", action="append", type=int)

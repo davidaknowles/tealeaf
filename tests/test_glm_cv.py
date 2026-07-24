@@ -158,6 +158,19 @@ class PairedPrimerPreparationTest(unittest.TestCase):
                 theta.compatibility.toarray(),
                 [[0.5, 0.5], [0.375, 0.625]],
             )
+            default_theta = glm_cv.prepare_paired_primer_glm_data(
+                directory,
+                directory / "transcripts.fa",
+                directory / "pairs.tsv",
+                ec_design="positional",
+                regularization_target="theta",
+                min_eq=1,
+                min_half_umis=1,
+            )
+            np.testing.assert_allclose(
+                default_theta.compatibility.toarray(),
+                theta.compatibility.toarray(),
+            )
             self.assertEqual(
                 theta.metadata["primer_sampling_model"], "oligodt_tpm"
             )

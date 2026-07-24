@@ -1103,7 +1103,7 @@ if __name__ == "__main__":
                   help="minimum UMI count required in each paired primer half (default: 500)")
 
     parser.add_option("--primer_sampling_model", dest="primer_sampling_model",
-                  default="effective_length",
+                  default="oligodt_tpm",
                   help="paired-primer sampling: effective_length, oligodt_tpm, or all_tpm")
 
     parser.add_option("--glm_device", dest="glm_device", default='auto',
