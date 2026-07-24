@@ -1286,3 +1286,9 @@ rows covered 16.6 and 11.1 percent of distinct ECs but 71.0 and 61.9 percent
 of molecule mass; all remaining compatible entries received effective-length
 fallbacks. The full test suite passes with 67 tests, and `docs/glm.tex`
 compiles after documenting the correction and parameterization.
+
+The full public dataset run was submitted as a 40-task positional-quantification
+array with at most ten concurrent tasks. Its reducer feeds separate
+factorization, adaptive-rho ADMM, and penalized Frank-Wolfe count-fold CV and
+full-fit branches. Each completed fit has an independent cell-type label and
+PCA-silhouette scoring job, followed by one aggregate report.
