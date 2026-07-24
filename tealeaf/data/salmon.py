@@ -12,6 +12,13 @@ import numpy as np
 import scipy.sparse as sp
 
 
+def salmon_eqclass_paths(quant_paths):
+    return [
+        Path(path) / "aux_info" / "eq_classes.txt.gz"
+        for path in quant_paths
+    ]
+
+
 def _open_text(path):
     path = Path(path)
     return gzip.open(path, "rt") if path.suffix == ".gz" else path.open()

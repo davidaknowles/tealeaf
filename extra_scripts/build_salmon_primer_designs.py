@@ -14,6 +14,7 @@ import scipy.sparse as sp
 from tealeaf.data.alevin import load_alevin_counts, load_alevin_structure
 from tealeaf.data.salmon import (
     build_positional_ec_design,
+    salmon_eqclass_paths,
     summarize_positional_bias_models,
 )
 from tealeaf.sc.sc_utils import get_feature_weights, get_transcript_lengths
@@ -63,8 +64,7 @@ def main():
         ("polydt", args.polydt_quant),
         ("ranhex", args.ranhex_quant),
     ):
-        eqclasses = quant / "aux_info" / "eq_classes.txt.gz"
-        eqclasses = [path / "aux_info" / "eq_classes.txt.gz" for path in quant]
+        eqclasses = salmon_eqclass_paths(quant)
         design, stats, effective_lengths = build_positional_ec_design(
             membership,
             features,

@@ -7,9 +7,18 @@ import scipy.sparse as sp
 
 from tealeaf.data.salmon import (
     build_positional_ec_design,
+    salmon_eqclass_paths,
     summarize_primer_positional_validations,
     validate_primer_positional_quantification,
 )
+
+
+def test_salmon_eqclass_paths_accept_multiple_quantifications(tmp_path):
+    quantifications = [tmp_path / "run1", tmp_path / "run2"]
+    assert salmon_eqclass_paths(quantifications) == [
+        path / "aux_info" / "eq_classes.txt.gz"
+        for path in quantifications
+    ]
 
 
 def test_build_positional_design_collapses_rows_and_falls_back(tmp_path):
