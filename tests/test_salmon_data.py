@@ -158,6 +158,7 @@ def test_validate_primer_positional_quantification(tmp_path):
         expected_targets=3,
         expected_library_type="U",
     )
+    assert report["run_id"] == "run"
     assert report["assigned_fraction"] == 0.8
     assert report["primers"]["polydt"]["mapping_rate"] == 0.8
 
@@ -165,8 +166,8 @@ def test_validate_primer_positional_quantification(tmp_path):
     validation2 = tmp_path / "run2" / "validation.json"
     validation1.parent.mkdir()
     validation2.parent.mkdir()
-    validation1.write_text(json.dumps(report))
-    validation2.write_text(json.dumps(report))
+    validation1.write_text(json.dumps(report | {"run_id": "run1"}))
+    validation2.write_text(json.dumps(report | {"run_id": "run2"}))
     summary = summarize_primer_positional_validations(
         [validation1, validation2]
     )

@@ -189,6 +189,7 @@ def validate_primer_positional_quantification(
         raise ValueError("primer assignments do not conserve input reads")
 
     report = {
+        "run_id": run_root.name,
         "total_reads": expected_total,
         "assigned_reads": assigned,
         "assigned_fraction": assigned / expected_total if expected_total else 0.0,
@@ -271,7 +272,7 @@ def summarize_primer_positional_validations(paths):
     run_ids = []
     for path in paths:
         report = json.loads(path.read_text())
-        run_id = path.parent.name
+        run_id = report.get("run_id", path.parent.name)
         if run_id in run_ids:
             raise ValueError(f"duplicate positional validation run: {run_id}")
         run_ids.append(run_id)
