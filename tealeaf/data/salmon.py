@@ -133,6 +133,7 @@ def validate_primer_positional_quantification(
     source_meta,
     *,
     expected_targets=None,
+    expected_library_type=None,
 ):
     """Validate read conservation and Salmon products for one Parse run."""
     run_root = Path(run_root)
@@ -192,6 +193,15 @@ def validate_primer_positional_quantification(
                 f"missing positional Salmon products: {', '.join(missing)}"
             )
         meta = json.loads((quant / "aux_info" / "meta_info.json").read_text())
+        library_types = meta.get("library_types", [])
+        if (
+            expected_library_type is not None
+            and library_types != [expected_library_type]
+        ):
+            raise ValueError(
+                f"{primer} library type is {library_types}; "
+                f"expected {[expected_library_type]}"
+            )
         primer_reads = stats[f"{stats_name}_exact"] + stats[f"{stats_name}_corrected"]
         if int(meta["num_processed"]) != primer_reads:
             raise ValueError(
@@ -227,6 +237,7 @@ def validate_primer_positional_quantification(
             "mapping_rate": mapped / primer_reads,
             "rich_equivalence_classes": eq_count,
             "targets": target_count,
+            "library_types": library_types,
         }
     return report
 

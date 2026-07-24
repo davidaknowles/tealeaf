@@ -27,6 +27,7 @@ while IFS=$'\t' read -r batch run _sample _title _experiment _experiment_title \
     --run-root "${root}" \
     --source-meta "${DATA_ROOT}/processed/${batch}/${run}/salmon_rad/aux_info/meta_info.json" \
     --expected-targets 243927 \
+    --expected-library-type U \
     --output "${root}/validation.json"
   validation_args+=(--validation "${root}/validation.json")
   quant_args+=(

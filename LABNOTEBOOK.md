@@ -1284,7 +1284,7 @@ barcodes. Separate Salmon runs completed with 59.3 and 60.5 percent mapping.
 When joined to the existing million-read alevin smoke output, exact Salmon
 rows covered 16.6 and 11.1 percent of distinct ECs but 71.0 and 61.9 percent
 of molecule mass; all remaining compatible entries received effective-length
-fallbacks. The full test suite passes with 67 tests, and `docs/glm.tex`
+fallbacks. The full test suite passes with 68 tests, and `docs/glm.tex`
 compiles after documenting the correction and parameterization.
 
 The full public dataset run was submitted as a 40-task positional-quantification
@@ -1316,3 +1316,11 @@ after all 40 reports pass. The reducer also writes one aggregate validation
 summary with run IDs, conserved read totals, assignment fraction, primer-
 specific processed and mapped totals, run-level mapping-rate bounds, rich-EC
 totals, and reference target counts.
+
+Bulk Salmon auto-detection consistently chose unstranded for poly(dT) but
+forward-stranded for nine of ten initial random-hexamer runs. The original
+alevin RAD metadata reports an unstranded library (`IU`), so accepting the
+ranhex auto-detection would remove alignments that remain in the EC response.
+The first wave was stopped before completing any run and its 168 KB of partial
+metadata was moved to scratch. Both bulk primer runs now explicitly use
+single-end unstranded type `U`, and the validation gate requires that type.

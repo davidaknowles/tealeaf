@@ -303,10 +303,12 @@ unknown or primer-ambiguous barcodes are excluded. To avoid having Salmon's
 finite bias-training sample come from one large sublibrary, every sublibrary
 is quantified independently for both primers and the resulting models are
 combined downstream. The runs use
-\texttt{--posBias --dumpEqWeights}. Salmon learns separate observed and
-expected fragment-position distributions in five transcript-length classes
-and incorporates their ratio into alignment likelihoods and bias-corrected
-effective lengths.
+\texttt{-l U --posBias --dumpEqWeights}. The explicit unstranded type matches
+the library type used to generate the alevin EC response; primer-specific
+auto-detection would otherwise remove ranhex alignments that remain in those
+counts. Salmon learns separate observed and expected fragment-position
+distributions in five transcript-length classes and incorporates their ratio
+into alignment likelihoods and bias-corrected effective lengths.
 
 For primer \(p\), let \(q^{(r)}_{pkt}\) be Salmon's dumped rich weight for
 range-factorized row \(r\), with raw fragment count \(n^{(r)}_{pk}\).

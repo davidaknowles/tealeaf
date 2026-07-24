@@ -17,6 +17,7 @@ MAX_READS=${MAX_READS:-}
 SALMON_THREADS=${SALMON_THREADS:-6}
 PIGZ_THREADS=${PIGZ_THREADS:-2}
 BALANCED_PREFIX_READS=${BALANCED_PREFIX_READS:-0}
+LIBTYPE=${LIBTYPE:-U}
 
 read1=()
 read2=()
@@ -70,7 +71,7 @@ else
   mkfifo "${polydt_fifo}" "${ranhex_fifo}"
 
   salmon_common=(
-    quant -i "${SALMON_REF}/index_dir" -l A
+    quant -i "${SALMON_REF}/index_dir" -l "${LIBTYPE}"
     --validateMappings --posBias --dumpEq --dumpEqWeights
     --fldMean 250 --fldSD 25 --rangeFactorizationBins 4
     -p "${SALMON_THREADS}"

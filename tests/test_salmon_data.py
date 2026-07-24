@@ -129,6 +129,7 @@ def test_validate_primer_positional_quantification(tmp_path):
         (quant / "aux_info" / "meta_info.json").write_text(json.dumps({
             "num_processed": processed,
             "num_mapped": mapped,
+            "library_types": ["U"],
         }))
         with gzip.open(
             quant / "aux_info" / "eq_classes.txt.gz", "wt"
@@ -139,7 +140,10 @@ def test_validate_primer_positional_quantification(tmp_path):
         ):
             _write_positional_model(quant / "aux_info" / model)
     report = validate_primer_positional_quantification(
-        run_root, source_meta, expected_targets=3
+        run_root,
+        source_meta,
+        expected_targets=3,
+        expected_library_type="U",
     )
     assert report["assigned_fraction"] == 0.8
     assert report["primers"]["polydt"]["mapping_rate"] == 0.8
