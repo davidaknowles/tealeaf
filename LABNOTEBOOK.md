@@ -1306,6 +1306,14 @@ primer-specific design intermediates before normalizing responses. This keeps
 the same matrices and values while reducing peak overlap in every CV and fit
 job.
 
+Paired count-fold CV no longer retains all raw and normalized
+training/validation matrices. A deterministic reusable fold plan partitions
+integer molecules with the same sequential binomial draws and regenerates one
+fold at a time, which also supports adaptive rank expansion without storing
+three full copies of each response. The tuning launcher avoids row-slicing
+copies when the requested CV population is already the complete prepared
+population.
+
 A 100,000-pair real-data check assigned 79,022 transcript reads: 52,110 to
 poly(dT), 26,912 to random hexamer, and 20,978 to unknown or ambiguous RT
 barcodes. Separate Salmon runs completed with 59.3 and 60.5 percent mapping.

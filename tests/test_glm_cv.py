@@ -83,7 +83,13 @@ class PairedPrimerPreparationTest(unittest.TestCase):
             raw, n_folds=2, seed=3
         )
         self.assertEqual(len(pairs), 2)
-        for training, validation in pairs:
+        first_pass = list(pairs)
+        second_pass = list(pairs)
+        for (training, validation), repeated in zip(first_pass, second_pass):
+            np.testing.assert_allclose(training.toarray(), repeated[0].toarray())
+            np.testing.assert_allclose(
+                validation.toarray(), repeated[1].toarray()
+            )
             np.testing.assert_allclose(
                 np.asarray(training[:, :2].sum(axis=1)).ravel(), 0.5
             )

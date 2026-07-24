@@ -442,22 +442,73 @@ def _normalize_paired_primer_counts(counts):
     return sp.hstack((0.5 * polydt, 0.5 * ranhex), format="csr")
 
 
+@dataclass
+class _PairedPrimerCountFoldPlan:
+    """Regenerate disjoint paired-primer count folds without retaining them."""
+
+    raw_counts: sp.csr_matrix
+    n_folds: int
+    seed: int
+
+    @property
+    def shape(self):
+        return self.raw_counts.shape
+
+    def __len__(self):
+        return self.n_folds
+
+    def __iter__(self):
+        raw_counts = self.raw_counts
+        integer_counts = np.rint(raw_counts.data).astype(np.int64)
+        rng = np.random.default_rng(self.seed)
+        remaining = integer_counts.copy()
+        del integer_counts
+        for fold in range(self.n_folds):
+            if fold == self.n_folds - 1:
+                draw = remaining
+            else:
+                draw = rng.binomial(
+                    remaining, 1.0 / (self.n_folds - fold)
+                )
+                remaining -= draw
+            validation = sp.csr_matrix(
+                (
+                    draw,
+                    raw_counts.indices.copy(),
+                    raw_counts.indptr.copy(),
+                ),
+                shape=raw_counts.shape,
+            )
+            validation.eliminate_zeros()
+            training = (raw_counts - validation).tocsr()
+            yield (
+                _normalize_paired_primer_counts(training),
+                _normalize_paired_primer_counts(validation),
+            )
+            del training, validation, draw
+            gc.collect()
+
+
 def paired_primer_count_fold_pairs(raw_counts, n_folds=3, seed=0):
-    """Split raw molecules, then equalize primer mass within each CV partition."""
+    """Lazily split molecules, then equalize primer mass in each partition."""
     raw_counts = raw_counts.tocsr()
-    raw_pairs = _standard_count_fold_pairs(
-        raw_counts, n_folds=n_folds, seed=seed
-    )
-    return [
-        (
-            _normalize_paired_primer_counts(training),
-            _normalize_paired_primer_counts(validation),
-        )
-        for training, validation in raw_pairs
-    ]
+    if int(n_folds) < 2:
+        raise ValueError("n_folds must be at least two")
+    integer_counts = np.rint(raw_counts.data).astype(np.int64)
+    if np.any(integer_counts < 0) or not np.allclose(
+        raw_counts.data, integer_counts
+    ):
+        raise ValueError("count-fold CV requires nonnegative integer counts")
+    return _PairedPrimerCountFoldPlan(raw_counts, int(n_folds), int(seed))
 
 
 def _resolve_count_fold_pairs(counts, n_folds, seed, fold_pairs):
+    if isinstance(fold_pairs, _PairedPrimerCountFoldPlan):
+        if len(fold_pairs) != int(n_folds):
+            raise ValueError("fold_pairs must contain n_folds train/validation pairs")
+        if fold_pairs.shape != counts.shape:
+            raise ValueError("fold-pair matrices must match the response shape")
+        return fold_pairs
     pairs = (
         _standard_count_fold_pairs(counts, n_folds=n_folds, seed=seed)
         if fold_pairs is None

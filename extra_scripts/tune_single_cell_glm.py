@@ -118,13 +118,36 @@ def main():
     )
     if not len(selected):
         raise ValueError("no cells meet the requested UMI threshold")
-    counts = prepared.counts[selected]
+    all_rows_selected = (
+        len(selected) == prepared.counts.shape[0]
+        and np.array_equal(selected, np.arange(len(selected)))
+    )
+    counts = (
+        prepared.counts
+        if all_rows_selected
+        else prepared.counts[selected].tocsr()
+    )
+    raw_count_nonzeros = (
+        None
+        if prepared.cv_raw_counts is None
+        else int(prepared.cv_raw_counts.nnz)
+    )
+    raw_count_storage_bytes = (
+        None
+        if prepared.cv_raw_counts is None
+        else glm_cv.sparse_storage_bytes(prepared.cv_raw_counts)
+    )
     fold_pairs = None
     if prepared.metadata and prepared.metadata.get("paired_primers"):
         if prepared.cv_raw_counts is None:
             raise ValueError("paired-primer CV requires raw molecule counts")
+        selected_raw_counts = (
+            prepared.cv_raw_counts
+            if all_rows_selected
+            else prepared.cv_raw_counts[selected].tocsr()
+        )
         fold_pairs = glm_cv.paired_primer_count_fold_pairs(
-            prepared.cv_raw_counts[selected],
+            selected_raw_counts,
             n_folds=args.folds,
             seed=args.seed,
         )
@@ -239,16 +262,8 @@ def main():
         compatibility_storage_bytes=glm_cv.sparse_storage_bytes(
             prepared.compatibility
         ),
-        raw_count_nonzeros=(
-            None
-            if prepared.cv_raw_counts is None
-            else int(prepared.cv_raw_counts.nnz)
-        ),
-        raw_count_storage_bytes=(
-            None
-            if prepared.cv_raw_counts is None
-            else glm_cv.sparse_storage_bytes(prepared.cv_raw_counts)
-        ),
+        raw_count_nonzeros=raw_count_nonzeros,
+        raw_count_storage_bytes=raw_count_storage_bytes,
         full_scale=full_scale,
         selected_full_value=(
             report.get("best_multiplier") * full_scale
