@@ -8,8 +8,8 @@ set -euo pipefail
 CONFIG=${CONFIG:-/gpfs/commons/home/daknowles/projects/tealeaf/analyses/GSE233208/config.env}
 source "${CONFIG}"
 module load "${PYTHON_MODULE}"
-module load pigz/2.7-GCCcore-12.2.0
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
+PIGZ_BIN=${PIGZ_BIN:-/nfs/sw/easybuild/software/pigz/2.7-GCCcore-12.2.0/bin/pigz}
 
 MANIFEST=${MANIFEST:-"${DATA_ROOT}/manifest/ena_fastqs.tsv"}
 ALEVIN_DIR=${ALEVIN_DIR:-"${DATA_ROOT}/processed/merged_alevin"}
@@ -63,6 +63,7 @@ else
     echo "Refusing partial primer-specific Salmon output" >&2
     exit 1
   fi
+  mkdir -p "/scratch/${USER}"
   fifo_root=$(mktemp -d "/scratch/${USER}/gse233208-posbias.XXXXXX")
   polydt_fifo="${fifo_root}/polydt.fastq"
   ranhex_fifo="${fifo_root}/ranhex.fastq"
@@ -98,7 +99,7 @@ else
     --polydt-output "${polydt_fifo}" \
     --ranhex-output "${ranhex_fifo}" \
     --stats "${STATS}" \
-    --pigz "$(command -v pigz)" \
+    --pigz "${PIGZ_BIN}" \
     --pigz-threads "${PIGZ_THREADS}" \
     "${max_args[@]}" \
     "${prefix_args[@]}"

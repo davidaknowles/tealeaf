@@ -1298,3 +1298,10 @@ without starting. Historical full-sublibrary Salmon tasks used 4.2--5.7 GB
 RSS and completed within 2 hours 15 minutes on eight CPUs. Before any new task
 started, the untouched graph was replaced with 16-CPU, 32-GB tasks: two
 six-thread Salmon processes and two two-thread decompressors run concurrently.
+
+The right-sized array started immediately but most tasks found no pre-existing
+user directory on node-local scratch and stopped before Salmon. One task
+created only 8 KB of partial output before cancellation; it was moved to
+scratch. The launcher now creates its node-local scratch parent. It also calls
+the pigz executable by absolute path rather than loading its GCC 12 module,
+which had downgraded dependencies after loading the GCC 13 Python module.
