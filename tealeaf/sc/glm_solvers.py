@@ -1113,6 +1113,7 @@ def fit_frank_wolfe_penalized(
     min_iter=10,
     patience=5,
     initial_factors=None,
+    data_backend="auto",
 ):
     """Nuclear-ball Frank-Wolfe with a smooth negative-mass penalty.
 
@@ -1123,8 +1124,12 @@ def fit_frank_wolfe_penalized(
     _validate_stopping(max_iter, min_iter, patience, tol)
     if float(nonnegative_penalty) < 0:
         raise ValueError("nonnegative_penalty must be nonnegative")
-    data = SparseGLM(counts, compatibility, device, batch_cells)
+    data = _as_sparse_glm(
+        counts, compatibility, device, batch_cells, data_backend
+    )
     torch = data.torch
+    if data.device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats(data.device)
     max_atoms = int(rank if max_atoms is None else max_atoms)
     if max_atoms < 1 or int(power_iter) < 1:
         raise ValueError("max_atoms and power_iter must be positive")
@@ -1169,6 +1174,10 @@ def fit_frank_wolfe_penalized(
         "warm_started": warm_factors is not None,
         "warm_start_rank": initial_atoms,
         "warm_start_nuclear_upper": initial_nuclear_upper,
+        "data_backend": data.data_backend,
+        "batch_cells": data.batch_cells,
+        "cache_build_seconds": data.cache_build_seconds,
+        "epoch_seconds": [],
     }
     initial_gap = None
     previous = None
@@ -1179,6 +1188,7 @@ def fit_frank_wolfe_penalized(
     stable = 0
 
     for iteration in range(fit_iterations):
+        started = time.perf_counter()
         vector = torch.randn(
             (data.n_cells, 1), generator=generator, device=data.device
         )
@@ -1216,6 +1226,7 @@ def fit_frank_wolfe_penalized(
         objective = data.loss_for_factors(left, right)
         negative_stats = _negative_factor_stats(data, left, right)
         objective += 0.5 * penalty * negative_stats["negative_squared_norm"]
+        diagnostics["epoch_seconds"].append(time.perf_counter() - started)
         gap = float(gap_tensor.item())
         initial_gap = gap if initial_gap is None else initial_gap
         relative_gap = gap / max(initial_gap, 1e-12)
@@ -1246,6 +1257,14 @@ def fit_frank_wolfe_penalized(
             iterations=fit_iterations, converged=False, convergence_reason=reason,
         )
     diagnostics.update(_negative_factor_stats(data, left, right))
+    diagnostics["cells_per_second"] = (
+        data.n_cells * diagnostics["iterations"]
+        / max(sum(diagnostics["epoch_seconds"]), 1e-12)
+    )
+    diagnostics["peak_cuda_memory_bytes"] = (
+        int(torch.cuda.max_memory_allocated(data.device))
+        if data.device.type == "cuda" else None
+    )
     return GLMResult("frank_wolfe_penalized", left, right, None, diagnostics)
 
 
@@ -1277,7 +1296,7 @@ def fit_glm(counts, compatibility, method, **kwargs):
         allowed = {
             "rank", "max_atoms", "tau", "nonnegative_penalty", "max_iter",
             "power_iter", "tol", "device", "batch_cells", "seed",
-            "min_iter", "patience", "initial_factors",
+            "min_iter", "patience", "initial_factors", "data_backend",
         }
         return fit_frank_wolfe_penalized(
             counts, compatibility, **{k: v for k, v in kwargs.items() if k in allowed}

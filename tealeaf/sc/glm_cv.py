@@ -678,6 +678,11 @@ def cross_validate_glm(
             seed=seed + fold_index,
             data_backend=data_backend,
         )
+        if not isinstance(training, glm_solvers.SparseGLM):
+            gc.collect()
+            target = glm_solvers.resolve_device(device)
+            if target.type == "cuda":
+                glm_solvers._torch().cuda.empty_cache()
         scales.append(scale)
         validation = glm_solvers.SparseGLM(
             validation_counts,
@@ -699,6 +704,7 @@ def cross_validate_glm(
                 kwargs["tau"] = float(multiplier) * scale
             if warm_start and warm_factors is not None:
                 kwargs["initial_factors"] = warm_factors
+            kwargs["data_backend"] = data_backend
             result = glm_solvers.fit_glm(
                 training,
                 None if isinstance(training, glm_solvers.SparseGLM)

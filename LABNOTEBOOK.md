@@ -1325,6 +1325,12 @@ training/validation nonzeros, and regularized paths report each completed
 fold-candidate fit. These events distinguish slow host preparation from GPU
 optimization in Slurm logs.
 
+Penalized Frank--Wolfe CV now releases the temporary CUDA allocator cache used
+to estimate its scale before constructing validation and training operators.
+The requested response backend is propagated into the FW solver instead of
+being resolved again internally. FW diagnostics now include backend,
+sparse-cache time, epoch throughput, and peak CUDA allocation.
+
 The full-scale binary-design CUDA preflight exercised all 201,023 biological
 cells passing 500 UMIs in each primer half, 915,119,948 response nonzeros, and
 two streamed count folds. It completed in 69 minutes with 64.9 GB peak host
