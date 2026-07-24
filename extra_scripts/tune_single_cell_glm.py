@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import time
 
 import numpy as np
 
@@ -86,6 +87,7 @@ def main():
     elif not args.multiplier:
         raise ValueError(f"{args.method} CV requires --multiplier")
 
+    preparation_started = time.perf_counter()
     if args.primer_pairs is None:
         prepared = glm_cv.prepare_alevin_glm_data(
             args.alevin_dir,
@@ -105,6 +107,14 @@ def main():
             min_half_umis=args.min_half_umis,
             primer_sampling_model=args.primer_sampling_model,
         )
+    print(json.dumps({
+        "event": "data_prepared",
+        "seconds": time.perf_counter() - preparation_started,
+        "cells": int(prepared.counts.shape[0]),
+        "equivalence_classes": int(prepared.counts.shape[1]),
+        "transcripts": int(prepared.compatibility.shape[1]),
+        "response_nonzeros": int(prepared.counts.nnz),
+    }), flush=True)
     eligible = glm_cv.sample_cells_by_count(
         prepared.counts,
         0,
@@ -152,6 +162,9 @@ def main():
             selected_raw_counts,
             n_folds=args.folds,
             seed=args.seed,
+            progress_callback=lambda row: print(
+                json.dumps(row), flush=True
+            ),
         )
     fit_kwargs = {
         "rank": args.rank,
@@ -230,6 +243,13 @@ def main():
             require_nondegenerate=args.require_nondegenerate,
             profile_variance_retention=args.profile_variance_retention,
             fold_pairs=fold_pairs,
+            progress_callback=lambda row: print(
+                json.dumps({
+                    "event": "regularization_candidate_complete",
+                    **row,
+                }),
+                flush=True,
+            ),
         )
     full_scale = None
     if args.method != "factorized":

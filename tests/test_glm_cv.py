@@ -79,8 +79,9 @@ class PairedPrimerPreparationTest(unittest.TestCase):
         raw = sp.csr_matrix(
             np.array([[8, 2, 2, 8], [4, 6, 7, 3]], dtype=np.int64)
         )
+        events = []
         pairs = glm_cv.paired_primer_count_fold_pairs(
-            raw, n_folds=2, seed=3
+            raw, n_folds=2, seed=3, progress_callback=events.append
         )
         self.assertEqual(len(pairs), 2)
         first_pass = list(pairs)
@@ -102,6 +103,13 @@ class PairedPrimerPreparationTest(unittest.TestCase):
             np.testing.assert_allclose(
                 np.asarray(validation[:, 2:].sum(axis=1)).ravel(), 0.5
             )
+        self.assertEqual(
+            [row["event"] for row in events],
+            [
+                "paired_fold_prepare_start",
+                "paired_fold_prepare_complete",
+            ] * 4,
+        )
         with self.assertRaisesRegex(ValueError, "nonnegative integer"):
             glm_cv.paired_primer_count_fold_pairs(
                 sp.csr_matrix([[1.5, 0.0, 1.0, 1.0]]),

@@ -1319,6 +1319,12 @@ iteration now copies those values straight into its one mutable `int64`
 remainder array rather than rounding and comparing another full-size array on
 every adaptive pass. Non-integer inputs remain validated at plan creation.
 
+Long sparse phases now emit JSON progress records. The tuning launcher reports
+completed data preparation, each paired fold reports start, elapsed time, and
+training/validation nonzeros, and regularized paths report each completed
+fold-candidate fit. These events distinguish slow host preparation from GPU
+optimization in Slurm logs.
+
 A 100,000-pair real-data check assigned 79,022 transcript reads: 52,110 to
 poly(dT), 26,912 to random hexamer, and 20,978 to unknown or ambiguous RT
 barcodes. Separate Salmon runs completed with 59.3 and 60.5 percent mapping.

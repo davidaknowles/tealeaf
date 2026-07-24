@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import csv
 import gc
 from pathlib import Path
+import time
 
 import numpy as np
 import scipy.io
@@ -449,6 +450,7 @@ class _PairedPrimerCountFoldPlan:
     raw_counts: sp.csr_matrix
     n_folds: int
     seed: int
+    progress_callback: object | None = None
 
     @property
     def shape(self):
@@ -462,6 +464,12 @@ class _PairedPrimerCountFoldPlan:
         rng = np.random.default_rng(self.seed)
         remaining = raw_counts.data.astype(np.int64, copy=True)
         for fold in range(self.n_folds):
+            started = time.perf_counter()
+            if self.progress_callback is not None:
+                self.progress_callback({
+                    "event": "paired_fold_prepare_start",
+                    "fold": fold,
+                })
             if fold == self.n_folds - 1:
                 draw = remaining
             else:
@@ -479,15 +487,26 @@ class _PairedPrimerCountFoldPlan:
             )
             validation.eliminate_zeros()
             training = (raw_counts - validation).tocsr()
-            yield (
+            pair = (
                 _normalize_paired_primer_counts(training),
                 _normalize_paired_primer_counts(validation),
             )
+            if self.progress_callback is not None:
+                self.progress_callback({
+                    "event": "paired_fold_prepare_complete",
+                    "fold": fold,
+                    "seconds": time.perf_counter() - started,
+                    "training_nonzeros": int(pair[0].nnz),
+                    "validation_nonzeros": int(pair[1].nnz),
+                })
+            yield pair
             del training, validation, draw
             gc.collect()
 
 
-def paired_primer_count_fold_pairs(raw_counts, n_folds=3, seed=0):
+def paired_primer_count_fold_pairs(
+    raw_counts, n_folds=3, seed=0, progress_callback=None
+):
     """Lazily split molecules, then equalize primer mass in each partition."""
     raw_counts = raw_counts.tocsr()
     if int(n_folds) < 2:
@@ -501,7 +520,9 @@ def paired_primer_count_fold_pairs(raw_counts, n_folds=3, seed=0):
         )
     if invalid:
         raise ValueError("count-fold CV requires nonnegative integer counts")
-    return _PairedPrimerCountFoldPlan(raw_counts, int(n_folds), int(seed))
+    return _PairedPrimerCountFoldPlan(
+        raw_counts, int(n_folds), int(seed), progress_callback
+    )
 
 
 def _resolve_count_fold_pairs(counts, n_folds, seed, fold_pairs):
@@ -626,6 +647,7 @@ def cross_validate_glm(
     min_profile_active_fraction=0.9,
     min_profile_relative_variance=1e-6,
     fold_pairs=None,
+    progress_callback=None,
 ):
     """Tune a scale-free lambda fraction or tau multiplier by count folds."""
     fit_kwargs = dict(fit_kwargs or {})
@@ -692,28 +714,29 @@ def cross_validate_glm(
             profile = glm_solvers.factor_profile_diagnostics(
                 result, batch_cells=batch_cells
             )
-            rows.append(
-                {
-                    "fold": fold_index,
-                    "multiplier": float(multiplier),
-                    "scale": scale,
-                    "value": float(multiplier) * scale,
-                    "validation_loss_per_cell": validation_loss,
-                    "iterations": result.diagnostics.get("iterations"),
-                    "converged": result.diagnostics.get("converged"),
-                    "warm_started": result.diagnostics.get("warm_started", False),
-                    "warm_start_rank": result.diagnostics.get("warm_start_rank", 0),
-                    "data_backend": result.diagnostics.get("data_backend"),
-                    "cells_per_second": result.diagnostics.get("cells_per_second"),
-                    "mean_epoch_seconds": float(np.mean(
-                        result.diagnostics.get("epoch_seconds", [np.nan])
-                    )),
-                    "peak_cuda_memory_bytes": result.diagnostics.get(
-                        "peak_cuda_memory_bytes"
-                    ),
-                    **profile,
-                }
-            )
+            row = {
+                "fold": fold_index,
+                "multiplier": float(multiplier),
+                "scale": scale,
+                "value": float(multiplier) * scale,
+                "validation_loss_per_cell": validation_loss,
+                "iterations": result.diagnostics.get("iterations"),
+                "converged": result.diagnostics.get("converged"),
+                "warm_started": result.diagnostics.get("warm_started", False),
+                "warm_start_rank": result.diagnostics.get("warm_start_rank", 0),
+                "data_backend": result.diagnostics.get("data_backend"),
+                "cells_per_second": result.diagnostics.get("cells_per_second"),
+                "mean_epoch_seconds": float(np.mean(
+                    result.diagnostics.get("epoch_seconds", [np.nan])
+                )),
+                "peak_cuda_memory_bytes": result.diagnostics.get(
+                    "peak_cuda_memory_bytes"
+                ),
+                **profile,
+            }
+            rows.append(row)
+            if progress_callback is not None:
+                progress_callback(dict(row))
             if warm_start:
                 warm_factors = (
                     result.left.detach(), result.right.detach()
