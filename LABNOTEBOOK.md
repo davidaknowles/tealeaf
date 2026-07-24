@@ -1325,6 +1325,21 @@ training/validation nonzeros, and regularized paths report each completed
 fold-candidate fit. These events distinguish slow host preparation from GPU
 optimization in Slurm logs.
 
+The full-scale binary-design CUDA preflight exercised all 201,023 biological
+cells passing 500 UMIs in each primer half, 915,119,948 response nonzeros, and
+two streamed count folds. It completed in 69 minutes with 64.9 GB peak host
+RSS and 25.7 GB peak CUDA allocation under the 192 GB host and B6K GPU
+production requests. After sparse cache construction, the two deliberately
+truncated rank-one fits processed about 75,000 and 237,000 cells per second.
+They ran only two iterations and were not expected to converge; this was a
+scale and interface gate, not rank selection.
+
+All 40 primer-specific positional runs are complete. The final run conserved
+all 334,102,139 input pairs, assigning 267,766,447 to one primer and
+classifying 66,335,692 as unknown or ambiguous. Both Salmon outputs reached
+their normal inference stopping criterion and wrote completion markers,
+releasing the validated 40-run design reducer.
+
 A 100,000-pair real-data check assigned 79,022 transcript reads: 52,110 to
 poly(dT), 26,912 to random hexamer, and 20,978 to unknown or ambiguous RT
 barcodes. Separate Salmon runs completed with 59.3 and 60.5 percent mapping.
