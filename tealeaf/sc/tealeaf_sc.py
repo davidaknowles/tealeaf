@@ -445,7 +445,7 @@ def pseudo_eq_conversion(alevin_dir, salmon_ref, barcode_pseudo_file, min_EC = 5
     if regularization_target not in {'phi', 'theta'}:
         sys.exit("Error: regularization_target must be phi or theta.\n")
     if ec_design not in {'legacy', 'binary', 'weighted'}:
-        sys.exit("Error: ec_design must be legacy, binary, or weighted.\n")
+        sys.exit("Error: pseudobulk ec_design must be legacy, binary, or weighted.\n")
     if quant_method not in {
         'em', 'nnls', 'nnls_nucnorm', 'admm', 'admm_factorized',
         'frank_wolfe', 'frank_wolfe_penalized', 'factorized',
@@ -1150,7 +1150,7 @@ if __name__ == "__main__":
                   help="coefficient matrix receiving low-rank regularization: phi or theta (default: phi)")
 
     parser.add_option("--ec_design", dest="ec_design", default='legacy',
-                  help="fixed EC design: legacy, binary, or weighted (default: legacy)")
+                  help="fixed EC design: legacy, binary, weighted, or paired positional (default: legacy)")
 
     parser.add_option("--eq_probabilities", dest="eq_probabilities", default=None,
                   help="alevin-fry per-UMI probability sidecar for --ec_design weighted")
@@ -1308,8 +1308,12 @@ if __name__ == "__main__":
     if options.regularization_target not in {'phi', 'theta'}:
         sys.exit("Error: --regularization_target must be phi or theta.\n")
 
-    if options.ec_design not in {'legacy', 'binary', 'weighted'}:
-        sys.exit("Error: --ec_design must be legacy, binary, or weighted.\n")
+    if options.ec_design not in {'legacy', 'binary', 'weighted', 'positional'}:
+        sys.exit(
+            "Error: --ec_design must be legacy, binary, weighted, or positional.\n"
+        )
+    if options.ec_design == 'positional' and not options.primer_pairs:
+        sys.exit("Error: --ec_design positional requires --primer_pairs.\n")
 
     if options.glm_data_backend not in {'auto', 'cuda', 'pinned'}:
         sys.exit("Error: --glm_data_backend must be auto, cuda, or pinned.\n")

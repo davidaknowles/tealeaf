@@ -1246,3 +1246,43 @@ when both were produced outside Slurm. The submitter still uses dependencies
 when merge, validation, or cache jobs are pending, and it refuses to reuse
 pre-existing artifacts for a new pending merge. This avoids large-memory queue
 delays without allowing stale caches to bypass a new preprocessing run.
+
+## 2026-07-24 Primer-Specific Positional Bias
+
+Inspection of the patched alevin-fry implementation showed that its weighted
+sidecar applies one hard-coded transcript-end model to every read. It does not
+learn oligo(dT) coverage and applies the same 3-prime preference to
+random-hexamer cells. The grouped sidecar designs remain useful alignment-
+weight comparators, but they are not a valid primer-bias correction.
+
+The corrected path classifies Parse reads from the RT barcode in read 2 and
+streams transcript read 1 to separate poly(dT) and random-hexamer Salmon
+processes. Exact RT barcodes and unique one-substitution corrections are
+retained. Each sublibrary is processed independently in a Slurm array, so
+Salmon learns positional models from every run and the demultiplexing bottleneck
+is parallel. No primer-split FASTQ copies are materialized.
+
+Each Salmon run uses positional-bias learning and rich EC-weight output.
+Salmon models observed and expected positions within transcript-length
+classes, and its effective lengths include the resulting primer-specific bias
+correction. Rich range-factorized rows sharing a transcript set are collapsed
+across sublibraries by fragment-count-weighted averaging, joined to alevin ECs
+by transcript-set identity, and normalized by transcript column. Effective
+lengths are mapped-fragment-weighted across runs. Missing ECs use inverse
+primer-specific effective lengths rather than uniform weights. The builder
+reports exact-join coverage by both EC identity and primer-specific UMI mass.
+
+The paired GLM now accepts a `positional` design. Phi fits use the two
+column-normalized primer designs directly. Theta fits multiply each design by
+its own Salmon effective-length vector before stacking, while retaining one
+shared coefficient row per biological cell. This avoids reintroducing a
+shared reference-length approximation after fitting primer-specific bias.
+
+A 100,000-pair real-data check assigned 79,022 transcript reads: 52,110 to
+poly(dT), 26,912 to random hexamer, and 20,978 to unknown or ambiguous RT
+barcodes. Separate Salmon runs completed with 59.3 and 60.5 percent mapping.
+When joined to the existing million-read alevin smoke output, exact Salmon
+rows covered 16.6 and 11.1 percent of distinct ECs but 71.0 and 61.9 percent
+of molecule mass; all remaining compatible entries received effective-length
+fallbacks. The full test suite passes with 67 tests, and `docs/glm.tex`
+compiles after documenting the correction and parameterization.

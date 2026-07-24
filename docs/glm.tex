@@ -293,11 +293,49 @@ The fixed weighted implementation estimates \(A_d\) and \(A_h\) separately by
 grouping the patched alevin-fry per-UMI probability sidecar according to the
 half-cell barcode, averaging likelihood vectors within each primer and EC,
 and column-normalizing each design. This preserves primer-specific alignment
-evidence. It is not a full correction for oligo(dT) positional coverage bias:
-the current probability payload does not fit separate primer-specific fragment-
-start distributions. A full correction requires primer-separated Salmon
-\texttt{--posBias} models, or exporting RAD positions and evaluating a learned
-primer-specific positional model when constructing \(A_p\).
+evidence, but the sidecar's hard-coded transcript-end term is shared by both
+primers and is therefore retained only as an empirical comparator.
+
+The positional-bias design instead classifies each raw Parse read by its RT
+barcode and streams its transcript read into a primer-specific bulk Salmon
+run. Exact RT barcodes and unique one-substitution corrections are accepted;
+unknown or primer-ambiguous barcodes are excluded. To avoid having Salmon's
+finite bias-training sample come from one large sublibrary, every sublibrary
+is quantified independently for both primers and the resulting models are
+combined downstream. The runs use
+\texttt{--posBias --dumpEqWeights}. Salmon learns separate observed and
+expected fragment-position distributions in five transcript-length classes
+and incorporates their ratio into alignment likelihoods and bias-corrected
+effective lengths.
+
+For primer \(p\), let \(q^{(r)}_{pkt}\) be Salmon's dumped rich weight for
+range-factorized row \(r\), with raw fragment count \(n^{(r)}_{pk}\).
+Rows having the same transcript set are collapsed as
+\[
+  \bar q_{pkt} =
+  \frac{\sum_r n^{(r)}_{pk}q^{(r)}_{pkt}}
+       {\sum_r n^{(r)}_{pk}}.
+\]
+where \(r\) ranges over range-factorized rows and sublibraries.
+The transcript set, rather than Salmon's local EC number, joins this result to
+the alevin-fry EC universe. Alevin ECs absent from the Salmon dump receive
+weights proportional to \(1/\tilde l_{pt}\) among compatible transcripts,
+where \(\tilde l_{pt}\) is that primer's Salmon effective length. Finally each
+transcript column is normalized over ECs to obtain \(A_{\phi,p}\). Join
+diagnostics report both the fraction of distinct ECs and the primer-specific
+UMI mass represented by exact Salmon rows. Effective lengths are averaged
+across sublibraries using mapped fragments as weights.
+
+For molecular-abundance regularization the two primer designs retain separate
+effective-length transformations,
+\[
+  A_{\theta,p}=A_{\phi,p}
+  \operatorname{diag}(\tilde{\bm l}_p).
+\]
+This is necessary because positional bias changes the sampled effective
+length differently under oligo(dT) and random-hexamer priming. Using one
+reference-derived length vector for both primers would partially discard the
+correction. The fitted \(\Theta\) remains shared across the paired halves.
 
 \subsection*{Sparse Objective Evaluation}
 
@@ -763,14 +801,17 @@ Let \(K\) be the number of equivalence classes. Running Salmon with
 \texttt{--dumpEqWeights} provides the two quantities needed to instantiate the
 model:
 \begin{itemize}[leftmargin=*]
-  \item \texttt{eq\_classes.txt} gives the count \(c_k\) for each class and the
-  conditional weights
+  \item \texttt{eq\_classes.txt} gives the count \(c_k\) for each
+  range-factorized row and Salmon's normalized combined weights
   \[
-    p_{kt} = \Pr(R_n \in k \mid R_n \in t),
+    q_{kt} \propto
+    \frac{\text{alignment and bias likelihood}_{kt}}{\tilde l_t},
   \]
-  with \(p_{kt}=0\) when transcript \(t\) is incompatible with class \(k\).
-  These weights define the design matrix \(A \in \mathbb{R}^{K \times T}\),
-  \(a_{kt}=p_{kt}\).
+  with \(q_{kt}=0\) when transcript \(t\) is incompatible with class \(k\).
+  These are the coefficients used by Salmon's offline inference, normalized
+  within a row. After duplicate-row collapsing and transcript-column
+  normalization they define the fixed design
+  \(A \in \mathbb{R}^{K \times T}\).
   \item \texttt{quant.sf} gives the effective length vector
   \(\tilde{\bm{l}}=(\tilde{l}_1,\ldots,\tilde{l}_T)'\), including Salmon's
   fragment-length and bias corrections.
@@ -783,17 +824,16 @@ counts use \(\mathbb{E}[\bm{c}]=N A\bm{\phi}\), or equivalently
 extensions therefore apply without explicitly computing geometric region
 lengths \(\tilde{u}_s\).
 
-The current single-cell implementation constructs \(A\) from EC membership
+The binary single-cell implementation constructs \(A\) from EC membership
 when only the standard alevin-fry EC dump is present: compatible entries are
 weighted by \(1/\tilde{l}_t\), using transcript effective-length proxies from
 the reference, and the region factor is set to one. The patched weighted RAD
 and alevin-fry route additionally writes per-UMI alignment-likelihood vectors
 to \texttt{gene\_eqclass\_probs.tsv.gz}. These vectors are computed from
 alignment score and transcript-end position and are used inside alevin-fry's
-EM update. They vary by cell and UMI; they are not yet consumed by the GLM,
-which currently assumes one common \(A\) across cells. Using them exactly
-requires a cell-specific design operator rather than replacing \(A\) by a
-single averaged matrix.
+EM update. They vary by cell and UMI. Using them exactly requires a
+cell-specific design operator rather than replacing \(A\) by a single averaged
+matrix.
 
 For a direct fixed-design comparison, the implementation supports globally or
 primer-grouped weighted approximations. For each global EC, its per-UMI
@@ -804,13 +844,16 @@ cached. The binary comparator column-normalizes the binary EC membership matrix
 in the same way. These comparisons isolate within-EC alignment evidence. They
 are empirical approximations to the molecule-specific likelihoods, not
 annotation-only conditional models or complete positional-bias corrections.
+The paired positional design described above is the implemented
+primer-specific coverage-bias correction and does not use the sidecar's shared
+transcript-end prior.
 
 If inference is desired directly on the relative abundance scale
 \(\boldsymbol{\theta}\), absorb transcript effective lengths into the design:
 \[
   B = A\operatorname{diag}(\tilde{\bm{l}}),
   \qquad
-  b_{kt}=p_{kt}\tilde{l}_t.
+  b_{kt}=a_{kt}\tilde{l}_t.
 \]
 Solving the corresponding nonnegative system
 \(\bm{c}=B\boldsymbol{\theta}^*\) estimates an unnormalized abundance signal;

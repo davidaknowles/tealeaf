@@ -76,6 +76,7 @@ def prepare_paired_primer_glm_data(
     min_half_umis=500,
     probability_file=None,
     weight_caches=None,
+    length_caches=None,
 ):
     """Prepare paired primer observations with one latent row per cell.
 
@@ -85,8 +86,10 @@ def prepare_paired_primer_glm_data(
     shared abundance vector while retaining primer-specific observation bias.
     Only complete pairs meeting ``min_half_umis`` in both halves are retained.
     """
-    if ec_design not in {"binary", "weighted"}:
-        raise ValueError("paired primer fitting requires binary or weighted design")
+    if ec_design not in {"binary", "weighted", "positional"}:
+        raise ValueError(
+            "paired primer fitting requires binary, weighted, or positional design"
+        )
     alevin_dir = Path(alevin_dir)
     features, membership = load_alevin_structure(alevin_dir)
     barcodes, counts = load_alevin_counts(alevin_dir)
@@ -137,7 +140,7 @@ def prepare_paired_primer_glm_data(
     if ec_design == "binary":
         base = sc_utils._column_normalize(membership.astype(float))
         phi_designs = [base, base]
-    else:
+    elif ec_design == "weighted":
         probability_file = Path(probability_file or (
             alevin_dir / "gene_eqclass_probs.tsv.gz"
         ))
@@ -153,15 +156,56 @@ def prepare_paired_primer_glm_data(
             2,
             cache_files=weight_caches,
         )
+    else:
+        if weight_caches is None:
+            weight_caches = [
+                alevin_dir / "gene_eqclass_posbias_polydt.npz",
+                alevin_dir / "gene_eqclass_posbias_ranhex.npz",
+            ]
+        if len(weight_caches) != 2:
+            raise ValueError("positional paired design requires two weight caches")
+        missing = [str(path) for path in weight_caches if not Path(path).is_file()]
+        if missing:
+            raise FileNotFoundError(
+                "missing primer-specific positional design: " + ", ".join(missing)
+            )
+        phi_designs = [sp.load_npz(path).tocsr() for path in weight_caches]
+        if any(design.shape != membership.shape for design in phi_designs):
+            raise ValueError(
+                "primer-specific positional design shape does not match alevin ECs"
+            )
+        if length_caches is None:
+            length_caches = [
+                alevin_dir / "salmon_effective_lengths_polydt.npy",
+                alevin_dir / "salmon_effective_lengths_ranhex.npy",
+            ]
+        missing = [str(path) for path in length_caches if not Path(path).is_file()]
+        if missing:
+            raise FileNotFoundError(
+                "missing primer-specific effective lengths: " + ", ".join(missing)
+            )
 
     filtered_features = features[feature_keep]
     _, weights = sc_utils.get_feature_weights(filtered_features, transcript_lengths)
+    design_weights = [weights, weights]
+    if ec_design == "positional":
+        design_weights = []
+        for path in length_caches:
+            effective_lengths = np.load(path)
+            if effective_lengths.shape != features.shape:
+                raise ValueError(
+                    "primer-specific effective lengths do not match features"
+                )
+            selected = effective_lengths[feature_keep]
+            if np.any(~np.isfinite(selected)) or np.any(selected <= 0):
+                raise ValueError("primer-specific effective lengths are invalid")
+            design_weights.append(1.0 / selected)
     designs = []
-    for phi_design in phi_designs:
+    for phi_design, primer_weights in zip(phi_designs, design_weights):
         filtered = phi_design[ec_keep, :][:, feature_keep]
         designs.append(sc_utils.parameterize_glm_design(
             filtered,
-            weights,
+            primer_weights,
             regularization_target,
             normalize_columns=True,
         ))
@@ -185,6 +229,7 @@ def prepare_paired_primer_glm_data(
         metadata={
             "paired_primers": True,
             "primer_names": ["polydT", "ranhex"],
+            "ec_design": ec_design,
             "min_half_umis": float(min_half_umis),
             "half_umi_totals": np.column_stack((poly_totals, hex_totals)),
             "source_rows": np.column_stack((poly_rows, hex_rows)),
@@ -208,6 +253,10 @@ def prepare_alevin_glm_data(
     weight_cache=None,
 ):
     """Load and filter the matrices shared by single-cell fitting and CV."""
+    if ec_design == "positional":
+        raise ValueError(
+            "positional correction is primer-specific; provide primer pairs"
+        )
     alevin_dir = Path(alevin_dir)
     map_cache = alevin_dir / "gene_eqclass.npz"
     if map_cache.is_file():

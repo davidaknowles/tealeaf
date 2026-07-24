@@ -18,7 +18,9 @@ def main():
     parser.add_argument("--alevin-dir", required=True, type=Path)
     parser.add_argument("--salmon-ref", required=True, type=Path)
     parser.add_argument("--primer-pairs", required=True, type=Path)
-    parser.add_argument("--design", required=True, choices=("binary", "weighted"))
+    parser.add_argument(
+        "--design", required=True, choices=("binary", "weighted", "positional")
+    )
     parser.add_argument("--initial-prefix", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--inner-steps", type=int, action="append")

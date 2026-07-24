@@ -86,6 +86,54 @@ class PairedPrimerPreparationTest(unittest.TestCase):
                 np.asarray(validation[:, 2:].sum(axis=1)).ravel(), 0.5
             )
 
+    def test_positional_design_loads_separate_primer_caches(self):
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            membership = sp.csr_matrix(np.ones((1, 2)))
+            sp.save_npz(directory / "gene_eqclass.npz", membership)
+            sp.save_npz(
+                directory / "geqc_counts.npz",
+                sp.csr_matrix(np.array([[10], [10]])),
+            )
+            (directory / "quants_mat_cols.txt").write_text("tx1\ntx2\n")
+            (directory / "quants_mat_rows.txt").write_text("poly\nhex\n")
+            (directory / "transcripts.fa").write_text(
+                ">tx1\n" + "A" * 400 + "\n>tx2\n" + "C" * 400 + "\n"
+            )
+            (directory / "pairs.tsv").write_text(
+                "cell_id\tpolydt_barcode\tranhex_barcode\ncell\tpoly\thex\n"
+            )
+            sp.save_npz(
+                directory / "gene_eqclass_posbias_polydt.npz",
+                sp.csr_matrix([[0.8, 0.2]]),
+            )
+            sp.save_npz(
+                directory / "gene_eqclass_posbias_ranhex.npz",
+                sp.csr_matrix([[0.1, 0.9]]),
+            )
+            np.save(
+                directory / "salmon_effective_lengths_polydt.npy",
+                np.array([100.0, 200.0]),
+            )
+            np.save(
+                directory / "salmon_effective_lengths_ranhex.npy",
+                np.array([150.0, 250.0]),
+            )
+            prepared = glm_cv.prepare_paired_primer_glm_data(
+                directory,
+                directory / "transcripts.fa",
+                directory / "pairs.tsv",
+                ec_design="positional",
+                regularization_target="phi",
+                min_eq=1,
+                min_half_umis=1,
+            )
+            np.testing.assert_allclose(
+                prepared.compatibility.toarray(),
+                [[0.5, 0.5], [0.5, 0.5]],
+            )
+            self.assertEqual(prepared.metadata["ec_design"], "positional")
+
 
 @unittest.skipUnless(TORCH_AVAILABLE, "Torch optional dependency is unavailable")
 class GLMCVTest(unittest.TestCase):

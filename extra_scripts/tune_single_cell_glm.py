@@ -14,7 +14,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--alevin-dir", required=True, type=Path)
     parser.add_argument("--salmon-ref", required=True, type=Path)
-    parser.add_argument("--design", required=True, choices=["binary", "weighted"])
+    parser.add_argument(
+        "--design", required=True, choices=["binary", "weighted", "positional"]
+    )
     parser.add_argument(
         "--method",
         required=True,
