@@ -13,6 +13,7 @@ import scipy
 import scipy.sparse
 from scipy.sparse import csr_matrix, save_npz, load_npz, vstack, coo_array
 from optparse import OptionParser
+import json
 import random
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor
@@ -699,12 +700,8 @@ def single_cell_glm_conversion(options):
             raise ValueError("warm-start transcript columns do not match prepared GLM columns")
         with np.load(factor_path) as factors:
             initial_factors = (factors["left"], factors["right"])
-    result = glm_solvers.fit_glm(
-        counts,
-        prepared.compatibility,
-        options.quant_method,
+    fit_kwargs = dict(
         rank=options.glm_rank,
-        regularization=options.nucnorm_lambda,
         rho=options.admm_rho,
         adaptive_rho=options.admm_adaptive_rho,
         rho_update_interval=options.admm_rho_update_interval,
@@ -729,6 +726,43 @@ def single_cell_glm_conversion(options):
         exact_inner_steps=options.glm_exact_inner_steps,
         initial_factors=initial_factors,
     )
+    if (
+        options.quant_method == "admm_factorized"
+        and options.admm_continuation
+    ):
+        if initial_factors is not None:
+            raise ValueError(
+                "--admm_continuation and --glm_initial_factors are mutually exclusive"
+            )
+        for key in (
+            "initial_factors", "device", "batch_cells", "data_backend"
+        ):
+            fit_kwargs.pop(key)
+        result = glm_cv.fit_admm_continuation(
+            counts,
+            prepared.compatibility,
+            options.nucnorm_lambda,
+            device=options.glm_device,
+            batch_cells=options.glm_batch_cells,
+            data_backend=options.glm_data_backend,
+            power_iter=options.admm_power_iter,
+            seed=0,
+            path_floor=options.admm_continuation_floor,
+            path_factor=options.admm_continuation_factor,
+            fit_kwargs=fit_kwargs,
+            progress_callback=lambda row: print(json.dumps({
+                "event": "admm_continuation_stage_complete",
+                **row,
+            }), flush=True),
+        )
+    else:
+        result = glm_solvers.fit_glm(
+            counts,
+            prepared.compatibility,
+            options.quant_method,
+            regularization=options.nucnorm_lambda,
+            **fit_kwargs,
+        )
     result.diagnostics['regularization_target'] = options.regularization_target
     result.diagnostics['ec_design'] = options.ec_design
     if prepared.metadata:
@@ -1211,6 +1245,19 @@ if __name__ == "__main__":
 
     parser.add_option("--admm_residual_tol", dest="admm_residual_tol", default=None, type="float",
                   help="ADMM split-residual tolerance; defaults to nucnorm_tol")
+
+    parser.add_option("--admm_continuation", dest="admm_continuation", default=False,
+                  action="store_true",
+                  help="refit factorized ADMM from lambda-max down to the selected value")
+
+    parser.add_option("--admm_continuation_floor", dest="admm_continuation_floor", default=1e-4, type="float",
+                  help="smallest positive lambda-max fraction in ADMM continuation (default: 1e-4)")
+
+    parser.add_option("--admm_continuation_factor", dest="admm_continuation_factor", default=10.0, type="float",
+                  help="spacing factor for the ADMM continuation path (default: 10)")
+
+    parser.add_option("--admm_power_iter", dest="admm_power_iter", default=10, type="int",
+                  help="power iterations for the ADMM spectral initializer (default: 10)")
 
     parser.add_option("--admm_inner_iter", dest="admm_inner_iter", default=25, type="int",
                   help="projected-gradient inner iterations for dense admm (default: 25)")

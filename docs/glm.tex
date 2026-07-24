@@ -784,7 +784,15 @@ leading singular vectors \(u,v\) of \(B=A'C\):
 \]
 Small random remaining columns preserve the requested factor rank. The
 continuation and spectral-seed objectives are evaluated, and the lower one
-initializes ADMM. Frank--Wolfe visits
+initializes ADMM. The selected all-cell ADMM refit replays this same
+strong-to-weak construction after recomputing \(\lambda_{\max}\) from all
+eligible cells. Its geometric path includes the closed
+\(\lambda/\lambda_{\max}=1\) endpoint, a configured smallest positive
+multiplier, and the exact CV-selected multiplier. The final manifest records
+the initializer, convergence criterion, residuals, adaptive-\(\rho\) state,
+and objective at every stage; it is therefore possible to verify that the
+reported endpoint was reached by continuation rather than an unrelated random
+restart. Frank--Wolfe visits
 increasing \(\tau\); the previous atom factorization is feasible in the enlarged
 nuclear-norm ball and is retained.
 

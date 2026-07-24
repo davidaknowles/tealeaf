@@ -633,6 +633,174 @@ def _admm_spectral_initial_factors(data, reference, multiplier, rank, seed):
     return left, right
 
 
+def admm_continuation_multipliers(selected_multiplier, *, floor=1e-4,
+                                  factor=10.0):
+    """Construct a closed strong-to-selected ADMM regularization path."""
+    selected_multiplier = float(selected_multiplier)
+    floor = float(floor)
+    factor = float(factor)
+    if not np.isfinite(selected_multiplier) or selected_multiplier < 0:
+        raise ValueError("selected ADMM multiplier must be finite and nonnegative")
+    if not np.isfinite(floor) or floor <= 0 or floor >= 1:
+        raise ValueError("ADMM continuation floor must lie strictly between zero and one")
+    if not np.isfinite(factor) or factor <= 1:
+        raise ValueError("ADMM continuation factor must be greater than one")
+    if selected_multiplier >= 1:
+        return [selected_multiplier]
+
+    path = [1.0]
+    candidate = 1.0 / factor
+    lower_positive = max(selected_multiplier, floor)
+    while candidate >= lower_positive * (1.0 - 1e-12):
+        path.append(candidate)
+        candidate /= factor
+    if not np.isclose(path[-1], selected_multiplier, rtol=1e-12, atol=1e-15):
+        path.append(selected_multiplier)
+    return path
+
+
+def fit_admm_continuation(
+    counts,
+    compatibility,
+    selected_regularization,
+    *,
+    device="auto",
+    batch_cells=4096,
+    data_backend="auto",
+    power_iter=10,
+    seed=0,
+    path_floor=1e-4,
+    path_factor=10.0,
+    fit_kwargs=None,
+    progress_callback=None,
+):
+    """Refit selected factorized ADMM by strong-to-weak continuation.
+
+    Each stage compares the preceding solution with the rank-one spectral
+    descent seed. This preserves continuation while preventing the bilinear
+    zero saddle from trapping weaker regularization stages.
+    """
+    selected_regularization = float(selected_regularization)
+    if not np.isfinite(selected_regularization) or selected_regularization < 0:
+        raise ValueError("selected ADMM regularization must be finite and nonnegative")
+    fit_kwargs = dict(fit_kwargs or {})
+    if "regularization" in fit_kwargs or "initial_factors" in fit_kwargs:
+        raise ValueError(
+            "fit_kwargs must not override regularization or initial_factors"
+        )
+    if int(fit_kwargs.get("rank", 64)) < 1:
+        raise ValueError("ADMM rank must be positive")
+
+    data = (
+        counts if isinstance(counts, glm_solvers.SparseGLM)
+        else glm_solvers.SparseGLM(
+            counts,
+            compatibility,
+            device=device,
+            batch_cells=batch_cells,
+            data_backend=data_backend,
+        )
+    )
+    scale, reference = hyperparameter_scale(
+        data,
+        None,
+        "admm_factorized",
+        device=device,
+        batch_cells=batch_cells,
+        power_iter=power_iter,
+        seed=seed,
+        data_backend=data_backend,
+        return_reference=True,
+    )
+    reference["singular"] = scale
+    selected_multiplier = selected_regularization / scale
+    multipliers = admm_continuation_multipliers(
+        selected_multiplier, floor=path_floor, factor=path_factor
+    )
+
+    warm_factors = None
+    rows = []
+    result = None
+    for stage, multiplier in enumerate(multipliers):
+        regularization = (
+            selected_regularization
+            if stage == len(multipliers) - 1
+            else float(multiplier) * scale
+        )
+        spectral_factors = _admm_spectral_initial_factors(
+            data,
+            reference,
+            multiplier,
+            fit_kwargs.get("rank", 64),
+            seed,
+        )
+        initial_factors = spectral_factors
+        initializer_source = "spectral"
+        if warm_factors is not None:
+            warm_objective = data.loss_for_factors(
+                *warm_factors, regularization
+            )
+            spectral_objective = data.loss_for_factors(
+                *spectral_factors, regularization
+            )
+            if warm_objective <= spectral_objective:
+                initial_factors = warm_factors
+                initializer_source = "continuation"
+            else:
+                initializer_source = "spectral_restart"
+        result = glm_solvers.fit_glm(
+            data,
+            None,
+            "admm_factorized",
+            regularization=regularization,
+            initial_factors=initial_factors,
+            device=device,
+            batch_cells=batch_cells,
+            data_backend=data_backend,
+            **fit_kwargs,
+        )
+        warm_factors = (result.left, result.right)
+        row = {
+            "stage": stage,
+            "multiplier": float(multiplier),
+            "regularization": regularization,
+            "initializer_source": initializer_source,
+            "iterations": result.diagnostics.get("iterations"),
+            "converged": result.diagnostics.get("converged"),
+            "convergence_reason": result.diagnostics.get(
+                "convergence_reason"
+            ),
+            "final_objective": (
+                result.diagnostics.get("objective") or [None]
+            )[-1],
+            "final_objective_relative_change": (
+                result.diagnostics.get("objective_relative_change") or [None]
+            )[-1],
+            "final_primal_relative_residual": (
+                result.diagnostics.get("primal_relative_residual") or [None]
+            )[-1],
+            "final_dual_relative_residual": (
+                result.diagnostics.get("dual_relative_residual") or [None]
+            )[-1],
+            "final_rho": result.diagnostics.get("final_rho"),
+            "rho_update_count": len(
+                result.diagnostics.get("rho_updates", [])
+            ),
+        }
+        rows.append(row)
+        if progress_callback is not None:
+            progress_callback(dict(row))
+
+    result.diagnostics["continuation"] = {
+        "scale": scale,
+        "selected_multiplier": selected_multiplier,
+        "path_floor": float(path_floor),
+        "path_factor": float(path_factor),
+        "stages": rows,
+    }
+    return result
+
+
 def _open_boundary_direction(method, multipliers, best_multiplier):
     ordered = sorted(float(value) for value in multipliers)
     if len(ordered) < 2:

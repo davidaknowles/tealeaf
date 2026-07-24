@@ -1495,3 +1495,14 @@ with magnitude `(sigma - lambda) / ||A u||^2`, adds small random remaining
 columns, and compares that seed's training objective with the preceding
 candidate. The lower-objective initializer is used, so genuine continuation
 is retained without allowing the strong endpoint to trap the path.
+
+The initial selected all-cell ADMM launcher still cold-started only the
+CV-selected endpoint, even though CV itself used continuation. This was
+detected while the unregularized rank-64 refit remained active far longer than
+the corresponding fold endpoint. The run was stopped rather than accepted.
+Selected ADMM fitting now recomputes lambda-max on all eligible cells and
+replays a geometric strong-to-selected path. At every stage it compares the
+previous factors with the spectral descent seed, resets ADMM split state, and
+records the initializer, objective, residuals, rho updates, and convergence
+status in the final manifest. This makes the full refit follow the same
+warm-start policy used for model selection.

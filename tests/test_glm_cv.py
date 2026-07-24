@@ -281,6 +281,52 @@ class GLMCVTest(unittest.TestCase):
             data.loss_for_factors(*zeros, regularization),
         )
 
+    def test_admm_continuation_path_is_closed_and_strong_to_weak(self):
+        self.assertEqual(
+            glm_cv.admm_continuation_multipliers(0),
+            [1.0, 0.1, 0.01, 0.001, 0.0001, 0.0],
+        )
+        self.assertEqual(
+            glm_cv.admm_continuation_multipliers(0.03),
+            [1.0, 0.1, 0.03],
+        )
+        self.assertEqual(
+            glm_cv.admm_continuation_multipliers(1.5),
+            [1.5],
+        )
+
+    def test_admm_selected_refit_records_continuation(self):
+        progress = []
+        result = glm_cv.fit_admm_continuation(
+            self.counts,
+            self.compatibility,
+            selected_regularization=0.0,
+            device="cpu",
+            batch_cells=2,
+            power_iter=10,
+            path_floor=0.1,
+            fit_kwargs={
+                "rank": 2,
+                "max_iter": 60,
+                "min_iter": 2,
+                "patience": 2,
+                "tol": 1e-3,
+                "residual_tol": 1e-2,
+            },
+            progress_callback=progress.append,
+        )
+        continuation = result.diagnostics["continuation"]
+        self.assertEqual(
+            [row["multiplier"] for row in continuation["stages"]],
+            [1.0, 0.1, 0.0],
+        )
+        self.assertEqual(len(progress), 3)
+        self.assertEqual(
+            continuation["stages"][-1]["regularization"], 0.0
+        )
+        self.assertTrue(np.isfinite(result.left.detach().numpy()).all())
+        self.assertTrue(np.isfinite(result.right.detach().numpy()).all())
+
     def test_only_open_grid_boundaries_require_expansion(self):
         self.assertFalse(
             glm_cv._best_on_open_boundary("admm_factorized", [0, 0.1, 1], 1)
