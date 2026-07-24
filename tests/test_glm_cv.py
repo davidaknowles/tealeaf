@@ -102,6 +102,11 @@ class PairedPrimerPreparationTest(unittest.TestCase):
             np.testing.assert_allclose(
                 np.asarray(validation[:, 2:].sum(axis=1)).ravel(), 0.5
             )
+        with self.assertRaisesRegex(ValueError, "nonnegative integer"):
+            glm_cv.paired_primer_count_fold_pairs(
+                sp.csr_matrix([[1.5, 0.0, 1.0, 1.0]]),
+                n_folds=2,
+            )
 
     def test_positional_design_loads_separate_primer_caches(self):
         with tempfile.TemporaryDirectory() as directory:

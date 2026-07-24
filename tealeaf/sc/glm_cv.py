@@ -459,10 +459,8 @@ class _PairedPrimerCountFoldPlan:
 
     def __iter__(self):
         raw_counts = self.raw_counts
-        integer_counts = np.rint(raw_counts.data).astype(np.int64)
         rng = np.random.default_rng(self.seed)
-        remaining = integer_counts.copy()
-        del integer_counts
+        remaining = raw_counts.data.astype(np.int64, copy=True)
         for fold in range(self.n_folds):
             if fold == self.n_folds - 1:
                 draw = remaining
@@ -494,10 +492,14 @@ def paired_primer_count_fold_pairs(raw_counts, n_folds=3, seed=0):
     raw_counts = raw_counts.tocsr()
     if int(n_folds) < 2:
         raise ValueError("n_folds must be at least two")
-    integer_counts = np.rint(raw_counts.data).astype(np.int64)
-    if np.any(integer_counts < 0) or not np.allclose(
-        raw_counts.data, integer_counts
-    ):
+    if np.issubdtype(raw_counts.data.dtype, np.integer):
+        invalid = np.any(raw_counts.data < 0)
+    else:
+        rounded = np.rint(raw_counts.data)
+        invalid = np.any(rounded < 0) or not np.allclose(
+            raw_counts.data, rounded
+        )
+    if invalid:
         raise ValueError("count-fold CV requires nonnegative integer counts")
     return _PairedPrimerCountFoldPlan(raw_counts, int(n_folds), int(seed))
 
