@@ -1312,4 +1312,7 @@ the two primer assignments and rejected RT barcodes, agreement between
 assigned reads and each Salmon `num_processed`, positive mapped counts, the
 full reference target count, nonempty rich ECs, all four readable observed and
 expected positional models, and completion markers. Reduction starts only
-after all 40 reports pass.
+after all 40 reports pass. The reducer also writes one aggregate validation
+summary with run IDs, conserved read totals, assignment fraction, primer-
+specific processed and mapped totals, run-level mapping-rate bounds, rich-EC
+totals, and reference target counts.

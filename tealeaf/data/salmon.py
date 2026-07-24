@@ -231,6 +231,61 @@ def validate_primer_positional_quantification(
     return report
 
 
+def summarize_primer_positional_validations(paths):
+    """Aggregate validated Parse primer runs into one audit summary."""
+    paths = [Path(path) for path in paths]
+    if not paths:
+        raise ValueError("at least one positional validation report is required")
+    reports = []
+    run_ids = []
+    for path in paths:
+        report = json.loads(path.read_text())
+        run_id = path.parent.name
+        if run_id in run_ids:
+            raise ValueError(f"duplicate positional validation run: {run_id}")
+        run_ids.append(run_id)
+        reports.append(report)
+    summary = {
+        "runs": len(reports),
+        "run_ids": sorted(run_ids),
+        "total_reads": sum(int(report["total_reads"]) for report in reports),
+        "assigned_reads": sum(int(report["assigned_reads"]) for report in reports),
+        "unknown_or_ambiguous_reads": sum(
+            int(report["unknown_or_ambiguous_reads"]) for report in reports
+        ),
+        "primers": {},
+    }
+    if (
+        summary["assigned_reads"] + summary["unknown_or_ambiguous_reads"]
+        != summary["total_reads"]
+    ):
+        raise ValueError("aggregate primer validation does not conserve reads")
+    summary["assigned_fraction"] = (
+        summary["assigned_reads"] / summary["total_reads"]
+        if summary["total_reads"] else 0.0
+    )
+    for primer in ("polydt", "ranhex"):
+        primer_reports = [report["primers"][primer] for report in reports]
+        processed = sum(int(report["processed_reads"]) for report in primer_reports)
+        mapped = sum(int(report["mapped_reads"]) for report in primer_reports)
+        rates = [float(report["mapping_rate"]) for report in primer_reports]
+        summary["primers"][primer] = {
+            "processed_reads": processed,
+            "mapped_reads": mapped,
+            "mapping_rate": mapped / processed if processed else 0.0,
+            "minimum_run_mapping_rate": min(rates),
+            "maximum_run_mapping_rate": max(rates),
+            "rich_equivalence_classes_sum": sum(
+                int(report["rich_equivalence_classes"])
+                for report in primer_reports
+            ),
+            "targets": sorted({
+                int(report["targets"]) for report in primer_reports
+            }),
+        }
+    return summary
+
+
 def build_positional_ec_design(
     membership,
     features,

@@ -7,6 +7,7 @@ import scipy.sparse as sp
 
 from tealeaf.data.salmon import (
     build_positional_ec_design,
+    summarize_primer_positional_validations,
     validate_primer_positional_quantification,
 )
 
@@ -142,3 +143,17 @@ def test_validate_primer_positional_quantification(tmp_path):
     )
     assert report["assigned_fraction"] == 0.8
     assert report["primers"]["polydt"]["mapping_rate"] == 0.8
+
+    validation1 = tmp_path / "run1" / "validation.json"
+    validation2 = tmp_path / "run2" / "validation.json"
+    validation1.parent.mkdir()
+    validation2.parent.mkdir()
+    validation1.write_text(json.dumps(report))
+    validation2.write_text(json.dumps(report))
+    summary = summarize_primer_positional_validations(
+        [validation1, validation2]
+    )
+    assert summary["runs"] == 2
+    assert summary["total_reads"] == 20
+    assert summary["primers"]["ranhex"]["mapped_reads"] == 4
+    assert summary["primers"]["polydt"]["targets"] == [3]
