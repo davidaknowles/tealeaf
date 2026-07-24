@@ -227,6 +227,22 @@ def main():
         n_full_cells=int(len(eligible)),
         n_equivalence_classes=int(prepared.counts.shape[1]),
         n_transcripts=int(prepared.compatibility.shape[1]),
+        response_nonzeros=int(prepared.counts.nnz),
+        response_storage_bytes=glm_cv.sparse_storage_bytes(prepared.counts),
+        compatibility_nonzeros=int(prepared.compatibility.nnz),
+        compatibility_storage_bytes=glm_cv.sparse_storage_bytes(
+            prepared.compatibility
+        ),
+        raw_count_nonzeros=(
+            None
+            if prepared.cv_raw_counts is None
+            else int(prepared.cv_raw_counts.nnz)
+        ),
+        raw_count_storage_bytes=(
+            None
+            if prepared.cv_raw_counts is None
+            else glm_cv.sparse_storage_bytes(prepared.cv_raw_counts)
+        ),
         full_scale=full_scale,
         selected_full_value=(
             report.get("best_multiplier") * full_scale

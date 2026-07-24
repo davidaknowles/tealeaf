@@ -18,6 +18,15 @@ else:
 
 
 class PairedPrimerPreparationTest(unittest.TestCase):
+    def test_sparse_storage_bytes_counts_csr_arrays(self):
+        matrix = sp.csr_matrix([[0.0, 1.0], [2.0, 0.0]], dtype=np.float32)
+        expected = (
+            matrix.data.nbytes
+            + matrix.indices.nbytes
+            + matrix.indptr.nbytes
+        )
+        self.assertEqual(glm_cv.sparse_storage_bytes(matrix), expected)
+
     def test_paired_response_and_design_use_equal_primer_weight(self):
         with tempfile.TemporaryDirectory() as directory:
             directory = Path(directory)

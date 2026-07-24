@@ -26,6 +26,12 @@ class PreparedGLMData:
     cv_raw_counts: sp.csr_matrix | None = None
 
 
+def sparse_storage_bytes(matrix):
+    """Return the bytes occupied by a CSR matrix's three backing arrays."""
+    matrix = matrix.tocsr(copy=False)
+    return int(matrix.data.nbytes + matrix.indices.nbytes + matrix.indptr.nbytes)
+
+
 def _row_normalize(matrix):
     matrix = matrix.tocsr().astype(np.float32)
     totals = np.asarray(matrix.sum(axis=1)).ravel()
