@@ -11,9 +11,13 @@ fits_file="${GLM_RUN}/submitted_positional_fits_${stamp}.tsv"
 printf 'stage\tmethod\tjob_id\n' > "${jobs_file}"
 : > "${fits_file}"
 
-posbias=$(sbatch --parsable --array=0-39%10 \
-  -o "${GLM_RUN}/logs/%x-%j.out" -e "${GLM_RUN}/logs/%x-%j.err" \
-  "${REPO_ROOT}/analyses/GSE233208/run_positional_bias.sbatch")
+if [[ -n "${POSBIAS_JOB:-}" ]]; then
+  posbias="${POSBIAS_JOB}"
+else
+  posbias=$(sbatch --parsable --array=0-39%10 \
+    -o "${GLM_RUN}/logs/%x-%j.out" -e "${GLM_RUN}/logs/%x-%j.err" \
+    "${REPO_ROOT}/analyses/GSE233208/run_positional_bias.sbatch")
+fi
 printf 'positional_design\tall\t%s\n' "${posbias}" >> "${jobs_file}"
 design=$(sbatch --parsable --dependency="afterok:${posbias}" \
   -o "${GLM_RUN}/logs/%x-%j.out" -e "${GLM_RUN}/logs/%x-%j.err" \

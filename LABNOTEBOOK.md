@@ -1305,3 +1305,11 @@ created only 8 KB of partial output before cancellation; it was moved to
 scratch. The launcher now creates its node-local scratch parent. It also calls
 the pigz executable by absolute path rather than loading its GCC 12 module,
 which had downgraded dependencies after loading the GCC 13 Python module.
+
+Before reduction, every run now passes an independent positional-output gate.
+It requires conservation of the original raw-pair count, conservation across
+the two primer assignments and rejected RT barcodes, agreement between
+assigned reads and each Salmon `num_processed`, positive mapped counts, the
+full reference target count, nonempty rich ECs, all four readable observed and
+expected positional models, and completion markers. Reduction starts only
+after all 40 reports pass.

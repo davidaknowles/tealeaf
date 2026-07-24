@@ -128,6 +128,109 @@ def summarize_positional_bias_models(path):
     }
 
 
+def validate_primer_positional_quantification(
+    run_root,
+    source_meta,
+    *,
+    expected_targets=None,
+):
+    """Validate read conservation and Salmon products for one Parse run."""
+    run_root = Path(run_root)
+    source_meta = json.loads(Path(source_meta).read_text())
+    stats = json.loads((run_root / "demultiplex_stats.json").read_text())
+    count_fields = (
+        "total",
+        "polydT_exact",
+        "polydT_corrected",
+        "ranhex_exact",
+        "ranhex_corrected",
+        "unknown_or_ambiguous",
+        "assigned",
+    )
+    if any(
+        not isinstance(stats.get(field), int) or stats[field] < 0
+        for field in count_fields
+    ):
+        raise ValueError("demultiplex statistics contain invalid counts")
+    expected_total = int(source_meta["num_processed"])
+    if stats["total"] != expected_total:
+        raise ValueError(
+            f"demultiplexed {stats['total']} reads; expected {expected_total}"
+        )
+    assigned = sum(
+        stats[f"{primer}_{match}"]
+        for primer in ("polydT", "ranhex")
+        for match in ("exact", "corrected")
+    )
+    if stats["assigned"] != assigned:
+        raise ValueError("assigned read count does not equal primer components")
+    if assigned + stats["unknown_or_ambiguous"] != stats["total"]:
+        raise ValueError("primer assignments do not conserve input reads")
+
+    report = {
+        "total_reads": expected_total,
+        "assigned_reads": assigned,
+        "assigned_fraction": assigned / expected_total if expected_total else 0.0,
+        "unknown_or_ambiguous_reads": stats["unknown_or_ambiguous"],
+        "primers": {},
+    }
+    for primer, stats_name in (("polydt", "polydT"), ("ranhex", "ranhex")):
+        quant = run_root / f"salmon_{primer}"
+        required = (
+            quant / ".tealeaf_complete",
+            quant / "quant.sf",
+            quant / "aux_info" / "eq_classes.txt.gz",
+            quant / "aux_info" / "meta_info.json",
+            quant / "aux_info" / "obs5_pos.gz",
+            quant / "aux_info" / "obs3_pos.gz",
+            quant / "aux_info" / "exp5_pos.gz",
+            quant / "aux_info" / "exp3_pos.gz",
+        )
+        missing = [str(path) for path in required if not path.is_file() or not path.stat().st_size]
+        if missing:
+            raise FileNotFoundError(
+                f"missing positional Salmon products: {', '.join(missing)}"
+            )
+        meta = json.loads((quant / "aux_info" / "meta_info.json").read_text())
+        primer_reads = stats[f"{stats_name}_exact"] + stats[f"{stats_name}_corrected"]
+        if int(meta["num_processed"]) != primer_reads:
+            raise ValueError(
+                f"{primer} Salmon processed {meta['num_processed']} reads; "
+                f"demultiplexer assigned {primer_reads}"
+            )
+        mapped = int(meta["num_mapped"])
+        if mapped <= 0 or mapped > primer_reads:
+            raise ValueError(f"{primer} Salmon mapped count is invalid")
+        with gzip.open(quant / "aux_info" / "eq_classes.txt.gz", "rt") as handle:
+            target_count = int(next(handle))
+            eq_count = int(next(handle))
+        if target_count <= 0 or eq_count <= 0:
+            raise ValueError(f"{primer} rich EC header is empty")
+        if expected_targets is not None and target_count != int(expected_targets):
+            raise ValueError(
+                f"{primer} has {target_count} targets; expected {expected_targets}"
+            )
+        with open(quant / "quant.sf") as handle:
+            header = next(handle).rstrip("\n").split("\t")
+            if header[:3] != ["Name", "Length", "EffectiveLength"]:
+                raise ValueError(f"{primer} quant.sf has an unexpected header")
+            quant_targets = sum(1 for _ in handle)
+        if quant_targets != target_count:
+            raise ValueError(
+                f"{primer} quant.sf has {quant_targets} rows; expected {target_count}"
+            )
+        for model in ("obs5_pos.gz", "obs3_pos.gz", "exp5_pos.gz", "exp3_pos.gz"):
+            summarize_positional_bias_models(quant / "aux_info" / model)
+        report["primers"][primer] = {
+            "processed_reads": primer_reads,
+            "mapped_reads": mapped,
+            "mapping_rate": mapped / primer_reads,
+            "rich_equivalence_classes": eq_count,
+            "targets": target_count,
+        }
+    return report
+
+
 def build_positional_ec_design(
     membership,
     features,

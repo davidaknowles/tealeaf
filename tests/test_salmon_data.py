@@ -1,9 +1,14 @@
 import gzip
+import json
+import struct
 
 import numpy as np
 import scipy.sparse as sp
 
-from tealeaf.data.salmon import build_positional_ec_design
+from tealeaf.data.salmon import (
+    build_positional_ec_design,
+    validate_primer_positional_quantification,
+)
 
 
 def test_build_positional_design_collapses_rows_and_falls_back(tmp_path):
@@ -82,3 +87,58 @@ def test_build_positional_design_collapses_rows_and_falls_back(tmp_path):
     assert stats["fallback_alevin_ecs"] == 1
     assert stats["matched_molecule_fraction"] == 12 / 14
     np.testing.assert_allclose(effective_lengths, [14, 28, 42])
+
+
+def _write_positional_model(path):
+    with gzip.open(path, "wb") as handle:
+        handle.write(struct.pack("<I", 1))
+        handle.write(struct.pack("<I", 1000))
+        handle.write(struct.pack("<I", 2))
+        handle.write(struct.pack("<2d", 0.25, 0.75))
+
+
+def test_validate_primer_positional_quantification(tmp_path):
+    run_root = tmp_path / "run"
+    stats = {
+        "total": 10,
+        "polydT_exact": 4,
+        "polydT_corrected": 1,
+        "ranhex_exact": 3,
+        "ranhex_corrected": 0,
+        "unknown_or_ambiguous": 2,
+        "assigned": 8,
+    }
+    run_root.mkdir()
+    (run_root / "demultiplex_stats.json").write_text(json.dumps(stats))
+    source_meta = tmp_path / "source.json"
+    source_meta.write_text('{"num_processed": 10}\n')
+    for primer, processed, mapped in (
+        ("polydt", 5, 4),
+        ("ranhex", 3, 2),
+    ):
+        quant = run_root / f"salmon_{primer}"
+        (quant / "aux_info").mkdir(parents=True)
+        (quant / ".tealeaf_complete").write_text("complete\n")
+        (quant / "quant.sf").write_text(
+            "Name\tLength\tEffectiveLength\tTPM\tNumReads\n"
+            "tx0\t100\t90\t0\t0\n"
+            "tx1\t200\t190\t0\t0\n"
+            "tx2\t300\t290\t0\t0\n"
+        )
+        (quant / "aux_info" / "meta_info.json").write_text(json.dumps({
+            "num_processed": processed,
+            "num_mapped": mapped,
+        }))
+        with gzip.open(
+            quant / "aux_info" / "eq_classes.txt.gz", "wt"
+        ) as handle:
+            handle.write("3\n1\n")
+        for model in (
+            "obs5_pos.gz", "obs3_pos.gz", "exp5_pos.gz", "exp3_pos.gz",
+        ):
+            _write_positional_model(quant / "aux_info" / model)
+    report = validate_primer_positional_quantification(
+        run_root, source_meta, expected_targets=3
+    )
+    assert report["assigned_fraction"] == 0.8
+    assert report["primers"]["polydt"]["mapping_rate"] == 0.8

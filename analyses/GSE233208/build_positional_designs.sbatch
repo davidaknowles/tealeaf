@@ -21,6 +21,12 @@ while IFS=$'\t' read -r batch run _sample _title _experiment _experiment_title \
   for primer in polydt ranhex; do
     test -s "${root}/salmon_${primer}/.tealeaf_complete"
   done
+  "${PYTHON_BIN}" \
+    "${REPO_ROOT}/extra_scripts/validate_primer_positional_quantification.py" \
+    --run-root "${root}" \
+    --source-meta "${DATA_ROOT}/processed/${batch}/${run}/salmon_rad/aux_info/meta_info.json" \
+    --expected-targets 243927 \
+    --output "${root}/validation.json"
   quant_args+=(
     --polydt-quant "${root}/salmon_polydt"
     --ranhex-quant "${root}/salmon_ranhex"
