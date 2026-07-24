@@ -251,6 +251,36 @@ class GLMCVTest(unittest.TestCase):
             self.assertTrue(np.isfinite(scale))
             self.assertGreater(scale, 0)
 
+    def test_admm_spectral_seed_escapes_zero_solution(self):
+        data = glm_solvers.SparseGLM(
+            self.counts,
+            self.compatibility,
+            device="cpu",
+            batch_cells=2,
+        )
+        scale, reference = glm_cv.hyperparameter_scale(
+            data,
+            None,
+            "admm_factorized",
+            device="cpu",
+            power_iter=20,
+            return_reference=True,
+        )
+        reference["singular"] = scale
+        left, right = glm_cv._admm_spectral_initial_factors(
+            data, reference, multiplier=0.5, rank=2, seed=0
+        )
+        self.assertTrue(bool((left >= 0).all() and (right >= 0).all()))
+        regularization = 0.5 * scale
+        zeros = (
+            glm_solvers._torch().zeros_like(left),
+            glm_solvers._torch().zeros_like(right),
+        )
+        self.assertLess(
+            data.loss_for_factors(left, right, regularization),
+            data.loss_for_factors(*zeros, regularization),
+        )
+
     def test_only_open_grid_boundaries_require_expansion(self):
         self.assertFalse(
             glm_cv._best_on_open_boundary("admm_factorized", [0, 0.1, 1], 1)
@@ -434,8 +464,13 @@ class GLMCVTest(unittest.TestCase):
         for fold in range(2):
             rows = [row for row in report["fold_results"] if row["fold"] == fold]
             self.assertEqual([row["multiplier"] for row in rows], [1e-4, 0.0])
-            self.assertFalse(rows[0]["warm_started"])
+            self.assertTrue(rows[0]["warm_started"])
+            self.assertEqual(rows[0]["initializer_source"], "spectral")
             self.assertTrue(rows[1]["warm_started"])
+            self.assertIn(
+                rows[1]["initializer_source"],
+                {"continuation", "spectral_restart"},
+            )
 
     def test_factorized_rank_cv_runs_from_few_to_many_factors(self):
         progress = []

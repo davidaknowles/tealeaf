@@ -577,7 +577,7 @@ def estimate_b_spectral(data, power_iter=10, seed=0):
 
 def hyperparameter_scale(counts, compatibility, method, *, device="auto",
                          batch_cells=4096, power_iter=10, seed=0,
-                         data_backend="auto"):
+                         data_backend="auto", return_reference=False):
     """Return lambda_max or a rank-one line-search tau reference."""
     data = (
         counts if isinstance(counts, glm_solvers.SparseGLM)
@@ -586,14 +586,51 @@ def hyperparameter_scale(counts, compatibility, method, *, device="auto",
             data_backend=data_backend,
         )
     )
-    singular, left, _ = estimate_b_spectral(data, power_iter, seed)
+    singular, left, right = estimate_b_spectral(data, power_iter, seed)
     if method == "admm_factorized":
-        return singular
+        if not return_reference:
+            return singular
+        if float(left.sum().item()) < 0:
+            left = -left
+            right = -right
+        left = left.clamp_min(0)
+        right = right.clamp_min(0)
+        left /= data.torch.linalg.vector_norm(left).clamp_min(1e-12)
+        right /= data.torch.linalg.vector_norm(right).clamp_min(1e-12)
+        prediction = data.a_times(left)
+        curvature = float((prediction * prediction).sum().item())
+        return singular, {
+            "left": left,
+            "right": right,
+            "curvature": max(curvature, 1e-12),
+        }
     if method == "frank_wolfe_penalized":
         prediction = data.a_times(left)
         curvature = float((prediction * prediction).sum().item())
         return singular / max(curvature, 1e-12)
     raise ValueError(f"CV scale is not defined for method {method}")
+
+
+def _admm_spectral_initial_factors(data, reference, multiplier, rank, seed):
+    """Seed a factor path with the best leading-gradient rank-one step."""
+    rank = int(rank)
+    if rank < 1:
+        raise ValueError("ADMM rank must be positive")
+    torch = data.torch
+    if float(multiplier) >= 1.0:
+        return (
+            torch.zeros((data.n_transcripts, rank), device=data.device),
+            torch.zeros((data.n_cells, rank), device=data.device),
+        )
+    left, right = glm_solvers._initial_factors(data, rank, seed)
+    amplitude = (
+        reference["singular"] * max(1.0 - float(multiplier), 0.0)
+        / reference["curvature"]
+    )
+    root = np.sqrt(max(amplitude, 0.0))
+    left[:, 0] = root * reference["left"][:, 0]
+    right[:, 0] = root * reference["right"][:, 0]
+    return left, right
 
 
 def _open_boundary_direction(method, multipliers, best_multiplier):
@@ -667,17 +704,31 @@ def cross_validate_glm(
             )
             if method == "admm_factorized" else training_counts
         )
-        scale = hyperparameter_scale(
-            training,
-            None if isinstance(training, glm_solvers.SparseGLM)
-            else compatibility,
-            method,
-            device=device,
-            batch_cells=batch_cells,
-            power_iter=power_iter,
-            seed=seed + fold_index,
-            data_backend=data_backend,
-        )
+        reference = None
+        if method == "admm_factorized":
+            scale, reference = hyperparameter_scale(
+                training,
+                None,
+                method,
+                device=device,
+                batch_cells=batch_cells,
+                power_iter=power_iter,
+                seed=seed + fold_index,
+                data_backend=data_backend,
+                return_reference=True,
+            )
+            reference["singular"] = scale
+        else:
+            scale = hyperparameter_scale(
+                training,
+                compatibility,
+                method,
+                device=device,
+                batch_cells=batch_cells,
+                power_iter=power_iter,
+                seed=seed + fold_index,
+                data_backend=data_backend,
+            )
         if not isinstance(training, glm_solvers.SparseGLM):
             gc.collect()
             target = glm_solvers.resolve_device(device)
@@ -698,12 +749,40 @@ def cross_validate_glm(
         warm_factors = None
         for multiplier in path_multipliers:
             kwargs = dict(fit_kwargs)
+            initializer_source = "cold"
             if method == "admm_factorized":
                 kwargs["regularization"] = float(multiplier) * scale
+                spectral_factors = _admm_spectral_initial_factors(
+                    training,
+                    reference,
+                    multiplier,
+                    kwargs.get("rank", 64),
+                    seed + fold_index,
+                )
+                initializer_source = "spectral"
+                initial_factors = spectral_factors
+                if warm_start and warm_factors is not None:
+                    warm_objective = training.loss_for_factors(
+                        *warm_factors, kwargs["regularization"]
+                    )
+                    spectral_objective = training.loss_for_factors(
+                        *spectral_factors, kwargs["regularization"]
+                    )
+                    if warm_objective <= spectral_objective:
+                        initial_factors = warm_factors
+                        initializer_source = "continuation"
+                    else:
+                        initializer_source = "spectral_restart"
+                kwargs["initial_factors"] = initial_factors
             elif method == "frank_wolfe_penalized":
                 kwargs["tau"] = float(multiplier) * scale
-            if warm_start and warm_factors is not None:
+            if (
+                method != "admm_factorized"
+                and warm_start
+                and warm_factors is not None
+            ):
                 kwargs["initial_factors"] = warm_factors
+                initializer_source = "continuation"
             kwargs["data_backend"] = data_backend
             result = glm_solvers.fit_glm(
                 training,
@@ -733,6 +812,7 @@ def cross_validate_glm(
                 ),
                 "warm_started": result.diagnostics.get("warm_started", False),
                 "warm_start_rank": result.diagnostics.get("warm_start_rank", 0),
+                "initializer_source": initializer_source,
                 "data_backend": result.diagnostics.get("data_backend"),
                 "cells_per_second": result.diagnostics.get("cells_per_second"),
                 "mean_epoch_seconds": float(np.mean(

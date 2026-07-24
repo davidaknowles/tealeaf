@@ -1483,3 +1483,15 @@ candidate was excluded under a shared 1e-4 cutoff. Factorized ADMM now retains
 a 1e-4 patient objective tolerance and uses a separate 1e-3 split-residual
 tolerance for production CV and full fitting. Candidate progress records both
 tolerances, final residuals, final rho, and the number of adaptive-rho updates.
+
+Loosening only the feasibility tolerance exposed a second issue: a candidate
+warm-started from the nearly zero lambda-max factors reported no float32
+objective change and stopped after 50 iterations, but its held-out loss and
+profile variance showed that it had not activated signal. This is the
+bilinear zero saddle: both factor gradients vanish when both factors are zero.
+ADMM continuation now retains the leading singular vectors computed for
+lambda-max. At each lambda it forms the exact best rank-one step from zero,
+with magnitude `(sigma - lambda) / ||A u||^2`, adds small random remaining
+columns, and compares that seed's training objective with the preceding
+candidate. The lower-objective initializer is used, so genuine continuation
+is retained without allowing the strong endpoint to trap the path.

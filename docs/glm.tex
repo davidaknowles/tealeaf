@@ -770,7 +770,21 @@ number of nonempty cells. This preserves the relative scale of the objective ter
 multiplier selected on a subset is transferred to all cells. Within each fold,
 candidates follow a strong-to-weak regularization path. Factorized ADMM visits
 decreasing \(\lambda\) and initializes each candidate from the preceding primal
-factors while resetting the split dual variables. Frank--Wolfe visits
+factors while resetting the split dual variables. Because the factorized
+gradient vanishes when both factors are zero, continuation from the
+\(\lambda_{\max}\) solution can otherwise remain at that saddle. For each
+candidate the implementation also constructs the best rank-one step along the
+leading singular vectors \(u,v\) of \(B=A'C\):
+\[
+  s_\lambda
+  =
+  \frac{(\sigma-\lambda)_+}{\lVert Au\rVert_2^2},
+  \qquad
+  \Phi_{\mathrm{seed}}=s_\lambda uv'.
+\]
+Small random remaining columns preserve the requested factor rank. The
+continuation and spectral-seed objectives are evaluated, and the lower one
+initializes ADMM. Frank--Wolfe visits
 increasing \(\tau\); the previous atom factorization is feasible in the enlarged
 nuclear-norm ball and is retained.
 
