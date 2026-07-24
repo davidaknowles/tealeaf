@@ -58,6 +58,17 @@ polydt_quant="${OUTPUT_ROOT}/salmon_polydt"
 ranhex_quant="${OUTPUT_ROOT}/salmon_ranhex"
 if [[ -s "${polydt_quant}/.tealeaf_complete" &&
       -s "${ranhex_quant}/.tealeaf_complete" ]]; then
+  for quant in "${polydt_quant}" "${ranhex_quant}"; do
+    observed_type=$("${PYTHON_BIN}" -c '
+import json, sys
+types = json.load(open(sys.argv[1])).get("library_types", [])
+print(",".join(types))
+' "${quant}/aux_info/meta_info.json")
+    if [[ "${observed_type}" != "${LIBTYPE}" ]]; then
+      echo "Refusing completed Salmon output with library type ${observed_type}; expected ${LIBTYPE}: ${quant}" >&2
+      exit 1
+    fi
+  done
   echo "Reusing completed primer-specific Salmon quantifications"
 else
   if [[ -e "${polydt_quant}" || -e "${ranhex_quant}" ]]; then
