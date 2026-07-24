@@ -80,6 +80,7 @@ def prepare_paired_primer_glm_data(
     regularization_target="theta",
     min_eq=5,
     min_half_umis=500,
+    primer_sampling_model="effective_length",
     probability_file=None,
     weight_caches=None,
     length_caches=None,
@@ -91,10 +92,22 @@ def prepare_paired_primer_glm_data(
     ``0.5 A_polydT`` and ``0.5 A_ranhex``. Both halves therefore estimate one
     shared abundance vector while retaining primer-specific observation bias.
     Only complete pairs meeting ``min_half_umis`` in both halves are retained.
+    ``primer_sampling_model="oligodt_tpm"`` removes length exposure from the
+    oligo(dT) block and retains median-normalized effective-length exposure for
+    the random-hexamer block.
     """
     if ec_design not in {"binary", "weighted", "positional"}:
         raise ValueError(
             "paired primer fitting requires binary, weighted, or positional design"
+        )
+    if primer_sampling_model not in {
+        "effective_length",
+        "oligodt_tpm",
+        "all_tpm",
+    }:
+        raise ValueError(
+            "primer_sampling_model must be effective_length, oligodt_tpm, "
+            "or all_tpm"
         )
     alevin_dir = Path(alevin_dir)
     features, membership = load_alevin_structure(alevin_dir)
@@ -193,9 +206,9 @@ def prepare_paired_primer_glm_data(
 
     filtered_features = features[feature_keep]
     _, weights = sc_utils.get_feature_weights(filtered_features, transcript_lengths)
-    design_weights = [weights, weights]
+    sampling_factors = [1.0 / weights, 1.0 / weights]
     if ec_design == "positional":
-        design_weights = []
+        sampling_factors = []
         for path in length_caches:
             effective_lengths = np.load(path)
             if effective_lengths.shape != features.shape:
@@ -205,7 +218,23 @@ def prepare_paired_primer_glm_data(
             selected = effective_lengths[feature_keep]
             if np.any(~np.isfinite(selected)) or np.any(selected <= 0):
                 raise ValueError("primer-specific effective lengths are invalid")
-            design_weights.append(1.0 / selected)
+            sampling_factors.append(selected)
+    sampling_scales = [1.0, 1.0]
+    if primer_sampling_model == "oligodt_tpm":
+        ranhex_scale = float(np.median(sampling_factors[1]))
+        if not np.isfinite(ranhex_scale) or ranhex_scale <= 0:
+            raise ValueError("ranhex sampling lengths have no valid median")
+        sampling_factors = [
+            np.ones_like(sampling_factors[0]),
+            sampling_factors[1] / ranhex_scale,
+        ]
+        sampling_scales[1] = ranhex_scale
+    elif primer_sampling_model == "all_tpm":
+        sampling_factors = [
+            np.ones_like(sampling_factors[0]),
+            np.ones_like(sampling_factors[1]),
+        ]
+    design_weights = [1.0 / factor for factor in sampling_factors]
     designs = []
     for phi_design, primer_weights in zip(phi_designs, design_weights):
         filtered = phi_design[ec_keep, :][:, feature_keep]
@@ -236,6 +265,8 @@ def prepare_paired_primer_glm_data(
             "paired_primers": True,
             "primer_names": ["polydT", "ranhex"],
             "ec_design": ec_design,
+            "primer_sampling_model": primer_sampling_model,
+            "primer_sampling_scales": sampling_scales,
             "min_half_umis": float(min_half_umis),
             "half_umi_totals": np.column_stack((poly_totals, hex_totals)),
             "source_rows": np.column_stack((poly_rows, hex_rows)),

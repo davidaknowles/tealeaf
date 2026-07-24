@@ -661,6 +661,7 @@ def single_cell_glm_conversion(options):
             regularization_target=options.regularization_target,
             min_eq=options.min_eq,
             min_half_umis=options.min_half_umis,
+            primer_sampling_model=options.primer_sampling_model,
             probability_file=options.eq_probabilities,
         )
     else:
@@ -1101,6 +1102,10 @@ if __name__ == "__main__":
     parser.add_option("--min_half_umis", dest="min_half_umis", default=500, type="float",
                   help="minimum UMI count required in each paired primer half (default: 500)")
 
+    parser.add_option("--primer_sampling_model", dest="primer_sampling_model",
+                  default="effective_length",
+                  help="paired-primer sampling: effective_length, oligodt_tpm, or all_tpm")
+
     parser.add_option("--glm_device", dest="glm_device", default='auto',
                   help="Torch device for scalable GLMs: auto, cuda, or cpu (default: auto)")
 
@@ -1314,6 +1319,13 @@ if __name__ == "__main__":
         )
     if options.ec_design == 'positional' and not options.primer_pairs:
         sys.exit("Error: --ec_design positional requires --primer_pairs.\n")
+    if options.primer_sampling_model not in {
+        'effective_length', 'oligodt_tpm', 'all_tpm',
+    }:
+        sys.exit(
+            "Error: --primer_sampling_model must be effective_length, "
+            "oligodt_tpm, or all_tpm.\n"
+        )
 
     if options.glm_data_backend not in {'auto', 'cuda', 'pinned'}:
         sys.exit("Error: --glm_data_backend must be auto, cuda, or pinned.\n")

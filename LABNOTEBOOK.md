@@ -1278,6 +1278,22 @@ its own Salmon effective-length vector before stacking, while retaining one
 shared coefficient row per biological cell. This avoids reintroducing a
 shared reference-length approximation after fitting primer-specific bias.
 
+For the primary paired theta analysis, oligo(dT) UMIs are now assumed
+proportional to transcript molar abundance (TPM): anchored priming supplies no
+additional transcript-length factor. Random-hexamer UMIs retain relative
+Salmon effective-length exposure, normalized by its median over retained
+transcripts so the two separately normalized primer losses have comparable
+units. The reusable API also exposes the previous effective-length model for
+both primers and a TPM model for both. CV reports and fit diagnostics record
+the selected model and scale constants.
+
+Because each primer response is normalized separately, the exact ranhex mean
+contains a cell-specific denominator equal to the abundance-weighted effective
+length. The median-length scaling is a linear approximation to this
+denominator. The oligo(dT) block anchors the coefficient scale and keeps
+nuclear-norm penalties comparable; an exact treatment would require a
+compositional objective or alternating primer-by-cell exposure factors.
+
 A 100,000-pair real-data check assigned 79,022 transcript reads: 52,110 to
 poly(dT), 26,912 to random hexamer, and 20,978 to unknown or ambiguous RT
 barcodes. Separate Salmon runs completed with 59.3 and 60.5 percent mapping.

@@ -328,16 +328,43 @@ diagnostics report both the fraction of distinct ECs and the primer-specific
 UMI mass represented by exact Salmon rows. Effective lengths are averaged
 across sublibraries using mapped fragments as weights.
 
-For molecular-abundance regularization the two primer designs retain separate
-effective-length transformations,
+The sampling transformation must also reflect the primer chemistry. An
+anchored oligo(dT) reaction gives approximately one UMI-generating priming
+opportunity per polyadenylated molecule, so its UMI fraction is modeled as
+proportional to molar abundance (TPM), without a transcript-length factor.
+Random-hexamer priming can generate more cDNAs from a longer molecule. The
+primary paired model therefore uses
 \[
-  A_{\theta,p}=A_{\phi,p}
-  \operatorname{diag}(\tilde{\bm l}_p).
+  A_{\theta,d}=A_{\phi,d},\qquad
+  A_{\theta,h}=A_{\phi,h}
+  \operatorname{diag}\left(
+    \frac{\tilde{\bm l}_h}
+         {\operatorname{median}_t\tilde l_{ht}}
+  \right).
 \]
-This is necessary because positional bias changes the sampled effective
-length differently under oligo(dT) and random-hexamer priming. Using one
-reference-derived length vector for both primers would partially discard the
-correction. The fitted \(\Theta\) remains shared across the paired halves.
+Median normalization is a global exposure convention: it preserves relative
+length dependence for random-hexamer UMIs without giving its design an
+arbitrary base-pair scale relative to the separately normalized oligo(dT)
+response. The fitted \(\Theta\) remains shared across the paired halves and is
+on the oligo(dT) TPM scale. Implemented alternatives apply effective length to
+both primers or assume TPM-proportional UMIs for both. The selected sampling
+model and normalization constants are recorded in CV reports and fit
+diagnostics.
+
+More exactly, separate normalization of the random-hexamer response gives
+\[
+  \mathbb E[\bm c_{hm}\mid\bm\theta_m]
+  =
+  \frac{A_{\phi,h}D_h\bm\theta_m}
+       {\bm 1'D_h\bm\theta_m}.
+\]
+The denominator is cell-specific because it depends on that cell's isoform
+mixture. Replacing it by the median effective length is therefore a linear
+approximation, not an exact identity. The oligo(dT) block anchors the scale of
+\(\Theta\), because its column-normalized design and response both have unit
+mass. An exact compositional loss or alternating primer-by-cell exposure
+updates would account for the denominator, but would no longer be the common
+linear least-squares problem used by all four solvers.
 
 \subsection*{Sparse Objective Evaluation}
 

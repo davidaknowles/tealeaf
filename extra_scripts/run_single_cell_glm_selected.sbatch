@@ -34,6 +34,7 @@ print(report["selected_rank"] if report["method"] == "factorized"
 
 MIN_CELL_UMIS=${MIN_CELL_UMIS:-500}
 MIN_HALF_UMIS=${MIN_HALF_UMIS:-500}
+PRIMER_SAMPLING_MODEL=${PRIMER_SAMPLING_MODEL:-oligodt_tpm}
 BATCH_CELLS=${BATCH_CELLS:-16384}
 EXACT_INNER_STEPS=${EXACT_INNER_STEPS:-32}
 method_args=()
@@ -57,7 +58,11 @@ fi
 
 primer_args=()
 if [[ -n "${PRIMER_PAIRS:-}" ]]; then
-  primer_args+=(--primer_pairs "${PRIMER_PAIRS}" --min_half_umis "${MIN_HALF_UMIS}")
+  primer_args+=(
+    --primer_pairs "${PRIMER_PAIRS}"
+    --min_half_umis "${MIN_HALF_UMIS}"
+    --primer_sampling_model "${PRIMER_SAMPLING_MODEL}"
+  )
 fi
 
 python -m tealeaf.sc.tealeaf_sc \

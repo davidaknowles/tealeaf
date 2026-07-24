@@ -8,8 +8,10 @@ import tempfile
 import numpy as np
 import scipy.sparse as sp
 
+from tealeaf.sc import glm_cv
+
 try:
-    from tealeaf.sc import glm_cv, glm_solvers
+    from tealeaf.sc import glm_solvers
     glm_solvers._torch()
 except ImportError:  # pragma: no cover
     TORCH_AVAILABLE = False
@@ -142,6 +144,26 @@ class PairedPrimerPreparationTest(unittest.TestCase):
                 [[0.5, 0.5], [0.5, 0.5]],
             )
             self.assertEqual(prepared.metadata["ec_design"], "positional")
+            theta = glm_cv.prepare_paired_primer_glm_data(
+                directory,
+                directory / "transcripts.fa",
+                directory / "pairs.tsv",
+                ec_design="positional",
+                regularization_target="theta",
+                primer_sampling_model="oligodt_tpm",
+                min_eq=1,
+                min_half_umis=1,
+            )
+            np.testing.assert_allclose(
+                theta.compatibility.toarray(),
+                [[0.5, 0.5], [0.375, 0.625]],
+            )
+            self.assertEqual(
+                theta.metadata["primer_sampling_model"], "oligodt_tpm"
+            )
+            self.assertEqual(
+                theta.metadata["primer_sampling_scales"], [1.0, 200.0]
+            )
 
 
 @unittest.skipUnless(TORCH_AVAILABLE, "Torch optional dependency is unavailable")

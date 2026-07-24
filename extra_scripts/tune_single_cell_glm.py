@@ -25,6 +25,11 @@ def main():
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--primer-pairs", type=Path)
     parser.add_argument("--min-half-umis", type=float, default=500)
+    parser.add_argument(
+        "--primer-sampling-model",
+        choices=["effective_length", "oligodt_tpm", "all_tpm"],
+        default="effective_length",
+    )
     parser.add_argument("--multiplier", action="append", type=float)
     parser.add_argument("--rank-candidate", action="append", type=int)
     parser.add_argument("--max-rank", type=int, default=256)
@@ -96,6 +101,7 @@ def main():
             regularization_target="theta",
             min_eq=args.min_eq,
             min_half_umis=args.min_half_umis,
+            primer_sampling_model=args.primer_sampling_model,
         )
     eligible = glm_cv.sample_cells_by_count(
         prepared.counts,
@@ -262,6 +268,9 @@ def main():
         ),
         min_half_umis=(
             float(args.min_half_umis) if args.primer_pairs is not None else None
+        ),
+        primer_sampling_model=(
+            args.primer_sampling_model if args.primer_pairs is not None else None
         ),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)

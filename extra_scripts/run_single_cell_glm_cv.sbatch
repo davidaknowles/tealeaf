@@ -21,6 +21,7 @@ mkdir -p "${RUN_DIR}"
 CV_CELLS=${CV_CELLS:-0}
 MIN_CELL_UMIS=${MIN_CELL_UMIS:-500}
 MIN_HALF_UMIS=${MIN_HALF_UMIS:-500}
+PRIMER_SAMPLING_MODEL=${PRIMER_SAMPLING_MODEL:-oligodt_tpm}
 BATCH_CELLS=${BATCH_CELLS:-16384}
 MAX_RANK=${MAX_RANK:-512}
 EXACT_INNER_STEPS=${EXACT_INNER_STEPS:-32}
@@ -60,7 +61,11 @@ fi
 
 primer_args=()
 if [[ -n "${PRIMER_PAIRS:-}" ]]; then
-  primer_args+=(--primer-pairs "${PRIMER_PAIRS}" --min-half-umis "${MIN_HALF_UMIS}")
+  primer_args+=(
+    --primer-pairs "${PRIMER_PAIRS}"
+    --min-half-umis "${MIN_HALF_UMIS}"
+    --primer-sampling-model "${PRIMER_SAMPLING_MODEL}"
+  )
 fi
 
 python "${REPO_ROOT}/extra_scripts/tune_single_cell_glm.py" \
