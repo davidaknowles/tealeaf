@@ -1297,6 +1297,15 @@ denominator. The oligo(dT) block anchors the coefficient scale and keeps
 nuclear-norm penalties comparable; an exact treatment would require a
 compositional objective or alternating primer-by-cell exposure factors.
 
+The full-data preparation preflight showed that host memory is dominated by
+overlapping sparse copies rather than the bounded solver tail. Paired
+preparation now extracts the two filtered integer response blocks and releases
+the 2.5-million-row merged matrix before loading primer designs. After stacking
+the final compatibility matrix, it similarly releases the membership and
+primer-specific design intermediates before normalizing responses. This keeps
+the same matrices and values while reducing peak overlap in every CV and fit
+job.
+
 A 100,000-pair real-data check assigned 79,022 transcript reads: 52,110 to
 poly(dT), 26,912 to random hexamer, and 20,978 to unknown or ambiguous RT
 barcodes. Separate Salmon runs completed with 59.3 and 60.5 percent mapping.

@@ -154,6 +154,10 @@ def prepare_paired_primer_glm_data(
     transcript_count = aggregate @ membership
     ec_keep = aggregate >= float(min_eq)
     feature_keep = np.asarray(transcript_count).ravel() > 0
+    raw_poly_counts = counts[poly_rows][:, ec_keep].tocsr()
+    raw_hex_counts = counts[hex_rows][:, ec_keep].tocsr()
+    del counts, aggregate, transcript_count, raw_totals
+    gc.collect()
 
     transcript_lengths = sc_utils.get_transcript_lengths(Path(salmon_ref))
     if ec_design == "binary":
@@ -247,8 +251,9 @@ def prepare_paired_primer_glm_data(
     compatibility = sp.vstack(
         (0.5 * designs[0], 0.5 * designs[1]), format="csr"
     )
-    raw_poly_counts = counts[poly_rows][:, ec_keep].tocsr()
-    raw_hex_counts = counts[hex_rows][:, ec_keep].tocsr()
+    del designs, phi_designs, membership, filtered, phi_design
+    del design_weights, sampling_factors
+    gc.collect()
     poly_counts, poly_totals = _row_normalize(raw_poly_counts)
     hex_counts, hex_totals = _row_normalize(raw_hex_counts)
     paired_counts = sp.hstack(
