@@ -1292,3 +1292,9 @@ array with at most ten concurrent tasks. Its reducer feeds separate
 factorization, adaptive-rho ADMM, and penalized Frank-Wolfe count-fold CV and
 full-fit branches. Each completed fit has an independent cell-type label and
 PCA-silhouette scoring job, followed by one aggregate report.
+
+The initial array requested 32 CPUs and 112 GB per task and remained pending
+without starting. Historical full-sublibrary Salmon tasks used 4.2--5.7 GB
+RSS and completed within 2 hours 15 minutes on eight CPUs. Before any new task
+started, the untouched graph was replaced with 16-CPU, 32-GB tasks: two
+six-thread Salmon processes and two two-thread decompressors run concurrently.

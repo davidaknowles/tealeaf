@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=gse233208_posbias
-#SBATCH --cpus-per-task=32
-#SBATCH --mem=112G
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=32G
 #SBATCH --time=16:00:00
 
 set -euo pipefail
@@ -14,8 +14,8 @@ export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 MANIFEST=${MANIFEST:-"${DATA_ROOT}/manifest/ena_fastqs.tsv"}
 ALEVIN_DIR=${ALEVIN_DIR:-"${DATA_ROOT}/processed/merged_alevin"}
 MAX_READS=${MAX_READS:-}
-SALMON_THREADS=${SALMON_THREADS:-12}
-PIGZ_THREADS=${PIGZ_THREADS:-4}
+SALMON_THREADS=${SALMON_THREADS:-6}
+PIGZ_THREADS=${PIGZ_THREADS:-2}
 BALANCED_PREFIX_READS=${BALANCED_PREFIX_READS:-0}
 
 read1=()
