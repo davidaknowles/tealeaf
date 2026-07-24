@@ -1232,3 +1232,17 @@ was run in an existing compute allocation with sufficient memory. The GLM
 submitter now supports either a pending merge dependency or an already
 materialized merged count matrix, so a completed external merge can root the
 validation and fitting graph without a placeholder job.
+
+The merged quantification has 2,520,302 cell rows, 9,048,099 genome-wide ECs,
+243,927 transcript features, and 1,262,210,898 nonzero cell-by-EC entries. At
+the 500-UMI threshold, 568,887 cells remain; 754,660 rows overlap published
+cell-type labels, and 650,297 poly(dT)/random-hexamer pairs have both halves.
+The merged weighted sidecar is larger than the compressed inputs because
+reordered probability vectors use full precision and global indices require
+more digits.
+
+Validation and fixed-weight cache reports can now root GLM submission directly
+when both were produced outside Slurm. The submitter still uses dependencies
+when merge, validation, or cache jobs are pending, and it refuses to reuse
+pre-existing artifacts for a new pending merge. This avoids large-memory queue
+delays without allowing stale caches to bypass a new preprocessing run.

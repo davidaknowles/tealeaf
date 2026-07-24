@@ -4,6 +4,7 @@ source "$(dirname "$0")/config.env"
 module load "${PYTHON_MODULE}"
 
 MERGE_JOB=${MERGE_JOB:-}
+CACHE_JOB=${CACHE_JOB:-}
 ALEVIN_DIR="${DATA_ROOT}/processed/merged_alevin"
 GLM_RUN="${RUN_ROOT}/glm"
 mkdir -p "${GLM_RUN}/logs"
@@ -13,6 +14,7 @@ fits_file="${GLM_RUN}/submitted_fits_${stamp}.tsv"
 printf 'stage\ttag\tdesign\tmethod\tjob_id\n' > "${jobs_file}"
 : > "${fits_file}"
 
+common="ALL,REPO_ROOT=${REPO_ROOT},ALEVIN_DIR=${ALEVIN_DIR},SALMON_REF=${SALMON_REF}/spliceu.fa,RUN_DIR=${GLM_RUN},CV_CELLS=0,MIN_CELL_UMIS=500"
 merge_dependency=()
 if [[ -n "${MERGE_JOB}" ]]; then
   merge_dependency+=(--dependency="afterok:${MERGE_JOB}")
@@ -20,24 +22,44 @@ elif [[ ! -s "${ALEVIN_DIR}/geqc_counts.npz" ]]; then
   echo "Merged counts are absent; set MERGE_JOB to a pending merge job" >&2
   exit 1
 fi
-validation=$(sbatch --parsable "${merge_dependency[@]}" \
-  --job-name=gse233208_validate \
-  -o "${GLM_RUN}/logs/%x-%j.out" -e "${GLM_RUN}/logs/%x-%j.err" \
-  "${REPO_ROOT}/analyses/GSE233208/validate_merged.sbatch")
+validation_dependency=()
+if [[ -z "${MERGE_JOB}" && -s "${RUN_ROOT}/merged_validation.json" ]]; then
+  validation=completed
+else
+  validation=$(sbatch --parsable "${merge_dependency[@]}" \
+    --job-name=gse233208_validate \
+    -o "${GLM_RUN}/logs/%x-%j.out" -e "${GLM_RUN}/logs/%x-%j.err" \
+    "${REPO_ROOT}/analyses/GSE233208/validate_merged.sbatch")
+  validation_dependency+=(--dependency="afterok:${validation}")
+fi
 printf 'validate\tall\tall\tall\t%s\n' "${validation}" >> "${jobs_file}"
 echo "merged data validation=${validation}"
-cache=$(sbatch --parsable --dependency="afterok:${validation}" \
-  --job-name=gse23_cache_designs --cpus-per-task=8 --mem=192G \
-  --time=2-00:00:00 \
-  -o "${GLM_RUN}/logs/%x-%j.out" -e "${GLM_RUN}/logs/%x-%j.err" \
-  --wrap "bash -lc 'export PYTHONPATH=${REPO_ROOT} && ${PYTHON_BIN} ${REPO_ROOT}/extra_scripts/cache_alevin_glm_designs.py --alevin-dir ${ALEVIN_DIR} --salmon-ref ${SALMON_REF}/spliceu.fa --primer-pairs ${ALEVIN_DIR}/primer_pairs.tsv --min-half-umis 500'")
+cache_dependency=()
+if [[ -n "${CACHE_JOB}" ]]; then
+  cache="${CACHE_JOB}"
+  cache_dependency+=(--dependency="afterok:${cache}")
+elif [[
+  -z "${MERGE_JOB}"
+  && -s "${ALEVIN_DIR}/gene_eqclass_fixed_weights.npz"
+  && -s "${ALEVIN_DIR}/gene_eqclass_fixed_weights_polydt.npz"
+  && -s "${ALEVIN_DIR}/gene_eqclass_fixed_weights_ranhex.npz"
+]]; then
+  cache=completed
+else
+  cache=$(sbatch --parsable "${validation_dependency[@]}" \
+    --job-name=gse23_cache_designs --cpus-per-task=8 --mem=192G \
+    --time=2-00:00:00 \
+    -o "${GLM_RUN}/logs/%x-%j.out" -e "${GLM_RUN}/logs/%x-%j.err" \
+    --wrap "bash -lc 'export PYTHONPATH=${REPO_ROOT} && ${PYTHON_BIN} ${REPO_ROOT}/extra_scripts/cache_alevin_glm_designs.py --alevin-dir ${ALEVIN_DIR} --salmon-ref ${SALMON_REF}/spliceu.fa --primer-pairs ${ALEVIN_DIR}/primer_pairs.tsv --min-half-umis 500'")
+  cache_dependency+=(--dependency="afterok:${cache}")
+fi
 echo "fixed weighted design cache=${cache}"
 printf 'cache\tall\tall\tall\t%s\n' "${cache}" >> "${jobs_file}"
 fit_jobs=()
 for design in binary weighted; do
   for method in factorized admm_factorized frank_wolfe_penalized; do
     tag=standard
-    tune=$(sbatch --parsable --dependency="afterok:${cache}" \
+    tune=$(sbatch --parsable "${cache_dependency[@]}" \
       --job-name="gse23_cv_${design}_${method}" \
       -o "${GLM_RUN}/logs/%x-%j.out" -e "${GLM_RUN}/logs/%x-%j.err" \
       --export="${common},DESIGN=${design},METHOD=${method},ANALYSIS_TAG=${tag}" \
@@ -60,7 +82,7 @@ for design in binary weighted; do
 
   tag=paired
   primer="${ALEVIN_DIR}/primer_pairs.tsv"
-  tune=$(sbatch --parsable --dependency="afterok:${cache}" \
+  tune=$(sbatch --parsable "${cache_dependency[@]}" \
     --job-name="gse23_cv_${design}_paired" \
     -o "${GLM_RUN}/logs/%x-%j.out" -e "${GLM_RUN}/logs/%x-%j.err" \
     --export="${common},DESIGN=${design},METHOD=factorized,ANALYSIS_TAG=${tag},PRIMER_PAIRS=${primer},MIN_HALF_UMIS=500" \
