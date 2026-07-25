@@ -807,7 +807,9 @@ nuclear-norm ball and is retained. Its selected all-cell refit replays the
 exact increasing-radius path recorded by CV up to the selected multiplier,
 rather than cold-starting only the endpoint. The manifest records the
 warm-start and final atom ranks, objective, stopping state, and candidate gap
-at every radius.
+at every radius. Within a fold, scale estimation, every radius candidate, and
+held-out scoring share one cached sparse training context and one validation
+context; the multi-billion-entry response is not rebuilt between radii.
 
 An optimum on an open boundary of the candidate grid triggers automatic
 geometric expansion. When the new value extends the fitted continuation

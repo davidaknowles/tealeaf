@@ -1020,7 +1020,8 @@ def cross_validate_glm(
                 batch_cells=batch_cells,
                 data_backend=data_backend,
             )
-            if method == "admm_factorized" else training_counts
+            if method in {"admm_factorized", "frank_wolfe_penalized"}
+            else training_counts
         )
         reference = None
         if method == "admm_factorized":
@@ -1039,7 +1040,8 @@ def cross_validate_glm(
         else:
             scale = hyperparameter_scale(
                 training,
-                compatibility,
+                None if isinstance(training, glm_solvers.SparseGLM)
+                else compatibility,
                 method,
                 device=device,
                 batch_cells=batch_cells,

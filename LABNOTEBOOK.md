@@ -1548,3 +1548,11 @@ reads the exact path from the CV report, truncates it at the selected
 multiplier, and replays it on all eligible cells. The final manifest records
 the warm-start rank, final rank, objective, gap, and stopping state for every
 radius, making the selected refit comparable to the CV candidate.
+
+Profiling the first incremental rerun showed the GPU dropping to zero
+utilization between candidates while the same fold-specific sparse training
+cache was reconstructed on one CPU core. Frank--Wolfe CV now constructs one
+`SparseGLM` training context per fold, uses it for radius-scale estimation and
+all candidates, and retains one separate validation context. A test verifies
+that three radii over two folds create four contexts rather than rebuilding a
+training context for every candidate.

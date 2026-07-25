@@ -495,6 +495,35 @@ class GLMCVTest(unittest.TestCase):
         )
         self.assertEqual(len(report["fold_results"]), 6)
 
+    def test_fw_cv_reuses_one_sparse_training_context_per_fold(self):
+        original = glm_solvers.SparseGLM
+        constructions = []
+
+        class RecordedSparseGLM(original):
+            def __init__(self, *args, **kwargs):
+                constructions.append(args[0].shape)
+                super().__init__(*args, **kwargs)
+
+        with mock.patch.object(glm_solvers, "SparseGLM", RecordedSparseGLM):
+            glm_cv.cross_validate_glm(
+                self.counts,
+                self.compatibility,
+                "frank_wolfe_penalized",
+                [0.5, 2.0, 8.0],
+                n_folds=2,
+                device="cpu",
+                batch_cells=2,
+                power_iter=2,
+                fit_kwargs={
+                    "rank": 4,
+                    "max_atoms": 12,
+                    "max_iter": 2,
+                    "min_iter": 2,
+                    "power_iter": 2,
+                },
+            )
+        self.assertEqual(len(constructions), 4)
+
     def test_one_se_selects_most_regularized_converged_candidate(self):
         report = {
             "multipliers": [1.0, 4.0, 16.0],
