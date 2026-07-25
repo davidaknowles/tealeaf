@@ -853,15 +853,36 @@ def cross_validate_glm(
     min_profile_relative_variance=1e-6,
     fold_pairs=None,
     progress_callback=None,
+    _state=None,
+    _return_state=False,
 ):
     """Tune a scale-free lambda fraction or tau multiplier by count folds."""
     fit_kwargs = dict(fit_kwargs or {})
-    fold_pairs = _resolve_count_fold_pairs(
-        counts, n_folds, seed, fold_pairs
+    fold_pairs = (
+        _resolve_count_fold_pairs(counts, n_folds, seed, fold_pairs)
+        if _state is None else _state["fold_pairs"]
     )
-    rows = []
-    scales = []
+    rows = [] if _state is None else list(_state["rows"])
+    scales = [None] * len(fold_pairs)
+    if _state is not None:
+        scales[:] = _state["scales"]
+    continued_factors = [None] * len(fold_pairs)
     for fold_index, (training_counts, validation_counts) in enumerate(fold_pairs):
+        path_multipliers = sorted(
+            (float(value) for value in multipliers),
+            reverse=method == "admm_factorized",
+        )
+        completed = {
+            row["multiplier"] for row in rows if row["fold"] == fold_index
+        }
+        pending_multipliers = [
+            value for value in path_multipliers if value not in completed
+        ]
+        if not pending_multipliers:
+            continued_factors[fold_index] = (
+                None if _state is None else _state["warm_factors"][fold_index]
+            )
+            continue
         training = (
             glm_solvers.SparseGLM(
                 training_counts,
@@ -902,7 +923,11 @@ def cross_validate_glm(
             target = glm_solvers.resolve_device(device)
             if target.type == "cuda":
                 glm_solvers._torch().cuda.empty_cache()
-        scales.append(scale)
+        if scales[fold_index] is not None and not np.isclose(
+            scales[fold_index], scale, rtol=1e-6
+        ):
+            raise ValueError("incremental CV scale changed between grid rounds")
+        scales[fold_index] = scale
         validation = glm_solvers.SparseGLM(
             validation_counts,
             compatibility,
@@ -910,12 +935,25 @@ def cross_validate_glm(
             batch_cells=batch_cells,
             data_backend=data_backend,
         )
-        path_multipliers = sorted(
-            (float(value) for value in multipliers),
-            reverse=method == "admm_factorized",
+        warm_factors = (
+            None if _state is None else _state["warm_factors"][fold_index]
         )
-        warm_factors = None
-        for multiplier in path_multipliers:
+        if warm_factors is not None:
+            completed_endpoint = (
+                min(completed)
+                if method == "admm_factorized" else max(completed)
+            )
+            valid_extension = all(
+                value < completed_endpoint
+                if method == "admm_factorized"
+                else value > completed_endpoint
+                for value in pending_multipliers
+            )
+            if not valid_extension:
+                raise ValueError(
+                    "incremental candidates do not continue the fitted path"
+                )
+        for multiplier in pending_multipliers:
             kwargs = dict(fit_kwargs)
             initializer_source = "cold"
             if method == "admm_factorized":
@@ -984,7 +1022,7 @@ def cross_validate_glm(
                 "data_backend": result.diagnostics.get("data_backend"),
                 "cells_per_second": result.diagnostics.get("cells_per_second"),
                 "mean_epoch_seconds": float(np.mean(
-                    result.diagnostics.get("epoch_seconds", [np.nan])
+                    result.diagnostics.get("epoch_seconds") or [np.nan]
                 )),
                 "peak_cuda_memory_bytes": result.diagnostics.get(
                     "peak_cuda_memory_bytes"
@@ -1020,6 +1058,19 @@ def cross_validate_glm(
                 device == "auto" and glm_solvers._torch().cuda.is_available()
             ):
                 glm_solvers._torch().cuda.empty_cache()
+        continued_factors[fold_index] = (
+            None
+            if warm_factors is None else (
+                warm_factors[0].detach().cpu(),
+                warm_factors[1].detach().cpu(),
+            )
+        )
+        del training, validation
+        gc.collect()
+        if device == "cuda" or (
+            device == "auto" and glm_solvers._torch().cuda.is_available()
+        ):
+            glm_solvers._torch().cuda.empty_cache()
     means = {}
     standard_errors = {}
     candidate_converged = {}
@@ -1060,7 +1111,7 @@ def cross_validate_glm(
     best_on_boundary = _best_on_open_boundary(
         method, multipliers, best_multiplier
     )
-    return {
+    report = {
         "method": method,
         "warm_start": bool(warm_start),
         "regularization_path": sorted(
@@ -1080,6 +1131,14 @@ def cross_validate_glm(
         "best_on_boundary": best_on_boundary,
         "fold_results": rows,
     }
+    if _return_state:
+        return report, {
+            "fold_pairs": fold_pairs,
+            "rows": rows,
+            "scales": scales,
+            "warm_factors": continued_factors,
+        }
+    return report
 
 
 def cross_validate_factorized_rank(
@@ -1466,8 +1525,13 @@ def cross_validate_glm_adaptive_grid(
     if len(candidates) < 2 or any(value < 0 for value in candidates):
         raise ValueError("adaptive CV requires at least two nonnegative candidates")
 
-    report = cross_validate_glm(
-        counts, compatibility, method, candidates, **kwargs
+    report, state = cross_validate_glm(
+        counts,
+        compatibility,
+        method,
+        candidates,
+        _return_state=True,
+        **kwargs,
     )
     _apply_selection_rule(
         report, method, selection_rule, require_converged,
@@ -1500,11 +1564,19 @@ def cross_validate_glm_adaptive_grid(
             break
         candidates.append(candidate)
         candidates.sort()
-        # Replay the path so a new strongest endpoint is always followed by
-        # strong-to-weak continuation, and every candidate has the same path
-        # dependence after grid expansion.
-        report = cross_validate_glm(
-            counts, compatibility, method, candidates, **kwargs
+        continues_path = (
+            method == "admm_factorized" and direction == "lower"
+        ) or (
+            method == "frank_wolfe_penalized" and direction == "upper"
+        )
+        report, state = cross_validate_glm(
+            counts,
+            compatibility,
+            method,
+            candidates,
+            _state=state if continues_path else None,
+            _return_state=True,
+            **kwargs,
         )
         _apply_selection_rule(
             report, method, selection_rule, require_converged,

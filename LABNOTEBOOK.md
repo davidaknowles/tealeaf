@@ -1523,3 +1523,20 @@ reciprocal of the Lipschitz curvature after applying the same cell-count
 scaling as the gradient. The low-accuracy fit is diagnostic only and is not
 accepted as the final ADMM result; CV, selected continuation, and scoring must
 be rerun with the corrected updates.
+
+The corrected ADMM rerun selected the closed zero-penalty endpoint in all-cell
+CV. Its mean held-out loss was 0.006746, compared with 0.006783 at
+lambda/lambda-max 0.1 and 0.007023 at lambda-max. The selected continuation
+reached objective 1294.79 with mean reconstructed library mass 0.873, fixing
+the earlier mass collapse. Biological recovery remained weak: donor-held-out
+accuracy was 0.164, balanced accuracy 0.251, macro F1 0.196, and label
+silhouette -0.297. This is now a valid negative solver result rather than an
+artifact of the cell-count step cap.
+
+Penalized Frank--Wolfe exposed a separate adaptive-grid cost. Each upper
+radius expansion replayed every completed fold and candidate, so reaching
+multipliers 1024 and 4096 repeated hours of unchanged fits. Adaptive GLM CV
+now retains each fold's endpoint factors and result rows when an expansion
+continues the natural path. It evaluates only the new larger Frank--Wolfe
+radius or smaller ADMM penalty. A path is replayed only when an expansion
+changes its starting endpoint.

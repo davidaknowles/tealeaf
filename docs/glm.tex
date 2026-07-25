@@ -806,9 +806,11 @@ increasing \(\tau\); the previous atom factorization is feasible in the enlarged
 nuclear-norm ball and is retained.
 
 An optimum on an open boundary of the candidate grid triggers automatic
-geometric expansion. The complete path is replayed so a newly added strong
-endpoint remains the start of the continuation and all candidate scores have
-the same path dependence. Expansion stops at an interior optimum, at zero or
+geometric expansion. When the new value extends the fitted continuation
+direction---larger \(\tau\) for Frank--Wolfe or smaller \(\lambda\) for
+ADMM---each fold retains its endpoint factors and fits only the new candidate.
+An expansion that changes the start of a path instead replays that path.
+Expansion stops at an interior optimum, at zero or
 \(\lambda/\lambda_{\max}=1\), or at a configured expansion limit; the full fit
 is rejected only in the last case.
 

@@ -350,7 +350,7 @@ class GLMCVTest(unittest.TestCase):
             1,
         )
 
-    def test_adaptive_grid_replays_warm_start_path_after_expansion(self):
+    def test_adaptive_grid_extends_warm_start_path_without_replay(self):
         initial = {
             "method": "frank_wolfe_penalized",
             "n_folds": 2,
@@ -384,8 +384,11 @@ class GLMCVTest(unittest.TestCase):
                 {"multiplier": 8.0},
             ],
         }
+        state = {"continuation": True}
         with mock.patch.object(
-            glm_cv, "cross_validate_glm", side_effect=[initial, extension]
+            glm_cv,
+            "cross_validate_glm",
+            side_effect=[(initial, state), (extension, state)],
         ) as mocked:
             report = glm_cv.cross_validate_glm_adaptive_grid(
                 self.counts,
@@ -397,10 +400,59 @@ class GLMCVTest(unittest.TestCase):
             )
         self.assertEqual(mocked.call_count, 2)
         self.assertEqual(mocked.call_args_list[1].args[3], [1.0, 2.0, 8.0])
+        self.assertIs(mocked.call_args_list[1].kwargs["_state"], state)
         self.assertEqual(report["best_multiplier"], 2.0)
         self.assertFalse(report["best_on_boundary"])
         self.assertFalse(report["grid_exhausted"])
         self.assertEqual(report["grid_expansions"], 1)
+
+    def test_glm_cv_incrementally_fits_only_new_fw_multiplier(self):
+        progress = []
+        _, state = glm_cv.cross_validate_glm(
+            self.counts,
+            self.compatibility,
+            "frank_wolfe_penalized",
+            [0.5, 2.0],
+            n_folds=2,
+            device="cpu",
+            batch_cells=2,
+            power_iter=3,
+            fit_kwargs={
+                "rank": 4,
+                "max_atoms": 12,
+                "max_iter": 2,
+                "min_iter": 2,
+                "power_iter": 3,
+            },
+            progress_callback=progress.append,
+            _return_state=True,
+        )
+        progress.clear()
+        report, _ = glm_cv.cross_validate_glm(
+            self.counts,
+            self.compatibility,
+            "frank_wolfe_penalized",
+            [0.5, 2.0, 8.0],
+            n_folds=2,
+            device="cpu",
+            batch_cells=2,
+            power_iter=3,
+            fit_kwargs={
+                "rank": 4,
+                "max_atoms": 12,
+                "max_iter": 2,
+                "min_iter": 2,
+                "power_iter": 3,
+            },
+            progress_callback=progress.append,
+            _state=state,
+            _return_state=True,
+        )
+        self.assertEqual(
+            [(row["fold"], row["multiplier"]) for row in progress],
+            [(0, 8.0), (1, 8.0)],
+        )
+        self.assertEqual(len(report["fold_results"]), 6)
 
     def test_one_se_selects_most_regularized_converged_candidate(self):
         report = {
