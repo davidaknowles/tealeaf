@@ -803,7 +803,11 @@ and objective at every stage; it is therefore possible to verify that the
 reported endpoint was reached by continuation rather than an unrelated random
 restart. Frank--Wolfe visits
 increasing \(\tau\); the previous atom factorization is feasible in the enlarged
-nuclear-norm ball and is retained.
+nuclear-norm ball and is retained. Its selected all-cell refit replays the
+exact increasing-radius path recorded by CV up to the selected multiplier,
+rather than cold-starting only the endpoint. The manifest records the
+warm-start and final atom ranks, objective, stopping state, and candidate gap
+at every radius.
 
 An optimum on an open boundary of the candidate grid triggers automatic
 geometric expansion. When the new value extends the fitted continuation

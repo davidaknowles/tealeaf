@@ -1540,3 +1540,11 @@ now retains each fold's endpoint factors and result rows when an expansion
 continues the natural path. It evaluates only the new larger Frank--Wolfe
 radius or smaller ADMM penalty. A path is replayed only when an expansion
 changes its starting endpoint.
+
+The same audit found that the selected all-cell Frank--Wolfe launcher
+cold-started only the final radius even though each CV endpoint accumulated
+atoms along the increasing-radius path. Selected Frank--Wolfe fitting now
+reads the exact path from the CV report, truncates it at the selected
+multiplier, and replays it on all eligible cells. The final manifest records
+the warm-start rank, final rank, objective, gap, and stopping state for every
+radius, making the selected refit comparable to the CV candidate.

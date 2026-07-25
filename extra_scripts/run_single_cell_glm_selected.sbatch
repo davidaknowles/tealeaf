@@ -31,6 +31,14 @@ if not report.get("nondegeneracy_requirement_met", True):
 print(report["selected_rank"] if report["method"] == "factorized"
       else report["selected_full_value"])
 ' "${REPORT}")
+PATH_VALUES=$(python -c '
+import json, sys
+report = json.load(open(sys.argv[1]))
+path = report.get("regularization_path", [])
+if report.get("method") == "frank_wolfe_penalized":
+    path = [value for value in path if value <= report["best_multiplier"]]
+print(",".join(str(value) for value in path))
+' "${REPORT}")
 
 MIN_CELL_UMIS=${MIN_CELL_UMIS:-500}
 MIN_HALF_UMIS=${MIN_HALF_UMIS:-500}
@@ -58,6 +66,11 @@ elif [[ "${METHOD}" == frank_wolfe_penalized ]]; then
   BATCH_CELLS=${BATCH_CELLS:-4096}
   method_args+=(--nucnorm_tau "${VALUE}" --nucnorm_max_iter 4096)
   method_args+=(--fw_max_atoms 4096 --fw_power_iter 10)
+  method_args+=(
+    --fw_continuation
+    --fw_continuation_multipliers "${PATH_VALUES}"
+    --fw_scale_power_iter "${POWER_ITER:-10}"
+  )
   full_tol=1e-4
 else
   echo "Unsupported scalable method: ${METHOD}" >&2

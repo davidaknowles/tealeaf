@@ -755,6 +755,42 @@ def single_cell_glm_conversion(options):
                 **row,
             }), flush=True),
         )
+    elif (
+        options.quant_method == "frank_wolfe_penalized"
+        and options.fw_continuation
+    ):
+        if initial_factors is not None:
+            raise ValueError(
+                "--fw_continuation and --glm_initial_factors are mutually exclusive"
+            )
+        for key in (
+            "initial_factors", "device", "batch_cells", "data_backend",
+            "tau",
+        ):
+            fit_kwargs.pop(key)
+        multipliers = (
+            None
+            if not options.fw_continuation_multipliers else [
+                float(value)
+                for value in options.fw_continuation_multipliers.split(",")
+            ]
+        )
+        result = glm_cv.fit_fw_continuation(
+            counts,
+            prepared.compatibility,
+            options.nucnorm_tau,
+            multipliers=multipliers,
+            device=options.glm_device,
+            batch_cells=options.glm_batch_cells,
+            data_backend=options.glm_data_backend,
+            scale_power_iter=options.fw_scale_power_iter,
+            seed=0,
+            fit_kwargs=fit_kwargs,
+            progress_callback=lambda row: print(json.dumps({
+                "event": "fw_continuation_stage_complete",
+                **row,
+            }), flush=True),
+        )
     else:
         result = glm_solvers.fit_glm(
             counts,
@@ -1227,6 +1263,16 @@ if __name__ == "__main__":
 
     parser.add_option("--fw_nonnegative_penalty", dest="fw_nonnegative_penalty", default=1.0, type="float",
                   help="negative-mass penalty relative to squared design spectral norm for frank_wolfe_penalized (default: 1)")
+
+    parser.add_option("--fw_continuation", dest="fw_continuation", default=False,
+                  action="store_true",
+                  help="refit penalized Frank-Wolfe along the selected increasing-radius path")
+
+    parser.add_option("--fw_continuation_multipliers", dest="fw_continuation_multipliers", default=None,
+                  help="comma-separated CV multiplier path for the Frank-Wolfe refit")
+
+    parser.add_option("--fw_scale_power_iter", dest="fw_scale_power_iter", default=10, type="int",
+                  help="power iterations for the Frank-Wolfe radius reference (default: 10)")
 
     parser.add_option("--admm_rho", dest="admm_rho", default=1.0, type="float",
                   help="ADMM penalty for admm and admm_factorized (default: 1.0)")

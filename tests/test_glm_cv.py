@@ -327,6 +327,47 @@ class GLMCVTest(unittest.TestCase):
         self.assertTrue(np.isfinite(result.left.detach().numpy()).all())
         self.assertTrue(np.isfinite(result.right.detach().numpy()).all())
 
+    def test_fw_selected_refit_records_increasing_radius_path(self):
+        scale = glm_cv.hyperparameter_scale(
+            self.counts,
+            self.compatibility,
+            "frank_wolfe_penalized",
+            device="cpu",
+            batch_cells=2,
+            power_iter=3,
+        )
+        progress = []
+        result = glm_cv.fit_fw_continuation(
+            self.counts,
+            self.compatibility,
+            selected_tau=2.0 * scale,
+            multipliers=[0.5, 2.0],
+            device="cpu",
+            batch_cells=2,
+            scale_power_iter=3,
+            fit_kwargs={
+                "rank": 4,
+                "max_atoms": 8,
+                "max_iter": 2,
+                "min_iter": 2,
+                "power_iter": 3,
+            },
+            progress_callback=progress.append,
+        )
+        continuation = result.diagnostics["continuation"]
+        self.assertEqual(
+            [row["multiplier"] for row in continuation["stages"]],
+            [0.5, 2.0],
+        )
+        self.assertEqual(len(progress), 2)
+        self.assertGreater(
+            continuation["stages"][1]["warm_start_rank"], 0
+        )
+        self.assertGreater(
+            continuation["stages"][1]["final_rank"],
+            continuation["stages"][1]["warm_start_rank"],
+        )
+
     def test_only_open_grid_boundaries_require_expansion(self):
         self.assertFalse(
             glm_cv._best_on_open_boundary("admm_factorized", [0, 0.1, 1], 1)

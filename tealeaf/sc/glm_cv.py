@@ -801,6 +801,135 @@ def fit_admm_continuation(
     return result
 
 
+def fw_continuation_multipliers(
+    selected_multiplier,
+    *,
+    base=(0.0, 0.25, 1.0, 4.0, 16.0, 64.0, 256.0),
+    factor=4.0,
+):
+    """Construct an increasing Frank--Wolfe radius path to a selected value."""
+    selected_multiplier = float(selected_multiplier)
+    factor = float(factor)
+    if not np.isfinite(selected_multiplier) or selected_multiplier < 0:
+        raise ValueError("selected FW multiplier must be finite and nonnegative")
+    if not np.isfinite(factor) or factor <= 1:
+        raise ValueError("FW continuation factor must be greater than one")
+    candidates = sorted(set(float(value) for value in base))
+    if not candidates or candidates[0] < 0:
+        raise ValueError("FW continuation base must be nonempty and nonnegative")
+    path = [value for value in candidates if value <= selected_multiplier]
+    if not path:
+        path = [selected_multiplier]
+    while path[-1] < selected_multiplier:
+        candidate = path[-1] * factor
+        if candidate == 0:
+            candidate = selected_multiplier
+        path.append(min(candidate, selected_multiplier))
+    if not np.isclose(path[-1], selected_multiplier, rtol=1e-12, atol=1e-15):
+        path.append(selected_multiplier)
+    return sorted(set(path))
+
+
+def fit_fw_continuation(
+    counts,
+    compatibility,
+    selected_tau,
+    *,
+    multipliers=None,
+    device="auto",
+    batch_cells=4096,
+    data_backend="auto",
+    scale_power_iter=10,
+    seed=0,
+    fit_kwargs=None,
+    progress_callback=None,
+):
+    """Refit selected penalized Frank--Wolfe along its increasing-radius path."""
+    selected_tau = float(selected_tau)
+    if not np.isfinite(selected_tau) or selected_tau < 0:
+        raise ValueError("selected FW radius must be finite and nonnegative")
+    fit_kwargs = dict(fit_kwargs or {})
+    if "tau" in fit_kwargs or "initial_factors" in fit_kwargs:
+        raise ValueError("fit_kwargs must not override tau or initial_factors")
+    data = (
+        counts if isinstance(counts, glm_solvers.SparseGLM)
+        else glm_solvers.SparseGLM(
+            counts,
+            compatibility,
+            device=device,
+            batch_cells=batch_cells,
+            data_backend=data_backend,
+        )
+    )
+    scale = hyperparameter_scale(
+        data,
+        None,
+        "frank_wolfe_penalized",
+        device=device,
+        batch_cells=batch_cells,
+        power_iter=scale_power_iter,
+        seed=seed,
+        data_backend=data_backend,
+    )
+    selected_multiplier = selected_tau / scale
+    path = (
+        fw_continuation_multipliers(selected_multiplier)
+        if multipliers is None else sorted(set(float(value) for value in multipliers))
+    )
+    if not path or path[0] < 0:
+        raise ValueError("FW continuation multipliers must be nonnegative")
+    if not np.isclose(path[-1], selected_multiplier, rtol=1e-6):
+        raise ValueError("FW continuation path must end at the selected multiplier")
+
+    warm_factors = None
+    rows = []
+    result = None
+    for stage, multiplier in enumerate(path):
+        tau = selected_tau if stage == len(path) - 1 else multiplier * scale
+        result = glm_solvers.fit_glm(
+            data,
+            None,
+            "frank_wolfe_penalized",
+            tau=tau,
+            initial_factors=warm_factors,
+            device=device,
+            batch_cells=batch_cells,
+            data_backend=data_backend,
+            **fit_kwargs,
+        )
+        warm_factors = (result.left, result.right)
+        row = {
+            "stage": stage,
+            "multiplier": multiplier,
+            "tau": tau,
+            "iterations": result.diagnostics.get("iterations"),
+            "converged": result.diagnostics.get("converged"),
+            "convergence_reason": result.diagnostics.get(
+                "convergence_reason"
+            ),
+            "warm_start_rank": result.diagnostics.get("warm_start_rank"),
+            "final_rank": int(result.left.shape[1]),
+            "final_objective": (
+                result.diagnostics.get("objective") or [None]
+            )[-1],
+            "final_objective_relative_change": (
+                result.diagnostics.get("objective_relative_change") or [None]
+            )[-1],
+            "final_candidate_gap": (
+                result.diagnostics.get("candidate_gap") or [None]
+            )[-1],
+        }
+        rows.append(row)
+        if progress_callback is not None:
+            progress_callback(dict(row))
+    result.diagnostics["continuation"] = {
+        "scale": scale,
+        "selected_multiplier": selected_multiplier,
+        "stages": rows,
+    }
+    return result
+
+
 def _open_boundary_direction(method, multipliers, best_multiplier):
     ordered = sorted(float(value) for value in multipliers)
     if len(ordered) < 2:
