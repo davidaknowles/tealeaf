@@ -1556,3 +1556,36 @@ cache was reconstructed on one CPU core. Frank--Wolfe CV now constructs one
 all candidates, and retains one separate validation context. A test verifies
 that three radii over two folds create four contexts rather than rebuilding a
 training context for every candidate.
+
+The cached production Frank--Wolfe CV completed in 27 hours 29 minutes with
+78.5 GB peak host RSS and approximately 51 GB peak CUDA allocation. All 33
+fold-candidate fits met their configured objective-patience rule. The adaptive
+path extended the original radius multipliers through 1024, 4096, 16384, and
+65536 without replaying completed candidates. Mean held-out loss decreased
+monotonically from 0.007023 at radius zero to 0.006762 at 65536. Mean
+normalized profile variance also increased through the final radius, from
+0.0833 at 4096 to 0.0955 at 16384 and 0.1074 at 65536.
+
+The one-standard-error threshold at the final radius was 0.0067633, so no
+smaller radius was eligible. The selected multiplier therefore remained the
+open upper boundary after all four expansions
+(`best_on_boundary=true`, `grid_exhausted=true`). This is not a valid
+regularization selection. The progressively larger radius is still changing
+Frank--Wolfe step size and optimization progress: every continuation stage
+stopped after another 50 atoms even though its accumulated validation
+improvement exceeded fold uncertainty. The pending full fit, label score, and
+aggregate jobs were cancelled rather than treating the boundary endpoint as a
+selected biological model. The complete CV report is retained as a negative
+solver diagnostic.
+
+The completed GSE233208 comparison therefore contains three valid,
+label-blind fits or references on the same 157,006 labeled cells. The direct
+rank-32 nonnegative factorization achieved 0.493 accuracy, 0.564 balanced
+accuracy, 0.508 macro F1, and -0.303 reference-label silhouette. Corrected
+rank-64 ADMM achieved 0.164 accuracy, 0.251 balanced accuracy, 0.196 macro F1,
+and -0.297 silhouette. Published scVI achieved 0.953 accuracy, 0.973 balanced
+accuracy, 0.953 macro F1, and 0.192 silhouette. Thus the primer-aware
+factorization recovers substantial cell-type signal but remains far below the
+standard analysis, while ADMM is a valid weak result. Penalized
+Frank--Wolfe has no accepted label score because its unsupervised
+hyperparameter selection did not close.

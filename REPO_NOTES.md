@@ -107,6 +107,9 @@ deterministic molecule-count folds, follows warm-start paths, expands open
 hyperparameter grids, and rejects nonconverged or degenerate candidates.
 Responses are normalized per cell. Paired poly(dT) and random-hexamer halves
 have separate observation designs but share one latent abundance row.
+Regularization paths that still select an open grid boundary are diagnostic
+failures, not valid selected fits; the selected-fit launcher rejects their CV
+reports.
 
 The corrected positional design is primer-specific. Salmon supplies
 conditional transcript weights, learned positional bias, and effective
