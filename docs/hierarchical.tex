@@ -1,0 +1,331 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{hyperref}
+
+\title{A Hierarchical Gene--Isoform Model for Sparse Single-Cell Data}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section*{Purpose}
+
+The existing genome-wide factorization models normalized equivalence-class
+(EC) counts directly. It recovers cell-type information, but a matched
+evaluation shows a substantial gap from a standard gene-expression analysis.
+Increasing the factor rank does not close this gap. Adding an auxiliary
+gene-reconstruction loss helps, indicating that the EC objective spends too
+much capacity on transcript ambiguity and too little on marker-gene
+abundance.
+
+This note proposes a hierarchical count model that separates gene abundance
+from conditional isoform allocation. The model is designed for cells that do
+not contain enough molecules for independent transcript-level EM. Statistical
+strength instead comes from pooled transcript baselines, low-dimensional cell
+states, and transcript loadings shared across all cells.
+
+\section*{Notation}
+
+Let \(m=1,\ldots,M\) index cells, \(g=1,\ldots,G\) genes, and
+\(t=1,\ldots,T\) transcripts. Let \(g(t)\) be the gene containing transcript
+\(t\), and let \(\mathcal T_g=\{t:g(t)=g\}\). Primer or library type is indexed
+by \(p\). For primer \(p\), let
+\[
+  A_p\in\mathbb R_+^{K_p\times T}
+\]
+be the fixed EC-by-transcript observation matrix. It includes alignment
+compatibility, Salmon conditional weights and positional-bias correction, and
+the primer-specific transcript sampling exposure. In particular, the primary
+paired model uses no additional transcript-length exposure for oligo(dT) and
+relative effective-length exposure for random-hexamer priming.
+
+Let \(n_{kmp}\) be the observed UMI count for EC \(k\), cell \(m\), and primer
+\(p\), and let \(N_{mp}=\sum_k n_{kmp}\).
+
+\section*{Hierarchical Abundance}
+
+Transcript abundance is decomposed as
+\[
+  \theta_{tm}=a_{g(t)m}\pi_{tm},
+  \qquad
+  \sum_{t\in\mathcal T_g}\pi_{tm}=1.
+\]
+Here \(a_{gm}>0\) is the abundance of gene \(g\) in cell \(m\), while
+\(\pi_{tm}\) is the conditional fraction of gene \(g(t)\)'s molecules assigned
+to transcript \(t\).
+
+This within-gene normalization is not a global simplex constraint on
+\(\Theta\). It is needed to identify gene abundance separately from isoform
+scale. The gene abundances may remain unnormalized because the observation
+likelihood below normalizes predicted EC mass within each cell and primer.
+
+\subsection*{Gene abundance factors}
+
+Let \(\bm z_m\in\mathbb R^{r_g}\) be the gene-expression state of cell \(m\).
+Model gene abundance as
+\[
+  \log a_{gm}=\alpha_g+\bm u_g'\bm z_m,
+\]
+where \(\alpha_g\) is a pooled gene intercept and \(\bm u_g\) is a gene loading.
+The cell state \(\bm z_m\) is the natural representation for cell annotation,
+visualization, and comparison with standard gene-expression analyses.
+
+An exponential link is convenient for a count model. A softplus link can be
+used if bounded gradients are more stable:
+\[
+  a_{gm}=\operatorname{softplus}(\alpha_g+\bm u_g'\bm z_m).
+\]
+
+\subsection*{Conditional isoform factors}
+
+Let \(\beta_t\) be the pooled logit for transcript \(t\). The initial model uses
+the gene-expression state to explain isoform usage:
+\[
+  \eta_{tm}=\beta_t+\bm w_t'\bm z_m,
+  \qquad
+  \pi_{tm}
+  =
+  \frac{\exp(\eta_{tm})}
+       {\sum_{j\in\mathcal T_{g(t)}}\exp(\eta_{jm})}.
+\]
+The transcript loading \(\bm w_t\) describes isoform changes associated with
+the same cell state that explains gene expression. This is preferable to
+estimating a second free cell representation immediately: low-count cells can
+then borrow isoform information from cells with similar gene-expression
+profiles.
+
+If held-out molecules support additional isoform structure, introduce a
+smaller isoform-specific state \(\bm h_m\in\mathbb R^{r_i}\):
+\[
+  \eta_{tm}
+  =
+  \beta_t+\bm w_t'\bm z_m+\bm r_t'\bm h_m.
+\]
+The \(\bm r_t'\bm h_m\) term captures isoform programs that are not predictable
+from gene expression. The nested model \(r_i=0\) should be the default, and
+\(r_i>0\) should be accepted only by label-blind molecule-count
+cross-validation.
+
+\section*{Paired-Primer Count Likelihood}
+
+For a cell and primer, define the unnormalized expected EC mass
+\[
+  \bm q_{mp}=A_p\bm\theta_m.
+\]
+Conditioning on the observed UMI total gives
+\[
+  \bm n_{mp}\mid N_{mp}
+  \sim
+  \operatorname{Multinomial}
+  \left(
+    N_{mp},
+    \frac{\bm q_{mp}}{\bm 1'\bm q_{mp}}
+  \right).
+\]
+Ignoring constants, the negative log likelihood is
+\[
+  \mathcal L
+  =
+  -\sum_{m,p}\sum_{k:n_{kmp}>0}
+    n_{kmp}\log q_{kmp}
+  +\sum_{m,p}N_{mp}\log(\bm 1'\bm q_{mp}).
+\]
+The two primer halves share \(\bm z_m\), \(\bm h_m\), \(a_{gm}\), and
+\(\pi_{tm}\), but use separate \(A_p\). Conditioning on \(N_{mp}\) removes a
+primer-by-cell exposure parameter and preserves the current convention of
+normalizing each half independently.
+
+An independent Poisson model,
+\[
+  n_{kmp}\sim\operatorname{Poisson}(s_{mp}q_{kmp}),
+\]
+is an alternative when total UMI information is intended to contribute to
+fitting. It requires estimating or profiling the exposure \(s_{mp}\). The
+conditional multinomial model is the simpler first implementation and directly
+matches the sampling unit used for molecule-count folds.
+
+\section*{Why Cell-Level EM Is Not Required}
+
+Independent EM would estimate a high-dimensional transcript vector in every
+cell. That is underdetermined for cells with hundreds or a few thousand UMIs.
+The hierarchical model instead estimates only low-dimensional cell
+coordinates:
+\[
+  \bm z_m\in\mathbb R^{r_g},
+  \qquad
+  \bm h_m\in\mathbb R^{r_i}.
+\]
+All gene and transcript intercepts and loadings are shared across cells.
+Cells without isoform-informative molecules remain close to the pooled
+baseline \(\beta_t\), while informative cells update the shared relationship
+between cell state and isoform usage.
+
+EM may still be useful on pooled data to initialize \(\beta_t\). A global or
+pseudobulk EM estimate has enough molecules to establish baseline isoform
+usage, but it is not treated as a cell-level estimator. Joint minibatch
+gradient optimization of the count likelihood then estimates all cell states
+and shared loadings.
+
+\section*{Initialization and Fitting}
+
+A staged fit reduces non-convexity and provides useful diagnostics:
+\begin{enumerate}[leftmargin=*]
+  \item Aggregate ECs that map entirely within one gene and fit
+  \(\alpha_g,\bm u_g,\bm z_m\) with a gene-level count factor model. Cross-gene
+  ambiguous ECs are excluded only from this initializer.
+
+  \item Estimate pooled \(\beta_t\) from all cells or sufficiently large
+  pseudobulks. Pooled EM is acceptable at this stage.
+
+  \item With \(\bm z_m\) initialized, fit \(\bm w_t\) under the complete EC
+  likelihood while holding \(r_i=0\).
+
+  \item Jointly fine-tune gene abundance, conditional isoform usage, and both
+  primer observation models.
+
+  \item Fit candidate \(r_i>0\) models by adding small isoform-specific factors
+  \(\bm h_m,\bm r_t\). Warm-start from smaller to larger \(r_i\).
+\end{enumerate}
+
+The fit should use Adam or another stable first-order optimizer initially,
+followed by deterministic full-data or large-batch polishing. Gene and isoform
+cell factors should use separate learning rates because isoform gradients are
+supported by fewer molecules. Gradient clipping and log-sum-exp evaluation
+are required for numerical stability.
+
+Weak Gaussian priors or equivalent quadratic penalties on \(\bm h_m\) and
+\(\bm r_t\) are appropriate even though the previous direct factorization did
+not use an \(L_2\) penalty. Here they control an explicitly optional residual
+state that would otherwise fit sparse-cell noise. Their strength, or the
+decision to omit \(\bm h_m\), must be selected from held-out molecules rather
+than labels.
+
+\section*{Scalable Likelihood Evaluation}
+
+The likelihood need not construct a dense cell-by-EC matrix. For a cell
+minibatch, only ECs with nonzero counts contribute to
+\(\sum_k n_{kmp}\log q_{kmp}\). Each such value uses the sparse transcript list
+stored in the corresponding row of \(A_p\).
+
+The normalizing term is also inexpensive once transcript abundance is
+available. Define the transcript column-sum vector
+\[
+  \bm d_p=A_p'\bm 1.
+\]
+Then
+\[
+  \bm 1'A_p\bm\theta_m=\bm d_p'\bm\theta_m,
+\]
+without constructing all predicted EC values.
+
+For a minibatch of \(B\) cells, the main dense workspace is the
+\(T\times B\) transcript abundance block. Batches of a few hundred cells keep
+this bounded even for a genome-wide transcriptome. Observed EC likelihood
+terms can be evaluated from a COO event table containing cell, primer, EC, and
+count, joined to the sparse EC-to-transcript edges. Segmented reductions
+compute each observed \(q_{kmp}\).
+
+Explicit cell-factor storage remains small. For example, one million cells
+with a 32-dimensional float32 gene state require approximately 128 MB; an
+additional eight-dimensional isoform state requires approximately 32 MB.
+An amortized encoder from gene counts to \(\bm z_m\) is a later option, but is
+not required for the initial million-cell implementation.
+
+\section*{Identifiability}
+
+The following conventions remove avoidable invariances:
+\begin{itemize}[leftmargin=*]
+  \item Center the gene intercepts \(\alpha_g\), because a common shift of all
+  gene log abundances is removed by the conditional multinomial likelihood.
+
+  \item Center \(\beta_t\) within each gene because adding the same value to
+  every transcript logit leaves \(\bm\pi_{gm}\) unchanged.
+
+  \item Center each column of \(\bm w_t\) and \(\bm r_t\) within each gene for
+  the same reason.
+
+  \item Center and standardize cell-factor columns after each epoch, absorbing
+  location and scale changes into intercepts and loadings.
+
+  \item Use factor balancing or an orthogonality convention for reporting.
+  Latent rotations do not affect fitted abundance, but a stable convention
+  improves warm starts and interpretation.
+\end{itemize}
+
+These constraints are parameter-identification conventions, not biological
+regularization and not simplex constraints on the genome-wide transcript
+matrix.
+
+\section*{Label-Blind Model Selection}
+
+Molecule counts should be partitioned before any normalization, as in the
+existing count-fold procedure. Candidate models are compared using held-out
+multinomial log likelihood on the same response scale.
+
+The recommended nested path is:
+\[
+  r_i=0,2,4,8,16,
+\]
+with small-to-large warm starts. The gene rank \(r_g\) can be selected first,
+then held fixed while selecting \(r_i\). A one-standard-error rule should
+prefer \(r_i=0\) or the smallest isoform rank statistically indistinguishable
+from the minimum held-out loss.
+
+Held-out diagnostics should also decompose performance into:
+\begin{itemize}[leftmargin=*]
+  \item gene-unambiguous molecule likelihood;
+  \item within-gene EC likelihood;
+  \item cross-gene ambiguous EC likelihood;
+  \item poly(dT) and random-hexamer likelihoods.
+\end{itemize}
+This distinguishes genuine improvement in isoform prediction from improvement
+that comes only through gene abundance. Cell-type labels, ARI, NMI, and
+silhouette remain external assessments and are never hyperparameter inputs.
+
+\section*{Downstream Differential Isoform Analysis}
+
+The fitted \(\pi_{tm}\) is the conditional isoform usage quantity needed
+downstream. Differential effects can be introduced directly in the isoform
+logits:
+\[
+  \eta_{tm}
+  =
+  \beta_t+\bm w_t'\bm z_m+\bm r_t'\bm h_m
+  +\bm x_m'\bm\gamma_t,
+\]
+where \(\bm x_m\) contains diagnosis, cell type, donor covariates, and
+interactions. Coefficients \(\bm\gamma_t\) are centered within each gene.
+Inference should respect donor replication, either through donor-level random
+effects or by fitting and testing on donor-by-cell-type pseudobulks of the
+model-implied sufficient statistics.
+
+This preserves the intended division of labor: gene factors provide a robust
+cell representation, shared isoform loadings borrow information across cells,
+and downstream tests operate on transcript-resolved conditional usage rather
+than requiring independent cell-level EM estimates.
+
+\section*{Recommended First Implementation}
+
+The first implementation should deliberately omit the free isoform cell state:
+\[
+  \log a_{gm}=\alpha_g+\bm u_g'\bm z_m,
+  \qquad
+  \pi_{tm}
+  =
+  \operatorname{softmax}_{t\in\mathcal T_{g(t)}}
+  (\beta_t+\bm w_t'\bm z_m).
+\]
+It should use the paired-primer multinomial EC likelihood, pooled-EM
+initialization of \(\beta_t\), explicit cell factors, and GPU minibatches.
+Only after this model is converged and evaluated should an independent
+\(\bm h_m\) be added. This ordering tests the central hypothesis---that robust
+gene state can support transcript-resolution inference---without giving every
+sparse cell enough freedom to reproduce its EC noise.
+
+\end{document}

@@ -1,5 +1,24 @@
 # Lab Notebook
 
+## 2026-07-27 Hierarchical Gene--Isoform Proposal
+
+Added `docs/hierarchical.tex`, a proposed count model that decomposes
+transcript abundance into gene abundance and within-gene isoform allocation.
+A gene-expression cell state controls gene abundance and initially also
+predicts conditional isoform logits. A smaller independent isoform state is a
+nested extension accepted only when held-out molecules support it. This avoids
+independent cell-level EM: pooled EM supplies baseline isoform initialization,
+while shared transcript loadings and low-dimensional cell coordinates are fit
+jointly under the paired-primer multinomial EC likelihood.
+
+The implementation sequence is gene-factor initialization from
+gene-unambiguous ECs, pooled isoform initialization, shared-state isoform
+fitting, joint EC-likelihood refinement, and only then warm-started
+isoform-specific rank selection. The note also specifies identifiability
+constraints, sparse observed-EC likelihood evaluation, primer-specific
+observation matrices, label-blind molecule-count CV, and downstream
+differential-isoform parameterization.
+
 ## 2026-07-27 Factorization Representation Audit
 
 Audited the paired positional rank-32 factorization on the same 157,006
