@@ -4,24 +4,21 @@
 
 Added `docs/hierarchical.tex`, a proposed count model that decomposes
 transcript abundance into gene abundance and within-gene isoform allocation.
-A gene-expression cell state controls gene abundance and initially also
-predicts weights on a small dictionary of shared isoform programs for each
-gene. A smaller independent isoform state is a nested extension accepted only
-when held-out molecules support it. This avoids independent cell-level EM:
-pooled EM initializes the shared program dictionaries, while program weights
-and low-dimensional cell coordinates are fit jointly under the paired-primer
-multinomial EC likelihood.
+A single cell state controls both gene log abundance and within-gene
+transcript logits through separate decoder loadings. There is no independent
+splicing state and no gene-specific dictionary of isoform programs. This
+avoids independent cell-level EM: pooled EM initializes baseline within-gene
+isoform logits, while the one low-dimensional cell state and shared decoder
+loadings are fit jointly under the paired-primer multinomial EC likelihood.
 
 The implementation sequence is gene-factor initialization from
-gene-unambiguous ECs, pooled program initialization, shared-state program
-fitting, joint EC-likelihood refinement, and only then warm-started
-isoform-specific rank selection. The revised likelihood projects each program
-dictionary through the primer design, so expected EC mass and its multinomial
-normalizer are evaluated at gene-program resolution without materializing
-cell-level transcript abundance. The note also makes explicit that an
+gene-unambiguous ECs, pooled isoform-logit initialization, fitting the isoform
+decoder against the complete EC likelihood, and joint refinement. The exact
+likelihood evaluates transcript logits in cell minibatches but never stores a
+genome-wide cell-by-transcript matrix. The note also makes explicit that an
 unrestricted hierarchy is equivalent to a flat multinomial model; statistical
-sharing comes from small shared program dictionaries and low-dimensional cell
-states.
+sharing comes from the one low-dimensional cell state and shared gene and
+transcript decoder loadings.
 
 ## 2026-07-27 Factorization Representation Audit
 
