@@ -5,19 +5,23 @@
 Added `docs/hierarchical.tex`, a proposed count model that decomposes
 transcript abundance into gene abundance and within-gene isoform allocation.
 A gene-expression cell state controls gene abundance and initially also
-predicts conditional isoform logits. A smaller independent isoform state is a
-nested extension accepted only when held-out molecules support it. This avoids
-independent cell-level EM: pooled EM supplies baseline isoform initialization,
-while shared transcript loadings and low-dimensional cell coordinates are fit
-jointly under the paired-primer multinomial EC likelihood.
+predicts weights on a small dictionary of shared isoform programs for each
+gene. A smaller independent isoform state is a nested extension accepted only
+when held-out molecules support it. This avoids independent cell-level EM:
+pooled EM initializes the shared program dictionaries, while program weights
+and low-dimensional cell coordinates are fit jointly under the paired-primer
+multinomial EC likelihood.
 
 The implementation sequence is gene-factor initialization from
-gene-unambiguous ECs, pooled isoform initialization, shared-state isoform
+gene-unambiguous ECs, pooled program initialization, shared-state program
 fitting, joint EC-likelihood refinement, and only then warm-started
-isoform-specific rank selection. The note also specifies identifiability
-constraints, sparse observed-EC likelihood evaluation, primer-specific
-observation matrices, label-blind molecule-count CV, and downstream
-differential-isoform parameterization.
+isoform-specific rank selection. The revised likelihood projects each program
+dictionary through the primer design, so expected EC mass and its multinomial
+normalizer are evaluated at gene-program resolution without materializing
+cell-level transcript abundance. The note also makes explicit that an
+unrestricted hierarchy is equivalent to a flat multinomial model; statistical
+sharing comes from small shared program dictionaries and low-dimensional cell
+states.
 
 ## 2026-07-27 Factorization Representation Audit
 
