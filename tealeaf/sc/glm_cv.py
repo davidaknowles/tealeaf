@@ -5,10 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 import csv
 import gc
+from functools import partial
 from pathlib import Path
 import time
 
 import numpy as np
+import pandas as pd
 import scipy.io
 import scipy.sparse as sp
 
@@ -25,6 +27,7 @@ class PreparedGLMData:
     cell_umi_totals: np.ndarray
     metadata: dict | None = None
     cv_raw_counts: sp.csr_matrix | None = None
+    cv_fold_transform: object | None = None
 
 
 def sparse_storage_bytes(matrix):
@@ -72,6 +75,78 @@ def _read_primer_pairs(pair_file):
     return rows
 
 
+def _transcript_gene_assignment(features, transcript_to_gene):
+    """Return transcript-by-gene membership for uniquely mapped transcripts."""
+    mapping = pd.read_csv(
+        transcript_to_gene,
+        sep="\t",
+        header=None,
+        names=["transcript_id", "gene_id"],
+        usecols=[0, 1],
+        dtype=str,
+    ).dropna()
+    conflicts = mapping.groupby("transcript_id")["gene_id"].nunique()
+    if (conflicts > 1).any():
+        raise ValueError("transcript-to-gene mapping contains conflicting genes")
+    lookup = mapping.drop_duplicates("transcript_id").set_index(
+        "transcript_id"
+    )["gene_id"]
+    genes = lookup.reindex(np.asarray(features, dtype=str))
+    keep = genes.notna().to_numpy()
+    gene_ids, gene_indices = np.unique(
+        genes.to_numpy(dtype=object)[keep], return_inverse=True
+    )
+    assignment = sp.csr_matrix(
+        (
+            np.ones(keep.sum(), dtype=np.float32),
+            (np.flatnonzero(keep), gene_indices),
+        ),
+        shape=(len(features), len(gene_ids)),
+    )
+    return assignment, np.asarray(gene_ids, dtype=str)
+
+
+def _unambiguous_ec_gene_assignment(membership, transcript_gene):
+    """Map ECs to a gene only when all their mapped transcripts share it."""
+    ec_gene = (membership @ transcript_gene).tocsr()
+    ec_gene.data.fill(1.0)
+    unmapped = np.flatnonzero(
+        np.asarray(transcript_gene.getnnz(axis=1)).ravel() == 0
+    )
+    complete = np.ones(membership.shape[0], dtype=bool)
+    if len(unmapped):
+        complete = np.asarray(
+            membership[:, unmapped].getnnz(axis=1)
+        ).ravel() == 0
+    unique = (np.diff(ec_gene.indptr) == 1) & complete
+    ec_gene = sp.diags(unique.astype(np.float32), format="csr") @ ec_gene
+    ec_gene.eliminate_zeros()
+    return ec_gene.tocsr()
+
+
+def _paired_response_with_gene_aux(raw_counts, ec_gene, gene_loss_weight):
+    """Normalize primer EC and gene summaries with a weighted auxiliary loss."""
+    raw_counts = raw_counts.tocsr()
+    if raw_counts.shape[1] % 2:
+        raise ValueError("paired-primer raw counts need two equal-width halves")
+    half = raw_counts.shape[1] // 2
+    poly_raw, hex_raw = raw_counts[:, :half], raw_counts[:, half:]
+    poly_ec, _ = _row_normalize(poly_raw)
+    hex_ec, _ = _row_normalize(hex_raw)
+    scale = 0.5 * np.sqrt(float(gene_loss_weight))
+    poly_gene, _ = _row_normalize(poly_raw @ ec_gene)
+    hex_gene, _ = _row_normalize(hex_raw @ ec_gene)
+    return sp.hstack(
+        (
+            0.5 * poly_ec,
+            0.5 * hex_ec,
+            scale * poly_gene,
+            scale * hex_gene,
+        ),
+        format="csr",
+    )
+
+
 def prepare_paired_primer_glm_data(
     alevin_dir,
     salmon_ref,
@@ -85,6 +160,8 @@ def prepare_paired_primer_glm_data(
     probability_file=None,
     weight_caches=None,
     length_caches=None,
+    transcript_to_gene=None,
+    gene_loss_weight=0.0,
 ):
     """Prepare paired primer observations with one latent row per cell.
 
@@ -109,6 +186,13 @@ def prepare_paired_primer_glm_data(
         raise ValueError(
             "primer_sampling_model must be effective_length, oligodt_tpm, "
             "or all_tpm"
+        )
+    gene_loss_weight = float(gene_loss_weight)
+    if not np.isfinite(gene_loss_weight) or gene_loss_weight < 0:
+        raise ValueError("gene_loss_weight must be finite and nonnegative")
+    if gene_loss_weight > 0 and transcript_to_gene is None:
+        raise ValueError(
+            "transcript_to_gene is required when gene_loss_weight is positive"
         )
     alevin_dir = Path(alevin_dir)
     features, membership = load_alevin_structure(alevin_dir)
@@ -249,17 +333,68 @@ def prepare_paired_primer_glm_data(
             regularization_target,
             normalize_columns=True,
         ))
-    compatibility = sp.vstack(
-        (0.5 * designs[0], 0.5 * designs[1]), format="csr"
+    compatibility_blocks = [0.5 * designs[0], 0.5 * designs[1]]
+    raw_paired_counts = sp.hstack(
+        (raw_poly_counts, raw_hex_counts), format="csr"
     )
+    cv_fold_transform = None
+    gene_metadata = {}
+    if gene_loss_weight > 0:
+        transcript_gene, gene_ids = _transcript_gene_assignment(
+            filtered_features, transcript_to_gene
+        )
+        filtered_membership = membership[ec_keep, :][:, feature_keep]
+        ec_gene = _unambiguous_ec_gene_assignment(
+            filtered_membership, transcript_gene
+        )
+        gene_assigned = np.asarray(ec_gene.getnnz(axis=1)).ravel() > 0
+        poly_gene_umi_mass = float(
+            np.asarray(
+                raw_poly_counts @ gene_assigned.astype(np.float32)
+            ).sum()
+        )
+        hex_gene_umi_mass = float(
+            np.asarray(
+                raw_hex_counts @ gene_assigned.astype(np.float32)
+            ).sum()
+        )
+        poly_umi_mass = float(raw_poly_counts.sum())
+        hex_umi_mass = float(raw_hex_counts.sum())
+        gene_scale = 0.5 * np.sqrt(gene_loss_weight)
+        for sampling_factor in sampling_factors:
+            compatibility_blocks.append(
+                gene_scale
+                * transcript_gene.T
+                @ sp.diags(np.asarray(sampling_factor, dtype=np.float32))
+            )
+        paired_counts = _paired_response_with_gene_aux(
+            raw_paired_counts, ec_gene, gene_loss_weight
+        )
+        cv_fold_transform = partial(
+            _paired_response_with_gene_aux,
+            ec_gene=ec_gene,
+            gene_loss_weight=gene_loss_weight,
+        )
+        gene_metadata = {
+            "gene_loss_weight": gene_loss_weight,
+            "gene_auxiliary_genes": int(len(gene_ids)),
+            "gene_auxiliary_assigned_ecs": int(ec_gene.nnz),
+            "gene_auxiliary_ec_fraction": float(ec_gene.nnz / ec_gene.shape[0]),
+            "gene_auxiliary_poly_umi_fraction": (
+                poly_gene_umi_mass / poly_umi_mass if poly_umi_mass else 0.0
+            ),
+            "gene_auxiliary_hex_umi_fraction": (
+                hex_gene_umi_mass / hex_umi_mass if hex_umi_mass else 0.0
+            ),
+        }
+    else:
+        paired_counts = _normalize_paired_primer_counts(raw_paired_counts)
+    compatibility = sp.vstack(compatibility_blocks, format="csr")
     del designs, phi_designs, membership, filtered, phi_design
     del design_weights, sampling_factors
     gc.collect()
-    poly_counts, poly_totals = _row_normalize(raw_poly_counts)
-    hex_counts, hex_totals = _row_normalize(raw_hex_counts)
-    paired_counts = sp.hstack(
-        (0.5 * poly_counts, 0.5 * hex_counts), format="csr"
-    )
+    poly_totals = np.asarray(raw_poly_counts.sum(axis=1)).ravel()
+    hex_totals = np.asarray(raw_hex_counts.sum(axis=1)).ravel()
     pair_ids = np.asarray([row[0] for row in complete])
     return PreparedGLMData(
         paired_counts,
@@ -278,10 +413,10 @@ def prepare_paired_primer_glm_data(
             "source_rows": np.column_stack((poly_rows, hex_rows)),
             "annotated_pair_count": len(pairs),
             "retained_pair_count": len(complete),
+            **gene_metadata,
         },
-        cv_raw_counts=sp.hstack(
-            (raw_poly_counts, raw_hex_counts), format="csr"
-        ),
+        cv_raw_counts=raw_paired_counts,
+        cv_fold_transform=cv_fold_transform,
     )
 
 
@@ -451,10 +586,12 @@ class _PairedPrimerCountFoldPlan:
     n_folds: int
     seed: int
     progress_callback: object | None = None
+    transform: object | None = None
+    output_shape: tuple | None = None
 
     @property
     def shape(self):
-        return self.raw_counts.shape
+        return self.raw_counts.shape if self.output_shape is None else self.output_shape
 
     def __len__(self):
         return self.n_folds
@@ -487,10 +624,8 @@ class _PairedPrimerCountFoldPlan:
             )
             validation.eliminate_zeros()
             training = (raw_counts - validation).tocsr()
-            pair = (
-                _normalize_paired_primer_counts(training),
-                _normalize_paired_primer_counts(validation),
-            )
+            transform = self.transform or _normalize_paired_primer_counts
+            pair = (transform(training), transform(validation))
             if self.progress_callback is not None:
                 self.progress_callback({
                     "event": "paired_fold_prepare_complete",
@@ -505,7 +640,12 @@ class _PairedPrimerCountFoldPlan:
 
 
 def paired_primer_count_fold_pairs(
-    raw_counts, n_folds=3, seed=0, progress_callback=None
+    raw_counts,
+    n_folds=3,
+    seed=0,
+    progress_callback=None,
+    transform=None,
+    output_shape=None,
 ):
     """Lazily split molecules, then equalize primer mass in each partition."""
     raw_counts = raw_counts.tocsr()
@@ -521,7 +661,12 @@ def paired_primer_count_fold_pairs(
     if invalid:
         raise ValueError("count-fold CV requires nonnegative integer counts")
     return _PairedPrimerCountFoldPlan(
-        raw_counts, int(n_folds), int(seed), progress_callback
+        raw_counts,
+        int(n_folds),
+        int(seed),
+        progress_callback,
+        transform,
+        output_shape,
     )
 
 

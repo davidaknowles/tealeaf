@@ -60,4 +60,5 @@ python "${REPO_ROOT}/extra_scripts/score_single_cell_glm_labels.py" \
   "${group_args[@]}" \
   --transcript-to-gene "${TRANSCRIPT_TO_GENE}" \
   --output-dir "${output_dir}" \
+  --representation "${REPRESENTATION:-log_gene_pca}" \
   --device cuda

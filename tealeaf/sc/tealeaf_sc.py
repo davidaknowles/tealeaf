@@ -664,6 +664,8 @@ def single_cell_glm_conversion(options):
             min_half_umis=options.min_half_umis,
             primer_sampling_model=options.primer_sampling_model,
             probability_file=options.eq_probabilities,
+            transcript_to_gene=options.transcript_to_gene,
+            gene_loss_weight=options.gene_loss_weight,
         )
     else:
         prepared = glm_cv.prepare_alevin_glm_data(
@@ -1176,6 +1178,14 @@ if __name__ == "__main__":
     parser.add_option("--primer_sampling_model", dest="primer_sampling_model",
                   default="oligodt_tpm",
                   help="paired-primer sampling: effective_length, oligodt_tpm, or all_tpm")
+
+    parser.add_option("--transcript_to_gene", dest="transcript_to_gene",
+                  default=None,
+                  help="two-column transcript-to-gene TSV for an auxiliary gene loss")
+
+    parser.add_option("--gene_loss_weight", dest="gene_loss_weight",
+                  default=0.0, type="float",
+                  help="relative paired-primer gene reconstruction loss (default: 0)")
 
     parser.add_option("--glm_device", dest="glm_device", default='auto',
                   help="Torch device for scalable GLMs: auto, cuda, or cpu (default: auto)")

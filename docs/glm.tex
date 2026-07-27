@@ -280,6 +280,35 @@ The current complete-pair implementation requires both halves to pass a
 primer-specific UMI threshold. A future count-likelihood implementation can
 retain incomplete pairs by masking the absent primer loss.
 
+Cell-type marker information can be weakly represented by an EC-level
+squared-error objective because the much larger EC space also asks the model
+to explain within-gene transcript ambiguity. An optional multi-resolution
+objective therefore augments the two primer blocks with gene totals while
+retaining transcript-level coefficients. Let \(H\) map transcripts to genes
+and let \(R\) map an EC to a gene only when every annotated transcript in that
+EC belongs to the same gene. With
+\[
+  C_{g,p}=\operatorname{colnorm}(R'C^{\rm raw}_p),
+\]
+the augmented matrices are
+\[
+  \widetilde C_\alpha=\frac{1}{2}
+  \begin{bmatrix}C_d\\C_h\\\sqrt{\alpha}C_{g,d}\\
+                  \sqrt{\alpha}C_{g,h}\end{bmatrix},
+  \qquad
+  \widetilde A_\alpha=\frac{1}{2}
+  \begin{bmatrix}A_d\\A_h\\\sqrt{\alpha}H'D_d\\
+                  \sqrt{\alpha}H'D_h\end{bmatrix},
+\]
+where \(D_p\) is the primer-specific transcript sampling exposure.
+The scalar \(\alpha\) controls gene-level relative to EC-level reconstruction.
+Cross-gene ambiguous ECs are omitted from the gene summary rather than
+assigned arbitrarily. The fitted \(\Theta=UV'\) remains transcript by cell,
+so isoform estimates and downstream splicing analyses are unchanged in
+dimension. In molecule-count cross-validation, the raw molecules are split
+first and both the EC and gene summaries are then normalized independently
+within each training or validation partition.
+
 The same construction applies to every genome-wide solver below by replacing
 \((C,A)\) with \((\widetilde C,\widetilde A)\). In particular, direct
 factorization uses one shared cell-factor row in \(V\) for both primer
@@ -666,6 +695,41 @@ scores should be interpreted as controlled head-to-head comparisons.
   \label{tab:paired-validation}
 \end{table}
 
+A larger paired-primer dataset permitted a matched comparison on 157,006
+annotated cells with donor-held-out folds. Direct use of the rank-32 cell
+factor retained more label information than nonlinear gene reconstruction.
+Increasing the EC-only fit to rank 64 produced negligible improvement. A
+fixed, label-blind gene-auxiliary weight of \(\alpha=1\) substantially improved
+the factor representation, but remained below PCA of the observed gene assay
+and the published scVI embedding (Table~\ref{tab:gene-aux-validation}).
+The auxiliary fit converged after 2,139 epochs and 26.7\% of retained EC
+identities were gene-unambiguous. The result supports a hierarchical
+gene-abundance and within-gene isoform model rather than rank expansion alone.
+Row-normalizing this factor reduced accuracy to 0.712 but improved label
+silhouette to -0.054. Applying \(\log(1+x)\) after row normalization reduced
+accuracy to 0.688 while increasing label silhouette to 0.005, ARI to 0.188,
+and NMI to 0.434. Raw factors are therefore preferable for linear label
+transfer, while the transformed factors have more coherent unsupervised
+geometry.
+
+\begin{table}[h]
+  \centering
+  \footnotesize
+  \begin{tabular}{lrrrr}
+    \toprule
+    Representation & Accuracy & Balanced acc. & Macro-F1 & Label silhouette \\
+    \midrule
+    EC-only factor, rank 32       & 0.578 & 0.644 & 0.574 & -0.119 \\
+    Gene-auxiliary factor, rank 32 & 0.721 & 0.779 & 0.712 & -0.138 \\
+    Observed-gene PCA              & 0.896 & 0.918 & 0.877 &  0.105 \\
+    Published scVI                 & 0.953 & 0.973 & 0.953 &  0.192 \\
+    \bottomrule
+  \end{tabular}
+  \caption{Matched external label evaluation; labels were not used for fitting
+  or hyperparameter selection.}
+  \label{tab:gene-aux-validation}
+\end{table}
+
 \subsection*{Software Interface and Output}
 
 The single-cell command exposes five methods through the
@@ -726,17 +790,19 @@ factorized methods, and additional power iterations can improve the approximate
 linear oracle. Every manifest records the stopping history, convergence reason,
 and whether the maximum iteration or atom limit was reached.
 
-For comparison with a standard single-cell expression analysis, downstream
-label scoring does not apply a nonlinear transform to the arbitrary factors.
-Instead, transcript loadings are summed by gene so that fitted gene abundance
-remains \(VU_{\mathrm{gene}}'\). For each cell this abundance is normalized to
-a total of 10,000 and transformed with \(\log(1+x)\). Per-fit gene moments are
-computed in streamed cell blocks, the 2,000 most variable genes are selected,
-and incremental PCA is fit and transformed in two further streamed passes.
-Grouped classification, k-means, ARI, NMI, and silhouette are all computed in
-the resulting 30-dimensional PCA representation. This preserves the intended
-nonlinear expression preprocessing without materializing a dense genome-wide
-cell-by-gene matrix.
+External label evaluation supports two distinct views of a fitted
+factorization. The direct view uses the saved cell factor \(V\), optionally
+after row normalization and a log-one-plus transform. The reconstructed-gene
+view sums transcript loadings by gene so that fitted gene abundance remains
+\(VU_{\mathrm{gene}}'\). For each cell this abundance is normalized to a total
+of 10,000 and transformed with \(\log(1+x)\). Per-fit gene moments are computed
+in streamed cell blocks, the 2,000 most variable genes are selected, and
+incremental PCA is fit and transformed in two further streamed passes.
+Grouped classification, k-means, ARI, NMI, and silhouette can be computed
+from either representation. The direct view measures information retained in
+the low-rank fit, whereas the reconstructed-gene view measures compatibility
+with standard expression preprocessing; their scores need not agree because
+library normalization and \(\log(1+x)\) are nonlinear.
 
 \subsection*{Choosing the Regularization Level}
 
@@ -791,9 +857,9 @@ leading singular vectors \(u,v\) of \(B=A'C\):
   \qquad
   \Phi_{\mathrm{seed}}=s_\lambda uv'.
 \]
-Small random remaining columns preserve the requested factor rank. The
-continuation and spectral-seed objectives are evaluated, and the lower one
-initializes ADMM. The selected all-cell ADMM refit replays this same
+Small random remaining columns preserve the requested factor rank. Both
+initializer objectives are evaluated, and the lower initializes ADMM. The
+selected all-cell ADMM refit replays this same
 strong-to-weak construction after recomputing \(\lambda_{\max}\) from all
 eligible cells. Its geometric path includes the closed
 \(\lambda/\lambda_{\max}=1\) endpoint, a configured smallest positive
@@ -801,8 +867,8 @@ multiplier, and the exact CV-selected multiplier. The final manifest records
 the initializer, convergence criterion, residuals, adaptive-\(\rho\) state,
 and objective at every stage; it is therefore possible to verify that the
 reported endpoint was reached by continuation rather than an unrelated random
-restart. Frank--Wolfe visits
-increasing \(\tau\); the previous atom factorization is feasible in the enlarged
+restart. Frank--Wolfe then visits increasing \(\tau\). The previous atom
+factorization is feasible in the enlarged
 nuclear-norm ball and is retained. Its selected all-cell refit replays the
 exact increasing-radius path recorded by CV up to the selected multiplier,
 rather than cold-starting only the endpoint. The manifest records the

@@ -121,6 +121,24 @@ class RepresentationScoringTest(unittest.TestCase):
                 device="cpu",
             )
 
+    def test_factor_embedding_transforms_active_rows(self):
+        right = np.array(
+            [[1.0, 3.0], [0.0, 0.0], [2.0, 2.0]], dtype=np.float32
+        )
+        embedding, active, diagnostics = (
+            representation_scoring.factor_embedding(
+                right, transform="log1p_l1", target_sum=100.0
+            )
+        )
+        np.testing.assert_array_equal(active, [True, False, True])
+        np.testing.assert_allclose(
+            embedding[active],
+            np.log1p(np.array([[25.0, 75.0], [50.0, 50.0]])),
+        )
+        self.assertTrue(np.isnan(embedding[1]).all())
+        self.assertEqual(diagnostics["factor_rank"], 2)
+        self.assertEqual(diagnostics["representation"], "factor_log1p_l1")
+
     def test_grouped_scores_recover_separated_labels(self):
         rng = np.random.default_rng(0)
         labels = np.tile(np.repeat(["a", "b", "c"], 5), 4)

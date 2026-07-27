@@ -33,6 +33,8 @@ def main():
         choices=["effective_length", "oligodt_tpm", "all_tpm"],
         default="oligodt_tpm",
     )
+    parser.add_argument("--transcript-to-gene", type=Path)
+    parser.add_argument("--gene-loss-weight", type=float, default=0.0)
     parser.add_argument("--multiplier", action="append", type=float)
     parser.add_argument("--rank-candidate", action="append", type=int)
     parser.add_argument("--max-rank", type=int, default=256)
@@ -107,6 +109,8 @@ def main():
             min_eq=args.min_eq,
             min_half_umis=args.min_half_umis,
             primer_sampling_model=args.primer_sampling_model,
+            transcript_to_gene=args.transcript_to_gene,
+            gene_loss_weight=args.gene_loss_weight,
         )
     print(json.dumps({
         "event": "data_prepared",
@@ -166,6 +170,8 @@ def main():
             progress_callback=lambda row: print(
                 json.dumps(row), flush=True
             ),
+            transform=prepared.cv_fold_transform,
+            output_shape=counts.shape,
         )
     fit_kwargs = {
         "rank": args.rank,

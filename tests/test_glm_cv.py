@@ -20,6 +20,27 @@ else:
 
 
 class PairedPrimerPreparationTest(unittest.TestCase):
+    def test_gene_assignment_excludes_ecs_with_unmapped_transcripts(self):
+        membership = sp.csr_matrix(
+            np.array(
+                [[1, 1, 0], [1, 0, 1], [0, 0, 1]],
+                dtype=np.float32,
+            )
+        )
+        transcript_gene = sp.csr_matrix(
+            np.array(
+                [[1, 0], [1, 0], [0, 0]],
+                dtype=np.float32,
+            )
+        )
+        assignment = glm_cv._unambiguous_ec_gene_assignment(
+            membership, transcript_gene
+        )
+        np.testing.assert_allclose(
+            assignment.toarray(),
+            [[1, 0], [0, 0], [0, 0]],
+        )
+
     def test_sparse_storage_bytes_counts_csr_arrays(self):
         matrix = sp.csr_matrix([[0.0, 1.0], [2.0, 0.0]], dtype=np.float32)
         expected = (
@@ -115,6 +136,80 @@ class PairedPrimerPreparationTest(unittest.TestCase):
                 sp.csr_matrix([[1.5, 0.0, 1.0, 1.0]]),
                 n_folds=2,
             )
+
+    def test_gene_auxiliary_loss_preserves_molecule_fold_partition(self):
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            membership = sp.eye(2, format="csr")
+            counts = sp.csr_matrix(
+                np.array([[8, 2], [2, 8]], dtype=np.int64)
+            )
+            sp.save_npz(directory / "gene_eqclass.npz", membership)
+            sp.save_npz(directory / "geqc_counts.npz", counts)
+            (directory / "quants_mat_cols.txt").write_text("tx1\ntx2\n")
+            (directory / "quants_mat_rows.txt").write_text("poly\nhex\n")
+            (directory / "transcripts.fa").write_text(
+                ">tx1\n" + "A" * 400 + "\n>tx2\n" + "C" * 400 + "\n"
+            )
+            (directory / "pairs.tsv").write_text(
+                "cell_id\tpolydt_barcode\tranhex_barcode\ncell\tpoly\thex\n"
+            )
+            (directory / "t2g.tsv").write_text("tx1\tgene1\ntx2\tgene2\n")
+            prepared = glm_cv.prepare_paired_primer_glm_data(
+                directory,
+                directory / "transcripts.fa",
+                directory / "pairs.tsv",
+                ec_design="binary",
+                regularization_target="theta",
+                primer_sampling_model="all_tpm",
+                min_eq=1,
+                min_half_umis=1,
+                transcript_to_gene=directory / "t2g.tsv",
+                gene_loss_weight=1.0,
+            )
+            self.assertEqual(prepared.counts.shape, (1, 8))
+            self.assertEqual(prepared.compatibility.shape, (8, 2))
+            np.testing.assert_allclose(
+                prepared.counts.toarray(),
+                [[0.4, 0.1, 0.1, 0.4, 0.4, 0.1, 0.1, 0.4]],
+            )
+            np.testing.assert_allclose(
+                prepared.compatibility.toarray(),
+                [
+                    [0.5, 0.0],
+                    [0.0, 0.5],
+                    [0.5, 0.0],
+                    [0.0, 0.5],
+                    [0.5, 0.0],
+                    [0.0, 0.5],
+                    [0.5, 0.0],
+                    [0.0, 0.5],
+                ],
+            )
+            self.assertEqual(prepared.metadata["gene_auxiliary_genes"], 2)
+            self.assertEqual(
+                prepared.metadata["gene_auxiliary_poly_umi_fraction"], 1.0
+            )
+            self.assertEqual(
+                prepared.metadata["gene_auxiliary_hex_umi_fraction"], 1.0
+            )
+            folds = glm_cv.paired_primer_count_fold_pairs(
+                prepared.cv_raw_counts,
+                n_folds=2,
+                seed=2,
+                transform=prepared.cv_fold_transform,
+                output_shape=prepared.counts.shape,
+            )
+            for training, validation in folds:
+                self.assertEqual(training.shape, prepared.counts.shape)
+                self.assertEqual(validation.shape, prepared.counts.shape)
+                for matrix in (training, validation):
+                    block_totals = [
+                        np.asarray(matrix[:, start:start + 2].sum(axis=1)).ravel()
+                        for start in range(0, 8, 2)
+                    ]
+                    for total in block_totals:
+                        np.testing.assert_allclose(total, 0.5)
 
     def test_positional_design_loads_separate_primer_caches(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -107,6 +107,10 @@ deterministic molecule-count folds, follows warm-start paths, expands open
 hyperparameter grids, and rejects nonconverged or degenerate candidates.
 Responses are normalized per cell. Paired poly(dT) and random-hexamer halves
 have separate observation designs but share one latent abundance row.
+An optional gene-auxiliary loss adds normalized gene totals from
+gene-unambiguous equivalence classes while retaining transcript-level latent
+parameters. This lets a factorization preserve marker-gene structure without
+discarding isoform resolution.
 Regularization paths that still select an open grid boundary are diagnostic
 failures, not valid selected fits; the selected-fit launcher rejects their CV
 reports.
@@ -146,6 +150,9 @@ genes, reconstructs cells in batches, applies library-size normalization and
 `log1p`, selects variable genes, and computes a 30-dimensional PCA. Evaluation
 uses group-held-out label prediction plus label and k-means silhouette scores,
 ARI, and NMI. Labels are not used for GLM rank or regularization selection.
+The scorer can also evaluate raw, row-normalized, or log-row-normalized fitted
+cell factors directly. This distinguishes information learned by the factors
+from information retained after nonlinear gene reconstruction.
 An external reference embedding can be mapped onto the same eligible cells to
 provide a matched standard-analysis baseline.
 

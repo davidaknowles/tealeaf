@@ -286,6 +286,36 @@ def log_gene_pca_embedding(
     return embedding, np.asarray(gene_ids, dtype=str)[selected], expression.active, diagnostics
 
 
+def factor_embedding(right, transform="raw", target_sum=10_000.0):
+    """Return a finite active-cell embedding from fitted cell factors."""
+    right = np.asarray(right, dtype=np.float32)
+    if right.ndim != 2:
+        raise ValueError("right factors must be a matrix")
+    if transform not in {"raw", "l1", "log1p_l1"}:
+        raise ValueError("factor transform must be raw, l1, or log1p_l1")
+    totals = right.sum(axis=1, dtype=np.float64)
+    active = np.isfinite(right).all(axis=1) & np.isfinite(totals) & (totals > 0)
+    embedding = np.full_like(right, np.nan)
+    if transform == "raw":
+        embedding[active] = right[active]
+    else:
+        embedding[active] = (
+            right[active] / totals[active, None]
+        ).astype(np.float32)
+        if transform == "log1p_l1":
+            embedding[active] = np.log1p(
+                float(target_sum) * embedding[active]
+            )
+    diagnostics = {
+        "representation": f"factor_{transform}",
+        "target_sum": float(target_sum) if transform == "log1p_l1" else None,
+        "n_input_cells": int(len(right)),
+        "n_active_cells": int(active.sum()),
+        "factor_rank": int(right.shape[1]),
+    }
+    return embedding, active, diagnostics
+
+
 def score_embedding(
     embedding,
     labels,
@@ -454,6 +484,17 @@ def write_embedding(embedding, cell_ids, genes, diagnostics, output_prefix):
     np.savetxt(f"{output_prefix}log_gene_pca_cells.txt", cell_ids, fmt="%s")
     np.savetxt(f"{output_prefix}log_gene_pca_genes.txt", genes, fmt="%s")
     Path(f"{output_prefix}log_gene_pca.json").write_text(
+        json.dumps(diagnostics, indent=2) + "\n"
+    )
+
+
+def write_factor_embedding(embedding, cell_ids, diagnostics, output_prefix):
+    """Write fitted factor coordinates and preprocessing metadata."""
+    output_prefix = Path(output_prefix)
+    output_prefix.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(f"{output_prefix}factor_embedding.npz", embedding=embedding)
+    np.savetxt(f"{output_prefix}factor_embedding_cells.txt", cell_ids, fmt="%s")
+    Path(f"{output_prefix}factor_embedding.json").write_text(
         json.dumps(diagnostics, indent=2) + "\n"
     )
 

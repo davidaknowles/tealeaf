@@ -38,6 +38,11 @@ def main():
     parser.add_argument("--pca-components", type=int, default=30)
     parser.add_argument("--hvg", type=int, default=2_000)
     parser.add_argument("--target-sum", type=float, default=10_000.0)
+    parser.add_argument(
+        "--representation",
+        choices=["log_gene_pca", "factor", "factor_l1", "factor_log1p_l1"],
+        default="log_gene_pca",
+    )
     parser.add_argument("--reconstruction-batch-cells", type=int, default=2_048)
     parser.add_argument("--silhouette-sample-size", type=int, default=10_000)
     parser.add_argument("--device", default="auto")
@@ -104,31 +109,48 @@ def main():
                     cell_ids, labels, groups
                 )
             )
-            gene_left, mapping_diagnostics = (
-                representation_scoring.aggregate_transcript_loadings(
-                    left, transcripts, transcript_to_gene, eligible_genes
+            if args.representation == "log_gene_pca":
+                gene_left, mapping_diagnostics = (
+                    representation_scoring.aggregate_transcript_loadings(
+                        left, transcripts, transcript_to_gene, eligible_genes
+                    )
                 )
-            )
-            embedding, selected_genes, active, preprocessing = (
-                representation_scoring.log_gene_pca_embedding(
-                    right[positions],
-                    gene_left,
-                    eligible_genes,
-                    target_sum=args.target_sum,
-                    n_hvg=args.hvg,
-                    n_components=args.pca_components,
-                    batch_cells=args.reconstruction_batch_cells,
-                    device=args.device,
+                embedding, selected_genes, active, preprocessing = (
+                    representation_scoring.log_gene_pca_embedding(
+                        right[positions],
+                        gene_left,
+                        eligible_genes,
+                        target_sum=args.target_sum,
+                        n_hvg=args.hvg,
+                        n_components=args.pca_components,
+                        batch_cells=args.reconstruction_batch_cells,
+                        device=args.device,
+                    )
                 )
-            )
-            preprocessing.update(mapping_diagnostics)
-            representation_scoring.write_embedding(
-                embedding,
-                aligned_ids,
-                selected_genes,
-                preprocessing,
-                output_prefix,
-            )
+                preprocessing.update(mapping_diagnostics)
+                representation_scoring.write_embedding(
+                    embedding,
+                    aligned_ids,
+                    selected_genes,
+                    preprocessing,
+                    output_prefix,
+                )
+            else:
+                transform = args.representation.removeprefix("factor").lstrip("_")
+                transform = transform or "raw"
+                embedding, active, preprocessing = (
+                    representation_scoring.factor_embedding(
+                        right[positions],
+                        transform=transform,
+                        target_sum=args.target_sum,
+                    )
+                )
+                representation_scoring.write_factor_embedding(
+                    embedding,
+                    aligned_ids,
+                    preprocessing,
+                    output_prefix,
+                )
             report, folds = representation_scoring.score_embedding(
                 embedding,
                 aligned_labels,

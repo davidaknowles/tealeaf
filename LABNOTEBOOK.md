@@ -1,5 +1,69 @@
 # Lab Notebook
 
+## 2026-07-27 Factorization Representation Audit
+
+Audited the paired positional rank-32 factorization on the same 157,006
+annotated cells and donor-held-out folds used for the standard-analysis
+comparison. Scoring the saved cell factor directly gave accuracy 0.578,
+balanced accuracy 0.644, macro F1 0.574, and label silhouette -0.119. The
+previous transcript-to-gene reconstruction followed by library normalization,
+log1p, HVG selection, and PCA gave accuracy 0.493, balanced accuracy 0.564,
+macro F1 0.508, and silhouette -0.303. Row-normalized and log-row-normalized
+factors scored between these two results. Thus the fit contains biological
+signal that the nonlinear reconstruction path discards, but postprocessing is
+not the primary performance gap.
+
+Continued the selected rank-32 fit to rank 64. Its objective decreased from
+1278.731 to 1278.223, but direct-factor accuracy was 0.578, balanced accuracy
+0.647, macro F1 0.575, and label silhouette -0.112. Donor-centering the
+rank-32 factors also reduced accuracy to 0.560. Increasing rank and subtracting
+a simple donor mean are therefore not useful fixes.
+
+Exported a matched gene-expression PCA from the published RNA assay without
+using cell-type labels. A sparse randomized PCA implementation avoids
+materializing the scaled cell-by-gene matrix. On the same cells and folds,
+gene PCA achieved accuracy 0.896, balanced accuracy 0.918, macro F1 0.877,
+and label silhouette 0.105. The published scVI representation remains higher
+at 0.953 accuracy. The large gene-PCA advantage indicates that the EC
+squared-error objective spends factor capacity on transcript ambiguity instead
+of preserving marker-gene totals; the negligible rank-64 gain shows that rank
+alone does not explain this.
+
+Implemented an optional multi-resolution paired-primer objective. It appends
+normalized gene totals derived from ECs whose compatible transcripts all map
+to one gene, weighted relative to the original EC blocks, while retaining the
+same transcript-level theta and nonnegative factors. Primer-specific sampling
+exposures are applied to the gene design. Count-fold cross-validation splits
+raw molecules before deriving either EC or gene summaries, preventing fold
+leakage. Added direct raw, row-normalized, and log-row-normalized factor
+evaluation to the reusable scorer and exposed both features through the
+single-cell and CV command interfaces.
+
+The fixed \(\alpha=1\) gene-auxiliary rank-32 fit converged by objective
+patience after 2,139 epochs. Gene-unambiguous assignment covered 26.7% of
+retained EC identities. Direct-factor donor-held-out accuracy increased to
+0.721, balanced accuracy to 0.779, and macro F1 to 0.712. ARI increased from
+0.035 to 0.118 and NMI from 0.058 to 0.262, although label silhouette remained
+negative at -0.138. Explicit gene reconstruction therefore recovers a large
+part of the missing cell-type signal, but does not close the gap to the
+standard gene PCA. The auxiliary weight is a fixed label-blind diagnostic,
+not a label-selected hyperparameter.
+
+Post-fit transforms produced a supervised-versus-clustering tradeoff. L1
+normalization gave accuracy 0.712 and label silhouette -0.054. Applying
+log1p after L1 normalization gave accuracy 0.688, but improved label silhouette
+to 0.005, ARI to 0.188, and NMI to 0.434. Reconstructed log-gene PCA from the
+same fit scored 0.698 accuracy and -0.222 silhouette, with relative gene
+variance only \(7.15\times10^{-4}\). Thus post-fit gene collapsing still loses
+information: the gain comes from gene-aware training, not from applying the
+standard pipeline to an already compressed transcript fit.
+
+The practical current strategy is to use gene expression for annotation and
+retain transcript theta for isoform analysis. A unified next model should
+factor gene abundance and within-gene isoform allocation separately, ideally
+under a count likelihood with donor and chemistry covariates, rather than ask
+one low-rank Gaussian EC-proportion model to serve both tasks.
+
 ## 2026-07-22 Full Factorized FISTA Rerun
 
 The pre-FISTA all-cell rank-CV outputs are not reused. Added a fresh binary and
