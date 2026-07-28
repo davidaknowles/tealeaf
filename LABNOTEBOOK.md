@@ -1709,3 +1709,46 @@ During assessment, raw signed factor states were incorrectly filtered by
 requiring a positive row sum. This excluded roughly half of centered PCA
 states. Raw-factor scoring now defines active rows by finite nonzero norm;
 the positive-total criterion remains in place for nonnegative L1 transforms.
+
+## 2026-07-28: count-aware flat GLM ablations
+
+The poor direct EC-factorization result did not distinguish transcript
+ambiguity from differences in response scale and feature preprocessing. A
+reusable flat transcript GLM now uses one signed cell state, an exponential
+transcript decoder, the exact paired positional EC likelihood, and one of
+three gene objectives: fixed-concentration negative binomial, Poisson, or
+squared error on standardized library-normalized log counts. Gene features
+are selected by transformed variance after a prevalence filter. The NB
+implementation optimizes the exact likelihood with minibatch Adam; its
+log-mean Fisher weight saturates at the fixed concentration in the same way
+as an NB IRLS update.
+
+The full rank-32 NB run used 201,023 cells, 2,000 selected genes,
+concentration 10, and ten epochs each of gene fitting, fixed-state EC fitting,
+and joint refinement. NB gene loss decreased from 0.583 to 0.575. EC loss
+decreased from 13.488 to 12.832 with the state fixed and to 12.814 during
+joint refinement. The run completed in 22 minutes with approximately 48 GB
+peak host memory.
+
+On 157,006 labeled cells with donor-held-out folds, the old direct EC
+factorization had 0.493 accuracy, 0.564 balanced accuracy, 0.508 macro F1,
+and -0.303 label silhouette. Standardized log-gene PCA initialization alone
+gave 0.893, 0.911, 0.873, and 0.109. The selected-gene NB stage gave 0.910,
+0.929, 0.897, and 0.133; paired-EC joint refinement gave 0.912, 0.931, 0.899,
+and 0.136. The hierarchical joint model remained slightly higher at 0.915,
+0.936, 0.906, and 0.146.
+
+Two label-blind ablations showed that the gain was not specific to the chosen
+NB concentration or HVG cutoff. Poisson fitting on the same 2,000 genes gave
+0.911 accuracy and 0.136 silhouette. NB fitting on all 24,002 genes observed
+in at least 200 cells gave 0.910 accuracy and 0.131 silhouette. A direct
+standardized-log joint objective reached 0.900 accuracy and 0.123 silhouette.
+Random initialization followed by 30 NB epochs reached 0.908 accuracy but
+only 0.115 silhouette, compared with 0.910 and 0.133 from the transformed PCA
+initialization.
+
+The evidence therefore rejects EC ambiguity as the dominant explanation for
+the old GLM gap. Normalized log-count initialization, variance scaling, and a
+gene-count training objective account for most of the recovery. The explicit
+hierarchical gene/isoform decomposition contributes a smaller remaining
+improvement.

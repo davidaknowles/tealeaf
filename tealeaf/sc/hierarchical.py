@@ -90,6 +90,7 @@ def log_gene_randomized_pca(
     rank,
     *,
     n_hvg=2_000,
+    min_feature_cells=0,
     target_sum=10_000.0,
     oversamples=10,
     power_iterations=2,
@@ -108,8 +109,12 @@ def log_gene_randomized_pca(
     means = np.asarray(counts.mean(axis=0)).ravel().astype(np.float64)
     second = np.asarray(counts.power(2).mean(axis=0)).ravel()
     variances = np.maximum(second - np.square(means), 0.0)
-    n_hvg = min(max(int(rank), int(n_hvg)), counts.shape[1])
-    selected = np.argsort(variances)[-n_hvg:]
+    prevalence = np.asarray(counts.getnnz(axis=0)).ravel()
+    eligible = np.flatnonzero(prevalence >= int(min_feature_cells))
+    if len(eligible) < int(rank):
+        raise ValueError("not enough genes pass min_feature_cells")
+    n_hvg = min(max(int(rank), int(n_hvg)), len(eligible))
+    selected = eligible[np.argsort(variances[eligible])[-n_hvg:]]
     matrix = counts[:, selected].tocsr()
     means = means[selected]
     ddof = matrix.shape[0] / max(matrix.shape[0] - 1, 1)
@@ -141,6 +146,8 @@ def log_gene_randomized_pca(
         "gene_pca_hvg": int(n_hvg),
         "gene_pca_rank": int(rank),
         "gene_pca_active_cells": int(active.sum()),
+        "gene_pca_min_feature_cells": int(min_feature_cells),
+        "gene_pca_eligible_genes": int(len(eligible)),
         "gene_pca_explained_variance": float(
             np.square(singular_values[:rank]).sum()
             / max(np.square(singular_values).sum(), np.finfo(float).tiny)

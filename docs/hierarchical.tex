@@ -386,8 +386,11 @@ and matches the molecule-count folds used for model assessment.
 Direct EC factorization uses a linear low-rank transcript representation and
 optimizes EC reconstruction without explicitly preserving gene totals. The
 hierarchical decoder inserts gene abundance as a modeled quantity and uses a
-gene likelihood during initialization and joint refinement. This is the main
-structural difference responsible for retaining marker-gene information in
-the shared state.
+gene likelihood during initialization and joint refinement. Subsequent
+flat-GLM ablations show that most of the original performance gap comes from
+normalized log-count initialization, variance scaling, and retaining a
+gene-count objective rather than from the hierarchical decomposition alone.
+The explicit gene and within-gene isoform heads give a smaller residual gain
+over that count-aware flat model.
 
 \end{document}

@@ -730,6 +730,90 @@ geometry.
   \label{tab:gene-aux-validation}
 \end{table}
 
+\subsection*{Count-Aware Flat Transcript GLM}
+
+The weak EC-factor results above do not isolate transcript ambiguity from
+response preprocessing. The standard analysis differs in at least three other
+ways: it works after library normalization and a \(\log(1+x)\) transform,
+scales gene variances before PCA, and restricts the representation to selected
+genes. Squared error on normalized EC proportions has none of these
+properties.
+
+A count-aware flat GLM was implemented to test these differences without
+introducing the hierarchical gene and isoform decoder heads. It uses one
+signed cell state \(\bm z_m\) and one flat transcript decoder,
+\[
+  \theta_{tm}
+  =
+  \exp(\beta_t+\bm w_t^\prime\bm z_m).
+\]
+The paired EC likelihood passes this abundance through the same positional
+primer designs as the hierarchical model. For a label-blind selected gene set
+\(\mathcal H\), transcript abundances are summed by gene and normalized to
+the observed selected-gene library total. The fixed-concentration
+negative-binomial model is
+\[
+  y_{gm}\sim\operatorname{NB}(\mu_{gm},\kappa),
+  \qquad
+  \operatorname{Var}(y_{gm}\mid\mu_{gm})
+  =
+  \mu_{gm}+\frac{\mu_{gm}^2}{\kappa},
+  \quad g\in\mathcal H.
+\]
+For a log-mean parameter, the Fisher weight is
+\[
+  \frac{\mu_{gm}}
+       {1+\mu_{gm}/\kappa}.
+\]
+It behaves like a Poisson weight for small means and saturates at
+\(\kappa\), preventing highly expressed genes from dominating. The
+implementation optimizes the exact NB likelihood with Adam rather than
+forming dense IRLS systems; the likelihood supplies the same mean--variance
+weighting.
+
+The cell state is initialized by sparse PCA of library-normalized
+\(\log(1+x)\) gene counts after per-gene variance scaling. Genes observed in
+at least 200 cells are eligible, and the default fit uses the 2,000 genes with
+largest transformed variance. Fitting has a gene-count stage, a fixed-state
+paired-EC stage, and joint refinement. The joint objective retains the gene
+loss so the EC likelihood cannot erase the normalized gene representation.
+
+Table~\ref{tab:count-aware-flat} reports matched donor-held-out label
+evaluation on 157,006 cells. Labels were not used for initialization,
+feature selection, fitting, or hyperparameter selection. The NB fit used the
+fixed value \(\kappa=10\).
+
+\begin{table}[h]
+  \centering
+  \footnotesize
+  \begin{tabular}{lrrrr}
+    \toprule
+    Representation & Accuracy & Balanced acc. & Macro-F1 & Label silhouette \\
+    \midrule
+    Direct EC factorization        & 0.493 & 0.564 & 0.508 & -0.303 \\
+    Standardized gene PCA init.    & 0.893 & 0.911 & 0.873 &  0.109 \\
+    NB, 2,000 genes                & 0.910 & 0.929 & 0.897 &  0.133 \\
+    Poisson, 2,000 genes           & 0.911 & 0.931 & 0.899 &  0.136 \\
+    NB, 24,002 eligible genes      & 0.910 & 0.932 & 0.899 &  0.131 \\
+    Standardized-log joint fit     & 0.900 & 0.918 & 0.882 &  0.123 \\
+    NB paired-EC joint fit         & 0.912 & 0.931 & 0.899 &  0.136 \\
+    Hierarchical paired-EC joint   & 0.915 & 0.936 & 0.906 &  0.146 \\
+    Observed-gene standard pipeline& 0.896 & 0.918 & 0.877 &  0.105 \\
+    \bottomrule
+  \end{tabular}
+  \caption{Count-aware flat-GLM ablations on a matched cell set.}
+  \label{tab:count-aware-flat}
+\end{table}
+
+These results show that EC ambiguity was not the main cause of the original
+performance gap. Moving to a normalized, variance-scaled gene representation
+and retaining a gene-count objective recovers most of the lost signal. In
+this dataset, Poisson and fixed-concentration NB fits are close, and using all
+eligible genes instead of 2,000 selected genes has little effect. The
+hierarchical decomposition provides a smaller residual improvement of about
+0.35 accuracy points and 0.009 silhouette over the count-aware flat joint
+fit.
+
 \subsection*{Software Interface and Output}
 
 The single-cell command exposes five methods through the
