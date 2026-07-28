@@ -1673,3 +1673,39 @@ factorization recovers substantial cell-type signal but remains far below the
 standard analysis, while ADMM is a valid weak result. Penalized
 Frank--Wolfe has no accepted label score because its unsupervised
 hyperparameter selection did not close.
+
+## 2026-07-27: one-state hierarchical gene--isoform model
+
+The hierarchical branch implements a genome-wide paired-primer multinomial
+model with one latent cell state. A gene decoder defines positive gene
+abundance, and a transcript decoder defines a within-gene softmax over
+isoforms. Their product is passed through the fixed primer-specific
+positional EC designs. The implementation evaluates only observed sparse
+cell--EC events and obtains each multinomial normalizer from design column
+sums; it does not instantiate a cell-by-transcript matrix.
+
+Fitting is staged. Sparse log-normalized gene PCA initializes the shared
+state from gene-unambiguous EC counts. A gene multinomial stage updates the
+state and gene decoder, a fixed-state EC stage learns isoform intercepts and
+loadings, and joint refinement minimizes paired EC loss plus an equally
+weighted gene multinomial loss. Labels are not used in fitting.
+
+The first full rank-32 run included 201,023 cells passing 500 UMIs in each
+primer half, 54,227 genes, and 236,543 transcripts. Gene loss decreased from
+8.092 to 8.075. Paired EC loss decreased from 13.631 to 13.336 with the cell
+state fixed, then to 12.929 during joint refinement. Ten epochs per stage
+completed in 23 minutes with approximately 48 GB peak host memory.
+
+On the matched 157,006 labeled cells with donor-held-out folds, the initial
+gene PCA state achieved 0.893 accuracy, 0.911 balanced accuracy, 0.873 macro
+F1, and 0.109 label silhouette. Gene multinomial pretraining improved these
+to 0.915, 0.936, 0.906, and 0.144. Joint paired-primer refinement gave 0.915,
+0.936, 0.906, and 0.146. The matched standard gene pipeline gave 0.896,
+0.918, 0.877, and 0.105, respectively. The hierarchical state therefore
+exceeds the standard pipeline on this external assessment, though the
+published scVI representation remains higher at 0.953 accuracy.
+
+During assessment, raw signed factor states were incorrectly filtered by
+requiring a positive row sum. This excluded roughly half of centered PCA
+states. Raw-factor scoring now defines active rows by finite nonzero norm;
+the positive-total criterion remains in place for nonnegative L1 transforms.

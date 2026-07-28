@@ -293,8 +293,12 @@ def factor_embedding(right, transform="raw", target_sum=10_000.0):
         raise ValueError("right factors must be a matrix")
     if transform not in {"raw", "l1", "log1p_l1"}:
         raise ValueError("factor transform must be raw, l1, or log1p_l1")
+    finite = np.isfinite(right).all(axis=1)
     totals = right.sum(axis=1, dtype=np.float64)
-    active = np.isfinite(right).all(axis=1) & np.isfinite(totals) & (totals > 0)
+    if transform == "raw":
+        active = finite & (np.linalg.norm(right, axis=1) > 0)
+    else:
+        active = finite & np.isfinite(totals) & (totals > 0)
     embedding = np.full_like(right, np.nan)
     if transform == "raw":
         embedding[active] = right[active]

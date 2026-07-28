@@ -274,18 +274,28 @@ A staged fit reduces non-convexity and ensures that the latent state first
 captures robust gene-expression structure:
 \begin{enumerate}[leftmargin=*]
   \item Aggregate ECs that map entirely within one gene and fit
-  \(\alpha_g,\bm u_g,\bm z_m\) with a gene-level count factor model. Cross-gene
+  a sparse, library-normalized log-PCA initializer for \(Z\). Cross-gene
   ambiguous ECs are excluded only from this initializer.
 
-  \item Estimate pooled transcript proportions from all cells or large
-  pseudobulks and initialize \(\beta_t\) from their within-gene logits.
+  \item Fit \(\alpha_g,\bm u_g,\bm z_m\) under the gene multinomial likelihood.
+  This likelihood refinement retains the low-dimensional initialization while
+  putting the gene head on the count-model scale.
 
-  \item Hold the initialized gene decoder fixed and fit \(\bm w_t\) under the
-  complete EC likelihood. The same \(\bm z_m\) is used; no new cell variables
-  are introduced.
+  \item Hold \(Z\) and the gene decoder fixed and fit \(\beta_t,\bm w_t\)
+  under the complete paired EC likelihood. The same \(\bm z_m\) is used; no
+  new cell variables are introduced.
 
   \item Jointly fine-tune \(\bm z_m\), both decoder heads, and both primer
-  observation models under the complete EC likelihood.
+  observation models with
+  \[
+    \mathcal L_{\mathrm{joint}}
+    =
+    \mathcal L_{\mathrm{EC}}
+    +\omega_g\mathcal L_{\mathrm{gene}}.
+  \]
+  Both terms are mean negative log likelihoods per observed molecule. The
+  gene term prevents EC ambiguity from erasing marker-gene structure. The
+  initial implementation uses \(\omega_g=1\).
 \end{enumerate}
 
 Adam or another stable first-order optimizer is appropriate initially,
@@ -313,8 +323,8 @@ The following conventions remove avoidable invariances:
   \item Center every coordinate of \(\bm w_t\) within each gene for the same
   reason.
 
-  \item Center and standardize columns of \(Z\), absorbing location and scale
-  changes into intercepts and decoder loadings.
+  \item Center and standardize columns of \(Z\) at initialization. A final
+  reporting rotation or rescaling may be absorbed into both decoder heads.
 
   \item Use an orthogonality convention for reporting. Latent rotations do not
   affect fitted abundance when both decoder heads rotate with \(Z\), but a
@@ -370,7 +380,7 @@ second cell representation.
 
 \section*{Recommended First Implementation}
 
-The first implementation is
+The implemented model is
 \[
   \bm z_m\in\mathbb R^r,
   \qquad
@@ -387,15 +397,42 @@ The first implementation is
   =
   \sum_tA_{pkt}a_{g(t)m}\pi_{tm}.
 \]
-It uses one latent space, a paired-primer multinomial likelihood, pooled-EM
-initialization of \(\bm\beta\), explicit cell states, and GPU cell minibatches.
-The initial implementation may instantiate a temporary \(T\times B\) logit
-block, but never a \(T\times M\) abundance matrix. Gene-streamed likelihood
-evaluation is an optimization to add only if the minibatch workspace or
-decoder cost is limiting.
+It uses one latent space, a paired-primer multinomial likelihood, explicit
+cell states, and GPU cell minibatches. The implementation expands only
+observed cell--EC events through the sparse designs. The multinomial
+normalizer is computed from transcript column-sum exposures, so unobserved
+ECs are never predicted individually. Each minibatch instantiates a temporary
+\(T\times B\) abundance block, but the implementation never stores a
+\(T\times M\) abundance matrix.
 
 This model tests the central hypothesis directly: one cell state can recover
 standard gene-expression structure while shared transcript loadings extract
 the isoform information supported across many sparse cells.
+
+\section*{Initial Full-Data Assessment}
+
+The first full fit used 201,023 cells passing 500 UMIs in each primer half,
+236,543 transcripts, 54,227 genes, rank 32, and 512-cell GPU minibatches.
+Ten epochs were used for each of gene pretraining, fixed-state isoform
+fitting, and joint refinement. Gene loss decreased from 8.092 to 8.075. EC
+loss decreased from 13.631 to 13.336 during fixed-state fitting and to 12.929
+during joint refinement. The complete run took 23 minutes and peaked at
+approximately 48 GB host memory.
+
+Cell-type labels were used only after fitting. Evaluation used the same
+157,006 labeled cells, donor-held-out folds, balanced logistic classifier,
+and silhouette calculation as the standard-analysis comparison. The
+log-gene-PCA initialization achieved 0.893 accuracy, 0.911 balanced accuracy,
+0.873 macro F1, and 0.109 label silhouette. Gene multinomial pretraining
+improved these to 0.915, 0.936, 0.906, and 0.144. Joint paired-primer
+refinement retained the signal, with 0.915 accuracy, 0.936 balanced accuracy,
+0.906 macro F1, and 0.146 label silhouette.
+
+The matched standard gene pipeline achieved 0.896 accuracy, 0.918 balanced
+accuracy, 0.877 macro F1, and 0.105 label silhouette. The hierarchical shared
+state therefore matches and exceeds the standard pipeline on this assessment.
+The published scVI representation remains a stronger upper reference at
+0.953 accuracy. Hyperparameter selection and downstream isoform validation
+remain label blind.
 
 \end{document}

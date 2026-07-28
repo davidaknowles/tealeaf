@@ -139,6 +139,18 @@ class RepresentationScoringTest(unittest.TestCase):
         self.assertEqual(diagnostics["factor_rank"], 2)
         self.assertEqual(diagnostics["representation"], "factor_log1p_l1")
 
+    def test_raw_factor_embedding_accepts_centered_signed_rows(self):
+        right = np.array(
+            [[-2.0, 1.0], [0.0, 0.0], [2.0, -1.0]], dtype=np.float32
+        )
+        embedding, active, diagnostics = (
+            representation_scoring.factor_embedding(right, transform="raw")
+        )
+        np.testing.assert_array_equal(active, [True, False, True])
+        np.testing.assert_allclose(embedding[active], right[active])
+        self.assertTrue(np.isnan(embedding[1]).all())
+        self.assertEqual(diagnostics["n_active_cells"], 2)
+
     def test_grouped_scores_recover_separated_labels(self):
         rng = np.random.default_rng(0)
         labels = np.tile(np.repeat(["a", "b", "c"], 5), 4)
