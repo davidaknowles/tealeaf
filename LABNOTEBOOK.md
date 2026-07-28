@@ -1752,3 +1752,35 @@ the old GLM gap. Normalized log-count initialization, variance scaling, and a
 gene-count training objective account for most of the recovery. The explicit
 hierarchical gene/isoform decomposition contributes a smaller remaining
 improvement.
+
+## 2026-07-28: microglialess count-aware comparison
+
+The count-aware and hierarchical models were also run on the microglialess
+paired-primer data. Both used the primer-specific fixed weighted EC designs,
+the oligo(dT)-TPM sampling model, rank 32, and the same requirement of at
+least 500 UMIs in each primer half. This retained 48,568 complete pairs. The
+count model used 2,000 variance-selected genes observed in at least 50 cells,
+fixed NB concentration 10, and ten epochs per stage. The matched hierarchical
+fit used the same rank and epoch schedule.
+
+The count-model gene loss decreased from 0.634 to 0.615, and its fixed-state
+EC loss decreased from 3.279 to 3.153. Joint refinement ended at gene loss
+0.625 and EC loss 3.174. The hierarchical gene loss decreased from 6.966 to
+6.914; its EC loss decreased from 3.288 to 3.221 with the state fixed and to
+3.189 during joint fitting. Each full fit completed in under four minutes.
+
+On all 27,383 labeled fitted pairs, the shared log-gene PCA initialization
+gave 0.817 accuracy, 0.767 balanced accuracy, 0.685 macro F1, and -0.010
+label silhouette. NB gene fitting improved these to 0.847, 0.814, 0.733, and
+0.053. Count-model joint refinement reached 0.854, 0.824, 0.744, and 0.056.
+The hierarchical gene stage reached 0.894, 0.893, 0.824, and 0.068, while its
+joint stage reached 0.899, 0.902, 0.835, and 0.070.
+
+For context, the earlier direct weighted EC factorization achieved only
+0.487 accuracy and -0.110 silhouette, while the earlier binary fit achieved
+0.688 and -0.239. The count-aware model therefore recovers much more
+cell-type information than direct EC fitting, but the hierarchical
+multinomial model is clearly better on this dataset. In particular, its
+larger gains in balanced accuracy and macro F1 indicate better preservation
+of the less frequent cell types rather than an improvement confined to
+majority classes.

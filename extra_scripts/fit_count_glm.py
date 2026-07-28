@@ -20,6 +20,16 @@ def main():
     parser.add_argument("--primer-pairs", required=True, type=Path)
     parser.add_argument("--transcript-to-gene", required=True, type=Path)
     parser.add_argument("--output-prefix", required=True, type=Path)
+    parser.add_argument(
+        "--ec-design",
+        choices=["binary", "weighted", "positional"],
+        default="positional",
+    )
+    parser.add_argument(
+        "--primer-sampling-model",
+        choices=["effective_length", "oligodt_tpm", "all_tpm"],
+        default="oligodt_tpm",
+    )
     parser.add_argument("--rank", type=int, default=32)
     parser.add_argument("--hvg", type=int, default=2_000)
     parser.add_argument("--min-feature-cells", type=int, default=200)
@@ -53,11 +63,11 @@ def main():
         args.alevin_dir,
         args.salmon_ref,
         args.primer_pairs,
-        ec_design="positional",
+        ec_design=args.ec_design,
         regularization_target="theta",
         min_eq=args.min_eq,
         min_half_umis=args.min_half_umis,
-        primer_sampling_model="oligodt_tpm",
+        primer_sampling_model=args.primer_sampling_model,
     )
     print(
         json.dumps(
@@ -178,6 +188,8 @@ def main():
                 "initialization": args.initialization,
                 "gene_family": args.gene_family,
                 "concentration": args.concentration,
+                "ec_design": args.ec_design,
+                "primer_sampling_model": args.primer_sampling_model,
                 "selected_genes": int(len(selected_genes)),
                 "histories": histories,
                 "pca": pca_diagnostics,
