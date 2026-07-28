@@ -13,426 +13,381 @@
 \begin{document}
 \maketitle
 
-\section*{Purpose}
+\section*{Overview}
 
-The existing genome-wide factorization models normalized equivalence-class
-(EC) counts directly. It recovers cell-type information, but a matched
-evaluation shows a substantial gap from a standard gene-expression analysis.
-Increasing the factor rank does not close this gap. Adding an auxiliary
-gene-reconstruction loss helps, indicating that the EC objective spends too
-much capacity on transcript ambiguity and too little on marker-gene
-abundance.
+The implemented method learns one low-dimensional state for each cell from
+paired equivalence-class (EC) counts. The same state controls both total gene
+abundance and conditional isoform usage. Primer-specific observation matrices
+then map the resulting transcript abundances to the observed ECs.
 
-This note proposes a hierarchical count model with one cell state controlling
-both gene expression and splicing. It separates gene abundance from
-conditional isoform allocation without giving each sparse cell an independent
-transcript vector or a second latent space. The model is fit jointly across
-cells and does not require cell-level EM.
+The fit has four stages:
+\begin{enumerate}[leftmargin=*]
+  \item initialize the cell state by log-normalized gene PCA;
+  \item fit the state and gene decoder to gene-unambiguous counts;
+  \item hold the state fixed while fitting the isoform decoder to paired EC
+  counts;
+  \item jointly refine both decoders and the cell state while retaining the
+  gene-level objective.
+\end{enumerate}
+All parameters are shared genome-wide. The method does not estimate a free
+transcript vector in each cell and never stores a complete cell-by-transcript
+abundance matrix.
 
-\section*{Notation}
+\section*{Observed Data}
 
 Let \(m=1,\ldots,M\) index cells, \(g=1,\ldots,G\) genes, and
 \(t=1,\ldots,T\) transcripts. Let \(g(t)\) be the gene containing transcript
-\(t\), and let \(\mathcal T_g=\{t:g(t)=g\}\). Primer or library type is indexed
-by \(p\). For primer \(p\), let
+\(t\), and let
 \[
-  A_p\in\mathbb R_+^{K_p\times T}
+  \mathcal T_g=\{t:g(t)=g\}.
 \]
-be the fixed EC-by-transcript observation matrix. It includes alignment
-compatibility, Salmon conditional weights and positional-bias correction, and
-the primer-specific transcript sampling exposure. The primary paired model
-uses no additional transcript-length exposure for oligo(dT) and relative
-effective-length exposure for random-hexamer priming.
+Primer type is indexed by \(p\). The paired Parse Biosciences data have an
+oligo(dT) half and a random-hexamer half for each cell.
 
-Let \(n_{kmp}\) be the observed UMI count for EC \(k\), cell \(m\), and primer
-\(p\), and let \(N_{mp}=\sum_k n_{kmp}\).
+For primer \(p\), the input consists of:
+\begin{itemize}[leftmargin=*]
+  \item \(n_{kmp}\), the UMI count for EC \(k\) in cell \(m\);
+  \item \(N_{mp}=\sum_k n_{kmp}\), the observed UMI total;
+  \item \(A_p\in\mathbb R_+^{K_p\times T}\), a fixed
+  EC-by-transcript observation matrix.
+\end{itemize}
+The nonzero entries of \(A_p\) combine transcript compatibility, Salmon
+conditional weights, positional-bias correction, and primer-specific
+sampling exposure. The oligo(dT) design uses no additional transcript-length
+factor. The random-hexamer design retains relative effective-length exposure
+because longer transcripts provide more priming opportunities.
 
-\section*{One Latent Space, Two Decoder Heads}
+For initialization and gene pretraining, define \(y_{gm}\) by summing counts
+from ECs whose compatible transcripts all belong to gene \(g\), across both
+primer halves. Cross-gene ambiguous ECs are excluded from \(y_{gm}\), but
+remain in the paired EC likelihood used to fit the isoform model.
+
+\section*{Implemented Model}
+
+\subsection*{Shared cell state}
 
 Each cell has one latent state
 \[
   \bm z_m\in\mathbb R^r.
 \]
-Separate decoder loadings map this state to gene abundance and within-gene
-isoform usage. The same coordinates therefore represent both expression and
-splicing variation.
+There is no separate gene-expression state and splicing state. Two decoder
+heads map the same coordinates to gene abundance and isoform usage.
 
-\subsection*{Gene abundance}
+\subsection*{Gene abundance decoder}
 
-Model the positive abundance of gene \(g\) in cell \(m\) as
+For gene \(g\) in cell \(m\), define
 \[
-  \xi_{gm}=\alpha_g+\bm u_g'\bm z_m,
+  \xi_{gm}=\alpha_g+\bm u_g^\prime\bm z_m,
   \qquad
   a_{gm}=\exp(\xi_{gm}).
 \]
-Here \(\alpha_g\) is a pooled gene intercept and \(\bm u_g\) is the
-gene-expression loading. A softplus link can replace the exponential if it
-gives more stable gradients.
+Here \(\alpha_g\) is a gene intercept and \(\bm u_g\) is a row of the
+gene-loading matrix \(U\). The positive quantity \(a_{gm}\) is the model's
+total abundance for gene \(g\).
 
-\subsection*{Conditional isoform usage}
+\subsection*{Within-gene isoform decoder}
 
-For transcript \(t\), define the isoform logit
+For transcript \(t\), define
 \[
-  \eta_{tm}=\beta_t+\bm w_t'\bm z_m.
+  \eta_{tm}=\beta_t+\bm w_t^\prime\bm z_m.
 \]
-Normalize only within the transcript's gene:
+These logits are normalized only among transcripts from the same gene:
 \[
   \pi_{tm}
   =
   \frac{\exp(\eta_{tm})}
        {\sum_{j\in\mathcal T_{g(t)}}\exp(\eta_{jm})}.
 \]
-The transcript abundance is
+Thus
+\[
+  \sum_{t\in\mathcal T_g}\pi_{tm}=1.
+\]
+The transcript abundance is the product
 \[
   \theta_{tm}=a_{g(t)m}\pi_{tm}.
 \]
-Thus \(\bm u_g\) describes how the shared cell state changes gene abundance,
-while \(\bm w_t\) describes how the same state changes conditional isoform
-usage. There is no separate splicing state.
+Consequently, \(a_{gm}\) controls expression of the gene and \(\pi_{tm}\)
+controls allocation of that gene's abundance among its isoforms.
 
-The within-gene softmax is an identifiability convention, not a global simplex
-constraint on \(\Theta\). It ensures that \(a_{gm}\) is the gene total and that
-\(\bm\pi_{gm}\) contains only within-gene allocation.
+\subsection*{Expected EC mass}
 
-\section*{Relation to a Flat Multinomial Model}
-
-The decomposition
-\[
-  \theta_{tm}=a_{g(t)m}\pi_{tm}
-\]
-alone is a reparameterization. Given an unrestricted positive
-\(\bm\theta_m\), one can always recover its gene totals and within-gene
-proportions. A multinomial likelihood does not make that unrestricted
-hierarchy more informative than a flat model.
-
-The restriction here is that both parts are generated from the same
-low-dimensional \(\bm z_m\):
-\[
-  \log a_{gm}=\alpha_g+\bm u_g'\bm z_m,
-  \qquad
-  \operatorname{logit}_g(\pi_{tm})
-  =\beta_t+\bm w_t'\bm z_m.
-\]
-Cells do not have free \(a_{gm}\) or \(\pi_{tm}\). Sparse cells borrow
-information through gene and transcript loadings learned from every cell.
-
-This structured model is not generally equivalent to a flat log-linear
-transcript decoder. Its transcript log abundance is
-\[
-  \log\theta_{tm}
-  =
-  \alpha_{g(t)}+\bm u_{g(t)}'\bm z_m
-  +\beta_t+\bm w_t'\bm z_m
-  -\operatorname{LSE}_{j\in\mathcal T_{g(t)}}
-   (\beta_j+\bm w_j'\bm z_m),
-\]
-whose final gene-specific log-sum-exp term is nonlinear in \(\bm z_m\). The
-restriction disappears only if cell-specific gene totals and isoform logits
-are allowed enough freedom to reproduce arbitrary \(\bm\theta_m\).
-
-\section*{Connection to the Paired-Primer Likelihood}
-
-For cell \(m\), primer \(p\), and EC \(k\), the unnormalized expected EC mass
-is
+The expected unnormalized mass for EC \(k\), cell \(m\), and primer \(p\) is
 \[
   q_{kmp}
   =
   \sum_t A_{pkt}\theta_{tm}
   =
-  \sum_t
-  A_{pkt}
-  a_{g(t)m}
-  \frac{\exp(\beta_t+\bm w_t'\bm z_m)}
-       {\sum_{j\in\mathcal T_{g(t)}}
-        \exp(\beta_j+\bm w_j'\bm z_m)}.
+  \sum_t A_{pkt}a_{g(t)m}\pi_{tm}.
 \]
-This equation directly connects the shared latent state and both decoder heads
-to the observed EC counts. Cross-gene ambiguous ECs require no special case:
-the sum includes every compatible transcript.
+This sum includes every compatible transcript, so within-gene and cross-gene
+ambiguous ECs need no separate handling in the main likelihood. The two
+primer halves share \(\bm z_m\), \(a_{gm}\), and \(\pi_{tm}\), but use
+different observation matrices \(A_p\).
 
-Conditioning on the observed UMI total gives
+\section*{Objectives}
+
+\subsection*{Gene objective}
+
+Let \(Y_m=\sum_g y_{gm}\). Gene pretraining uses
+\[
+  \bm y_m\mid Y_m
+  \sim
+  \operatorname{Multinomial}
+  \left(
+    Y_m,
+    \frac{\bm a_m}{\sum_g a_{gm}}
+  \right).
+\]
+Ignoring constants, the mean negative log likelihood per included molecule is
+\[
+  \mathcal L_{\mathrm{gene}}
+  =
+  \frac{
+    -\sum_{m,g}y_{gm}\xi_{gm}
+    +\sum_mY_m\operatorname{LSE}_g(\xi_{gm})
+  }{
+    \sum_mY_m
+  }.
+\]
+
+\subsection*{Paired EC objective}
+
+Each primer half is conditioned on its own observed UMI total:
 \[
   \bm n_{mp}\mid N_{mp}
   \sim
   \operatorname{Multinomial}
   \left(
     N_{mp},
-    \frac{\bm q_{mp}}{\bm 1'\bm q_{mp}}
-  \right).
+    \frac{\bm q_{mp}}{\zeta_{mp}}
+  \right),
+  \qquad
+  \zeta_{mp}=\sum_kq_{kmp}.
 \]
-Ignoring constants, the negative log likelihood is
+The mean paired EC loss is
 \[
-  \mathcal L
+  \mathcal L_{\mathrm{EC}}
   =
-  -\sum_{m,p}\sum_{k:n_{kmp}>0}
-    n_{kmp}\log q_{kmp}
-  +\sum_{m,p}N_{mp}\log \zeta_{mp},
-\]
-where
-\[
-  \zeta_{mp}=\bm 1'\bm q_{mp}.
+  \frac{
+    -\sum_{m,p}\sum_{k:n_{kmp}>0}n_{kmp}\log q_{kmp}
+    +\sum_{m,p}N_{mp}\log\zeta_{mp}
+  }{
+    \sum_{m,p}N_{mp}
+  }.
 \]
 
-Define the transcript column-sum exposure
+The implementation computes the normalizer without predicting every EC.
+Define the column-sum exposure
 \[
   d_{pt}=\sum_kA_{pkt}.
 \]
-The normalizer can then be evaluated without predicting every EC:
+Then
 \[
   \zeta_{mp}
   =
   \sum_g a_{gm}
   \sum_{t\in\mathcal T_g}d_{pt}\pi_{tm}.
 \]
-For a column-normalized oligo(dT) design, \(d_{pt}=1\), so
+For a column-normalized oligo(dT) design, \(d_{pt}=1\), and the normalizer
+reduces to \(\sum_ga_{gm}\). The random-hexamer normalizer retains its
+isoform-dependent length exposure and is evaluated exactly.
+
+\subsection*{Joint objective}
+
+The final stage minimizes
 \[
-  \zeta_{mp}=\sum_g a_{gm}
+  \mathcal L_{\mathrm{joint}}
+  =
+  \mathcal L_{\mathrm{EC}}
+  +\omega_g\mathcal L_{\mathrm{gene}}
+  +\frac{\lambda_w}{2}\operatorname{mean}_{t,j}(w_{tj}^2).
 \]
-and the normalizer is independent of isoform usage. For the random-hexamer
-theta design, \(d_{pt}\) contains relative transcript exposure, so its
-normalizer depends on the within-gene isoform mixture and must be evaluated
-exactly.
+Both likelihood terms are normalized per molecule. The implemented full run
+used \(\omega_g=1\) and \(\lambda_w=10^{-4}\). Retaining the gene term during
+joint refinement prevents transcript ambiguity from displacing
+marker-gene structure in the shared state.
 
-The paired primer halves share \(\bm z_m\), \(a_{gm}\), and \(\pi_{tm}\), but
-use separate \(A_p\). Conditioning on \(N_{mp}\) removes a primer-by-cell
-exposure parameter and preserves the convention of normalizing each primer
-half independently.
+\section*{Fitting Algorithm}
 
-An independent Poisson model,
+\subsection*{Stage 1: sparse gene PCA}
+
+The gene-unambiguous count matrix \(Y=(y_{gm})\) is normalized to 10,000
+molecules per cell and transformed by \(\log(1+x)\). The 2,000 genes with
+largest variance are selected. Centered, variance-scaled randomized PCA
+produces an \(r\)-dimensional initial state \(Z\). The calculation keeps the
+count matrix sparse and applies centering implicitly during matrix
+multiplication.
+
+\subsection*{Stage 2: gene pretraining}
+
+The PCA state initializes \(\bm z_m\). Gene intercepts are initialized from
+pooled gene totals, and gene loadings start at zero. Adam then updates
+\(\alpha\), \(U\), and \(Z\) using \(\mathcal L_{\mathrm{gene}}\).
+
+\subsection*{Stage 3: fixed-state isoform fitting}
+
+The fitted \(Z\), \(\alpha\), and \(U\) are held fixed. Isoform intercepts and
+loadings start at zero and are optimized using
+\(\mathcal L_{\mathrm{EC}}\). This stage learns the relationship between the
+existing cell state and conditional isoform usage without allowing EC
+ambiguity to move the cells.
+
+\subsection*{Stage 4: joint refinement}
+
+All cell states and decoder parameters are unfrozen and optimized using
+\(\mathcal L_{\mathrm{joint}}\). The gene objective anchors expression
+structure while the paired EC objective can refine the state using isoform
+information.
+
+The full-data implementation uses shuffled cell minibatches, Adam, and a
+gradient-norm limit of 10. The initial run used rank 32, 512 cells per
+minibatch, and ten epochs per stage. Learning rates were \(10^{-2}\) for gene
+pretraining, \(3\times10^{-3}\) for fixed-state isoform fitting, and
+\(10^{-3}\) for joint refinement.
+
+\section*{Implementation Details}
+
+\subsection*{Sparse observed-event likelihood}
+
+For a minibatch of \(B\) cells, the decoder forms
 \[
-  n_{kmp}\sim\operatorname{Poisson}(s_{mp}q_{kmp}),
+  \Xi=\bm\alpha+UZ^\prime
+  \quad\text{and}\quad
+  H=\bm\beta+WZ^\prime
 \]
-is an alternative when total UMI information should contribute to fitting. It
-requires estimating or profiling \(s_{mp}\). The conditional multinomial
-model is the simpler first implementation and matches the sampling unit used
-for molecule-count folds.
-
-\section*{What Must Be Instantiated}
-
-The model never stores a complete \(T\times M\) matrix \(\Theta\). Exact
-likelihood evaluation does, however, require evaluating transcript logits for
-the cells in the current minibatch. This is the computational cost of the
-within-gene softmax; it cannot be projected through \(A_p\) as a fixed linear
-factorization.
-
-For a cell minibatch of size \(B\), the straightforward implementation forms
-\[
-  \Xi=\bm\alpha+U Z',
-  \qquad
-  H=\bm\beta+W Z',
-\]
-with shapes \(G\times B\) and \(T\times B\). A segmented log-sum-exp over gene
-membership converts \(H\) to within-gene \(\Pi\). The implementation need not
-form a separate \(\Theta\): observed EC predictions gather the required
-\(a_{gm}\pi_{tm}\) values directly, and \(Z_{mp}\) uses the segmented weighted
-sum above. The \(T\times B\) logit or probability block is released after the
+with shapes \(G\times B\) and \(T\times B\). A segmented softmax over
+transcript-to-gene membership converts \(H\) to \(\Pi\). A temporary
+\(T\times B\) abundance block is then formed and released after the
 minibatch.
 
-If that workspace becomes limiting, genes can be streamed in blocks. For a
-fixed cell minibatch:
-\begin{enumerate}[leftmargin=*]
-  \item initialize one prediction accumulator for every observed cell--EC
-  event and one normalizer per cell and primer;
-  \item compute \(a_{gm}\) and all transcript logits for a block of complete
-  genes;
-  \item apply the within-gene softmax;
-  \item scatter each transcript's contribution through the corresponding
-  sparse rows of \(A_p\) into observed-event accumulators;
-  \item accumulate
-  \(a_{gm}\sum_{t\in\mathcal T_g}d_{pt}\pi_{tm}\) into \(\zeta_{mp}\).
-\end{enumerate}
-This exact gene-streamed calculation bounds workspace by the largest gene
-block rather than \(T\times B\). A custom autograd operation or a two-pass
-backward calculation may be needed to avoid retaining every block's graph.
-The simpler \(T\times B\) minibatch implementation should be built first.
+Only cell--EC pairs with nonzero observed counts are expanded through the
+sparse rows of \(A_p\). Their transcript contributions are summed by indexed
+scatter operations. Unobserved EC predictions are unnecessary because their
+only contribution is represented by the column-sum normalizer above.
 
-Explicit cell-state storage remains small. One million cells with a
-32-dimensional float32 state require approximately 128 MB. The dominant cost
-is decoder evaluation, not storage of cell parameters or \(\Theta\).
+The implementation stores the \(M\times r\) cell state explicitly but never
+stores \(T\times M\) transcript abundances. One million cells with rank 32
+require about 128 MB for a float32 state matrix. Decoder evaluation and sparse
+event expansion, rather than cell-state storage, dominate computation.
 
-\section*{Why Cell-Level EM Is Not Required}
+\subsection*{Identifiability}
 
-Independent EM would estimate a high-dimensional transcript vector in every
-cell. That is underdetermined for cells with hundreds or a few thousand UMIs.
-The hierarchical model instead estimates only \(r\) coordinates
-\(\bm z_m\). Gene and transcript intercepts and loadings are shared across all
-cells.
-
-Cells without molecules that distinguish isoforms remain close to the pooled
-within-gene baseline \(\bm\beta_g\). Informative cells update the shared
-relationship \(\bm w_t'\bm z_m\) between cell state and isoform usage.
-
-EM remains useful on pooled data to initialize \(\beta_t\). A global or
-sufficiently large pseudobulk EM estimate has enough molecules to establish
-baseline isoform usage, but it is not treated as a cell-level estimate. Joint
-minibatch gradient optimization then estimates \(\bm z_m\), gene loadings, and
-transcript loadings under the complete paired-primer likelihood.
-
-\section*{Initialization and Fitting}
-
-A staged fit reduces non-convexity and ensures that the latent state first
-captures robust gene-expression structure:
-\begin{enumerate}[leftmargin=*]
-  \item Aggregate ECs that map entirely within one gene and fit
-  a sparse, library-normalized log-PCA initializer for \(Z\). Cross-gene
-  ambiguous ECs are excluded only from this initializer.
-
-  \item Fit \(\alpha_g,\bm u_g,\bm z_m\) under the gene multinomial likelihood.
-  This likelihood refinement retains the low-dimensional initialization while
-  putting the gene head on the count-model scale.
-
-  \item Hold \(Z\) and the gene decoder fixed and fit \(\beta_t,\bm w_t\)
-  under the complete paired EC likelihood. The same \(\bm z_m\) is used; no
-  new cell variables are introduced.
-
-  \item Jointly fine-tune \(\bm z_m\), both decoder heads, and both primer
-  observation models with
-  \[
-    \mathcal L_{\mathrm{joint}}
-    =
-    \mathcal L_{\mathrm{EC}}
-    +\omega_g\mathcal L_{\mathrm{gene}}.
-  \]
-  Both terms are mean negative log likelihoods per observed molecule. The
-  gene term prevents EC ambiguity from erasing marker-gene structure. The
-  initial implementation uses \(\omega_g=1\).
-\end{enumerate}
-
-Adam or another stable first-order optimizer is appropriate initially,
-followed by deterministic full-data or large-batch polishing. The gene and
-isoform decoder heads should have separate learning rates because isoform
-gradients are supported by fewer molecules. Gradient clipping and segmented
-log-sum-exp evaluation are required for numerical stability.
-
-The transcript loadings \(\bm w_t\) need shrinkage toward zero so genes with
-little isoform information retain their pooled usage. This is distinct from
-the removed nuclear-norm penalty on the previous direct factorization: it is a
-hierarchical prior on deviations from pooled within-gene usage. Its strength
-must be selected from held-out molecules, not labels.
-
-\section*{Identifiability}
-
-The following conventions remove avoidable invariances:
+The conditional likelihoods have several invariances. The implementation
+uses the following conventions:
 \begin{itemize}[leftmargin=*]
-  \item Center the gene intercepts \(\alpha_g\), because a common shift in all
-  gene log abundances is removed by the conditional multinomial likelihood.
-
-  \item Center \(\beta_t\) within each gene. Adding a common value to every
-  isoform logit in a gene leaves \(\bm\pi_{gm}\) unchanged.
-
-  \item Center every coordinate of \(\bm w_t\) within each gene for the same
-  reason.
-
-  \item Center and standardize columns of \(Z\) at initialization. A final
-  reporting rotation or rescaling may be absorbed into both decoder heads.
-
-  \item Use an orthogonality convention for reporting. Latent rotations do not
-  affect fitted abundance when both decoder heads rotate with \(Z\), but a
-  stable convention improves warm starts and interpretation.
+  \item center gene intercepts globally;
+  \item center isoform intercepts within each gene;
+  \item center every isoform-loading coordinate within each gene;
+  \item center and standardize the initial columns of \(Z\).
 \end{itemize}
+The within-gene softmax is an identifiability and interpretation device, not a
+global simplex constraint on transcript abundance. Latent rotations remain
+possible and do not alter fitted abundances if both decoder heads are rotated
+with \(Z\).
 
-These are parameter-identification conventions rather than biological
-regularization or a simplex constraint on the genome-wide transcript matrix.
-
-\section*{Label-Blind Model Selection}
-
-Molecule counts are partitioned before normalization, as in the existing
-count-fold procedure. Candidate models are compared using held-out
-multinomial log likelihood on the same response scale.
-
-The shared rank follows a small-to-large warm-start path, for example
-\[
-  r=4,8,16,32,64.
-\]
-A one-standard-error rule selects the smallest converged rank statistically
-indistinguishable from the minimum held-out loss. At each rank, the shrinkage
-on \(\bm w_t\) is selected by an inner strong-to-weak path. The gene-only
-endpoint \(\bm w_t=0\) is included explicitly.
-
-Held-out diagnostics decompose performance into:
-\begin{itemize}[leftmargin=*]
-  \item gene-unambiguous molecule likelihood;
-  \item within-gene EC likelihood;
-  \item cross-gene ambiguous EC likelihood;
-  \item poly(dT) and random-hexamer likelihoods.
-\end{itemize}
-This distinguishes improvement in isoform prediction from improvement that
-comes only through gene abundance. Cell-type labels, ARI, NMI, and silhouette
-remain external assessments and are never hyperparameter inputs.
-
-\section*{Downstream Differential Isoform Analysis}
-
-The fitted \(\pi_{tm}\) is the conditional isoform usage needed downstream.
-Differential effects can enter the same within-gene logits:
-\[
-  \eta_{tm}
-  =
-  \beta_t+\bm w_t'\bm z_m+\bm x_m'\bm\gamma_t,
-\]
-where \(\bm x_m\) contains diagnosis, cell type, donor covariates, and
-interactions. Coefficients \(\bm\gamma_t\) are centered within each gene.
-
-Inference must respect donor replication, either through donor-level random
-effects or by fitting and testing donor-by-cell-type pseudobulks of
-model-implied sufficient statistics. The latent state remains shared:
-differential splicing is a covariate effect in the isoform decoder, not a
-second cell representation.
-
-\section*{Recommended First Implementation}
-
-The implemented model is
-\[
-  \bm z_m\in\mathbb R^r,
-  \qquad
-  a_{gm}=\exp(\alpha_g+\bm u_g'\bm z_m),
-\]
-\[
-  \pi_{tm}
-  =
-  \operatorname{softmax}_{t\in\mathcal T_{g(t)}}
-  (\beta_t+\bm w_t'\bm z_m),
-\]
-\[
-  q_{kmp}
-  =
-  \sum_tA_{pkt}a_{g(t)m}\pi_{tm}.
-\]
-It uses one latent space, a paired-primer multinomial likelihood, explicit
-cell states, and GPU cell minibatches. The implementation expands only
-observed cell--EC events through the sparse designs. The multinomial
-normalizer is computed from transcript column-sum exposures, so unobserved
-ECs are never predicted individually. Each minibatch instantiates a temporary
-\(T\times B\) abundance block, but the implementation never stores a
-\(T\times M\) abundance matrix.
-
-This model tests the central hypothesis directly: one cell state can recover
-standard gene-expression structure while shared transcript loadings extract
-the isoform information supported across many sparse cells.
-
-\section*{Initial Full-Data Assessment}
+\section*{Full-Data Assessment}
 
 The first full fit used 201,023 cells passing 500 UMIs in each primer half,
-236,543 transcripts, 54,227 genes, rank 32, and 512-cell GPU minibatches.
-Ten epochs were used for each of gene pretraining, fixed-state isoform
-fitting, and joint refinement. Gene loss decreased from 8.092 to 8.075. EC
-loss decreased from 13.631 to 13.336 during fixed-state fitting and to 12.929
-during joint refinement. The complete run took 23 minutes and peaked at
-approximately 48 GB host memory.
+236,543 transcripts, and 54,227 genes. Gene loss decreased from 8.092 to
+8.075. EC loss decreased from 13.631 to 13.336 during fixed-state isoform
+fitting and to 12.929 during joint refinement. Ten epochs for each stage
+completed in 23 minutes and used approximately 48 GB peak host memory.
 
 Cell-type labels were used only after fitting. Evaluation used the same
 157,006 labeled cells, donor-held-out folds, balanced logistic classifier,
-and silhouette calculation as the standard-analysis comparison. The
-log-gene-PCA initialization achieved 0.893 accuracy, 0.911 balanced accuracy,
-0.873 macro F1, and 0.109 label silhouette. Gene multinomial pretraining
-improved these to 0.915, 0.936, 0.906, and 0.144. Joint paired-primer
-refinement retained the signal, with 0.915 accuracy, 0.936 balanced accuracy,
-0.906 macro F1, and 0.146 label silhouette.
+and silhouette calculation as the standard-analysis comparison:
+\begin{center}
+\begin{tabular}{lrrrr}
+  \hline
+  Representation & Accuracy & Balanced & Macro F1 & Silhouette \\
+  \hline
+  Standard gene pipeline & 0.896 & 0.918 & 0.877 & 0.105 \\
+  Hierarchical PCA initialization & 0.893 & 0.911 & 0.873 & 0.109 \\
+  Hierarchical gene fit & 0.915 & 0.936 & 0.906 & 0.144 \\
+  Hierarchical joint fit & 0.915 & 0.936 & 0.906 & 0.146 \\
+  Published scVI & 0.953 & 0.973 & 0.953 & 0.192 \\
+  \hline
+\end{tabular}
+\end{center}
+The implemented hierarchical state exceeds the matched standard gene
+pipeline on these external metrics. The published scVI representation remains
+a stronger reference.
 
-The matched standard gene pipeline achieved 0.896 accuracy, 0.918 balanced
-accuracy, 0.877 macro F1, and 0.105 label silhouette. The hierarchical shared
-state therefore matches and exceeds the standard pipeline on this assessment.
-The published scVI representation remains a stronger upper reference at
-0.953 accuracy. Hyperparameter selection and downstream isoform validation
-remain label blind.
+\section*{Model Selection and Downstream Analysis}
+
+Cell labels are external assessments and are not used to select rank,
+\(\omega_g\), or \(\lambda_w\). These choices should be evaluated with
+held-out molecule counts partitioned before normalization. Useful held-out
+diagnostics include gene-unambiguous likelihood, within-gene EC likelihood,
+cross-gene ambiguous EC likelihood, and separate likelihoods for each primer.
+A rank path such as \(r=4,8,16,32,64\) can be fit from small to large, with a
+one-standard-error rule selecting the smallest competitive rank.
+
+For differential isoform analysis, covariates enter the within-gene logits:
+\[
+  \eta_{tm}
+  =
+  \beta_t+\bm w_t^\prime\bm z_m+\bm x_m^\prime\bm\gamma_t.
+\]
+The coefficients \(\bm\gamma_t\) are centered within each gene. Donor
+replication must be represented by donor-level random effects or by
+donor-by-cell-type pseudobulk tests. Differential splicing remains a
+covariate effect on conditional isoform usage, not a second latent state.
+
+\section*{Connections to Other Approaches}
+
+\subsection*{Flat transcript models}
+
+The decomposition
+\[
+  \theta_{tm}=a_{g(t)m}\pi_{tm}
+\]
+would be only a reparameterization if every cell had unrestricted gene totals
+and isoform proportions. The implemented model is restricted because both
+quantities are generated from the same low-dimensional \(\bm z_m\):
+\[
+  \log\theta_{tm}
+  =
+  \alpha_{g(t)}+\bm u_{g(t)}^\prime\bm z_m
+  +\beta_t+\bm w_t^\prime\bm z_m
+  -\operatorname{LSE}_{j\in\mathcal T_{g(t)}}
+   (\beta_j+\bm w_j^\prime\bm z_m).
+\]
+The final gene-specific log-sum-exp is nonlinear in \(\bm z_m\), so this is
+not generally equivalent to a flat log-linear transcript decoder.
+
+\subsection*{Cell-level EM}
+
+Independent cell-level EM would estimate a high-dimensional transcript vector
+from only hundreds or thousands of molecules. The hierarchical model instead
+estimates \(r\) cell coordinates while sharing all decoder parameters across
+cells. Cells with little isoform information remain near the pooled
+within-gene intercepts, while informative cells contribute to shared
+isoform-loading estimates.
+
+Pooled or pseudobulk EM could still initialize \(\beta_t\), but it is not part
+of the current implementation. The implemented isoform intercepts start at
+zero and are learned jointly across all cells.
+
+\subsection*{Poisson observation models}
+
+The implemented multinomial likelihood conditions on each primer-specific
+cell total. An alternative is
+\[
+  n_{kmp}\sim\operatorname{Poisson}(s_{mp}q_{kmp}),
+\]
+where \(s_{mp}\) is a primer-by-cell exposure. This would allow total UMI
+counts to contribute to fitting but would require estimating or profiling the
+exposures. The conditional multinomial model avoids these nuisance parameters
+and matches the molecule-count folds used for model assessment.
+
+\subsection*{Direct nonnegative factorization}
+
+Direct EC factorization uses a linear low-rank transcript representation and
+optimizes EC reconstruction without explicitly preserving gene totals. The
+hierarchical decoder inserts gene abundance as a modeled quantity and uses a
+gene likelihood during initialization and joint refinement. This is the main
+structural difference responsible for retaining marker-gene information in
+the shared state.
 
 \end{document}
