@@ -1822,3 +1822,67 @@ intrinsically required either; the earlier apparent requirement mostly came
 from applying a refinement-scale learning rate from the initial PCA state.
 That learning rate should not be selected from these label scores. A direct
 joint default would need an unsupervised validation or convergence criterion.
+
+## 2026-07-29: subisoform covariance and differential splicing
+
+A reusable differential-splicing module now converts GTF exon chains into
+local transcript paths between constitutive exonic regions. Transcripts with
+the same path through a block are collapsed to one subisoform. Terminal
+blocks represent alternative first and last regions, and genes without a
+shared constitutive region receive one whole-gene block. Path usage is
+represented in orthonormal log-ratio coordinates.
+
+For each mouse-by-condition-by-cell-type pseudobulk, cell-level hierarchical
+transcript estimates are decoded and UMI-weighted. The exact primer-specific
+weighted EC designs are retained. Expected Fisher information for transcript
+log abundance is calculated from EC responsibilities and propagated to path
+log ratios. Null-space projection distinguishes estimable path contrasts from
+the misleading zero variance that a bare pseudoinverse would return.
+
+A second conditional estimate perturbs all transcripts assigned to the same
+path while fixing the within-path transcript mixture and total spliced mass.
+The paired multinomial likelihood is optimized directly. Two-path fits use a
+bounded log-ratio grid for global initialization because different primer
+normalizers can make the likelihood non-concave. Conditional and
+transcript-profiled covariance are both written.
+
+Downstream testing uses independent mouse pseudobulks. A scalar biological
+variance is estimated by REML under the no-condition design, followed by a
+multivariate GLS Wald test. Condition permutations reuse the null variance
+and diagnose calibration. Simulations with known inferential covariance gave
+2.7--5.0% type-I error at a nominal 5% over the biological-variance settings
+tested.
+
+The first real-data bootstrap exposed two limits of the local Gaussian
+approximation. Information-null contrasts were already detected correctly,
+but weak information and fitted paths near zero produced mode switching and
+heavy-tailed log-ratio errors. Estimates are therefore retained for
+inspection but enter GLS only when maximum log-ratio covariance eigenvalue is
+at most \(1/8\) and every fitted path has at least 15% usage. In the two-path
+smoke analysis, 1,257 fits all converged; 95.5% had identifiable conditional
+covariance. Among bootstrap fits passing both reliability rules, mean squared
+standardized error was 1.09 and component-wise 95% coverage was 94.0%.
+Permuted-label asymptotic p-values were conservative but close to uniform:
+3.3% were below 0.05 for conditional covariance.
+
+Rare-path tests need a profile-likelihood or parametric-bootstrap procedure
+rather than relaxed Gaussian thresholds. The current reliability filter
+avoids claiming covariance-calibrated inference for those cases while
+preserving their point estimates in the output.
+
+The genome-wide microglialess run completed in 24 minutes with approximately
+6.4 GB peak memory. Blocks with up to eight paths were fit. The gene-count
+filter retained 2,820 blocks and 46,393 pseudobulk estimates, all of which
+converged. Conditional covariance was identifiable for 73.5% of estimates
+and 12.0% passed both reliability checks; profile covariance was identifiable
+for 29.8% and 7.9% was reliable. This yielded 170 conditional and 113 profile
+cell-type/block tests. Five conditional and three profile tests had nominal
+\(p<0.05\), but no result passed 5% FDR.
+
+The production parametric bootstrap comprised 3,000 refits. Mean squared
+standardized error was 1.52 and component-wise 95% coverage was 94.6%.
+Condition permutations were conservative: 2.9% of conditional and 2.5% of
+profile asymptotic p-values fell below 0.05. The retained Gaussian tests are
+therefore calibrated conservatively. Power is limited by mouse replication
+and by the fraction of pseudobulks with enough path-specific information,
+not by local optimizer convergence.
