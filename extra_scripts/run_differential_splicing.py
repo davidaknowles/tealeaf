@@ -32,7 +32,7 @@ def parse_args():
     parser.add_argument("--min-half-umis", type=float, default=500)
     parser.add_argument("--min-cells", type=int, default=20)
     parser.add_argument("--min-pseudobulk-umis", type=float, default=100_000)
-    parser.add_argument("--min-gene-umis", type=float, default=100)
+    parser.add_argument("--min-gene-umis", type=float, default=25)
     parser.add_argument("--min-condition-replicates", type=int, default=3)
     parser.add_argument("--max-paths", type=int, default=8)
     parser.add_argument("--max-logratio-variance", type=float, default=0.125)

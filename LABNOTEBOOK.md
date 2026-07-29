@@ -1886,3 +1886,34 @@ profile asymptotic p-values fell below 0.05. The retained Gaussian tests are
 therefore calibrated conservatively. Power is limited by mouse replication
 and by the fraction of pseudobulks with enough path-specific information,
 not by local optimizer convergence.
+
+### Gene-coverage cutoff sweep
+
+The genome-wide analysis was repeated with minimum pseudobulk gene counts of
+25, 50, 200, and 500 UMIs and compared with the original 100-UMI run. The
+number of fitted blocks was 10,100, 5,896, 2,820, 1,034, and 195 at increasing
+cutoffs. The corresponding numbers of reliable differential tests were
+1,335, 755, 283, 69, and 10. No cutoff produced a discovery at 5% FDR.
+
+Calibration did not deteriorate at low coverage because the downstream
+information and path-proportion filters remove estimates for which the
+Gaussian approximation is unreliable. Conditional permutation rejection
+rates at a nominal 5% were 2.7%, 3.1%, 2.9%, 2.8%, and 3.0%; profile rates
+were 2.7%, 3.0%, 2.5%, 2.6%, and 5.0%. The final estimate is based on only
+100 permutations. Parametric-bootstrap 95% coverage was 94.5%, 93.6%, 94.6%,
+94.8%, and 94.6%, respectively.
+
+For reliable two-condition, two-path conditional tests, mean asymptotic power
+for an ILR effect of 0.5 was 0.49, 0.51, 0.44, 0.56, and 0.59. The last two
+values are selected from only eight and two eligible tests. Among 103 test
+identities shared by the 25- and 50-UMI runs, power was nearly unchanged
+(0.453 versus 0.449). Lowering the cutoff therefore adds testable blocks
+without reducing calibrated precision among shared tests. The 25-UMI cutoff
+is preferred for this dataset when paired with the existing reliability
+rules.
+
+The initial 25-UMI run also exposed numerical underflow when an unconstrained
+optimizer drove one path abundance to zero. Path-logratio perturbations are
+now bounded to \([-20,20]\). The repeated run completed 359,711 of 359,713
+local fits; the two remaining nonconvergences were excluded by the existing
+fit-status check.

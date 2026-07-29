@@ -528,6 +528,7 @@ def fit_path_perturbation(
         initial_delta,
         method="L-BFGS-B",
         jac=True,
+        bounds=[(-20.0, 20.0)] * (n_paths - 1),
         options={"maxiter": int(max_iter), "ftol": float(tolerance)},
     )
     theta, _ = _perturbed_theta(
