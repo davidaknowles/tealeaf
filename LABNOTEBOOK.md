@@ -1784,3 +1784,41 @@ multinomial model is clearly better on this dataset. In particular, its
 larger gains in balanced accuracy and macro F1 indicate better preservation
 of the less frequent cell types rather than an improvement confined to
 majority classes.
+
+## 2026-07-28: hierarchical stage ablation
+
+The microglialess hierarchical fit was ablated to determine whether separate
+gene and fixed-state isoform stages are needed before joint optimization.
+Every schedule started from the same rank-32 log-gene PCA state and used a
+matched budget of 30 epochs. The original schedule used 10 gene, 10 isoform,
+and 10 joint epochs. The alternatives used 10 gene plus 20 joint epochs, 10
+isoform plus 20 joint epochs, or 30 direct joint epochs. Direct joint fitting
+was tested at learning rates \(10^{-3}\), \(3\times10^{-3}\), and \(10^{-2}\).
+No labels were used during fitting.
+
+The original three-stage schedule ended at total loss 10.1029. Gene plus
+joint fitting reached 10.1018, while isoform plus joint reached 10.1214.
+Direct joint endpoints were 10.1152, 10.1044, and 10.1076 at increasing
+learning rates. Thus fixed-state isoform pretraining is unnecessary for
+optimizing the joint objective. Gene pretraining is useful relative to a
+direct joint fit at the original \(10^{-3}\) refinement rate, but direct
+joint optimization is nearly as effective when its learning rate is raised.
+
+On the 27,383 labeled pairs, the original schedule gave 0.899 accuracy,
+0.902 balanced accuracy, 0.835 macro F1, and 0.070 label silhouette. Gene
+plus joint improved these to 0.902, 0.907, 0.842, and 0.072. Isoform plus
+joint fell to 0.845, 0.812, 0.733, and 0.011. Direct joint fitting at
+\(10^{-3}\), \(3\times10^{-3}\), and \(10^{-2}\) achieved accuracies 0.858,
+0.896, and 0.911, respectively; the corresponding label silhouettes were
+0.021, 0.062, and 0.082. At \(10^{-2}\), direct joint fitting also achieved
+0.919 balanced accuracy and 0.861 macro F1.
+
+The three-stage procedure is therefore not necessary. Within a label-blind
+workflow, gene plus joint fitting is the conservative replacement because it
+has the lowest final objective and slightly improves every reported label
+metric without using labels for selection. The stronger post-hoc label score
+of direct joint fitting at \(10^{-2}\) shows that gene pretraining is not
+intrinsically required either; the earlier apparent requirement mostly came
+from applying a refinement-scale learning rate from the initial PCA state.
+That learning rate should not be selected from these label scores. A direct
+joint default would need an unsupervised validation or convergence criterion.

@@ -21,6 +21,9 @@ BATCH_CELLS=${BATCH_CELLS:-256}
 GENE_EPOCHS=${GENE_EPOCHS:-10}
 ISOFORM_EPOCHS=${ISOFORM_EPOCHS:-10}
 JOINT_EPOCHS=${JOINT_EPOCHS:-10}
+GENE_LEARNING_RATE=${GENE_LEARNING_RATE:-1e-2}
+ISOFORM_LEARNING_RATE=${ISOFORM_LEARNING_RATE:-3e-3}
+JOINT_LEARNING_RATE=${JOINT_LEARNING_RATE:-1e-3}
 MAX_CELLS=${MAX_CELLS:-}
 
 max_cells_args=()
@@ -45,6 +48,9 @@ python "${REPO_ROOT}/extra_scripts/fit_hierarchical.py" \
   --gene-epochs "${GENE_EPOCHS}" \
   --isoform-epochs "${ISOFORM_EPOCHS}" \
   --joint-epochs "${JOINT_EPOCHS}" \
+  --gene-learning-rate "${GENE_LEARNING_RATE}" \
+  --isoform-learning-rate "${ISOFORM_LEARNING_RATE}" \
+  --joint-learning-rate "${JOINT_LEARNING_RATE}" \
   --write-pca-initialization \
   --device cuda \
   "${max_cells_args[@]}"
