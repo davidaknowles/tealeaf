@@ -202,6 +202,42 @@ The implementation checks whether \(J_{bi}\) overlaps the information null
 space. A non-estimable contrast is reported as unidentified rather than being
 assigned zero variance by a pseudoinverse.
 
+\subsection*{Dirichlet--multinomial alternative}
+
+A compositional likelihood provides an alternative to Gaussian ILR
+regression. It must account for EC ambiguity: treating all gene UMIs as known
+path assignments is overconfident. For fitted path proportions
+\(\bm\psi_i\), define the unit-multinomial ILR covariance
+\[
+  B_i=Q^\prime\operatorname{diag}(\bm\psi_i^{-1})Q.
+\]
+The effective multinomial size matches \(B_i/n_i\) to the EC-derived
+conditional covariance \(V_i\) in Frobenius norm:
+\[
+  n_i^{\mathrm{eff}}
+  =
+  \frac{\langle B_i,B_i\rangle}{\langle B_i,V_i\rangle},
+  \qquad
+  n_i^{\mathrm{eff}}\leq\text{gene UMIs}_i.
+\]
+Fractional path counts are
+\(\bm x_i=n_i^{\mathrm{eff}}\bm\psi_i\).
+
+The compositional regression is
+\[
+  \bm x_i\mid n_i^{\mathrm{eff}}
+  \sim
+  \operatorname{DirichletMultinomial}
+  (n_i^{\mathrm{eff}},\kappa\bm\mu_i),
+  \qquad
+  \operatorname{logit}_{\mathrm{ref}}(\bm\mu_i)=X_iB.
+\]
+The concentration \(\kappa\) is estimated under the no-condition model and
+held fixed under the alternative, parallel to estimating biological
+variance under the GLS null. If the null estimate reaches the
+no-overdispersion boundary, the implementation switches to the exact
+multinomial likelihood. Analytic gradients are used for both likelihoods.
+
 \subsection*{Mouse-replicate differential tests}
 
 Within one cell type and block, let \(i\) index mouse pseudobulks and let
@@ -238,6 +274,40 @@ Benjamini--Hochberg correction is applied separately for each combination of
 test axis (condition or cell type) and covariance method (conditional or
 profile).
 
+\subsection*{Joint condition tests}
+
+Three joint tests were evaluated. First, ACAT combines cell-type-specific
+p-values for one path partition:
+\[
+  p_{\mathrm{ACAT}}
+  =
+  \frac12-\frac1\pi\arctan\left[
+  \frac1J\sum_{j=1}^J\tan\{\pi(1/2-p_j)\}\right].
+\]
+This remains valid under dependent component p-values and does not assume a
+common effect direction. A second ACAT level combines distinct path
+partitions within a gene.
+
+Second, a shared-effect model uses cell-type-specific intercepts and one
+condition effect across cell types. Treating the resulting cell-type
+pseudobulks as independent is an explicitly evaluated negative control.
+The valid Gaussian version includes mouse clustering:
+\[
+  \bm y_{mc}=X_{mc}B+\bm u_m+\bm e_{mc},
+\]
+\[
+  \operatorname{Cov}(\bm y_{mc},\bm y_{mc'})
+  =
+  \tau_m^2I\quad(c\ne c'),\qquad
+  \operatorname{Var}(\bm y_{mc})
+  =
+  V_{mc}+(\tau_m^2+\tau_r^2)I.
+\]
+The shared-mouse variance \(\tau_m^2\) and cell-type residual variance
+\(\tau_r^2\) are estimated by two-component REML under the no-condition
+model. Condition labels are permuted once per biological mouse and applied
+to all of its cell types.
+
 \section*{Implementation Details}
 
 \subsection*{Splice-block construction}
@@ -254,6 +324,13 @@ exons, mutually exclusive exons, alternative donors and acceptors, and
 retained introns. The implementation also supports nested and multi-path
 blocks. Precursor features remain nuisance features in the EC model but are
 not assigned to spliced paths.
+
+Different genomic blocks can induce exactly the same partition of annotated
+transcripts, for example when several exons always occur together. Such
+blocks have identical statistical responses and must not count as repeated
+evidence. A canonical partition is the unordered collection of transcript
+sets assigned to paths. Equivalent blocks are collapsed before FDR or joint
+testing; all member interval identifiers remain in the output.
 
 \subsection*{Pseudobulks and local fitting}
 
@@ -415,6 +492,43 @@ between-mouse variation dominates the small reduction in inferential
 variance. Pseudobulk fitting remains the default; the cell-resolved method is
 available for datasets with stronger within-pseudobulk transcript
 heterogeneity.
+
+\subsection*{Compositional and joint-test assessment}
+
+Collapsing equivalent transcript partitions reduced the 829 conditional
+block-by-cell-type rows to 505 nonredundant tests over 317 partitions. The
+median effective path count was 32 molecules, or 62\% of gene UMIs; only
+0.6\% of estimates reached the gene-UMI cap.
+
+On the same 505 tests, conditional GLS had 12 nominal results and the
+Dirichlet--multinomial had 18. Neither had a 5\% FDR discovery. The
+Dirichlet--multinomial was conservatively calibrated: 3.76\% of 10,100
+permuted-label p-values were below 0.05. In contrast, pure multinomial
+regression gave 197 nominal and 155 FDR results, but 39.1\% of its permutation
+p-values were below 0.05. UMI sampling alone therefore cannot represent the
+large between-mouse compositional variation. Output tables mark pure
+multinomial and naive shared-effect rows as invalid for inference while
+retaining them as calibration diagnostics.
+
+ACAT across cell types produced 8 nominal GLS and 12 nominal
+Dirichlet--multinomial partitions among 317 tests, with no FDR discoveries.
+Combining distinct partitions within genes gave 7 and 11 nominal genes among
+276 tests, again with no FDR discoveries.
+
+Naive shared-effect pooling illustrates the pseudoreplication risk. It gave
+43 nominal and one FDR Dirichlet--multinomial partition, but synchronized
+mouse permutations rejected 13.2\% of nulls at 0.05. The apparent discovery
+had asymptotic \(p=6.4\times10^{-5}\) but permutation \(p=0.143\). Naive
+shared GLS was also inflated, with 8.4\% null rejection.
+
+The mouse-clustered shared GLS restored conservative calibration: 2.19\% of
+7,169 synchronized permutation p-values were below 0.05. It produced 11
+nominal partitions among 359 tests and no FDR discoveries; its smallest
+p-value was 0.0126 with FDR 0.86. Gene-level ACAT gave 9 nominal genes among
+313 and no FDR discoveries. Thus the calibrated gain is limited to the
+increase from 12 to 18 nominal within-cell-type tests under the
+Dirichlet--multinomial. None of the evaluated strategies creates a
+genome-wide condition discovery in this dataset.
 
 \section*{Limitations}
 

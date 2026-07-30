@@ -1990,3 +1990,57 @@ between-mouse variation dominates the small inferential covariance
 reduction. The pseudobulk likelihood remains the default. The cell-resolved
 implementation is retained for datasets with stronger within-group
 heterogeneity.
+
+## 2026-07-30: compositional and joint condition tests
+
+I evaluated two routes to greater differential-splicing power:
+Dirichlet--multinomial regression for path composition and joint tests across
+cell types or blocks. All methods preserve mouse-level condition assignment.
+
+For each reliable path estimate, an effective multinomial count is obtained
+by matching the theoretical multinomial ILR covariance to the EC-derived
+conditional covariance in Frobenius norm, capped by observed gene UMIs.
+Median effective count was 32 molecules, or 62% of gene UMIs; 0.6% reached
+the cap. Fractional counts are fitted with a reference-logit
+Dirichlet--multinomial regression. Concentration is estimated under the null
+and fixed under the alternative. Fits at the infinite-concentration boundary
+switch to an exact multinomial likelihood.
+
+The annotation contains repeated genomic blocks that induce the same
+transcript-to-path partition. These have identical statistics and cannot be
+treated as independent hypotheses. Canonicalizing the unordered transcript
+sets per path reduced 829 conditional block-by-cell-type rows to 505 unique
+tests over 317 path partitions. Outputs retain all equivalent interval IDs.
+
+Across the 505 matched tests, conditional GLS gave 12 nominal results and the
+Dirichlet--multinomial gave 18; neither gave a 5% FDR discovery. The
+Dirichlet--multinomial was conservative, with 3.76% of 10,100 permutation
+p-values below 0.05. Pure multinomial regression was invalid: it gave 197
+nominal and 155 FDR results, while 39.1% of permutation p-values were below
+0.05. Between-mouse overdispersion is much larger than UMI sampling
+variation.
+
+ACAT combination across cell types produced 8 nominal GLS and 12 nominal
+Dirichlet--multinomial partitions among 317 tests, with no FDR results.
+Gene-level ACAT across distinct partitions produced 7 and 11 nominal genes
+among 276, also with no FDR results.
+
+I also fit a common condition effect across cell types with cell-type
+intercepts. Naive Dirichlet--multinomial pooling produced 43 nominal and one
+FDR partition, but synchronized mouse permutations showed 13.2% type-I
+rejection. Its apparent discovery had asymptotic p-value 0.000064 and
+permutation p-value 0.143. Naive shared GLS was also inflated at 8.4%.
+
+The corrected joint Gaussian model includes a shared mouse random intercept
+and a separate cell-type residual variance, both estimated by REML under the
+null. It was conservative under synchronized mouse permutations: 2.19% of
+7,169 null p-values were below 0.05. It produced 11 nominal partitions among
+359 and no FDR discoveries; the smallest p-value was 0.0126 with FDR 0.86.
+Gene-level ACAT produced 9 nominal genes among 313 and no discoveries.
+
+The only calibrated sensitivity increase was therefore 12 to 18 nominal
+within-cell-type results from the Dirichlet--multinomial. No tested strategy
+produced an FDR-significant condition effect. The reusable effective-count,
+multinomial, Dirichlet--multinomial, and clustered-GLS implementations are in
+`tealeaf/sc/differential.py`; the dataset-independent comparison runner is
+`extra_scripts/run_compositional_splicing.py`.

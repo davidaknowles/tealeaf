@@ -165,6 +165,81 @@ class DifferentialTest(unittest.TestCase):
         self.assertEqual(result["degrees_of_freedom"], 2)
         self.assertLess(result["p_value"], 1e-6)
 
+    def test_effective_multinomial_size_recovers_known_size(self):
+        proportions = np.array([0.2, 0.3, 0.5])
+        basis = differential.helmert_basis(3)
+        covariance = (
+            basis.T @ np.diag(1.0 / proportions) @ basis / 250.0
+        )
+        size = differential.effective_multinomial_size(
+            proportions, covariance
+        )
+        self.assertAlmostEqual(size, 250.0)
+
+    def test_dirichlet_multinomial_detects_composition_effect(self):
+        counts = np.array([
+            [85, 15],
+            [81, 19],
+            [88, 12],
+            [15, 85],
+            [21, 79],
+            [12, 88],
+        ])
+        alternative = np.c_[
+            np.ones(6),
+            np.r_[np.zeros(3), np.ones(3)],
+        ]
+        result = differential.dirichlet_multinomial_test(
+            counts,
+            np.ones((6, 1)),
+            alternative,
+        )
+        self.assertTrue(result["null_converged"])
+        self.assertTrue(result["alternative_converged"])
+        self.assertLess(result["p_value"], 0.05)
+
+    def test_clustered_gls_detects_subject_level_effect(self):
+        rng = np.random.default_rng(21)
+        subjects = np.repeat(np.arange(20), 2)
+        cell_type = np.tile([0, 1], 20)
+        condition = np.repeat(np.r_[np.zeros(10), np.ones(10)], 2)
+        subject_effect = np.repeat(rng.normal(0, 0.3, 20), 2)
+        values = (
+            0.4 * cell_type
+            + 0.8 * condition
+            + subject_effect
+            + rng.normal(0, 0.05, 40)
+        )[:, None]
+        design = np.column_stack((
+            cell_type == 0,
+            cell_type == 1,
+            condition,
+        ))
+        covariance = np.repeat(
+            np.array([[[0.01]]]), len(values), axis=0
+        )
+        result = differential.clustered_multivariate_gls_test(
+            values,
+            covariance,
+            design,
+            tested_columns=[2],
+            clusters=subjects,
+        )
+        self.assertGreater(result["cluster_variance"], 0.01)
+        self.assertLess(result["p_value"], 0.01)
+        fixed = differential.clustered_multivariate_gls_test(
+            values,
+            covariance,
+            design,
+            tested_columns=[2],
+            clusters=subjects,
+            variance_components=(
+                result["cluster_variance"],
+                result["residual_variance"],
+            ),
+        )
+        self.assertAlmostEqual(fixed["statistic"], result["statistic"])
+
     def test_paired_cell_type_test_detects_effect(self):
         rng = np.random.default_rng(9)
         records = []

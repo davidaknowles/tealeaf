@@ -11,6 +11,7 @@ import numpy as np
 import scipy.linalg
 import scipy.optimize
 import scipy.sparse as sp
+import scipy.special
 import scipy.stats
 
 
@@ -905,4 +906,542 @@ def multivariate_gls_test(
         "biological_variance": tau2,
         "coefficients": coefficients.reshape(design.shape[1], dimension),
         "coefficient_covariance": coefficient_covariance,
+    }
+
+
+def clustered_multivariate_gls_test(
+    values,
+    covariances,
+    design,
+    tested_columns,
+    clusters,
+    *,
+    variance_components=None,
+):
+    """GLS test with shared-cluster and observation variance components."""
+    values = np.asarray(values, dtype=float)
+    covariances = np.asarray(covariances, dtype=float)
+    design = np.asarray(design, dtype=float)
+    tested_columns = np.asarray(tested_columns, dtype=np.int64)
+    clusters = np.asarray(clusters)
+    if values.ndim != 2:
+        raise ValueError("values must be samples by log-ratio dimensions")
+    n_samples, dimension = values.shape
+    if covariances.shape != (n_samples, dimension, dimension):
+        raise ValueError("covariances have the wrong shape")
+    if design.shape[0] != n_samples or len(clusters) != n_samples:
+        raise ValueError("design, clusters, and values must align")
+    cluster_rows = [
+        np.flatnonzero(clusters == cluster)
+        for cluster in np.unique(clusters)
+    ]
+
+    def fit_at_variances(cluster_variance, residual_variance, model_design):
+        parameter_count = model_design.shape[1] * dimension
+        precision = np.zeros((parameter_count, parameter_count), dtype=float)
+        score = np.zeros(parameter_count, dtype=float)
+        log_determinant = 0.0
+        quadratic_constant = 0.0
+        for rows in cluster_rows:
+            size = len(rows)
+            variance = scipy.linalg.block_diag(*[
+                covariances[row] + residual_variance * np.eye(dimension)
+                for row in rows
+            ])
+            variance += cluster_variance * np.kron(
+                np.ones((size, size)), np.eye(dimension)
+            )
+            sign, value = np.linalg.slogdet(variance)
+            if sign <= 0:
+                return None
+            weight = scipy.linalg.inv(variance, check_finite=False)
+            block_design = np.kron(model_design[rows], np.eye(dimension))
+            block_values = values[rows].ravel()
+            precision += block_design.T @ weight @ block_design
+            score += block_design.T @ weight @ block_values
+            quadratic_constant += block_values @ weight @ block_values
+            log_determinant += value
+        sign, precision_log_determinant = np.linalg.slogdet(precision)
+        if sign <= 0:
+            return None
+        coefficient_covariance = scipy.linalg.inv(
+            precision, check_finite=False
+        )
+        coefficients = coefficient_covariance @ score
+        residual_quadratic = (
+            quadratic_constant - score @ coefficient_covariance @ score
+        )
+        objective = (
+            log_determinant
+            + precision_log_determinant
+            + max(float(residual_quadratic), 0.0)
+        )
+        return objective, coefficients, coefficient_covariance
+
+    null_design = np.delete(design, tested_columns, axis=1)
+    if not null_design.shape[1]:
+        raise ValueError("at least one untested design column is required")
+
+    def finalize(cluster_variance, residual_variance):
+        fitted = fit_at_variances(
+            cluster_variance,
+            residual_variance,
+            design,
+        )
+        if fitted is None:
+            raise np.linalg.LinAlgError(
+                "clustered GLS alternative fit failed"
+            )
+        _, coefficients, coefficient_covariance = fitted
+        tested = np.concatenate([
+            np.arange(column * dimension, (column + 1) * dimension)
+            for column in tested_columns
+        ])
+        tested_values = coefficients[tested]
+        tested_covariance = coefficient_covariance[np.ix_(tested, tested)]
+        statistic = float(
+            tested_values
+            @ scipy.linalg.pinvh(tested_covariance, rtol=1e-10)
+            @ tested_values
+        )
+        degrees_of_freedom = int(np.linalg.matrix_rank(tested_covariance))
+        return {
+            "statistic": statistic,
+            "degrees_of_freedom": degrees_of_freedom,
+            "p_value": float(
+                scipy.stats.chi2.sf(statistic, degrees_of_freedom)
+            ),
+            "cluster_variance": cluster_variance,
+            "residual_variance": residual_variance,
+            "coefficients": coefficients.reshape(
+                design.shape[1], dimension
+            ),
+            "coefficient_covariance": coefficient_covariance,
+        }
+
+    if variance_components is not None:
+        variance_components = np.asarray(variance_components, dtype=float)
+        if (
+            variance_components.shape != (2,)
+            or not np.isfinite(variance_components).all()
+            or np.any(variance_components < 0)
+        ):
+            raise ValueError(
+                "variance_components must contain two nonnegative values"
+            )
+        return finalize(*variance_components)
+
+    initial = np.linalg.lstsq(null_design, values, rcond=None)[0]
+    residual_scale = float(
+        np.mean(np.square(values - null_design @ initial))
+    )
+    covariance_scale = float(
+        np.mean(np.trace(covariances, axis1=1, axis2=2)) / dimension
+    )
+    scale = max(residual_scale, covariance_scale, 1e-8)
+    lower = np.log(scale) - 18.0
+    upper = np.log(scale) + 7.0
+    candidates = [
+        (
+            0.0,
+            0.0,
+            fit_at_variances(0.0, 0.0, null_design),
+        )
+    ]
+
+    def axis_fit(cluster_axis):
+        def objective(log_variance):
+            variance = float(np.exp(log_variance))
+            fitted = fit_at_variances(
+                variance if cluster_axis else 0.0,
+                0.0 if cluster_axis else variance,
+                null_design,
+            )
+            return np.inf if fitted is None else fitted[0]
+
+        result = scipy.optimize.minimize_scalar(
+            objective,
+            bounds=(lower, upper),
+            method="bounded",
+            options={"xatol": 1e-5},
+        )
+        if result.success:
+            variance = float(np.exp(result.x))
+            candidates.append((
+                variance if cluster_axis else 0.0,
+                0.0 if cluster_axis else variance,
+                fit_at_variances(
+                    variance if cluster_axis else 0.0,
+                    0.0 if cluster_axis else variance,
+                    null_design,
+                ),
+            ))
+
+    axis_fit(True)
+    axis_fit(False)
+
+    def joint_objective(log_variances):
+        fitted = fit_at_variances(
+            np.exp(log_variances[0]),
+            np.exp(log_variances[1]),
+            null_design,
+        )
+        return np.inf if fitted is None else fitted[0]
+
+    joint = scipy.optimize.minimize(
+        joint_objective,
+        np.log([scale / 2.0, scale / 2.0]),
+        method="L-BFGS-B",
+        bounds=[(lower, upper), (lower, upper)],
+        options={"maxiter": 100, "ftol": 1e-9},
+    )
+    if joint.success:
+        cluster_variance, residual_variance = np.exp(joint.x)
+        candidates.append((
+            float(cluster_variance),
+            float(residual_variance),
+            fit_at_variances(
+                cluster_variance,
+                residual_variance,
+                null_design,
+            ),
+        ))
+    candidates = [
+        candidate for candidate in candidates if candidate[2] is not None
+    ]
+    if not candidates:
+        raise np.linalg.LinAlgError("clustered GLS null fit failed")
+    cluster_variance, residual_variance, _ = min(
+        candidates, key=lambda candidate: candidate[2][0]
+    )
+    return finalize(cluster_variance, residual_variance)
+
+
+def effective_multinomial_size(proportions, covariance, maximum=None):
+    """Match ILR covariance to a multinomial and return its effective size."""
+    proportions = np.asarray(proportions, dtype=float)
+    covariance = np.asarray(covariance, dtype=float)
+    if (
+        proportions.ndim != 1
+        or len(proportions) < 2
+        or np.any(proportions <= 0)
+        or not np.isclose(proportions.sum(), 1.0)
+    ):
+        raise ValueError("proportions must be a positive probability vector")
+    basis = helmert_basis(len(proportions))
+    unit_covariance = basis.T @ np.diag(1.0 / proportions) @ basis
+    if covariance.shape != unit_covariance.shape:
+        raise ValueError("covariance has the wrong shape")
+    inverse_size = float(
+        np.sum(unit_covariance * covariance)
+        / np.sum(unit_covariance * unit_covariance)
+    )
+    if not np.isfinite(inverse_size) or inverse_size <= 0:
+        raise ValueError("covariance does not imply a positive effective size")
+    size = 1.0 / inverse_size
+    if maximum is not None:
+        size = min(size, float(maximum))
+    return size
+
+
+def _dirichlet_multinomial_fit(
+    counts,
+    design,
+    initial=None,
+    max_iter=500,
+    fixed_concentration=None,
+):
+    counts = np.asarray(counts, dtype=float)
+    design = np.asarray(design, dtype=float)
+    if counts.ndim != 2 or counts.shape[1] < 2:
+        raise ValueError("counts must be samples by at least two paths")
+    if design.ndim != 2 or design.shape[0] != counts.shape[0]:
+        raise ValueError("design and counts have different sample counts")
+    if np.any(counts < 0) or np.any(counts.sum(axis=1) <= 0):
+        raise ValueError("each sample needs positive nonnegative counts")
+    n_paths = counts.shape[1]
+    n_coefficients = design.shape[1] * (n_paths - 1)
+    fit_concentration = fixed_concentration is None
+    if initial is None:
+        pooled = counts.sum(axis=0) + 0.5
+        pooled /= pooled.sum()
+        coefficients = np.zeros((design.shape[1], n_paths - 1))
+        if np.allclose(design[:, 0], 1.0):
+            coefficients[0] = np.log(pooled[:-1] / pooled[-1])
+        initial = coefficients.ravel()
+        if fit_concentration:
+            initial = np.r_[initial, np.log(10.0)]
+    else:
+        initial = np.asarray(initial, dtype=float)
+    expected_parameters = n_coefficients + int(fit_concentration)
+    if len(initial) != expected_parameters:
+        raise ValueError("initial value has the wrong length")
+    totals = counts.sum(axis=1)
+
+    def objective(parameters):
+        coefficients = parameters[:n_coefficients].reshape(
+            design.shape[1], n_paths - 1
+        )
+        logits = np.c_[design @ coefficients, np.zeros(len(counts))]
+        means = scipy.special.softmax(logits, axis=1)
+        concentration = (
+            np.exp(parameters[-1])
+            if fit_concentration
+            else float(fixed_concentration)
+        )
+        alpha = concentration * means
+        log_likelihood = np.sum(
+            scipy.special.gammaln(concentration)
+            - scipy.special.gammaln(concentration + totals)
+            + np.sum(
+                scipy.special.gammaln(alpha + counts)
+                - scipy.special.gammaln(alpha),
+                axis=1,
+            )
+        )
+        alpha_score = concentration * (
+            scipy.special.digamma(alpha + counts)
+            - scipy.special.digamma(alpha)
+        )
+        centered_score = alpha_score - np.sum(
+            means * alpha_score, axis=1, keepdims=True
+        )
+        logit_score = means * centered_score
+        coefficient_score = design.T @ logit_score[:, :-1]
+        gradient = coefficient_score.ravel()
+        if fit_concentration:
+            concentration_score = concentration * np.sum(
+                scipy.special.digamma(concentration)
+                - scipy.special.digamma(concentration + totals)
+                + np.sum(
+                    means
+                    * (
+                        scipy.special.digamma(alpha + counts)
+                        - scipy.special.digamma(alpha)
+                    ),
+                    axis=1,
+                )
+            )
+            gradient = np.r_[gradient, concentration_score]
+        return -float(log_likelihood), -gradient
+
+    bounds = [(-20.0, 20.0)] * n_coefficients
+    if fit_concentration:
+        bounds.append((-10.0, np.log(1e6)))
+    result = scipy.optimize.minimize(
+        objective,
+        initial,
+        method="L-BFGS-B",
+        jac=True,
+        bounds=bounds,
+        options={"maxiter": int(max_iter), "ftol": 1e-10},
+    )
+    gradient_norm = float(np.linalg.norm(result.jac, ord=np.inf))
+    return {
+        "objective": float(result.fun),
+        "parameters": np.asarray(result.x),
+        "concentration": (
+            float(np.exp(result.x[-1]))
+            if fit_concentration
+            else float(fixed_concentration)
+        ),
+        "converged": bool(result.success or gradient_norm <= 1e-4),
+        "iterations": int(result.nit),
+        "message": str(result.message),
+        "gradient_norm": gradient_norm,
+    }
+
+
+def _multinomial_fit(counts, design, initial=None, max_iter=500):
+    counts = np.asarray(counts, dtype=float)
+    design = np.asarray(design, dtype=float)
+    n_paths = counts.shape[1]
+    n_coefficients = design.shape[1] * (n_paths - 1)
+    if initial is None:
+        pooled = counts.sum(axis=0) + 0.5
+        pooled /= pooled.sum()
+        coefficients = np.zeros((design.shape[1], n_paths - 1))
+        if np.allclose(design[:, 0], 1.0):
+            coefficients[0] = np.log(pooled[:-1] / pooled[-1])
+        initial = coefficients.ravel()
+    initial = np.asarray(initial, dtype=float)
+    totals = counts.sum(axis=1)
+
+    def objective(parameters):
+        coefficients = parameters.reshape(design.shape[1], n_paths - 1)
+        logits = np.c_[design @ coefficients, np.zeros(len(counts))]
+        log_means = logits - scipy.special.logsumexp(
+            logits, axis=1, keepdims=True
+        )
+        means = np.exp(log_means)
+        log_likelihood = float(np.sum(counts * log_means))
+        logit_score = counts - totals[:, None] * means
+        gradient = design.T @ logit_score[:, :-1]
+        return -log_likelihood, -gradient.ravel()
+
+    result = scipy.optimize.minimize(
+        objective,
+        initial,
+        method="L-BFGS-B",
+        jac=True,
+        bounds=[(-20.0, 20.0)] * n_coefficients,
+        options={"maxiter": int(max_iter), "ftol": 1e-10},
+    )
+    gradient_norm = float(np.linalg.norm(result.jac, ord=np.inf))
+    return {
+        "objective": float(result.fun),
+        "parameters": np.asarray(result.x),
+        "converged": bool(result.success or gradient_norm <= 1e-4),
+        "iterations": int(result.nit),
+        "message": str(result.message),
+        "gradient_norm": gradient_norm,
+    }
+
+
+def multinomial_test(counts, null_design, alternative_design, *, max_iter=500):
+    """Likelihood-ratio test for multinomial compositional regression."""
+    counts = np.asarray(counts, dtype=float)
+    null_design = np.asarray(null_design, dtype=float)
+    alternative_design = np.asarray(alternative_design, dtype=float)
+    if (
+        null_design.shape[0] != len(counts)
+        or alternative_design.shape[0] != len(counts)
+    ):
+        raise ValueError("design and counts have different sample counts")
+    if np.linalg.matrix_rank(null_design) != null_design.shape[1]:
+        raise ValueError("null design is rank deficient")
+    if np.linalg.matrix_rank(alternative_design) != alternative_design.shape[1]:
+        raise ValueError("alternative design is rank deficient")
+    if (
+        alternative_design.shape[1] < null_design.shape[1]
+        or not np.allclose(
+            alternative_design[:, : null_design.shape[1]],
+            null_design,
+        )
+    ):
+        raise ValueError("alternative design must begin with the null design")
+    null = _multinomial_fit(
+        counts,
+        null_design,
+        max_iter=max_iter,
+    )
+    n_paths = counts.shape[1]
+    null_coefficients = null["parameters"].reshape(
+        null_design.shape[1], n_paths - 1
+    )
+    initial = np.zeros((alternative_design.shape[1], n_paths - 1))
+    initial[: len(null_coefficients)] = null_coefficients
+    alternative = _multinomial_fit(
+        counts,
+        alternative_design,
+        initial=initial.ravel(),
+        max_iter=max_iter,
+    )
+    statistic = max(
+        2.0 * (null["objective"] - alternative["objective"]),
+        0.0,
+    )
+    degrees_of_freedom = (
+        alternative_design.shape[1] - null_design.shape[1]
+    ) * (n_paths - 1)
+    return {
+        "model": "multinomial",
+        "statistic": statistic,
+        "degrees_of_freedom": degrees_of_freedom,
+        "p_value": float(scipy.stats.chi2.sf(statistic, degrees_of_freedom)),
+        "null_converged": null["converged"],
+        "alternative_converged": alternative["converged"],
+        "null_iterations": null["iterations"],
+        "alternative_iterations": alternative["iterations"],
+        "null_message": null["message"],
+        "alternative_message": alternative["message"],
+    }
+
+
+def dirichlet_multinomial_test(
+    counts,
+    null_design,
+    alternative_design,
+    *,
+    max_iter=500,
+    fix_null_concentration=True,
+):
+    """Likelihood-ratio test of compositional regression coefficients."""
+    counts = np.asarray(counts, dtype=float)
+    null_design = np.asarray(null_design, dtype=float)
+    alternative_design = np.asarray(alternative_design, dtype=float)
+    if (
+        null_design.shape[0] != len(counts)
+        or alternative_design.shape[0] != len(counts)
+    ):
+        raise ValueError("design and counts have different sample counts")
+    if np.linalg.matrix_rank(null_design) != null_design.shape[1]:
+        raise ValueError("null design is rank deficient")
+    if np.linalg.matrix_rank(alternative_design) != alternative_design.shape[1]:
+        raise ValueError("alternative design is rank deficient")
+    if (
+        alternative_design.shape[1] < null_design.shape[1]
+        or not np.allclose(
+            alternative_design[:, : null_design.shape[1]],
+            null_design,
+        )
+    ):
+        raise ValueError("alternative design must begin with the null design")
+    null = _dirichlet_multinomial_fit(
+        counts,
+        null_design,
+        max_iter=max_iter,
+    )
+    if null["concentration"] >= 0.99e6:
+        result = multinomial_test(
+            counts,
+            null_design,
+            alternative_design,
+            max_iter=max_iter,
+        )
+        result.update({
+            "null_concentration": np.inf,
+            "alternative_concentration": np.inf,
+        })
+        return result
+    n_paths = counts.shape[1]
+    null_coefficients = null["parameters"][:-1].reshape(
+        null_design.shape[1], n_paths - 1
+    )
+    initial_coefficients = np.zeros(
+        (alternative_design.shape[1], n_paths - 1)
+    )
+    initial_coefficients[: len(null_coefficients)] = null_coefficients
+    initial = initial_coefficients.ravel()
+    if not fix_null_concentration:
+        initial = np.r_[initial, null["parameters"][-1]]
+    alternative = _dirichlet_multinomial_fit(
+        counts,
+        alternative_design,
+        initial=initial,
+        max_iter=max_iter,
+        fixed_concentration=(
+            null["concentration"] if fix_null_concentration else None
+        ),
+    )
+    statistic = max(
+        2.0 * (null["objective"] - alternative["objective"]),
+        0.0,
+    )
+    degrees_of_freedom = (
+        alternative_design.shape[1] - null_design.shape[1]
+    ) * (n_paths - 1)
+    return {
+        "model": "dirichlet_multinomial",
+        "statistic": statistic,
+        "degrees_of_freedom": degrees_of_freedom,
+        "p_value": float(scipy.stats.chi2.sf(statistic, degrees_of_freedom)),
+        "null_concentration": null["concentration"],
+        "alternative_concentration": alternative["concentration"],
+        "null_converged": null["converged"],
+        "alternative_converged": alternative["converged"],
+        "null_iterations": null["iterations"],
+        "alternative_iterations": alternative["iterations"],
+        "null_message": null["message"],
+        "alternative_message": alternative["message"],
     }
