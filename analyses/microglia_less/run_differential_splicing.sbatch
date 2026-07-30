@@ -22,6 +22,7 @@ MIN_GENE_UMIS=${MIN_GENE_UMIS:-25}
 MAX_PATHS=${MAX_PATHS:-8}
 MAX_LOGRATIO_VARIANCE=${MAX_LOGRATIO_VARIANCE:-0.125}
 MIN_PATH_PROPORTION=${MIN_PATH_PROPORTION:-0.15}
+MIN_CELLTYPE_MICE=${MIN_CELLTYPE_MICE:-3}
 PERMUTATIONS=${PERMUTATIONS:-20}
 BOOTSTRAP_BLOCKS=${BOOTSTRAP_BLOCKS:-20}
 BOOTSTRAP_REPS=${BOOTSTRAP_REPS:-100}
@@ -49,6 +50,7 @@ python "${REPO_ROOT}/extra_scripts/run_differential_splicing.py" \
   --max-paths "${MAX_PATHS}" \
   --max-logratio-variance "${MAX_LOGRATIO_VARIANCE}" \
   --min-path-proportion "${MIN_PATH_PROPORTION}" \
+  --min-celltype-mice "${MIN_CELLTYPE_MICE}" \
   --permutations "${PERMUTATIONS}" \
   --bootstrap-blocks "${BOOTSTRAP_BLOCKS}" \
   --bootstrap-reps "${BOOTSTRAP_REPS}" \

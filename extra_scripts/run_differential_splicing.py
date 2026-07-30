@@ -34,6 +34,7 @@ def parse_args():
     parser.add_argument("--min-pseudobulk-umis", type=float, default=100_000)
     parser.add_argument("--min-gene-umis", type=float, default=25)
     parser.add_argument("--min-condition-replicates", type=int, default=3)
+    parser.add_argument("--min-celltype-mice", type=int, default=3)
     parser.add_argument("--max-paths", type=int, default=8)
     parser.add_argument("--max-logratio-variance", type=float, default=0.125)
     parser.add_argument("--min-path-proportion", type=float, default=0.15)
@@ -271,6 +272,7 @@ def estimate_blocks(
     )
     group_metadata = [parse_group(group) for group in groups]
     differential_inputs = defaultdict(list)
+    cell_type_inputs = defaultdict(list)
     bootstrap_candidates = []
     estimates_path = args.output_dir / "subisoform_estimates.jsonl.gz"
     blocks_path = args.output_dir / "subisoform_blocks.tsv"
@@ -422,6 +424,17 @@ def estimate_blocks(
                             condition,
                         )
                     )
+                    cell_type_inputs[
+                        (block.block_id, "conditional")
+                    ].append(
+                        (
+                            fit.path_logratios,
+                            fit.covariance.covariance,
+                            cluster,
+                            condition,
+                            mouse,
+                        )
+                    )
                     if profile_ok:
                         differential_inputs[
                             (block.block_id, cluster, "profile")
@@ -430,6 +443,17 @@ def estimate_blocks(
                                 fit.path_logratios,
                                 profile.covariance,
                                 condition,
+                            )
+                        )
+                        cell_type_inputs[
+                            (block.block_id, "profile")
+                        ].append(
+                            (
+                                fit.path_logratios,
+                                profile.covariance,
+                                cluster,
+                                condition,
+                                mouse,
                             )
                         )
                 if (
@@ -454,7 +478,7 @@ def estimate_blocks(
                 estimates=estimated,
             )
     pd.DataFrame(block_rows).to_csv(blocks_path, sep="\t", index=False)
-    return differential_inputs, bootstrap_candidates, {
+    return differential_inputs, cell_type_inputs, bootstrap_candidates, {
         "blocks": len(block_rows),
         "estimates": estimated,
         "converged": converged,
@@ -563,6 +587,149 @@ def differential_tests(args, inputs, rng):
         summary[f"{method}_permutation_tests"] = int(len(values))
         summary[f"{method}_permutation_p_lt_0.05"] = float(np.mean(values < 0.05))
         summary[f"{method}_permutation_ks_p_value"] = float(
+            scipy.stats.kstest(values, "uniform").pvalue
+        )
+    return summary
+
+
+def cell_type_differential_tests(args, inputs, rng):
+    """Test cell-type effects after absorbing condition within mouse effects."""
+    rows = []
+    null_p_values = defaultdict(list)
+    for (block_id, covariance_method), records in inputs.items():
+        dimensions = {len(record[0]) for record in records}
+        if len(dimensions) != 1:
+            continue
+        cell_types = sorted({record[2] for record in records})
+        counts = {
+            cell_type: sum(record[2] == cell_type for record in records)
+            for cell_type in cell_types
+        }
+        cell_types = [
+            cell_type
+            for cell_type in cell_types
+            if counts[cell_type] >= int(args.min_celltype_mice)
+        ]
+        retained = [record for record in records if record[2] in cell_types]
+        if len(cell_types) < 2:
+            continue
+
+        subjects = sorted({
+            f"{record[3]}__{record[4]}" for record in retained
+        })
+        subject_index = {
+            subject: index for index, subject in enumerate(subjects)
+        }
+        cell_type_index = {
+            cell_type: index for index, cell_type in enumerate(cell_types)
+        }
+        null_columns = len(subjects)
+        design = np.zeros(
+            (len(retained), null_columns + len(cell_types) - 1),
+            dtype=float,
+        )
+        design[:, 0] = 1.0
+        row_subjects = []
+        for row, record in enumerate(retained):
+            subject = f"{record[3]}__{record[4]}"
+            row_subjects.append(subject)
+            subject_column = subject_index[subject]
+            if subject_column:
+                design[row, subject_column] = 1.0
+            cell_type_column = cell_type_index[record[2]]
+            if cell_type_column:
+                design[row, null_columns + cell_type_column - 1] = 1.0
+        tested_columns = np.arange(null_columns, design.shape[1])
+        if (
+            len(retained) <= design.shape[1]
+            or np.linalg.matrix_rank(design) < design.shape[1]
+        ):
+            continue
+
+        values = np.asarray([record[0] for record in retained], dtype=float)
+        covariances = np.asarray(
+            [record[1] for record in retained], dtype=float
+        )
+        result = differential.multivariate_gls_test(
+            values,
+            covariances,
+            design,
+            tested_columns=tested_columns,
+        )
+        row_result = {
+            "block_id": block_id,
+            "covariance_method": covariance_method,
+            "cell_types": ",".join(cell_types),
+            "n_cell_types": len(cell_types),
+            "n_mice": len(subjects),
+            "n_samples": len(retained),
+            "logratio_dimension": values.shape[1],
+            "statistic": result["statistic"],
+            "degrees_of_freedom": result["degrees_of_freedom"],
+            "asymptotic_p_value": result["p_value"],
+            "biological_variance": result["biological_variance"],
+        }
+
+        subject_rows = {
+            subject: np.flatnonzero(np.asarray(row_subjects) == subject)
+            for subject in subjects
+        }
+        permutation_statistics = []
+        for _ in range(int(args.permutations)):
+            permuted_design = design.copy()
+            for positions in subject_rows.values():
+                shuffled = rng.permutation(positions)
+                permuted_design[
+                    positions[:, None], tested_columns
+                ] = design[shuffled[:, None], tested_columns]
+            null = differential.multivariate_gls_test(
+                values,
+                covariances,
+                permuted_design,
+                tested_columns=tested_columns,
+                biological_variance=result["biological_variance"],
+            )
+            permutation_statistics.append(null["statistic"])
+            null_p_values[covariance_method].append(null["p_value"])
+        row_result["permutation_p_value"] = (
+            (1 + np.sum(np.asarray(permutation_statistics) >= result["statistic"]))
+            / (len(permutation_statistics) + 1)
+        )
+        row_result["p_value"] = result["p_value"]
+        rows.append(row_result)
+
+    table = pd.DataFrame(rows)
+    if len(table):
+        table["fdr"] = np.nan
+        for method, positions in table.groupby("covariance_method").groups.items():
+            table.loc[positions, "fdr"] = benjamini_hochberg(
+                table.loc[positions, "p_value"].to_numpy()
+            )
+        table = table.sort_values("p_value")
+    table.to_csv(
+        args.output_dir / "differential_cell_type.tsv",
+        sep="\t",
+        index=False,
+    )
+    summary = {
+        "cell_type_tests": int(len(table)),
+        "cell_type_fdr_0.05": (
+            int((table["fdr"] <= 0.05).sum()) if len(table) else 0
+        ),
+        "cell_type_fdr_blocks": (
+            int(table.loc[table["fdr"] <= 0.05, "block_id"].nunique())
+            if len(table)
+            else 0
+        ),
+    }
+    for method, values in null_p_values.items():
+        values = np.asarray(values, dtype=float)
+        prefix = f"cell_type_{method}"
+        summary[f"{prefix}_permutation_tests"] = int(len(values))
+        summary[f"{prefix}_permutation_p_lt_0.05"] = float(
+            np.mean(values < 0.05)
+        )
+        summary[f"{prefix}_permutation_ks_p_value"] = float(
             scipy.stats.kstest(values, "uniform").pvalue
         )
     return summary
@@ -707,7 +874,7 @@ def main():
     if args.max_blocks is not None:
         blocks = blocks[: int(args.max_blocks)]
     emit("splice_blocks_complete", blocks=len(blocks))
-    inputs, candidates, estimate_summary = estimate_blocks(
+    inputs, cell_type_inputs, candidates, estimate_summary = estimate_blocks(
         args,
         blocks,
         groups,
@@ -719,6 +886,9 @@ def main():
         designs,
     )
     test_summary = differential_tests(args, inputs, rng)
+    cell_type_summary = cell_type_differential_tests(
+        args, cell_type_inputs, rng
+    )
     bootstrap_summary = bootstrap_validation(args, candidates, rng)
     summary = {
         "seconds": time.perf_counter() - started,
@@ -726,6 +896,7 @@ def main():
         "transcripts": len(transcripts),
         **estimate_summary,
         **test_summary,
+        **cell_type_summary,
         **bootstrap_summary,
     }
     (args.output_dir / "validation_summary.json").write_text(

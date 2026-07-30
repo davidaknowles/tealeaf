@@ -1917,3 +1917,33 @@ optimizer drove one path abundance to zero. Path-logratio perturbations are
 now bounded to \([-20,20]\). The repeated run completed 359,711 of 359,713
 local fits; the two remaining nonconvergences were excluded by the existing
 fit-status check.
+
+## 2026-07-30: paired cell-type differential splicing
+
+The original differential table tested condition effects separately within
+each cell type. It did not test the expected larger differences among cell
+types. A second hypothesis family now tests each block across cell types
+using the same reliable pseudobulk path estimates.
+
+For a block, the cell-type model includes a fixed effect for each biological
+mouse and treatment-coded cell-type effects. The mouse identifier includes
+condition, so mouse fixed effects absorb condition and all other shared
+mouse-level shifts. The omnibus Wald statistic tests all cell-type
+coefficients. This is a paired comparison because multiple cell types from
+the same mouse share its fixed effect. Cell-type labels are permuted within
+mouse for calibration, preserving the observed missingness pattern.
+
+At the 25-gene-UMI cutoff, 369 blocks had a full-rank conditional-covariance
+test across at least two cell types; 218 also had a profile-covariance test.
+The represented set spanned 12 cell types, and each included cell type
+required at least three mice. Conditional covariance gave 57 nominal and 22
+FDR-significant blocks. Profile covariance gave 28 nominal and five
+FDR-significant blocks, all five among the conditional discoveries. The
+union therefore contains 22 FDR-significant blocks with cell-type-dependent
+path usage.
+
+Within-mouse label permutations were conservative: 2.0% of conditional and
+1.4% of profile asymptotic p-values were below 0.05. The absence of
+condition-within-cell-type discoveries and the presence of 22 paired
+cell-type discoveries are therefore consistent: they are different
+hypotheses, and the larger cell-type effects are detected as expected.

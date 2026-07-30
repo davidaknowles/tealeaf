@@ -7,6 +7,7 @@ import unittest
 import numpy as np
 import scipy.sparse as sp
 
+from extra_scripts import run_differential_splicing
 from tealeaf.sc import differential
 
 
@@ -109,6 +110,50 @@ class DifferentialTest(unittest.TestCase):
         )
         self.assertEqual(result["degrees_of_freedom"], 2)
         self.assertLess(result["p_value"], 1e-6)
+
+    def test_paired_cell_type_test_detects_effect(self):
+        rng = np.random.default_rng(9)
+        records = []
+        for mouse in range(10):
+            condition = "case" if mouse >= 5 else "control"
+            for cell_type, mean in (("A", 0.0), ("B", 1.5)):
+                records.append(
+                    (
+                        np.array([mean + rng.normal(0, 0.05)]),
+                        np.array([[0.01]]),
+                        cell_type,
+                        condition,
+                        f"mouse_{mouse}",
+                    )
+                )
+        inputs = {("block", "conditional"): records}
+        with tempfile.TemporaryDirectory() as directory:
+            args = type(
+                "Args",
+                (),
+                {
+                    "min_celltype_mice": 3,
+                    "permutations": 5,
+                    "output_dir": Path(directory),
+                },
+            )()
+            summary = (
+                run_differential_splicing.cell_type_differential_tests(
+                    args,
+                    inputs,
+                    np.random.default_rng(10),
+                )
+            )
+            table = np.genfromtxt(
+                Path(directory) / "differential_cell_type.tsv",
+                delimiter="\t",
+                names=True,
+                dtype=None,
+                encoding="utf-8",
+            )
+        self.assertEqual(summary["cell_type_tests"], 1)
+        self.assertEqual(summary["cell_type_fdr_blocks"], 1)
+        self.assertLess(float(table["p_value"]), 0.01)
 
 
 if __name__ == "__main__":

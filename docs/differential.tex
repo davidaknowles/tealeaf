@@ -16,10 +16,16 @@
 
 \section*{Overview}
 
-\subsection*{Question and unit of analysis}
+\subsection*{Questions and unit of analysis}
 
-The goal is to test whether local splice-path usage differs by experimental
-condition within a cell type. Cells are first aggregated into independent
+The analysis asks two distinct questions:
+\begin{enumerate}[leftmargin=*]
+  \item Does local splice-path usage differ by experimental condition within
+        a cell type?
+  \item Does local splice-path usage differ across cell types within the same
+        mice?
+\end{enumerate}
+Cells are first aggregated into
 \emph{mouse-by-condition-by-cell-type pseudobulks}. Biological replication is
 therefore at the mouse level, not the cell level.
 
@@ -28,8 +34,8 @@ Transcripts that take the same path through that region are collapsed to one
 subisoform. This targets local splicing choices, which can be identifiable
 even when the corresponding full-length transcripts are not.
 
-Each reported hypothesis is indexed by a splice block and a cell type. It is
-an omnibus test of
+For condition effects, each hypothesis is indexed by a splice block and a
+cell type. It is an omnibus test of
 \[
   H_0:\quad\text{mean path usage is equal across the included conditions}.
 \]
@@ -37,6 +43,12 @@ Only conditions represented by at least three mouse pseudobulks are included.
 With two conditions and two paths, this is a precision-weighted
 differential-PSI test. With more conditions or paths, all condition
 coefficients and path log-ratios are tested jointly.
+
+For cell-type effects, each hypothesis is indexed only by a splice block. It
+is an omnibus test of equal path usage across the included cell types, after
+absorbing mouse and condition into a mouse-specific fixed effect. Cell types
+must be represented in at least three mice. These two hypothesis families are
+reported separately.
 
 \subsection*{Workflow}
 
@@ -52,9 +64,9 @@ The analysis proceeds in five steps:
   \item Estimate path-logratio covariance from EC ambiguity and UMI sampling.
         Estimates with weak information or boundary path usage are retained
         in output but excluded from Gaussian testing.
-  \item Fit a mouse-replicate GLS model within each cell type, with separate
-        inferential and between-mouse variance components, and test the
-        condition effect.
+  \item Fit mouse-replicate GLS models with separate inferential and
+        between-mouse variance components. Test condition within cell type,
+        and test cell type within mouse, as separate analyses.
 \end{enumerate}
 
 Two inferential covariance calculations are reported. The
@@ -144,7 +156,7 @@ The implementation checks whether \(J_{bi}\) overlaps the information null
 space. A non-estimable contrast is reported as unidentified rather than being
 assigned zero variance by a pseudoinverse.
 
-\subsection*{Mouse-replicate differential test}
+\subsection*{Mouse-replicate differential tests}
 
 Within one cell type and block, let \(i\) index mouse pseudobulks and let
 \(X_i\) encode condition:
@@ -159,14 +171,26 @@ Within one cell type and block, let \(i\) index mouse pseudobulks and let
 \]
 The EC-derived \(V_{bi}\) measures inferential uncertainty.
 The scalar \(\tau_b^2\) measures residual between-mouse variation and is
-estimated by REML under the null model without condition. GLS uses
-\((V_{bi}+\tau_b^2I)^{-1}\), and a multivariate Wald statistic tests all
-non-reference condition coefficients. Benjamini--Hochberg correction is
-applied separately to the conditional and profile analyses.
+estimated by REML under the relevant null model. GLS uses
+\((V_{bi}+\tau_b^2I)^{-1}\).
 
-Condition labels are permuted with their group sizes fixed to assess null
-calibration. The primary p-value is the asymptotic Wald value because 20
-permutations do not resolve the tail required for genome-wide FDR control.
+For the \emph{condition test}, one model is fit for each block and cell type.
+\(X_i\) contains an intercept and condition indicators, and the Wald statistic
+tests all non-reference condition coefficients. Condition labels are
+permuted with their group sizes fixed for calibration.
+
+For the \emph{cell-type test}, one model is fit for each block across cell
+types. \(X_i\) contains mouse fixed effects and cell-type indicators. Because
+condition is constant within a mouse, the mouse effects also absorb condition
+and all other shared mouse-level shifts. The Wald statistic tests all
+cell-type indicators. Calibration permutations shuffle cell-type labels
+within each mouse, preserving the pairing and observed missingness pattern.
+
+The primary p-value is the asymptotic Wald value because 20 permutations do
+not resolve the tail required for genome-wide FDR control.
+Benjamini--Hochberg correction is applied separately for each combination of
+test axis (condition or cell type) and covariance method (conditional or
+profile).
 
 \section*{Implementation Details}
 
@@ -215,7 +239,7 @@ only reliable estimates enter GLS.
 
 \section*{Results}
 
-\subsection*{What was tested}
+\subsection*{Condition-test scope}
 
 The primary analysis used the 25-gene-UMI cutoff and blocks with at most
 eight represented paths. It fit 10,100 blocks and 359,713
@@ -231,7 +255,7 @@ three, 153 compared four, 130 compared five, and 116 compared all six. The
 included set varies because every condition in a test must have at least
 three independent mouse pseudobulks for that block and cell type.
 
-\subsection*{Differential-splicing findings}
+\subsection*{Condition-test results}
 
 No block was significant at 5\% FDR in either covariance analysis. At the
 unadjusted \(p<0.05\) level:
@@ -243,8 +267,32 @@ unadjusted \(p<0.05\) level:
   \item 20 hypotheses were nominally significant in both analyses.
 \end{itemize}
 The union is 24 nominal block-by-cell-type hypotheses covering 21 blocks, but
-the corrected number of significant hypotheses and blocks is zero. The two
-covariance variants should not be added as if they were separate discoveries.
+the corrected number of significant hypotheses and blocks is zero. Thus
+there is no FDR-significant evidence for condition-dependent splicing within
+cell type. The two covariance variants should not be added as if they were
+separate discoveries.
+
+\subsection*{Cell-type effects within mouse}
+
+The paired cell-type analysis tested 369 blocks with conditional covariance;
+218 of these also had a valid profile-covariance test. Across blocks, 12 cell
+types were represented, with each individual block comparing between two and
+11 cell types. Every included cell type had at least three mice, and the
+mouse-fixed-effect design was required to have full rank.
+
+Cell-type differences were readily detected:
+\begin{itemize}[leftmargin=*]
+  \item 57 conditional tests were nominally significant and 22 remained
+        significant at 5\% FDR;
+  \item 28 profile tests were nominally significant and five remained
+        significant at 5\% FDR;
+  \item all five profile discoveries were among the 22 conditional
+        discoveries.
+\end{itemize}
+The union therefore contains \textbf{22 FDR-significant splice blocks} with
+evidence of different path usage across cell types. Permuting cell-type
+labels within mouse gave conservative null rejection rates of 2.0\% for
+conditional and 1.4\% for profile covariance.
 
 \subsection*{Calibration}
 
