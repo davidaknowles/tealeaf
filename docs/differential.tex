@@ -14,195 +14,140 @@
 \begin{document}
 \maketitle
 
-\section*{Purpose}
+\section*{Overview}
 
-The hierarchical model estimates transcript abundance from equivalence-class
-(EC) counts, but full-length transcripts are often less identifiable than the
-local splicing choices needed for biological interpretation. The implemented
-differential-splicing layer therefore collapses transcripts to local splice
-paths, estimates covariance from the same paired-primer EC likelihood, and
-tests path usage across biological replicates.
+\subsection*{Question and unit of analysis}
 
-The analysis distinguishes two sources of variation:
-\begin{enumerate}[leftmargin=*]
-  \item inferential uncertainty caused by finite UMIs and ambiguous ECs;
-  \item biological variation among mice with the same condition and cell type.
-\end{enumerate}
-Inferential covariance is not used as a replacement for biological
-replication. It determines the precision assigned to each pseudobulk, while a
-separate variance component represents between-mouse variation.
+The goal is to test whether local splice-path usage differs by experimental
+condition within a cell type. Cells are first aggregated into independent
+\emph{mouse-by-condition-by-cell-type pseudobulks}. Biological replication is
+therefore at the mouse level, not the cell level.
 
-\section*{Subisoforms}
+A splice block is a local region between constitutive exonic anchors.
+Transcripts that take the same path through that region are collapsed to one
+subisoform. This targets local splicing choices, which can be identifiable
+even when the corresponding full-length transcripts are not.
 
-\subsection*{Atomic exon annotation}
-
-Annotated exon coordinates are read from the GTF as zero-based, half-open
-intervals. Overlapping exons within each transcript are merged. All exon
-boundaries in a gene define atomic intervals. An atomic interval is
-\emph{constitutive} when it is exonic in every annotated spliced transcript
-of that gene. Adjacent constitutive intervals are merged into constitutive
-anchor regions.
-
-\subsection*{Splice-path blocks}
-
-Each pair of consecutive constitutive anchors defines one block. A
-transcript's subisoform in that block is its ordered set of exonic intervals
-between the anchors. Transcripts with the same local path are collapsed even
-if their full-length structures differ elsewhere. Blocks with only one path
-are discarded.
-
-Terminal pseudo-anchors are added before the first and after the last
-constitutive region. A gene with no shared constitutive region is represented
-by one whole-gene block. These rules include alternative first and last
-regions while retaining the local interpretation of internal blocks. Simple
-two-path blocks correspond to familiar skipped-exon, mutually-exclusive-exon,
-alternative donor, alternative acceptor, and retained-intron events. The
-general representation also permits more than two paths and nested events.
-
-Let \(b\) index blocks in gene \(g\), and let \(C_{gb}\) be its
-path-by-transcript incidence matrix. Precursor features are retained in the EC
-likelihood as nuisance features but are not assigned to spliced paths.
-
-\section*{Paired EC Likelihood}
-
-For one mouse-by-cell-type pseudobulk and primer \(p\), let
-\(\bm c_p\) be the EC counts, \(N_p=\bm 1^\prime\bm c_p\), and
-\(A_p\) the fixed weighted EC design. The transcript abundance vector
-\(\bm\theta\) gives
+Each reported hypothesis is indexed by a splice block and a cell type. It is
+an omnibus test of
 \[
-  \bm q_p=A_p\bm\theta,\qquad
-  Z_p=\bm 1^\prime\bm q_p=\bm d_p^\prime\bm\theta,
-  \qquad
-  \bm d_p=A_p^\prime\bm 1.
+  H_0:\quad\text{mean path usage is equal across the included conditions}.
 \]
-Conditioning on \(N_p\),
+Only conditions represented by at least three mouse pseudobulks are included.
+With two conditions and two paths, this is a precision-weighted
+differential-PSI test. With more conditions or paths, all condition
+coefficients and path log-ratios are tested jointly.
+
+\subsection*{Workflow}
+
+The analysis proceeds in five steps:
+\begin{enumerate}[leftmargin=*]
+  \item Construct local splice blocks from the transcript annotation and
+        collapse transcripts to paths within each block.
+  \item Aggregate paired oligo(dT) and random-hexamer EC counts, and
+        hierarchical transcript estimates, within each mouse, condition, and
+        cell type.
+  \item Refine path usage in each pseudobulk with the exact paired-primer EC
+        likelihood.
+  \item Estimate path-logratio covariance from EC ambiguity and UMI sampling.
+        Estimates with weak information or boundary path usage are retained
+        in output but excluded from Gaussian testing.
+  \item Fit a mouse-replicate GLS model within each cell type, with separate
+        inferential and between-mouse variance components, and test the
+        condition effect.
+\end{enumerate}
+
+Two inferential covariance calculations are reported. The
+\emph{conditional} calculation fixes the fitted transcript mixture within
+each path. The \emph{profile} calculation allows all transcript directions
+to vary as nuisance parameters. They are sensitivity analyses for the same
+block-by-cell-type hypothesis, not independent biological hypotheses.
+
+\section*{Statistical Model}
+
+\subsection*{Paired-primer EC likelihood}
+
+For pseudobulk \(i\) and primer \(p\), let \(\bm c_{ip}\) be the EC counts,
+\(N_{ip}=\bm 1^\prime\bm c_{ip}\), and \(A_p\) the fixed weighted EC design.
+For transcript abundance \(\bm\theta_i\),
 \[
-  \bm c_p\mid N_p,\bm\theta
+  \bm q_{ip}=A_p\bm\theta_i,\qquad
+  Z_{ip}=\bm 1^\prime\bm q_{ip},
+\]
+and the likelihood conditional on the primer-specific UMI total is
+\[
+  \bm c_{ip}\mid N_{ip},\bm\theta_i
   \sim
   \operatorname{Multinomial}
-  \left(N_p,\frac{\bm q_p}{Z_p}\right).
+  \left(N_{ip},\frac{\bm q_{ip}}{Z_{ip}}\right).
 \]
-The oligo(dT) and random-hexamer likelihoods are evaluated separately and
-their information matrices are added. The weighted designs preserve their
-different positional and transcript-exposure assumptions.
+Oligo(dT) and random-hexamer counts have separate designs and likelihood
+terms, preserving their different positional and transcript-exposure
+profiles.
 
-Only ECs whose compatible transcripts map uniquely to one gene enter that
-gene's covariance calculation. Cross-gene ECs remain part of the genome-wide
-hierarchical fit but are excluded from this local curvature approximation.
-
-\section*{Transcript Information}
-
-Write \(\eta_t=\log\theta_t\). Define the EC-specific transcript
-responsibilities and the primer-level sampled-transcript distribution
+The genome-wide hierarchical model supplies a pseudobulk baseline
+\(\bm\theta_i^{(0)}\). For block \(b\), a local parameter
+\(\bm\delta_{bi}\) changes the mass of all transcripts carrying path \(s(t)\):
 \[
-  \bm r_{ep}
-  =
-  \frac{A_{ep\cdot}\odot\bm\theta}{q_{ep}},
-  \qquad
-  \bm r_{0p}
-  =
-  \frac{\bm d_p\odot\bm\theta}{Z_p}.
-\]
-The expected Fisher information in transcript-log-abundance coordinates is
-\[
-  I_{\eta,p}
-  =
-  N_p\left[
-    \frac{
-      \operatorname{diag}(\bm\theta)
-      A_p^\prime\operatorname{diag}(\bm q_p^{-1})
-      A_p\operatorname{diag}(\bm\theta)
-    }{Z_p}
-    -
-    \bm r_{0p}\bm r_{0p}^\prime
-  \right].
-\]
-Equivalently, this is \(N_p\) times the variance across observed ECs of the
-conditional transcript responsibility. Ambiguous ECs have similar
-responsibilities under competing transcripts and therefore contribute little
-information in those contrast directions. The total information is
-\[
-  I_\eta=\sum_p I_{\eta,p}.
-\]
-This is the expected-information counterpart of the missing-information
-identity used to obtain uncertainty after EM.
-
-\section*{Path Coordinates and Covariance}
-
-For block \(b\), spliced transcript abundances are normalized within their
-gene and collapsed:
-\[
-  \bm\psi_b
-  =
-  C_b
-  \frac{\bm\theta_{\mathrm{spliced}}}
-       {\bm 1^\prime\bm\theta_{\mathrm{spliced}}}.
-\]
-An orthonormal Helmert basis \(Q_b\), satisfying
-\(Q_b^\prime\bm 1=0\), defines identifiable log-ratio coordinates
-\[
-  \bm y_b=Q_b^\prime\log\bm\psi_b.
-\]
-If \(J_b=\partial\bm y_b/\partial\bm\eta^\prime\), the profile-style
-delta covariance is
-\[
-  V_b
-  \approx
-  J_b I_\eta^+ J_b^\prime,
-\]
-where \(I_\eta^+\) is the inverse on the positive-eigenvalue subspace.
-The implementation explicitly projects \(J_b\) onto the null space of
-\(I_\eta\). A block is reported as unidentified rather than assigning zero
-variance when its path contrast overlaps an information-null direction.
-
-This calculation profiles all transcript directions, including differences
-among full-length transcripts assigned to the same local path. It can
-therefore yield finite path covariance even when individual transcripts are
-not identifiable.
-
-\section*{Local Path Refinement}
-
-The hierarchical cell decoder supplies a baseline for each pseudobulk. Cell
-transcript proportions are weighted by their UMI totals and aggregated within
-mouse, cell type, and condition. For a block, local parameters
-\(\bm\delta_b\) multiply all transcripts carrying the same path:
-\[
-  \theta_t(\bm\delta_b)
+  \theta_{it}(\bm\delta_{bi})
   \propto
-  \theta_t^{(0)}
-  \exp\{Q_{b,s(t)}^\prime\bm\delta_b\}.
+  \theta_{it}^{(0)}
+  \exp\{Q_{b,s(t)}^\prime\bm\delta_{bi}\}.
 \]
-The total spliced mass and the transcript mixture within each path remain
-fixed. Bounded L-BFGS optimizes the exact paired multinomial likelihood,
-limiting path perturbations to \(\lvert\delta\rvert\leq20\) to prevent
-floating-point underflow at a simplex boundary. Under this parameterization,
+Here \(Q_b\) is a Helmert basis for the \(S_b-1\) dimensional sum-zero
+subspace. The total spliced mass and transcript mixture within each path are
+fixed during this local refinement.
+
+\subsection*{Path response and inferential covariance}
+
+Let \(C_b\) map transcripts to paths. Path proportions and the response used
+by the differential test are
 \[
-  \bm y_b(\bm\delta_b)=\bm y_b^{(0)}+\bm\delta_b.
+  \bm\psi_{bi}
+  =
+  C_b\frac{\bm\theta_{i,\mathrm{spliced}}}
+            {\bm 1^\prime\bm\theta_{i,\mathrm{spliced}}},
+  \qquad
+  \bm y_{bi}=Q_b^\prime\log\bm\psi_{bi}.
 \]
-The inverse Fisher information for \(\bm\delta_b\) gives a second,
-\emph{conditional} covariance. It is useful for optimization diagnostics and
-parametric bootstrap validation but is less conservative than the profile
-covariance because within-path transcript mixtures are fixed.
+For two paths, \(y_{bi}\) is the log path-odds divided by \(\sqrt 2\).
+Under the local parameterization,
+\(\bm y_{bi}=\bm y_{bi}^{(0)}+\bm\delta_{bi}\).
 
-Finite covariance alone is not sufficient for a Gaussian approximation.
-Weakly informed path fits can move to a boundary under repeated sampling.
-The implemented reliability rule requires
+The conditional covariance is the inverse Fisher information for
+\(\bm\delta_{bi}\). For the profile calculation, write
+\(\bm\eta_i=\log\bm\theta_i\). The expected transcript information is
 \[
-  \lambda_{\max}(V_{bi})\leq 1/8
-  \quad\text{and}\quad
-  \min_s\widehat\psi_{bis}\geq 0.15,
+  I_{\eta,ip}
+  =
+  N_{ip}\left[
+    \frac{
+      \operatorname{diag}(\bm\theta_i)
+      A_p^\prime\operatorname{diag}(\bm q_{ip}^{-1})
+      A_p\operatorname{diag}(\bm\theta_i)
+    }{Z_{ip}}
+    -
+    \bm r_{0,ip}\bm r_{0,ip}^\prime
+  \right],
 \]
-so every retained orthonormal log-ratio direction has effective Fisher
-information of at least eight and no fitted path lies near the simplex
-boundary. All fits remain in the estimate output, with separate identifiable
-and reliable flags; only reliable fits enter the differential test. The
-thresholds were selected from the label-free parametric bootstrap described
-below.
+where
+\(\bm d_p=A_p^\prime\bm 1\) and
+\(\bm r_{0,ip}=(\bm d_p\odot\bm\theta_i)/Z_{ip}\).
+Information is added across primers. If
+\(J_{bi}=\partial\bm y_{bi}/\partial\bm\eta_i^\prime\), then
+\[
+  V_{bi}^{\mathrm{profile}}
+  =
+  J_{bi}\left(\sum_p I_{\eta,ip}\right)^+J_{bi}^\prime.
+\]
+The implementation checks whether \(J_{bi}\) overlaps the information null
+space. A non-estimable contrast is reported as unidentified rather than being
+assigned zero variance by a pseudoinverse.
 
-\section*{Differential-Splicing Test}
+\subsection*{Mouse-replicate differential test}
 
-Let \(i\) index independent mouse pseudobulks within a cell type. For each
-block,
+Within one cell type and block, let \(i\) index mouse pseudobulks and let
+\(X_i\) encode condition:
 \[
   \widehat{\bm y}_{bi}
   =
@@ -212,78 +157,111 @@ block,
   =
   V_{bi}+\tau_b^2 I.
 \]
-Here \(V_{bi}\) is the EC-derived inferential covariance. The scalar
-\(\tau_b^2\) represents biological variation not explained by condition.
-It is estimated by restricted maximum likelihood under the null design,
-which excludes the condition coefficients. Generalized least squares combines
-pseudobulks using
-\((V_{bi}+\tau_b^2I)^{-1}\). A multivariate Wald test evaluates all
+The EC-derived \(V_{bi}\) measures inferential uncertainty.
+The scalar \(\tau_b^2\) measures residual between-mouse variation and is
+estimated by REML under the null model without condition. GLS uses
+\((V_{bi}+\tau_b^2I)^{-1}\), and a multivariate Wald statistic tests all
 non-reference condition coefficients. Benjamini--Hochberg correction is
-performed separately for conditional and profile covariance results.
+applied separately to the conditional and profile analyses.
 
-Condition labels are permuted while preserving their observed group sizes.
-The null REML variance is invariant to these permutations and is reused.
-Permutation p-values and the distribution of permuted asymptotic p-values
-are written as calibration diagnostics. The primary p-value is the
-asymptotic Wald value because a small fixed number of permutations cannot
-resolve the tail needed for genome-wide false-discovery control.
+Condition labels are permuted with their group sizes fixed to assess null
+calibration. The primary p-value is the asymptotic Wald value because 20
+permutations do not resolve the tail required for genome-wide FDR control.
 
-For a two-path block, the test has one log-ratio coordinate and is equivalent
-to a precision-weighted differential-PSI analysis. Multi-path blocks receive
-one omnibus test with \(S_b-1\) coordinates per condition contrast.
+\section*{Implementation Details}
 
-\section*{Validation}
+\subsection*{Splice-block construction}
 
-Numerical tests cover:
+GTF exons are represented by zero-based, half-open intervals. Exon boundaries
+define atomic intervals; intervals exonic in every annotated spliced
+transcript are merged into constitutive anchors. Consecutive anchors define a
+block, and a transcript path is its ordered exon-interval chain between them.
+Terminal pseudo-anchors include alternative first and last regions. A gene
+without a shared constitutive region receives one whole-gene block.
+
+Blocks with one path are discarded. Simple two-path blocks include skipped
+exons, mutually exclusive exons, alternative donors and acceptors, and
+retained introns. The implementation also supports nested and multi-path
+blocks. Precursor features remain nuisance features in the EC model but are
+not assigned to spliced paths.
+
+\subsection*{Pseudobulks and local fitting}
+
+Cell transcript proportions from the hierarchical decoder are weighted by
+cell UMI totals and aggregated by mouse, condition, and cell type.
+Pseudobulks must contain at least 20 cells and \(10^5\) total UMIs. A
+block is fit when its gene has at least 25 gene-assigned UMIs in at least two
+qualifying pseudobulks. Only ECs whose compatible transcripts map uniquely to
+that gene enter the local likelihood.
+
+Bounded L-BFGS optimizes the paired multinomial likelihood, with
+\(\lvert\delta\rvert\leq20\) to prevent floating-point underflow. Two-path
+fits are initialized from a log-ratio grid because the paired-primer
+normalizers can make the objective non-concave.
+
+\subsection*{Identifiability and reliability}
+
+Finite Fisher covariance is not sufficient near a simplex boundary.
+Parametric bootstrap identified two reliability requirements:
+\[
+  \lambda_{\max}(V_{bi})\leq 1/8
+  \quad\text{and}\quad
+  \min_s\widehat\psi_{bis}\geq 0.15.
+\]
+Thus every tested log-ratio direction has effective information of at least
+eight and every fitted path has at least 15\% usage. All estimates are
+written, together with convergence, identifiability, and reliability flags;
+only reliable estimates enter GLS.
+
+\section*{Results}
+
+\subsection*{What was tested}
+
+The primary analysis used the 25-gene-UMI cutoff and blocks with at most
+eight represented paths. It fit 10,100 blocks and 359,713
+pseudobulk-by-block path estimates; 359,711 fits converged. After reliability
+filtering, there were 829 conditional and 506 profile tests.
+
+These 1,335 rows represent 829 distinct block-by-cell-type hypotheses,
+covering 527 distinct splice blocks in eight cell types. The profile analysis
+is available for a subset of the conditional hypotheses. The possible
+conditions were 5xFAD, 5xFIRE, 5xFIRE PBS, 5xFIRE transplant, FIRE, and WT.
+For the 829 conditional hypotheses, 275 compared two conditions, 155 compared
+three, 153 compared four, 130 compared five, and 116 compared all six. The
+included set varies because every condition in a test must have at least
+three independent mouse pseudobulks for that block and cell type.
+
+\subsection*{Differential-splicing findings}
+
+No block was significant at 5\% FDR in either covariance analysis. At the
+unadjusted \(p<0.05\) level:
 \begin{itemize}[leftmargin=*]
-  \item construction of a skipped-exon block from a synthetic GTF;
-  \item finite path covariance when two indistinguishable transcripts collapse
-        to one path;
-  \item rejection of a path contrast when all paths produce the same EC;
-  \item equality of the analytic two-path Fisher variance and the binomial
-        result;
-  \item agreement between analytic variance and parametric multinomial
-        simulations;
-  \item recovery of an imposed multivariate condition effect by GLS.
+  \item the conditional analysis identified 24 block-by-cell-type hypotheses,
+        covering 21 distinct blocks;
+  \item the profile analysis identified 20 block-by-cell-type hypotheses,
+        covering 17 distinct blocks;
+  \item 20 hypotheses were nominally significant in both analyses.
 \end{itemize}
+The union is 24 nominal block-by-cell-type hypotheses covering 21 blocks, but
+the corrected number of significant hypotheses and blocks is zero. The two
+covariance variants should not be added as if they were separate discoveries.
 
-The production validation additionally simulates EC counts from fitted
-pseudobulk path models, refits the local path parameters, and compares
-empirical squared error with analytic conditional variance. It reports
-component-wise squared standardized error and 95\% interval coverage for
-each validation fit. Condition-label permutations provide a null calibration
-check for the complete differential-testing layer.
+\subsection*{Calibration}
 
-In a two-path smoke analysis, all 1,257 eligible pseudobulk fits converged.
-Conditional covariance was identifiable for 95.5\% of fits and profile
-covariance for 52.3\%. Before reliability filtering, fits with information
-below eight and paths below 15\% usage showed boundary-driven mode switching.
-Above both thresholds, mean squared standardized error was 1.09 and
-component-wise 95\% coverage was 94.0\%. Independent normal simulations of
-the REML--GLS implementation gave
-type-I error between 2.7\% and 5.0\% at a nominal 5\% across zero, moderate,
-and large biological-variance settings.
+Across the 25-UMI analysis, 2.7\% of permuted-label Wald p-values were below
+0.05 for both conditional and profile covariance, indicating conservative
+null calibration. A parametric bootstrap of 3,000 reliable local fits gave
+mean squared standardized error 1.10 and 94.5\% coverage for nominal 95\%
+intervals. Independent Gaussian simulations of REML--GLS gave type-I error
+between 2.7\% and 5.0\% across the tested biological-variance settings.
 
-The genome-wide microglialess analysis considered blocks with up to eight
-paths. After the gene-count filter, 2,820 blocks contributed 46,393
-pseudobulk estimates; every local optimization converged. Conditional
-covariance was identifiable for 73.5\% of estimates and 12.0\% passed both
-reliability criteria. Profile covariance was identifiable for 29.8\% and
-7.9\% passed both criteria. The retained estimates produced 170 conditional
-and 113 profile differential tests. Five conditional and three profile tests
-had unadjusted \(p<0.05\), but none passed 5\% false-discovery control.
-
-Across 3,000 production bootstrap refits, mean squared standardized error was
-1.52 and 95\% interval coverage was 94.6\%. Among permuted-label tests, 2.9\%
-of conditional and 2.5\% of profile asymptotic p-values were below 0.05.
-Thus the implemented filter gives slightly conservative null calibration.
-The lack of discoveries reflects both this conservatism and the small number
-of mouse replicates available for many cell-type--condition combinations.
+Numerical tests additionally verify skipped-exon block construction,
+identifiable covariance after collapsing indistinguishable transcripts,
+rejection of information-null path contrasts, the analytic binomial Fisher
+variance, and recovery of imposed GLS effects.
 
 \subsection*{Coverage-cutoff sensitivity}
 
-The minimum gene-assigned UMI count per pseudobulk was varied while retaining
-the same covariance and path-proportion reliability rules:
 \[
 \begin{array}{rrrrrr}
 \toprule
@@ -299,19 +277,16 @@ the same covariance and path-proportion reliability rules:
 \bottomrule
 \end{array}
 \]
-The 500-UMI permutation estimate is based on only 100 null tests and is
-therefore noisy. No cutoff produced a discovery at 5\% FDR.
+No cutoff produced an FDR-significant block. The 500-UMI calibration estimate
+is based on only 100 permutation tests.
 
-Asymptotic power was also calculated for reliable two-condition, two-path
-tests using their fitted inferential covariance and REML biological variance.
-An ILR effect of 0.5, equivalent to a twofold path-odds change, gave mean
-conditional-test power of 0.49, 0.51, 0.44, 0.56, and 0.59 at increasing
-cutoffs. The apparently higher power at 200 and 500 UMIs is selected from
-only eight and two eligible tests. Among 103 test identities shared by the
-25- and 50-UMI analyses, power was 0.453 and 0.449, respectively. Thus lower
-cutoffs do not degrade calibrated per-test precision after reliability
-filtering; they mainly increase the number of testable blocks. A 25-UMI
-coverage cutoff is the preferred default for this dataset.
+For reliable two-condition, two-path conditional tests, mean asymptotic power
+for a 0.5 ILR effect was 0.49, 0.51, 0.44, 0.56, and 0.59 at increasing
+cutoffs. The final two values are selected from only eight and two eligible
+tests. Among 103 hypotheses shared by the 25- and 50-UMI analyses, power was
+0.453 and 0.449. Lower coverage cutoffs therefore increase the number of
+testable blocks without degrading calibrated precision among shared tests.
+The 25-UMI cutoff is the default.
 
 \section*{Limitations}
 
