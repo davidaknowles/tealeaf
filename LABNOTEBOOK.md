@@ -1947,3 +1947,46 @@ Within-mouse label permutations were conservative: 2.0% of conditional and
 condition-within-cell-type discoveries and the presence of 22 paired
 cell-type discoveries are therefore consistent: they are different
 hypotheses, and the larger cell-type effects are detected as expected.
+
+## 2026-07-30: cell-resolved splice-path likelihood
+
+To test whether pseudobulk EC aggregation was limiting power, I implemented a
+cell-resolved local likelihood. Cells retain distinct hierarchical
+transcript baselines and paired-primer EC count vectors, but all cells in one
+mouse-by-condition-by-cell-type group share a single path-logratio
+perturbation. The objective is the sum of cell-level multinomial likelihoods.
+Analytic Fisher information is summed across cells and primers. The reported
+group path response averages fitted cell path masses using decoded expected
+gene molecules, and its covariance is obtained by propagating the shared
+perturbation covariance. Downstream REML--GLS still operates on independent
+mouse groups, so cells are not used as biological replicates.
+
+The reusable implementation is in `tealeaf/sc/differential.py`. The dataset
+runner supports block sharding, and a separate comparison script reconstructs
+both methods on exactly matched reliable samples. A homogeneous-baseline test
+verifies equality to aggregated pseudobulk fitting; a heterogeneous-baseline
+test verifies recovery of an imposed shared shift.
+
+The full assessment targeted the 527 blocks represented in the primary
+25-gene-UMI condition analysis. Eight shards completed 41,242 local fits in
+about 7.5 minutes wall time; every optimizer converged. The cell-resolved
+method retained 21,624 reliable estimates and 836 condition tests, versus
+21,010 estimates and 829 tests for pseudobulk conditional covariance on the
+same block set. It produced no 5% FDR discoveries. Across 16,720
+condition-label permutations, 2.49% of null p-values were below 0.05.
+
+There were 807 downstream tests with exactly matched reliable samples. The
+median cell-resolved/pseudobulk local covariance-trace ratio was 0.984 and
+the median path-response RMS difference was 0.033 ILR units. P-value
+Spearman correlation was 0.958, with 24 versus 25 nominal tests. For 259
+matched two-condition, two-path tests, mean power for a 0.5 ILR effect was
+0.5038 for pseudobulk and 0.5038 for cell resolution; the median
+condition-coefficient SE ratio was 0.995.
+
+The result is negative: retaining cells provides almost no usable precision
+gain here. EC aggregation and the UMI-weighted decoder baseline already
+preserve nearly all local information within a cell type, and estimated
+between-mouse variation dominates the small inferential covariance
+reduction. The pseudobulk likelihood remains the default. The cell-resolved
+implementation is retained for datasets with stronger within-group
+heterogeneity.

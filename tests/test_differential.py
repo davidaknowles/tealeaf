@@ -94,6 +94,60 @@ class CovarianceTest(unittest.TestCase):
         self.assertTrue(fit.converged)
         np.testing.assert_allclose(fit.path_proportions, [0.8, 0.2], atol=1e-5)
 
+    def test_shared_cell_fit_matches_homogeneous_pseudobulk(self):
+        design = sp.eye(2, format="csr")
+        cell_counts = sp.csr_matrix(
+            np.array([[30, 70], [20, 80], [40, 60]])
+        )
+        baseline = np.repeat([[0.5, 0.5]], 3, axis=0)
+        path_index = np.array([0, 1])
+        shared = differential.fit_shared_path_perturbation(
+            (cell_counts,),
+            (design,),
+            baseline,
+            path_index,
+            weights=np.ones(3),
+        )
+        aggregated = differential.fit_path_perturbation(
+            (np.asarray(cell_counts.sum(axis=0)).ravel(),),
+            (design,),
+            np.array([0.5, 0.5]),
+            path_index,
+        )
+        self.assertTrue(shared.converged)
+        np.testing.assert_allclose(
+            shared.path_proportions,
+            aggregated.path_proportions,
+            atol=1e-6,
+        )
+        np.testing.assert_allclose(
+            shared.covariance.covariance,
+            aggregated.covariance.covariance,
+            rtol=1e-5,
+        )
+
+    def test_shared_cell_fit_recovers_shift_with_distinct_baselines(self):
+        design = sp.eye(2, format="csr")
+        baselines = np.array([[0.8, 0.2], [0.2, 0.8]])
+        path_index = np.array([0, 1])
+        basis = differential.helmert_basis(2)
+        shifted, _ = differential._perturbed_theta_matrix(
+            baselines,
+            path_index,
+            basis,
+            np.array([0.7]),
+        )
+        counts = sp.csr_matrix(np.rint(100_000 * shifted).astype(int))
+        fit = differential.fit_shared_path_perturbation(
+            (counts,),
+            (design,),
+            baselines,
+            path_index,
+            weights=np.ones(2),
+        )
+        self.assertTrue(fit.converged)
+        np.testing.assert_allclose(fit.delta, [0.7], atol=1e-4)
+
 
 class DifferentialTest(unittest.TestCase):
     def test_multivariate_gls_detects_condition_effect(self):

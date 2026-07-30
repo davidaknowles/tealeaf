@@ -62,6 +62,21 @@ class PathFit:
     objective: float
 
 
+@dataclass
+class SharedPathFit:
+    """Shared path shift fit to cells with distinct transcript baselines."""
+
+    delta: np.ndarray
+    path_logratios: np.ndarray
+    path_proportions: np.ndarray
+    theta: np.ndarray
+    covariance: CovarianceResult
+    parameter_covariance: CovarianceResult
+    converged: bool
+    iterations: int
+    objective: float
+
+
 def decode_hierarchical_theta(
     state,
     gene_intercept,
@@ -438,6 +453,220 @@ def _perturbed_theta(baseline, path_index, basis, delta):
     mean_feature = shares @ features
     log_jacobian = features - mean_feature
     return result, log_jacobian
+
+
+def _perturbed_theta_matrix(baseline, path_index, basis, delta):
+    baseline = np.maximum(np.asarray(baseline, dtype=float), 1e-12)
+    path_index = np.asarray(path_index, dtype=np.int64)
+    selected = path_index >= 0
+    result = baseline.copy()
+    masses = baseline[:, selected].sum(axis=1)
+    features = basis[path_index[selected]]
+    logits = np.log(baseline[:, selected]) + features @ delta
+    logits -= logits.max(axis=1, keepdims=True)
+    shares = np.exp(logits)
+    shares /= shares.sum(axis=1, keepdims=True)
+    result[:, selected] = masses[:, None] * shares
+    mean_features = shares @ features
+    log_jacobian = features[None, :, :] - mean_features[:, None, :]
+    return result, log_jacobian
+
+
+def _shared_path_information(
+    theta,
+    log_jacobian,
+    path_index,
+    designs,
+    counts,
+):
+    selected = np.asarray(path_index, dtype=np.int64) >= 0
+    dimension = log_jacobian.shape[2]
+    information = np.zeros((dimension, dimension), dtype=float)
+    for design, observed in zip(designs, counts):
+        design = sp.csr_matrix(design)
+        observed = sp.csr_matrix(observed)
+        totals = np.asarray(observed.sum(axis=1)).ravel()
+        q = np.asarray(design @ theta.T).T
+        normalizers = q.sum(axis=1)
+        derivatives = np.empty(
+            (len(theta), design.shape[0], dimension),
+            dtype=float,
+        )
+        for coordinate in range(dimension):
+            transcript_derivative = (
+                theta[:, selected] * log_jacobian[:, :, coordinate]
+            )
+            derivatives[:, :, coordinate] = np.asarray(
+                design[:, selected] @ transcript_derivative.T
+            ).T
+        positive = (totals > 0) & (normalizers > 0)
+        if not positive.any():
+            continue
+        q = np.maximum(q[positive], 1e-300)
+        derivatives = derivatives[positive]
+        totals = totals[positive]
+        normalizers = normalizers[positive]
+        weights = totals[:, None] / (normalizers[:, None] * q)
+        information += np.einsum(
+            "ced,cef,ce->df",
+            derivatives,
+            derivatives,
+            weights,
+        )
+        normalizer_gradient = (
+            derivatives.sum(axis=1) / normalizers[:, None]
+        )
+        information -= np.einsum(
+            "c,cd,ce->de",
+            totals,
+            normalizer_gradient,
+            normalizer_gradient,
+        )
+    return 0.5 * (information + information.T)
+
+
+def _weighted_path_response(
+    theta,
+    log_jacobian,
+    path_index,
+    basis,
+    weights,
+):
+    path_index = np.asarray(path_index, dtype=np.int64)
+    weights = np.asarray(weights, dtype=float)
+    selected = path_index >= 0
+    n_paths = basis.shape[0]
+    masses = np.zeros(n_paths, dtype=float)
+    derivatives = np.zeros((n_paths, basis.shape[1]), dtype=float)
+    for local_transcript, transcript in enumerate(np.flatnonzero(selected)):
+        path = path_index[transcript]
+        weighted_theta = weights * theta[:, transcript]
+        masses[path] += weighted_theta.sum()
+        derivatives[path] += (
+            weighted_theta[:, None]
+            * log_jacobian[:, local_transcript, :]
+        ).sum(axis=0)
+    if np.any(masses <= 0):
+        raise ValueError("every path needs positive weighted abundance")
+    proportions = masses / masses.sum()
+    response = basis.T @ np.log(proportions)
+    jacobian = basis.T @ (derivatives / masses[:, None])
+    return proportions, response, jacobian
+
+
+def fit_shared_path_perturbation(
+    counts,
+    designs,
+    baselines,
+    path_index,
+    weights,
+    *,
+    max_iter=100,
+    tolerance=1e-7,
+):
+    """Fit one path shift across cells with cell-specific transcript baselines."""
+    baselines = np.maximum(np.asarray(baselines, dtype=float), 1e-12)
+    path_index = np.asarray(path_index, dtype=np.int64)
+    weights = np.asarray(weights, dtype=float)
+    if baselines.ndim != 2 or len(baselines) != len(weights):
+        raise ValueError("baselines must be cells by transcripts")
+    n_paths = int(path_index[path_index >= 0].max()) + 1
+    basis = helmert_basis(n_paths)
+    counts = tuple(sp.csr_matrix(value) for value in counts)
+    designs = tuple(sp.csr_matrix(value) for value in designs)
+
+    def objective(delta):
+        theta, log_jacobian = _perturbed_theta_matrix(
+            baselines, path_index, basis, delta
+        )
+        selected = path_index >= 0
+        loss = 0.0
+        gradient = np.zeros_like(delta)
+        for observed, design in zip(counts, designs):
+            totals = np.asarray(observed.sum(axis=1)).ravel()
+            q = np.asarray(design @ theta.T).T
+            normalizers = q.sum(axis=1)
+            nonzero = observed.tocoo()
+            positive_counts = nonzero.data > 0
+            rows = nonzero.row[positive_counts]
+            columns = nonzero.col[positive_counts]
+            observed_values = nonzero.data[positive_counts]
+            selected_q = q[rows, columns]
+            if np.any(selected_q <= 0) or np.any(
+                (totals > 0) & (normalizers <= 0)
+            ):
+                return np.inf, np.zeros_like(delta)
+            loss -= float(observed_values @ np.log(selected_q))
+            loss += float(
+                totals @ np.log(np.maximum(normalizers, 1e-300))
+            )
+            ratio = observed.multiply(1.0 / np.maximum(q, 1e-300))
+            score = np.asarray((ratio @ design).toarray()) * theta
+            column_sums = np.asarray(design.sum(axis=0)).ravel()
+            score -= (
+                totals / np.maximum(normalizers, 1e-300)
+            )[:, None] * theta * column_sums[None, :]
+            gradient -= np.einsum(
+                "cs,csd->d",
+                score[:, selected],
+                log_jacobian,
+            )
+        return loss, gradient
+
+    initial_delta = np.zeros(n_paths - 1, dtype=float)
+    if n_paths == 2:
+        grid = np.linspace(-12.0, 12.0, 33)
+        losses = np.array([
+            objective(np.array([value]))[0] for value in grid
+        ])
+        initial_delta[0] = grid[int(np.argmin(losses))]
+    result = scipy.optimize.minimize(
+        objective,
+        initial_delta,
+        method="L-BFGS-B",
+        jac=True,
+        bounds=[(-20.0, 20.0)] * (n_paths - 1),
+        options={"maxiter": int(max_iter), "ftol": float(tolerance)},
+    )
+    theta, log_jacobian = _perturbed_theta_matrix(
+        baselines,
+        path_index,
+        basis,
+        np.asarray(result.x),
+    )
+    information = _shared_path_information(
+        theta,
+        log_jacobian,
+        path_index,
+        designs,
+        counts,
+    )
+    parameter_covariance = identifiable_covariance(
+        information,
+        np.eye(n_paths - 1),
+    )
+    proportions, response, response_jacobian = _weighted_path_response(
+        theta,
+        log_jacobian,
+        path_index,
+        basis,
+        weights,
+    )
+    covariance = identifiable_covariance(
+        information,
+        response_jacobian,
+    )
+    return SharedPathFit(
+        delta=np.asarray(result.x),
+        path_logratios=response,
+        path_proportions=proportions,
+        theta=theta,
+        covariance=covariance,
+        parameter_covariance=parameter_covariance,
+        converged=bool(result.success),
+        iterations=int(result.nit),
+        objective=float(result.fun),
+    )
 
 
 def conditional_path_information(theta, path_index, basis, designs, totals):

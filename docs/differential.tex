@@ -25,9 +25,12 @@ The analysis asks two distinct questions:
   \item Does local splice-path usage differ across cell types within the same
         mice?
 \end{enumerate}
-Cells are first aggregated into
-\emph{mouse-by-condition-by-cell-type pseudobulks}. Biological replication is
-therefore at the mouse level, not the cell level.
+The primary analysis aggregates cells into
+\emph{mouse-by-condition-by-cell-type pseudobulks}. An evaluated alternative
+retains each cell's EC counts and transcript baseline in the local likelihood
+but estimates one shared path effect for the pseudobulk. Both approaches keep
+biological replication at the mouse level; cells are never treated as
+independent condition replicates.
 
 A splice block is a local region between constitutive exonic anchors.
 Transcripts that take the same path through that region are collapsed to one
@@ -60,7 +63,8 @@ The analysis proceeds in five steps:
         hierarchical transcript estimates, within each mouse, condition, and
         cell type.
   \item Refine path usage in each pseudobulk with the exact paired-primer EC
-        likelihood.
+        likelihood. Optionally, retain separate cell likelihood terms while
+        sharing one pseudobulk path perturbation.
   \item Estimate path-logratio covariance from EC ambiguity and UMI sampling.
         Estimates with weak information or boundary path usage are retained
         in output but excluded from Gaussian testing.
@@ -109,6 +113,48 @@ The genome-wide hierarchical model supplies a pseudobulk baseline
 Here \(Q_b\) is a Helmert basis for the \(S_b-1\) dimensional sum-zero
 subspace. The total spliced mass and transcript mixture within each path are
 fixed during this local refinement.
+
+\subsection*{Cell-resolved likelihood}
+
+The cell-resolved alternative tests whether aggregation discards useful
+read-assignment information. Let \(c\) index cells in pseudobulk \(i\), and
+let \(\bm\theta_{ci}^{(0)}\) be the cell's hierarchical transcript baseline.
+One path perturbation is shared by all cells in the pseudobulk:
+\[
+  \theta_{cit}(\bm\delta_{bi})
+  \propto
+  \theta_{cit}^{(0)}
+  \exp\{Q_{b,s(t)}^\prime\bm\delta_{bi}\}.
+\]
+The proportionality is normalized separately within each cell's block
+transcripts, preserving its baseline block mass. The objective is the sum of
+cell- and primer-specific multinomial log likelihoods,
+\[
+  \ell_{bi}(\bm\delta)
+  =
+  \sum_{c\in i}\sum_p
+  \log\operatorname{Multinomial}\left(
+    \bm c_{cip};N_{cip},
+    \frac{A_p\bm\theta_{ci}(\bm\delta)}
+         {\bm 1^\prime A_p\bm\theta_{ci}(\bm\delta)}
+  \right).
+\]
+Thus cells contribute read-assignment information without introducing
+cell-level biological degrees of freedom.
+
+The reported pseudobulk path proportions average fitted cell proportions
+using predicted gene-molecule weights,
+\[
+  w_{ci}
+  =
+  (\text{cell total UMI})_{ci}
+  \times
+  (\text{decoded gene proportion})_{ci}.
+\]
+The expected information for \(\bm\delta_{bi}\) is summed across cells and
+primers. Its inverse is propagated through this weighted path average to
+obtain the covariance of \(Q_b^\prime\log\bm\psi_{bi}\). The downstream
+mouse-replicate REML--GLS model is then unchanged.
 
 \subsection*{Path response and inferential covariance}
 
@@ -223,6 +269,12 @@ Bounded L-BFGS optimizes the paired multinomial likelihood, with
 fits are initialized from a log-ratio grid because the paired-primer
 normalizers can make the objective non-concave.
 
+For the cell-resolved variant, sparse cell-by-EC matrices are retained and
+one local transcript matrix is decoded at a time. The optimizer dimension is
+still only the number of paths minus one. Cell-specific Fisher contributions
+are accumulated analytically, so the method does not fit one free splicing
+parameter per cell.
+
 \subsection*{Identifiability and reliability}
 
 Finite Fisher covariance is not sufficient near a simplex boundary.
@@ -335,6 +387,34 @@ tests. Among 103 hypotheses shared by the 25- and 50-UMI analyses, power was
 0.453 and 0.449. Lower coverage cutoffs therefore increase the number of
 testable blocks without degrading calibrated precision among shared tests.
 The 25-UMI cutoff is the default.
+
+\subsection*{Does cell resolution increase condition-test power?}
+
+The cell-resolved likelihood was run on the 527 blocks testable in the
+25-UMI primary analysis. All 41,242 block-by-pseudobulk fits converged;
+21,624 passed the reliability rules, compared with 21,010 pseudobulk
+conditional estimates on the same blocks. This produced 836 condition tests,
+compared with 829 for pseudobulk fitting. No cell-resolved test passed 5\%
+FDR. Condition-label permutations were conservative, with 2.49\% of null
+p-values below 0.05.
+
+An exact matched comparison used the same reliable samples for both methods
+in 807 block-by-cell-type tests. Cell resolution reduced the median local
+covariance trace by 1.6\%, and the median path-response RMS difference was
+0.033 ILR units. P-values were strongly concordant
+(Spearman \(\rho=0.958\)); 24 pseudobulk and 25 cell-resolved tests were
+nominally significant.
+
+For the 259 matched two-condition, two-path tests, mean asymptotic power for
+a 0.5 ILR effect was 0.504 for both methods. The median ratio of
+cell-resolved to pseudobulk condition-coefficient standard error was 0.995.
+Retaining cell likelihood terms therefore did not materially increase power
+in this dataset. The aggregated EC counts and decoder baseline preserve
+nearly all relevant local information within a cell type, while residual
+between-mouse variation dominates the small reduction in inferential
+variance. Pseudobulk fitting remains the default; the cell-resolved method is
+available for datasets with stronger within-pseudobulk transcript
+heterogeneity.
 
 \section*{Limitations}
 
