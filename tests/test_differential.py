@@ -5,9 +5,14 @@ from pathlib import Path
 import unittest
 
 import numpy as np
+import pandas as pd
 import scipy.sparse as sp
 
-from extra_scripts import run_differential_splicing
+from extra_scripts import (
+    merge_celltype_compositional_splicing,
+    run_celltype_compositional_splicing,
+    run_differential_splicing,
+)
 from tealeaf.sc import differential
 
 
@@ -176,6 +181,70 @@ class DifferentialTest(unittest.TestCase):
         )
         self.assertAlmostEqual(size, 250.0)
 
+    def test_composition_projection_preserves_selected_logratio(self):
+        proportions = np.array([0.2, 0.3, 0.5])
+        covariance = np.array([[0.4, 0.1], [0.1, 0.6]])
+        projected, projected_covariance = (
+            differential.project_composition(
+                proportions, covariance, [0, 2]
+            )
+        )
+        np.testing.assert_allclose(projected, [2 / 7, 5 / 7])
+        old_basis = differential.helmert_basis(3)
+        contrast = np.array([1.0, 0.0, -1.0]) / np.sqrt(2)
+        expected = (
+            contrast @ old_basis @ covariance
+            @ old_basis.T @ contrast
+        )
+        self.assertAlmostEqual(projected_covariance[0, 0], expected)
+
+    def test_empirical_null_calibration_excludes_current_block(self):
+        table = pd.DataFrame({
+            "block_id": ["b1", "b2"],
+            "degrees_of_freedom": [1, 1],
+            "asymptotic_p_value": [0.01, 0.03],
+        })
+        null = pd.DataFrame({
+            "block_id": ["b1", "b1", "b2", "b2"],
+            "degrees_of_freedom": [1, 1, 1, 1],
+            "p_value": [0.01, 0.20, 0.02, 0.30],
+        })
+        calibrated, null_calibrated = (
+            merge_celltype_compositional_splicing
+            .empirical_null_calibration(table, null)
+        )
+        np.testing.assert_allclose(
+            calibrated["pooled_permutation_p_value"],
+            [1 / 3, 2 / 3],
+        )
+        self.assertEqual(len(null_calibrated), 4)
+
+    def test_pairwise_design_requires_shared_subjects(self):
+        records = [
+            {
+                "cluster": cell_type,
+                "condition": "control",
+                "mouse": mouse,
+            }
+            for mouse in ("m1", "m2", "m3")
+            for cell_type in ("A", "B")
+        ]
+        records.append({
+            "cluster": "C",
+            "condition": "control",
+            "mouse": "m4",
+        })
+        designs = (
+            run_celltype_compositional_splicing
+            .pairwise_celltype_designs(records, min_mice=3)
+        )
+        self.assertEqual(len(designs), 1)
+        contrast, prepared = designs[0]
+        self.assertEqual(contrast, "A_vs_B")
+        self.assertEqual(prepared[0], records[:6])
+        self.assertEqual(prepared[4].shape, (6, 3))
+        self.assertEqual(prepared[5].shape, (6, 4))
+
     def test_dirichlet_multinomial_detects_composition_effect(self):
         counts = np.array([
             [85, 15],
@@ -197,6 +266,13 @@ class DifferentialTest(unittest.TestCase):
         self.assertTrue(result["null_converged"])
         self.assertTrue(result["alternative_converged"])
         self.assertLess(result["p_value"], 0.05)
+        reused = differential.dirichlet_multinomial_test(
+            counts,
+            np.ones((6, 1)),
+            alternative,
+            fitted_null=result,
+        )
+        self.assertAlmostEqual(reused["statistic"], result["statistic"])
 
     def test_clustered_gls_detects_subject_level_effect(self):
         rng = np.random.default_rng(21)

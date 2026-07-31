@@ -1144,6 +1144,35 @@ def effective_multinomial_size(proportions, covariance, maximum=None):
     return size
 
 
+def project_composition(proportions, covariance, selected):
+    """Project an ILR composition and covariance onto selected categories."""
+    proportions = np.asarray(proportions, dtype=float)
+    covariance = np.asarray(covariance, dtype=float)
+    selected = np.asarray(selected, dtype=np.int64)
+    if (
+        proportions.ndim != 1
+        or len(proportions) < 2
+        or covariance.shape != (len(proportions) - 1,) * 2
+    ):
+        raise ValueError("composition and ILR covariance shapes disagree")
+    if (
+        selected.ndim != 1
+        or len(selected) < 2
+        or len(np.unique(selected)) != len(selected)
+        or np.any(selected < 0)
+        or np.any(selected >= len(proportions))
+    ):
+        raise ValueError("selected categories must be unique valid indices")
+    old_basis = helmert_basis(len(proportions))
+    new_basis = helmert_basis(len(selected))
+    embedding = np.eye(len(proportions))[:, selected]
+    transform = new_basis.T @ embedding.T @ old_basis
+    projected_covariance = transform @ covariance @ transform.T
+    projected_proportions = proportions[selected].copy()
+    projected_proportions /= projected_proportions.sum()
+    return projected_proportions, projected_covariance
+
+
 def _dirichlet_multinomial_fit(
     counts,
     design,
@@ -1298,7 +1327,14 @@ def _multinomial_fit(counts, design, initial=None, max_iter=500):
     }
 
 
-def multinomial_test(counts, null_design, alternative_design, *, max_iter=500):
+def multinomial_test(
+    counts,
+    null_design,
+    alternative_design,
+    *,
+    max_iter=500,
+    fitted_null=None,
+):
     """Likelihood-ratio test for multinomial compositional regression."""
     counts = np.asarray(counts, dtype=float)
     null_design = np.asarray(null_design, dtype=float)
@@ -1320,11 +1356,34 @@ def multinomial_test(counts, null_design, alternative_design, *, max_iter=500):
         )
     ):
         raise ValueError("alternative design must begin with the null design")
-    null = _multinomial_fit(
-        counts,
-        null_design,
-        max_iter=max_iter,
-    )
+    if fitted_null is None:
+        null = _multinomial_fit(
+            counts,
+            null_design,
+            max_iter=max_iter,
+        )
+        if not null["converged"]:
+            null = _multinomial_fit(
+                counts,
+                null_design,
+                initial=null["parameters"],
+                max_iter=4 * int(max_iter),
+            )
+    else:
+        null_coefficients = np.asarray(
+            fitted_null["null_coefficients"], dtype=float
+        )
+        if null_coefficients.shape != (
+            null_design.shape[1], counts.shape[1] - 1
+        ):
+            raise ValueError("fitted null coefficients have the wrong shape")
+        null = {
+            "objective": float(fitted_null["null_objective"]),
+            "parameters": null_coefficients.ravel(),
+            "converged": True,
+            "iterations": 0,
+            "message": "reused fitted null",
+        }
     n_paths = counts.shape[1]
     null_coefficients = null["parameters"].reshape(
         null_design.shape[1], n_paths - 1
@@ -1337,6 +1396,13 @@ def multinomial_test(counts, null_design, alternative_design, *, max_iter=500):
         initial=initial.ravel(),
         max_iter=max_iter,
     )
+    if not alternative["converged"]:
+        alternative = _multinomial_fit(
+            counts,
+            alternative_design,
+            initial=alternative["parameters"],
+            max_iter=4 * int(max_iter),
+        )
     statistic = max(
         2.0 * (null["objective"] - alternative["objective"]),
         0.0,
@@ -1355,6 +1421,13 @@ def multinomial_test(counts, null_design, alternative_design, *, max_iter=500):
         "alternative_iterations": alternative["iterations"],
         "null_message": null["message"],
         "alternative_message": alternative["message"],
+        "null_objective": null["objective"],
+        "null_coefficients": null["parameters"].reshape(
+            null_design.shape[1], n_paths - 1
+        ),
+        "alternative_coefficients": alternative["parameters"].reshape(
+            alternative_design.shape[1], n_paths - 1
+        ),
     }
 
 
@@ -1365,6 +1438,7 @@ def dirichlet_multinomial_test(
     *,
     max_iter=500,
     fix_null_concentration=True,
+    fitted_null=None,
 ):
     """Likelihood-ratio test of compositional regression coefficients."""
     counts = np.asarray(counts, dtype=float)
@@ -1387,11 +1461,51 @@ def dirichlet_multinomial_test(
         )
     ):
         raise ValueError("alternative design must begin with the null design")
-    null = _dirichlet_multinomial_fit(
-        counts,
-        null_design,
-        max_iter=max_iter,
-    )
+    if fitted_null is None:
+        null = _dirichlet_multinomial_fit(
+            counts,
+            null_design,
+            max_iter=max_iter,
+        )
+        if not null["converged"]:
+            null = _dirichlet_multinomial_fit(
+                counts,
+                null_design,
+                initial=null["parameters"],
+                max_iter=4 * int(max_iter),
+            )
+    elif fitted_null["model"] == "multinomial":
+        result = multinomial_test(
+            counts,
+            null_design,
+            alternative_design,
+            max_iter=max_iter,
+            fitted_null=fitted_null,
+        )
+        result.update({
+            "null_concentration": np.inf,
+            "alternative_concentration": np.inf,
+        })
+        return result
+    else:
+        null_coefficients = np.asarray(
+            fitted_null["null_coefficients"], dtype=float
+        )
+        concentration = float(fitted_null["null_concentration"])
+        if null_coefficients.shape != (
+            null_design.shape[1], counts.shape[1] - 1
+        ):
+            raise ValueError("fitted null coefficients have the wrong shape")
+        null = {
+            "objective": float(fitted_null["null_objective"]),
+            "parameters": np.r_[
+                null_coefficients.ravel(), np.log(concentration)
+            ],
+            "concentration": concentration,
+            "converged": True,
+            "iterations": 0,
+            "message": "reused fitted null",
+        }
     if null["concentration"] >= 0.99e6:
         result = multinomial_test(
             counts,
@@ -1424,6 +1538,18 @@ def dirichlet_multinomial_test(
             null["concentration"] if fix_null_concentration else None
         ),
     )
+    if not alternative["converged"]:
+        alternative = _dirichlet_multinomial_fit(
+            counts,
+            alternative_design,
+            initial=alternative["parameters"],
+            max_iter=4 * int(max_iter),
+            fixed_concentration=(
+                null["concentration"]
+                if fix_null_concentration
+                else None
+            ),
+        )
     statistic = max(
         2.0 * (null["objective"] - alternative["objective"]),
         0.0,
@@ -1444,4 +1570,11 @@ def dirichlet_multinomial_test(
         "alternative_iterations": alternative["iterations"],
         "null_message": null["message"],
         "alternative_message": alternative["message"],
+        "null_objective": null["objective"],
+        "null_coefficients": null["parameters"][:-1].reshape(
+            null_design.shape[1], n_paths - 1
+        ),
+        "alternative_coefficients": alternative["parameters"][
+            : alternative_design.shape[1] * (n_paths - 1)
+        ].reshape(alternative_design.shape[1], n_paths - 1),
     }

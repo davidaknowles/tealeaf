@@ -2044,3 +2044,48 @@ produced an FDR-significant condition effect. The reusable effective-count,
 multinomial, Dirichlet--multinomial, and clustered-GLS implementations are in
 `tealeaf/sc/differential.py`; the dataset-independent comparison runner is
 `extra_scripts/run_compositional_splicing.py`.
+
+## 2026-07-30: exact compositional cell-type tests
+
+The cell-type analysis was extended from Gaussian ILR Wald tests to joint
+path-composition likelihood-ratio tests. Equivalent annotation intervals are
+canonicalized to one transcript-to-path partition. For each partition,
+EC-derived ILR covariance is converted to fractional effective path counts.
+The null Dirichlet--multinomial model has mouse fixed effects; the alternative
+adds cell-type effects. This tests all path log-ratios and represented cell
+types jointly while absorbing condition and shared mouse effects.
+
+The asymptotic reference was not adequate. Across 32,291 within-mouse
+permutation fits in an initial sweep, 15.6% of asymptotic null p-values were
+below 0.05. A pooled empirical null restored an overall 5.17% rejection rate
+but was overly conservative because the null distribution varied strongly
+with effective path count. The production analysis therefore used 500
+within-mouse label permutations separately for every event and calculated
+the finite-permutation rank p-value. Null parameters were reused, while every
+permuted alternative was optimized. All 646 observed tests converged; valid
+permutation counts ranged from 476 to 500.
+
+A label-effect-independent minimum of 30 pseudobulk observations retained
+406 tests for the primary FDR family. There were 149 exact p-values below
+0.05 and 101 canonical splice-path partitions in 95 genes passed 5% BH FDR.
+The count was 101 at minimum-observation thresholds 29, 30, 31, and 32, then
+99 at 33. Median maximum cell-type logit effect among discoveries was 0.84;
+median effective path count was 21.7. Thirteen of 14 canonical discoveries
+from the earlier Gaussian analysis were recovered.
+
+Pairwise Dirichlet--multinomial testing produced 97 significant
+block-by-pair hypotheses but only 32 distinct blocks after correcting across
+3,708 hypotheses. Permutation-calibrated multinomial testing produced 43
+significant pair hypotheses over 15 blocks. A label-independent projection
+onto the two molecule-weighted dominant paths was implemented by exact ILR
+covariance transformation. It yielded 58 discoveries with a 5% path floor,
+88 with a 1% floor, and 91 without a floor under four-bin cross-fitted
+empirical-null calibration. None exceeded the full-path exact omnibus
+result.
+
+Reusable likelihood fitting, fitted-null reuse, convergence retries, and
+composition projection are in `tealeaf/sc/differential.py`. The reusable
+runner and shard merger are
+`extra_scripts/run_celltype_compositional_splicing.py` and
+`extra_scripts/merge_celltype_compositional_splicing.py`; the dataset wrapper
+only supplies paths and run parameters.

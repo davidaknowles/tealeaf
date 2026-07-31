@@ -47,11 +47,13 @@ With two conditions and two paths, this is a precision-weighted
 differential-PSI test. With more conditions or paths, all condition
 coefficients and path log-ratios are tested jointly.
 
-For cell-type effects, each hypothesis is indexed only by a splice block. It
-is an omnibus test of equal path usage across the included cell types, after
-absorbing mouse and condition into a mouse-specific fixed effect. Cell types
-must be represented in at least three mice. These two hypothesis families are
-reported separately.
+For cell-type effects, each hypothesis is indexed only by a nonredundant
+splice-path partition. It is an omnibus test of equal path usage across the
+included cell types, after absorbing mouse and condition into a
+mouse-specific fixed effect. Cell types must be represented in at least
+three mice, and the primary FDR family requires at least 30 pseudobulk
+observations per partition. These two hypothesis families are reported
+separately.
 
 \subsection*{Workflow}
 
@@ -261,18 +263,29 @@ For the \emph{condition test}, one model is fit for each block and cell type.
 tests all non-reference condition coefficients. Condition labels are
 permuted with their group sizes fixed for calibration.
 
-For the \emph{cell-type test}, one model is fit for each block across cell
-types. \(X_i\) contains mouse fixed effects and cell-type indicators. Because
-condition is constant within a mouse, the mouse effects also absorb condition
-and all other shared mouse-level shifts. The Wald statistic tests all
-cell-type indicators. Calibration permutations shuffle cell-type labels
-within each mouse, preserving the pairing and observed missingness pattern.
-
-The primary p-value is the asymptotic Wald value because 20 permutations do
-not resolve the tail required for genome-wide FDR control.
-Benjamini--Hochberg correction is applied separately for each combination of
-test axis (condition or cell type) and covariance method (conditional or
-profile).
+For the primary \emph{cell-type test}, the effective path counts are fit by
+Dirichlet--multinomial regression. The null design contains a fixed effect
+for each mouse and the alternative adds cell-type indicators:
+\[
+ H_0:B_{\mathrm{cell}}=0,\qquad
+ H_1:B_{\mathrm{cell}}\ne 0.
+\]
+Because condition is constant within a mouse, the mouse effects also absorb
+condition and all other shared mouse-level shifts. The likelihood-ratio
+statistic jointly tests every non-reference cell type and every path
+log-ratio. Cell-type labels are shuffled within mouse, preserving pairing,
+mouse-specific label availability, and pseudobulk sizes. The primary p-value
+is the finite-permutation rank
+\[
+ p_b=\frac{1+\sum_{r=1}^{R}
+   \mathbb{1}\{T_b^{(r)}\geq T_b\}}{R+1},
+ \qquad R=500.
+\]
+The null fit and its concentration are reused, but each permuted alternative
+is refit. Benjamini--Hochberg correction is then applied across the
+nonredundant partitions passing the observation-count filter. The earlier
+conditional- and profile-covariance Wald tests are retained as sensitivity
+analyses.
 
 \subsection*{Joint condition tests}
 
@@ -403,25 +416,40 @@ separate discoveries.
 
 \subsection*{Cell-type effects within mouse}
 
-The paired cell-type analysis tested 369 blocks with conditional covariance;
-218 of these also had a valid profile-covariance test. Across blocks, 12 cell
-types were represented, with each individual block comparing between two and
-11 cell types. Every included cell type had at least three mice, and the
-mouse-fixed-effect design was required to have full rank.
+The initial Gaussian analysis tested 369 conditional and 218 profile
+partitions. It found 22 and five FDR-significant partitions, respectively,
+with all profile discoveries contained in the conditional set. After
+canonicalizing annotation intervals that encode the same
+transcript-to-path partition, these 22 intervals represented 14 distinct
+partitions.
 
-Cell-type differences were readily detected:
-\begin{itemize}[leftmargin=*]
-  \item 57 conditional tests were nominally significant and 22 remained
-        significant at 5\% FDR;
-  \item 28 profile tests were nominally significant and five remained
-        significant at 5\% FDR;
-  \item all five profile discoveries were among the 22 conditional
-        discoveries.
-\end{itemize}
-The union therefore contains \textbf{22 FDR-significant splice blocks} with
-evidence of different path usage across cell types. Permuting cell-type
-labels within mouse gave conservative null rejection rates of 2.0\% for
-conditional and 1.4\% for profile covariance.
+The compositional analysis used converged, conditionally identifiable
+estimates and required every modeled path proportion to be at least 5\%.
+This produced 646 nonredundant tests. A minimum of 30 pseudobulk observations
+per partition, chosen as a label-effect-independent coverage requirement,
+retained 406 hypotheses for FDR correction. Among these, 149 had exact
+permutation \(p<0.05\), and
+\textbf{101 splice-path partitions in 95 genes passed 5\% FDR}. Thirteen of
+the 14 nonredundant Gaussian discoveries were recovered; the remaining
+partition had exact \(p=0.032\) but FDR 0.098. Significant compositional
+results had median maximum cell-type logit effect 0.84 and median effective
+path count 21.7.
+
+The observation-count threshold is not a narrow boundary effect: thresholds
+from 29 through 32 pseudobulks each gave 101 discoveries, while 33 gave 99.
+All 646 observed fits converged. The median number of valid permutations was
+500; the minimum was 476 after excluding failed permutation refits.
+Asymptotic Dirichlet--multinomial p-values were anti-conservative, with
+15.5\% of permutation-null values below 0.05, which is why only exact
+per-event permutation ranks are used for the primary result.
+
+Two sensitivity analyses did not improve the event-level result. Testing
+3,708 individual cell-type pairs gave 97 FDR-significant pair hypotheses but
+only 32 distinct partitions after correction across all pairs. Restricting
+each block to its two molecule-weighted dominant paths increased coverage;
+with a 1\% path floor it gave 88 discoveries, and removing the floor gave 91,
+under a cross-fitted empirical null. These analyses support the full-path
+exact omnibus test as the primary cell-type analysis.
 
 \subsection*{Calibration}
 
