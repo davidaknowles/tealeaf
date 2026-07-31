@@ -7,6 +7,8 @@
 \usepackage{enumitem}
 \usepackage{hyperref}
 
+\newcommand{\Beta}{\bm B}
+
 \title{Differential Splicing with Subisoform Covariance}
 \author{}
 \date{}
@@ -70,9 +72,9 @@ The analysis proceeds in five steps:
   \item Estimate path-logratio covariance from EC ambiguity and UMI sampling.
         Estimates with weak information or boundary path usage are retained
         in output but excluded from Gaussian testing.
-  \item Fit mouse-replicate GLS models with separate inferential and
-        between-mouse variance components. Test condition within cell type,
-        and test cell type within mouse, as separate analyses.
+  \item Fit mouse-replicate GLS condition models and compositional cell-type
+        models. Test condition within cell type and cell type within mouse as
+        separate hypothesis families.
 \end{enumerate}
 
 Two inferential covariance calculations are reported. The
@@ -81,251 +83,559 @@ each path. The \emph{profile} calculation allows all transcript directions
 to vary as nuisance parameters. They are sensitivity analyses for the same
 block-by-cell-type hypothesis, not independent biological hypotheses.
 
+\section*{Notation and Dimensions}
+
+An \emph{equivalence class} (EC) is a set of transcripts compatible with one
+UMI. An EC count is therefore observed, whereas its allocation among
+compatible transcripts is latent. A \emph{splice path} is an ordered local
+exon chain between two constitutive anchors. A \emph{subisoform} is the set
+of full-length transcripts taking the same path through one block. PSI means
+percent spliced in; for two paths it is one component of the path-composition
+vector. ILR means isometric log-ratio, an orthonormal coordinate system for a
+composition.
+
+For block \(b\), let \(n_b,T_b,S_b\in\mathbb N\) be its numbers of
+qualifying pseudobulks, modeled transcript features, and spliced paths,
+respectively, with \(S_b\geq2\). Then \(d_b=S_b-1\in\mathbb N\) is its
+number of independent log-ratios. There are \(P=2\) primer protocols.
+Primer \(p\) has \(E_{bp}\in\mathbb N\) ECs for block \(b\). Pseudobulk
+\(i\) contains \(H_{bi}\in\mathbb N\) cells. The principal symbols are:
+\[
+\begin{array}{lll}
+\toprule
+\text{symbol} & \text{dimension or domain} & \text{meaning}\\
+\midrule
+b & \{1,\ldots,\mathcal B\} & \text{splice-block index}\\
+i & \{1,\ldots,n_b\} & \text{pseudobulk index within block }b\\
+p & \{1,\ldots,P\} & \text{primer-protocol index}\\
+h & \{1,\ldots,H_{bi}\} & \text{cell index within pseudobulk }i\\
+t & \{1,\ldots,T_b\} & \text{transcript-feature index}\\
+s & \{1,\ldots,S_b\} & \text{splice-path index}\\
+\bm c_{bip} & \mathbb N_0^{E_{bp}} & \text{pseudobulk EC counts}\\
+A_{bp} & \mathbb R_+^{E_{bp}\times T_b} & \text{weighted EC design}\\
+\bm\theta_{bi} & \mathbb R_+^{T_b} & \text{transcript abundance}\\
+C_b & \{0,1\}^{S_b\times T_b} & \text{transcript-to-path map}\\
+Q_b & \mathbb R^{S_b\times d_b} & \text{Helmert ILR basis}\\
+\bm\delta_{bi} & \mathbb R^{d_b} & \text{local path perturbation}\\
+\bm\psi_{bi} & \Delta^{S_b-1} & \text{path composition}\\
+\bm y_{bi} & \mathbb R^{d_b} & \text{ILR response}\\
+V_{bi} & \mathbb S_+^{d_b} & \text{ILR inferential covariance}\\
+\bottomrule
+\end{array}
+\]
+Here \(\mathcal B\in\mathbb N\) is the number of blocks,
+\(\mathbb N_0=\{0,1,\ldots\}\),
+\(\Delta^{S_b-1}=\{\bm v\in\mathbb R_+^{S_b}:\bm1^\prime\bm v=1\}\),
+and \(\mathbb S_+^{d_b}\) is the set of symmetric positive-semidefinite
+\(d_b\times d_b\) matrices. Bold lower-case symbols are vectors, upper-case
+symbols are matrices, \(\bm1_k\in\mathbb R^k\) is a vector of ones,
+\(\bm0_k\in\mathbb R^k\) is a vector of zeros,
+\(I_k\in\mathbb R^{k\times k}\) is the identity, \(\odot\) is elementwise
+multiplication, and \((\cdot)^+\) is the Moore--Penrose pseudoinverse.
+
+\subsection*{Helmert basis and ILR coordinates}
+
+The simplex has only \(d_b=S_b-1\) free directions because path proportions
+sum to one. The Helmert matrix \(Q_b\) is a fixed orthonormal basis for the
+sum-zero subspace:
+\[
+ Q_b^\prime Q_b=I_{d_b},\qquad Q_b^\prime\bm1_{S_b}=\bm0_{d_b}.
+\]
+Using one-based row \(r\in\{1,\ldots,S_b\}\) and column
+\(j\in\{1,\ldots,d_b\}\), its entries are
+\[
+ (Q_b)_{rj}=
+ \begin{cases}
+  1/\sqrt{j(j+1)}, & r\leq j,\\
+  -j/\sqrt{j(j+1)}, & r=j+1,\\
+  0, & r>j+1.
+ \end{cases}
+\]
+For any strictly positive \(\bm\psi_{bi}\in\Delta^{S_b-1}\), the ILR
+coordinate is \(\bm y_{bi}=Q_b^\prime\log\bm\psi_{bi}\in\mathbb R^{d_b}\),
+where the logarithm is elementwise. For \(S_b=2\),
+\(Q_b=(1,-1)^\prime/\sqrt2\) and
+\(y_{bi}=\log(\psi_{bi1}/\psi_{bi2})/\sqrt2\). Thus a two-path ILR test is a
+scaled log-odds, or differential-PSI, test.
+
 \section*{Statistical Model}
 
 \subsection*{Paired-primer EC likelihood}
 
-For pseudobulk \(i\) and primer \(p\), let \(\bm c_{ip}\) be the EC counts,
-\(N_{ip}=\bm 1^\prime\bm c_{ip}\), and \(A_p\) the fixed weighted EC design.
-For transcript abundance \(\bm\theta_i\),
+For block \(b\), pseudobulk \(i\), and primer \(p\), define
+\(N_{bip}=\bm1_{E_{bp}}^\prime\bm c_{bip}\in\mathbb N_0\),
+\(\bm q_{bip}=A_{bp}\bm\theta_{bi}\in\mathbb R_+^{E_{bp}}\), and
+\(Z_{bip}=\bm1_{E_{bp}}^\prime\bm q_{bip}\in\mathbb R_+\). Conditional on
+the primer-specific UMI total,
 \[
-  \bm q_{ip}=A_p\bm\theta_i,\qquad
-  Z_{ip}=\bm 1^\prime\bm q_{ip},
+ \bm c_{bip}\mid N_{bip},\bm\theta_{bi}
+ \sim\operatorname{Multinomial}
+ \left(N_{bip},\bm q_{bip}/Z_{bip}\right).
 \]
-and the likelihood conditional on the primer-specific UMI total is
-\[
-  \bm c_{ip}\mid N_{ip},\bm\theta_i
-  \sim
-  \operatorname{Multinomial}
-  \left(N_{ip},\frac{\bm q_{ip}}{Z_{ip}}\right).
-\]
-Oligo(dT) and random-hexamer counts have separate designs and likelihood
-terms, preserving their different positional and transcript-exposure
-profiles.
+The oligo(dT) and random-hexamer protocols use separate \(A_{bp}\) matrices
+and likelihood terms. Their different transcript exposures therefore model
+primer-specific positional coverage without forcing a common bias profile.
 
-The genome-wide hierarchical model supplies a pseudobulk baseline
-\(\bm\theta_i^{(0)}\). For block \(b\), a local parameter
-\(\bm\delta_{bi}\) changes the mass of all transcripts carrying path \(s(t)\):
+The genome-wide hierarchical model supplies
+\(\bm\theta_{bi}^{(0)}\in\mathbb R_+^{T_b}\). Let
+\(s_b(t)\in\{1,\ldots,S_b\}\) map a spliced transcript feature \(t\) to its
+path, and let \(\mathcal T_b^{\rm sp}\subseteq\{1,\ldots,T_b\}\) be the
+spliced features. Their baseline mass is the scalar
+\(\omega_{bi}^{\rm sp}=\sum_{t\in\mathcal T_b^{\rm sp}}
+\theta_{bit}^{(0)}\in\mathbb R_+\). For
+\(t\in\mathcal T_b^{\rm sp}\), local refinement uses
 \[
-  \theta_{it}(\bm\delta_{bi})
-  \propto
-  \theta_{it}^{(0)}
-  \exp\{Q_{b,s(t)}^\prime\bm\delta_{bi}\}.
+ \theta_{bit}(\bm\delta_{bi})
+ =\omega_{bi}^{\rm sp}\frac{\theta_{bit}^{(0)}
+ \exp\{(Q_b)_{s_b(t),\cdot}\bm\delta_{bi}\}}
+ {\sum_{u\in\mathcal T_b^{\rm sp}}\theta_{biu}^{(0)}
+ \exp\{(Q_b)_{s_b(u),\cdot}\bm\delta_{bi}\}},
 \]
-Here \(Q_b\) is a Helmert basis for the \(S_b-1\) dimensional sum-zero
-subspace. The total spliced mass and transcript mixture within each path are
-fixed during this local refinement.
-
-\subsection*{Cell-resolved likelihood}
-
-The cell-resolved alternative tests whether aggregation discards useful
-read-assignment information. Let \(c\) index cells in pseudobulk \(i\), and
-let \(\bm\theta_{ci}^{(0)}\) be the cell's hierarchical transcript baseline.
-One path perturbation is shared by all cells in the pseudobulk:
-\[
-  \theta_{cit}(\bm\delta_{bi})
-  \propto
-  \theta_{cit}^{(0)}
-  \exp\{Q_{b,s(t)}^\prime\bm\delta_{bi}\}.
-\]
-The proportionality is normalized separately within each cell's block
-transcripts, preserving its baseline block mass. The objective is the sum of
-cell- and primer-specific multinomial log likelihoods,
-\[
-  \ell_{bi}(\bm\delta)
-  =
-  \sum_{c\in i}\sum_p
-  \log\operatorname{Multinomial}\left(
-    \bm c_{cip};N_{cip},
-    \frac{A_p\bm\theta_{ci}(\bm\delta)}
-         {\bm 1^\prime A_p\bm\theta_{ci}(\bm\delta)}
-  \right).
-\]
-Thus cells contribute read-assignment information without introducing
-cell-level biological degrees of freedom.
-
-The reported pseudobulk path proportions average fitted cell proportions
-using predicted gene-molecule weights,
-\[
-  w_{ci}
-  =
-  (\text{cell total UMI})_{ci}
-  \times
-  (\text{decoded gene proportion})_{ci}.
-\]
-The expected information for \(\bm\delta_{bi}\) is summed across cells and
-primers. Its inverse is propagated through this weighted path average to
-obtain the covariance of \(Q_b^\prime\log\bm\psi_{bi}\). The downstream
-mouse-replicate REML--GLS model is then unchanged.
+where \((Q_b)_{s,\cdot}\in\mathbb R^{1\times d_b}\). Nuisance-feature
+abundances are unchanged. This preserves total spliced mass and the relative
+transcript mixture within each path while estimating only
+\(\bm\delta_{bi}\in\mathbb R^{d_b}\).
 
 \subsection*{Path response and inferential covariance}
 
-Let \(C_b\) map transcripts to paths. Path proportions and the response used
-by the differential test are
+Each spliced column of \(C_b\in\{0,1\}^{S_b\times T_b}\) contains one 1 in
+row \(s_b(t)\); nuisance columns are zero. Define
 \[
-  \bm\psi_{bi}
-  =
-  C_b\frac{\bm\theta_{i,\mathrm{spliced}}}
-            {\bm 1^\prime\bm\theta_{i,\mathrm{spliced}}},
-  \qquad
-  \bm y_{bi}=Q_b^\prime\log\bm\psi_{bi}.
+ \bm a_{bi}=C_b\bm\theta_{bi}\in\mathbb R_+^{S_b},\qquad
+ \bm\psi_{bi}=\frac{\bm a_{bi}}
+ {\bm1_{S_b}^\prime\bm a_{bi}}\in\Delta^{S_b-1},\qquad
+ \bm y_{bi}=Q_b^\prime\log\bm\psi_{bi}\in\mathbb R^{d_b}.
 \]
-For two paths, \(y_{bi}\) is the log path-odds divided by \(\sqrt 2\).
-Under the local parameterization,
-\(\bm y_{bi}=\bm y_{bi}^{(0)}+\bm\delta_{bi}\).
+The perturbation parameterization implies
+\(\bm y_{bi}=\bm y_{bi}^{(0)}+\bm\delta_{bi}\), where
+\(\bm y_{bi}^{(0)}\in\mathbb R^{d_b}\) is computed from the baseline.
 
-The conditional covariance is the inverse Fisher information for
-\(\bm\delta_{bi}\). For the profile calculation, write
-\(\bm\eta_i=\log\bm\theta_i\). The expected transcript information is
+Let \(I_{\delta,bi}\in\mathbb S_+^{d_b}\) be the expected Fisher information
+of the summed paired-primer log likelihood with respect to
+\(\bm\delta_{bi}\). The conditional covariance is
+\(V_{bi}^{\rm cond}=I_{\delta,bi}^{-1}\in\mathbb S_+^{d_b}\) when the
+information is positive definite.
+
+The profile calculation instead allows all transcript directions to vary.
+Set \(\bm\eta_{bi}=\log\bm\theta_{bi}\in\mathbb R^{T_b}\),
+\(D_{bi}=\operatorname{diag}(\bm\theta_{bi})\in
+\mathbb R^{T_b\times T_b}\),
+\(\bm d_{bp}=A_{bp}^\prime\bm1_{E_{bp}}\in\mathbb R^{T_b}\), and
+\(\bm r_{0,bip}=(\bm d_{bp}\odot\bm\theta_{bi})/Z_{bip}
+\in\mathbb R^{T_b}\).
+The primer-specific expected information is
 \[
-  I_{\eta,ip}
-  =
-  N_{ip}\left[
-    \frac{
-      \operatorname{diag}(\bm\theta_i)
-      A_p^\prime\operatorname{diag}(\bm q_{ip}^{-1})
-      A_p\operatorname{diag}(\bm\theta_i)
-    }{Z_{ip}}
-    -
-    \bm r_{0,ip}\bm r_{0,ip}^\prime
-  \right],
+ I_{\eta,bip}=N_{bip}\left[
+ \frac{D_{bi}A_{bp}^\prime
+ \operatorname{diag}(\bm q_{bip}^{-1})A_{bp}D_{bi}}{Z_{bip}}
+ -\bm r_{0,bip}\bm r_{0,bip}^\prime
+ \right]\in\mathbb S_+^{T_b}.
 \]
-where
-\(\bm d_p=A_p^\prime\bm 1\) and
-\(\bm r_{0,ip}=(\bm d_p\odot\bm\theta_i)/Z_{ip}\).
-Information is added across primers. If
-\(J_{bi}=\partial\bm y_{bi}/\partial\bm\eta_i^\prime\), then
+Let \(J_{bi}=\partial\bm y_{bi}/\partial\bm\eta_{bi}^\prime
+\in\mathbb R^{d_b\times T_b}\). Then
 \[
-  V_{bi}^{\mathrm{profile}}
-  =
-  J_{bi}\left(\sum_p I_{\eta,ip}\right)^+J_{bi}^\prime.
+ V_{bi}^{\rm prof}=J_{bi}
+ \left(\sum_{p=1}^P I_{\eta,bip}\right)^+J_{bi}^\prime
+ \in\mathbb S_+^{d_b}.
 \]
-The implementation checks whether \(J_{bi}\) overlaps the information null
-space. A non-estimable contrast is reported as unidentified rather than being
-assigned zero variance by a pseudoinverse.
+If a row direction of \(J_{bi}\) overlaps the information null space, that
+contrast is marked unidentified rather than assigned zero variance by the
+pseudoinverse.
 
-\subsection*{Dirichlet--multinomial alternative}
+\subsection*{Cell-resolved likelihood}
 
-A compositional likelihood provides an alternative to Gaussian ILR
-regression. It must account for EC ambiguity: treating all gene UMIs as known
-path assignments is overconfident. For fitted path proportions
-\(\bm\psi_i\), define the unit-multinomial ILR covariance
+For cell \(h\) in pseudobulk \(i\), let
+\(\bm c_{bihp}\in\mathbb N_0^{E_{bp}}\),
+\(N_{bihp}=\bm1_{E_{bp}}^\prime\bm c_{bihp}\in\mathbb N_0\), and
+\(\bm\theta_{bih}^{(0)}\in\mathbb R_+^{T_b}\) be its EC counts, total, and
+baseline. Every cell shares the same pseudobulk perturbation
+\(\bm\delta_{bi}\in\mathbb R^{d_b}\), but its transcript vector
+\(\bm\theta_{bih}(\bm\delta_{bi})\in\mathbb R_+^{T_b}\) is normalized using
+its own baseline. The objective is the scalar
 \[
-  B_i=Q^\prime\operatorname{diag}(\bm\psi_i^{-1})Q.
+ \ell_{bi}(\bm\delta_{bi})=
+ \sum_{h=1}^{H_{bi}}\sum_{p=1}^P
+ \log\operatorname{Multinomial}\left(
+ \bm c_{bihp};N_{bihp},
+ \frac{A_{bp}\bm\theta_{bih}(\bm\delta_{bi})}
+ {\bm1_{E_{bp}}^\prime A_{bp}\bm\theta_{bih}(\bm\delta_{bi})}
+ \right).
 \]
-The effective multinomial size matches \(B_i/n_i\) to the EC-derived
-conditional covariance \(V_i\) in Frobenius norm:
+Thus cells contribute assignment information but do not become biological
+replicates. Let \(U_{bih}\in\mathbb R_+\) be the cell's total UMI count and
+\(g_{bih}\in[0,1]\) its decoded proportion for the block's gene. The scalar
+weight is \(w_{bih}=U_{bih}g_{bih}\), and the reported pseudobulk composition
+is
 \[
-  n_i^{\mathrm{eff}}
-  =
-  \frac{\langle B_i,B_i\rangle}{\langle B_i,V_i\rangle},
-  \qquad
-  n_i^{\mathrm{eff}}\leq\text{gene UMIs}_i.
+ \bm\psi_{bi}=
+ \frac{\sum_{h=1}^{H_{bi}}w_{bih}\bm\psi_{bih}}
+ {\sum_{h=1}^{H_{bi}}w_{bih}}\in\Delta^{S_b-1}.
 \]
-Fractional path counts are
-\(\bm x_i=n_i^{\mathrm{eff}}\bm\psi_i\).
+Cell- and primer-specific Fisher information matrices in
+\(\mathbb S_+^{d_b}\) are summed, inverted, and propagated through this
+weighted average to obtain \(V_{bi}\in\mathbb S_+^{d_b}\).
 
-The compositional regression is
+\subsection*{Effective counts and compositional regression}
+
+Treating all gene UMIs as known path assignments is overconfident when ECs
+are ambiguous. For each fitted \(\bm\psi_{bi}\), define the unit-multinomial
+ILR covariance
 \[
-  \bm x_i\mid n_i^{\mathrm{eff}}
-  \sim
-  \operatorname{DirichletMultinomial}
-  (n_i^{\mathrm{eff}},\kappa\bm\mu_i),
-  \qquad
-  \operatorname{logit}_{\mathrm{ref}}(\bm\mu_i)=X_iB.
+ G_{bi}=Q_b^\prime\operatorname{diag}(\bm\psi_{bi}^{-1})Q_b
+ \in\mathbb S_+^{d_b}.
 \]
-The primary analysis estimates the concentration \(\kappa\) under the null
-and holds it fixed under the alternative, parallel to estimating biological
-variance under the GLS null. A sensitivity mode re-estimates one global
-concentration under the alternative. This adds no likelihood-ratio degree of
-freedom because both models contain one concentration nuisance parameter.
-Both modes explicitly evaluate the exact multinomial endpoint
-\(\kappa=\infty\), rather than relying on a large finite approximation.
-Analytic gradients are used for both likelihoods.
-
-\subsection*{Mouse-replicate differential tests}
-
-Within one cell type and block, let \(i\) index mouse pseudobulks and let
-\(X_i\) encode condition:
+The scalar effective count matches \(G_{bi}/n\) to the EC-derived
+\(V_{bi}^{\rm cond}\) in Frobenius inner product
+\(\langle U,W\rangle_F=\operatorname{tr}(U^\prime W)\), for
+\(U,W\in\mathbb R^{d_b\times d_b}\):
 \[
-  \widehat{\bm y}_{bi}
-  =
-  X_i B_b+\bm\epsilon_{bi},
-  \qquad
-  \operatorname{Var}(\bm\epsilon_{bi})
-  =
-  V_{bi}+\tau_b^2 I.
+ n_{bi}^{\rm eff}=
+ \min\left\{N_{bi}^{\rm gene},
+ \frac{\langle G_{bi},G_{bi}\rangle_F}
+ {\langle G_{bi},V_{bi}^{\rm cond}\rangle_F}\right\}\in\mathbb R_+,
 \]
-The EC-derived \(V_{bi}\) measures inferential uncertainty.
-The scalar \(\tau_b^2\) measures residual between-mouse variation and is
-estimated by REML under the relevant null model. GLS uses
-\((V_{bi}+\tau_b^2I)^{-1}\).
+where \(N_{bi}^{\rm gene}\in\mathbb N_0\) is the gene UMI count. Fractional
+path counts are
+\(\bm x_{bi}=n_{bi}^{\rm eff}\bm\psi_{bi}\in\mathbb R_+^{S_b}\), with
+\(\bm1_{S_b}^\prime\bm x_{bi}=n_{bi}^{\rm eff}\).
 
-For the \emph{condition test}, one model is fit for each block and cell type.
-\(X_i\) contains an intercept and condition indicators, and the Wald statistic
-tests all non-reference condition coefficients. Condition labels are
-permuted with their group sizes fixed for calibration.
-
-For the primary \emph{cell-type test}, the effective path counts are fit by
-Dirichlet--multinomial regression. The null design contains a fixed effect
-for each mouse and the alternative adds cell-type indicators:
+For one block, stack \(n=n_b\in\mathbb N\) observations in a design
+\(X\in\mathbb R^{n\times k}\), where \(k\in\mathbb N\), and coefficient matrix
+\(\Beta_b\in\mathbb R^{k\times d_b}\). The mean composition
+\(\bm\mu_{bi}\in\Delta^{S_b-1}\) is defined by reference-path logits
 \[
- H_0:B_{\mathrm{cell}}=0,\qquad
- H_1:B_{\mathrm{cell}}\ne 0.
+ \log\frac{\mu_{bis}}{\mu_{biS_b}}
+ =(X\Beta_b)_{is},\qquad s=1,\ldots,d_b.
 \]
-Because condition is constant within a mouse, the mouse effects also absorb
-condition and all other shared mouse-level shifts. The likelihood-ratio
-statistic jointly tests every non-reference cell type and every path
-log-ratio. Cell-type labels are shuffled within mouse, preserving pairing,
-mouse-specific label availability, and pseudobulk sizes. The primary p-value
-is the finite-permutation rank
+The generalized Dirichlet--multinomial likelihood, extended to fractional
+counts through gamma functions, is
+\[
+ \bm x_{bi}\mid n_{bi}^{\rm eff}
+ \sim\operatorname{DirichletMultinomial}
+ \left(n_{bi}^{\rm eff},\kappa_b\bm\mu_{bi}\right),
+\]
+where \(\kappa_b\in\mathbb R_+\cup\{\infty\}\) is a block-level
+concentration. Larger \(\kappa_b\) means less overdispersion; the endpoint
+\(\kappa_b=\infty\) is exactly multinomial.
+
+For nested designs \(X_0\in\mathbb R^{n\times k_0}\) and
+\(X_1\in\mathbb R^{n\times k_1}\), with \(k_1\geq k_0\) and the first
+\(k_0,k_1\in\mathbb N\), and the first \(k_0\) columns of \(X_1\) equal to
+\(X_0\), let
+\(\widehat\ell_0,\widehat\ell_1\in\mathbb R\) be maximized scalar log
+likelihoods. The statistic and nominal degrees of freedom are
+\[
+ \Lambda_b=2(\widehat\ell_1-\widehat\ell_0)\in\mathbb R_+,
+ \qquad \nu_b=(k_1-k_0)d_b\in\mathbb N_0.
+\]
+The fixed-concentration analysis estimates
+\(\widehat\kappa_{0b}\in\mathbb R_+\cup\{\infty\}\) under \(X_0\) and uses
+it under \(X_1\). The free-concentration sensitivity estimates
+\(\widehat\kappa_{1b}\in\mathbb R_+\cup\{\infty\}\) under \(X_1\). In the latter case both
+models contain one concentration nuisance parameter, so \(\nu_b\) is
+unchanged. Both finite and exact multinomial endpoints are evaluated.
+
+\subsection*{Gaussian mouse-replicate regression}
+
+For a condition test within one block and cell type, stack
+\(\widehat{\bm y}_{bi}\in\mathbb R^{d_b}\) over \(n\in\mathbb N\) mice.
+Let \(X_b\in\mathbb R^{n\times k}\), \(k\in\mathbb N\), contain an intercept and condition
+indicators, \(\Beta_b^{\rm GLS}\in\mathbb R^{k\times d_b}\) be regression
+coefficients, and \(\bm\epsilon_{bi}\in\mathbb R^{d_b}\) be residuals:
+\[
+ \widehat{\bm y}_{bi}=(X_{b,i\cdot}\Beta_b^{\rm GLS})^\prime
+ +\bm\epsilon_{bi},
+ \qquad
+ \operatorname{Var}(\bm\epsilon_{bi})=
+ V_{bi}+\tau_b^2I_{d_b}\in\mathbb S_+^{d_b}.
+\]
+Here \(X_{b,i\cdot}\in\mathbb R^{1\times k}\), and
+\(\tau_b^2\in\mathbb R_+\) is residual between-mouse variance estimated by
+REML under the null. If \(r_b\in\mathbb N\) non-reference condition columns are
+tested, their coefficients form
+\(\bm\beta_b^{\rm test}\in\mathbb R^{r_bd_b}\) with covariance
+\(\Sigma_b^{\rm test}\in\mathbb S_+^{r_bd_b}\). The Wald statistic
+is
+\[
+ W_b=(\bm\beta_b^{\rm test})^\prime
+ (\Sigma_b^{\rm test})^{-1}\bm\beta_b^{\rm test}\in\mathbb R_+,
+ \qquad \nu_b^{\rm GLS}=r_bd_b.
+\]
+
+\subsection*{Paired cell-type test and permutations}
+
+For a cell-type test, let \(M_b,L_b\in\mathbb N\) be the numbers of
+represented biological mice and cell types, respectively. The null design
+\(X_{0b}\in\{0,1\}^{n_b\times M_b}\) contains an intercept-coded set of
+mouse fixed effects. The alternative
+\(X_{1b}\in\mathbb R^{n_b\times(M_b+L_b-1)}\) appends treatment-coded
+cell-type indicators. Consequently
+\(k_0=M_b\), \(k_1=M_b+L_b-1\), and
+\(\nu_b=(L_b-1)d_b\). The tested coefficient block is
+\(\Beta_b^{\rm cell}\in\mathbb R^{(L_b-1)\times d_b}\), and
+\[
+ H_{0b}:\Beta_b^{\rm cell}=0
+ \quad\text{versus}\quad
+ H_{1b}:\Beta_b^{\rm cell}\neq0.
+\]
+Mouse effects absorb condition and every shift shared by cell types from the
+same mouse.
+
+For \(R=500\in\mathbb N\) permutations and
+\(r\in\{1,\ldots,R\}\), cell-type labels are shuffled only
+among rows from the same mouse, producing
+\(X_{1b}^{(r)}\in\mathbb R^{n_b\times(M_b+L_b-1)}\) and statistic
+\(\Lambda_b^{(r)}\in\mathbb R_+\). Let
+\(\varepsilon_b=10^{-6}\max(1,|\Lambda_b|)\in\mathbb R_+\).
+The finite-permutation p-value is
 \[
  p_b=\frac{1+\sum_{r=1}^{R}
-   \mathbb{1}\{T_b^{(r)}\geq T_b\}}{R+1},
+ \mathbb{1}\{\Lambda_b^{(r)}\geq\Lambda_b-\varepsilon_b\}}{R+1}\in(0,1],
  \qquad R=500.
 \]
-The null fit and its concentration are reused, but each permuted alternative
-is refit. Statistics within relative tolerance \(10^{-6}\) are counted as
-ties in the permutation rank; this prevents optimizer noise at likelihood
-boundaries from changing exact p-values. Benjamini--Hochberg correction is
-then applied across the
-nonredundant partitions passing the observation-count filter. The earlier
-conditional- and profile-covariance Wald tests are retained as sensitivity
-analyses.
+The null coefficients and \(\widehat\kappa_{0b}\) are reused, but each
+permuted alternative is optimized. The tolerance counts numerically equal
+likelihood optima as ties. Benjamini--Hochberg correction is applied across
+canonical partitions with at least 30 pseudobulk rows.
 
 \subsection*{Joint condition tests}
 
-Three joint tests were evaluated. First, ACAT combines cell-type-specific
-p-values for one path partition:
+ACAT combines \(J\in\mathbb N\) component p-values
+\(p_j\in(0,1)\), \(j=1,\ldots,J\), into the scalar
 \[
-  p_{\mathrm{ACAT}}
-  =
-  \frac12-\frac1\pi\arctan\left[
-  \frac1J\sum_{j=1}^J\tan\{\pi(1/2-p_j)\}\right].
+ p_{\rm ACAT}=\frac12-\frac1\pi\arctan\left[
+ \frac1J\sum_{j=1}^J\tan\{\pi(1/2-p_j)\}\right]\in(0,1).
 \]
-This remains valid under dependent component p-values and does not assume a
-common effect direction. A second ACAT level combines distinct path
-partitions within a gene.
+One level combines cell-type-specific p-values for a path partition; a
+second combines distinct partitions within a gene.
 
-Second, a shared-effect model uses cell-type-specific intercepts and one
-condition effect across cell types. Treating the resulting cell-type
-pseudobulks as independent is an explicitly evaluated negative control.
-The valid Gaussian version includes mouse clustering:
+The shared-effect Gaussian model for block \(b\) uses
+\(M\in\mathbb N\) mice indexed by \(m\in\{1,\ldots,M\}\), and
+\(L_m\in\mathbb N\) cell types for mouse \(m\), indexed by
+\(c\in\{1,\ldots,L_m\}\). Its response is
+\(\bm y_{bmc}\in\mathbb R^{d_b}\), design row
+\(X_{bmc}\in\mathbb R^{1\times k}\), where \(k\in\mathbb N\), coefficient matrix
+\(\Beta_b\in\mathbb R^{k\times d_b}\), mouse random effect
+\(\bm u_{bm}\in\mathbb R^{d_b}\), and residual
+\(\bm e_{bmc}\in\mathbb R^{d_b}\):
 \[
-  \bm y_{mc}=X_{mc}B+\bm u_m+\bm e_{mc},
+ \bm y_{bmc}=(X_{bmc}\Beta_b)^\prime+\bm u_{bm}+\bm e_{bmc}.
 \]
+The random terms satisfy
+\(\operatorname E(\bm u_{bm})=\operatorname E(\bm e_{bmc})
+=\bm0_{d_b}\),
+\(\operatorname{Var}(\bm u_{bm})=\tau_{\rm mouse}^2I_{d_b}\), and
+\(\operatorname{Var}(\bm e_{bmc})=
+V_{bmc}+\tau_{\rm resid}^2I_{d_b}\).
+They are independent across mice, and residuals are independent across cell
+types conditional on \(\bm u_{bm}\). Hence, for \(c\neq c'\),
 \[
-  \operatorname{Cov}(\bm y_{mc},\bm y_{mc'})
-  =
-  \tau_m^2I\quad(c\ne c'),\qquad
-  \operatorname{Var}(\bm y_{mc})
-  =
-  V_{mc}+(\tau_m^2+\tau_r^2)I.
+ \operatorname{Cov}(\bm y_{bmc},\bm y_{bmc'})=
+ \tau_{\rm mouse}^2I_{d_b},\qquad
+ \operatorname{Var}(\bm y_{bmc})=
+ V_{bmc}+(\tau_{\rm mouse}^2+\tau_{\rm resid}^2)I_{d_b},
 \]
-The shared-mouse variance \(\tau_m^2\) and cell-type residual variance
-\(\tau_r^2\) are estimated by two-component REML under the no-condition
-model. Condition labels are permuted once per biological mouse and applied
-to all of its cell types.
+where \(V_{bmc}\in\mathbb S_+^{d_b}\), and
+\(\tau_{\rm mouse}^2,\tau_{\rm resid}^2\in\mathbb R_+\) are shared-mouse
+and residual variance
+components estimated by two-component REML under the no-condition model.
+Condition labels are permuted once per mouse and applied to all its cell
+types.
+
+\section*{Algorithms}
+
+All algorithms operate independently over canonical blocks unless a joint
+gene-level combination is stated. ``Fit'' below means bounded L-BFGS with
+analytic gradients and a fourfold iteration-limit retry after a warm start
+from the first endpoint.
+
+\subsection*{Algorithm 1: construct splice blocks and path maps}
+
+\textbf{Input:} for one gene, \(T_g\in\mathbb N\) annotated transcripts and
+their ordered zero-based half-open exon intervals.  \textbf{Output:} blocks
+\(b\), maps \(C_b\in\{0,1\}^{S_b\times T_b}\), and bases
+\(Q_b\in\mathbb R^{S_b\times(S_b-1)}\).
+\begin{enumerate}[leftmargin=*]
+  \item Split the gene at every annotated exon boundary to obtain atomic
+        genomic intervals.
+  \item Mark intervals exonic in every spliced transcript; merge adjacent
+        marked intervals into constitutive anchors.
+  \item For each consecutive anchor pair, record each transcript's ordered
+        chain of intervening exonic intervals. Use terminal pseudo-anchors
+        when no shared first or last anchor exists.
+  \item Assign identical chains to the same path. Discard a block if
+        \(S_b=1\); otherwise construct one-hot transcript columns in \(C_b\).
+  \item Construct \(Q_b\) from the Helmert formula above.
+  \item Canonicalize the unordered collection of transcript sets assigned to
+        paths. Retain one representative for identical partitions and attach
+        all equivalent interval identifiers to it.
+\end{enumerate}
+
+\subsection*{Algorithm 2: pseudobulk local fit and covariance}
+
+\textbf{Input:} \(\bm c_{bip}\in\mathbb N_0^{E_{bp}}\),
+\(A_{bp}\in\mathbb R_+^{E_{bp}\times T_b}\), baseline
+\(\bm\theta_{bi}^{(0)}\in\mathbb R_+^{T_b}\), \(C_b\), and \(Q_b\).
+\textbf{Output:} \(\widehat{\bm\psi}_{bi}\in\Delta^{S_b-1}\),
+\(\widehat{\bm y}_{bi}\in\mathbb R^{d_b}\), and conditional/profile
+covariances in \(\mathbb S_+^{d_b}\).
+\begin{enumerate}[leftmargin=*]
+  \item Initialize \(\bm\delta_{bi}\in[-20,20]^{d_b}\) at zero; for
+        \(S_b=2\), also evaluate a fixed log-ratio grid and retain its best
+        point.
+  \item Form \(\bm\theta_{bi}(\bm\delta_{bi})\) while preserving spliced
+        mass and within-path transcript mixtures.
+  \item Sum the two primer-specific multinomial log likelihoods and optimize
+        over \(\bm\delta_{bi}\).
+  \item Map the fitted transcript vector through \(C_b\), normalize to
+        \(\widehat{\bm\psi}_{bi}\), and compute
+        \(\widehat{\bm y}_{bi}=Q_b^\prime\log
+        \widehat{\bm\psi}_{bi}\).
+  \item Sum primer Fisher information for \(\bm\delta_{bi}\) and invert it
+        to obtain \(V_{bi}^{\rm cond}\). Mark the response unidentified if
+        the information is singular in a tested path direction.
+  \item For the profile sensitivity, sum
+        \(I_{\eta,bip}\in\mathbb S_+^{T_b}\), compute
+        \(J_{bi}\in\mathbb R^{d_b\times T_b}\), and form
+        \(V_{bi}^{\rm prof}\). Apply the information-null-space check.
+  \item Write every estimate and its convergence, identifiability, and
+        reliability flags; do not silently replace a failed covariance.
+\end{enumerate}
+
+\subsection*{Algorithm 3: cell-resolved local fit}
+
+\textbf{Input:} cell EC vectors
+\(\bm c_{bihp}\in\mathbb N_0^{E_{bp}}\), cell baselines
+\(\bm\theta_{bih}^{(0)}\in\mathbb R_+^{T_b}\), weights
+\(w_{bih}\in\mathbb R_+\), and the same \(A_{bp},C_b,Q_b\).
+\textbf{Output:} one pseudobulk response and covariance with dimensions
+identical to Algorithm 2.
+\begin{enumerate}[leftmargin=*]
+  \item Allocate one shared \(\bm\delta_{bi}\in\mathbb R^{d_b}\); do not
+        allocate a free effect per cell.
+  \item For every cell and primer, perturb its own baseline, normalize its EC
+        probabilities, and add its multinomial log likelihood.
+  \item Optimize the summed objective over the shared \(\bm\delta_{bi}\).
+  \item Compute each fitted cell composition
+        \(\widehat{\bm\psi}_{bih}\in\Delta^{S_b-1}\) and take the normalized
+        \(w_{bih}\)-weighted average.
+  \item Sum the \(d_b\)-by-\(d_b\) cell-by-primer Fisher matrices, invert,
+        and propagate through the weighted composition average.
+  \item Send the resulting pseudobulk response to exactly the same
+        mouse-replicate test as Algorithm 4.
+\end{enumerate}
+
+\subsection*{Algorithm 4: Gaussian condition and cell-type tests}
+
+\textbf{Input:} \(n\) responses
+\(\widehat{\bm y}_{bi}\in\mathbb R^{d_b}\), covariances
+\(V_{bi}\in\mathbb S_+^{d_b}\), and metadata for their mice, conditions,
+and cell types. \textbf{Output:} one Wald p-value for a condition-within-cell-
+type hypothesis or one paired cell-type hypothesis.
+\begin{enumerate}[leftmargin=*]
+  \item For a condition test, retain conditions with at least three
+        biological mice. Construct
+        \(X_b\in\mathbb R^{n\times k}\) from an intercept and condition
+        indicators, and form its reduced design
+        \(X_{0b}\in\mathbb R^{n\times(k-r_b)}\) by deleting the
+        \(r_b\in\mathbb N\) tested condition columns.
+  \item For a cell-type test, let the \(n=n_b\) rows represent \(M_b\) mice
+        and \(L_b\) cell types. Construct
+        \(X_{0b}\in\{0,1\}^{n_b\times M_b}\) from mouse effects and
+        \(X_{1b}\in\mathbb R^{n_b\times(M_b+L_b-1)}\) by appending
+        \(L_b-1\) cell-type indicators. Require the applicable full and
+        reduced designs to have full column rank.
+  \item Under the reduced model, estimate
+        \(\tau_b^2\in\mathbb R_+\) by REML using covariance
+        \(V_{bi}+\tau_b^2I_{d_b}\).
+  \item Hold \(\widehat\tau_b^2\) fixed and fit
+        the applicable full design by GLS. Its coefficient matrix is
+        \(k\times d_b\) for the condition model and
+        \((M_b+L_b-1)\times d_b\) for the cell-type model.
+  \item Stack the tested coefficients: \(r_bd_b\) entries for condition or
+        \((L_b-1)d_b\) for cell type. Compute \(W_b\) and compare it with
+        the corresponding chi-squared reference distribution.
+  \item For calibration, permute condition once per mouse for a condition
+        test, or shuffle cell-type labels only within mouse for a cell-type
+        test. Hold \(\widehat\tau_b^2\) fixed and refit each alternative.
+  \item Apply BH separately by biological question and by conditional versus
+        profile covariance.
+\end{enumerate}
+
+\subsection*{Algorithm 5: paired compositional cell-type test}
+
+\textbf{Input:} path estimates and conditional covariances from Algorithm 2.
+\textbf{Output:} one exact permutation p-value per canonical block.
+\begin{enumerate}[leftmargin=*]
+  \item Keep converged, conditionally identifiable estimates. Require each
+        modeled path proportion to be at least 0.05 and each represented cell
+        type to occur in at least three mice.
+  \item Convert each \((\bm\psi_{bi},V_{bi}^{\rm cond})\) pair to
+        \(n_{bi}^{\rm eff}\in\mathbb R_+\) and
+        \(\bm x_{bi}\in\mathbb R_+^{S_b}\).
+  \item Build \(X_{0b}\in\mathbb R^{n_b\times M_b}\) from mouse fixed
+        effects and \(X_{1b}\in
+        \mathbb R^{n_b\times(M_b+L_b-1)}\) by appending cell-type effects.
+  \item Fit the null coefficients and \(\widehat\kappa_{0b}\). Fit the
+        observed alternative and compute \(\Lambda_b\).
+  \item For the fixed-\(\kappa\) approach, set
+        \(\kappa_{1b}=\widehat\kappa_{0b}\). For the free-\(\kappa\)
+        sensitivity, optimize \(\widehat\kappa_{1b}\) and compare the best finite
+        fit with the exact multinomial endpoint.
+  \item Repeat \(R=500\) times: shuffle cell-type labels within each mouse,
+        rebuild only the appended columns of \(X_{1b}^{(r)}\), reuse the null
+        fit, refit the alternative, and store \(\Lambda_b^{(r)}\).
+  \item Compute the tolerance-aware finite-permutation rank \(p_b\). Require
+        \(n_b\geq30\), then apply BH across canonical blocks.
+\end{enumerate}
+
+\subsection*{Algorithm 6: pairwise and dominant-path sensitivities}
+
+\textbf{Input:} the same path estimates as Algorithm 5. \textbf{Output:}
+calibrated sensitivity tables, not additional primary discoveries.
+\begin{enumerate}[leftmargin=*]
+  \item \emph{Pairwise:} for each cell-type pair, retain only mice containing
+        both types. Use \(X_0\in\mathbb R^{2M\times M}\) for \(M\) mouse
+        effects and \(X_1\in\mathbb R^{2M\times(M+1)}\) for one cell-type
+        effect. Permute the two labels within mouse and correct across every
+        block-by-pair hypothesis.
+  \item \emph{Dominant paths:} rank paths by the scalar aggregate
+        \(\sum_iN_{bi}^{\rm gene}\psi_{bis}\). Select index set
+        \(\mathcal S_b\subseteq\{1,\ldots,S_b\}\), with
+        \(|\mathcal S_b|=2\), without using labels.
+  \item Let \(E_b\in\{0,1\}^{S_b\times2}\) select these paths and let
+        \(Q_b^{(2)}\in\mathbb R^{2\times1}\) be their Helmert basis. Transform
+        covariance with
+        \(\mathcal R_b=(Q_b^{(2)})^\prime E_b^\prime Q_b\in
+        \mathbb R^{1\times d_b}\) and
+        \(V_{bi}^{(2)}=\mathcal R_bV_{bi}\mathcal R_b^\prime
+        \in\mathbb R^{1\times1}\).
+  \item Renormalize the two retained proportions, then run Algorithm 5.
+        Report path-floor sweeps as sensitivity analyses.
+\end{enumerate}
+
+\subsection*{Algorithm 7: joint condition tests}
+
+\textbf{Input:} calibrated block-by-cell-type p-values or ILR responses.
+\textbf{Output:} partition- or gene-level joint p-values.
+\begin{enumerate}[leftmargin=*]
+  \item \emph{ACAT across cell types:} collect the \(J\) valid p-values for
+        one canonical partition and evaluate \(p_{\rm ACAT}\). Optionally
+        apply the same formula to distinct partition p-values within a gene.
+  \item \emph{Naive shared effect, negative control:} fit cell-type
+        intercepts and one condition coefficient while treating rows as
+        independent. Retain this only to measure pseudoreplication inflation.
+  \item \emph{Clustered shared GLS:} construct the block covariance whose
+        diagonal blocks are
+        \(V_{bmc}+(\tau_{\rm mouse}^2+\tau_{\rm resid}^2)I_{d_b}\) and whose
+        same-mouse off-diagonal blocks are \(\tau_{\rm mouse}^2I_{d_b}\).
+        Estimate the
+        two scalar variances under the null by REML.
+  \item Fit the shared condition coefficient by GLS. Permute condition once
+        per mouse, synchronously across all cell types, and refit.
+  \item Apply BH to the resulting canonical-partition family; do not combine
+        discoveries from negative-control and calibrated methods.
+\end{enumerate}
 
 \section*{Implementation Details}
 
@@ -361,7 +671,8 @@ qualifying pseudobulks. Only ECs whose compatible transcripts map uniquely to
 that gene enter the local likelihood.
 
 Bounded L-BFGS optimizes the paired multinomial likelihood, with
-\(\lvert\delta\rvert\leq20\) to prevent floating-point underflow. Two-path
+\(\|\bm\delta_{bi}\|_\infty\leq20\) to prevent floating-point underflow,
+where \(\|\cdot\|_\infty\) is the maximum absolute component. Two-path
 fits are initialized from a log-ratio grid because the paired-primer
 normalizers can make the objective non-concave.
 
@@ -384,6 +695,9 @@ Thus every tested log-ratio direction has effective information of at least
 eight and every fitted path has at least 15\% usage. All estimates are
 written, together with convergence, identifiability, and reliability flags;
 only reliable estimates enter GLS.
+Here \(\lambda_{\max}(V_{bi})\in\mathbb R_+\) is the largest eigenvalue of
+the \(d_b\times d_b\) covariance, and
+\(\widehat\psi_{bis}\in[0,1]\) is path \(s\)'s fitted proportion.
 
 \section*{Results}
 
@@ -524,8 +838,8 @@ p-values below 0.05.
 An exact matched comparison used the same reliable samples for both methods
 in 807 block-by-cell-type tests. Cell resolution reduced the median local
 covariance trace by 1.6\%, and the median path-response RMS difference was
-0.033 ILR units. P-values were strongly concordant
-(Spearman \(\rho=0.958\)); 24 pseudobulk and 25 cell-resolved tests were
+0.033 ILR units. P-values were strongly concordant (Spearman rank
+correlation 0.958); 24 pseudobulk and 25 cell-resolved tests were
 nominally significant.
 
 For the 259 matched two-condition, two-path tests, mean asymptotic power for

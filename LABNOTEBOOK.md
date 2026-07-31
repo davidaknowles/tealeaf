@@ -2127,3 +2127,21 @@ removed four apparent free-kappa discoveries; the final 101-event set was
 unchanged from the fixed-kappa analysis. Future null tables store statistics
 directly, and the shard merger recomputes tolerant ranks when null draws are
 available.
+
+## 2026-07-31: differential-splicing methods specification
+
+I rewrote the differential-splicing methods document so the inferential
+workflow is self-contained. The document now introduces the biological
+questions and analysis sequence before the model, defines ECs, splice paths,
+subisoforms, PSI, ILR coordinates, and the Helmert basis, and gives the
+domain or dimension of every model variable when it is introduced.
+Overloaded notation was removed, and matrix orientations were checked
+explicitly.
+
+Seven pseudocode algorithms now cover block construction, pseudobulk and
+cell-resolved local likelihoods, Gaussian condition and paired cell-type
+tests, fixed- and free-concentration compositional tests, pairwise and
+dominant-path sensitivities, and ACAT or clustered shared-effect condition
+tests. This was a documentation-only change: model implementations and
+reported numerical results were not altered. The standalone document
+compiles without warnings.
