@@ -50,6 +50,15 @@ def parse_args():
         choices=("dirichlet-multinomial", "multinomial"),
         default="dirichlet-multinomial",
     )
+    parser.add_argument(
+        "--alternative-concentration",
+        choices=("fixed", "free"),
+        default="fixed",
+        help=(
+            "Fix alternative kappa at its null estimate or re-estimate it "
+            "under the alternative."
+        ),
+    )
     parser.add_argument("--max-blocks", type=int)
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--shard-count", type=int, default=1)
@@ -255,11 +264,17 @@ def fit_tests(args, grouped, members):
                 if args.likelihood == "dirichlet-multinomial"
                 else differential.multinomial_test
             )
+            test_kwargs = {}
+            if args.likelihood == "dirichlet-multinomial":
+                test_kwargs["fix_null_concentration"] = (
+                    args.alternative_concentration == "fixed"
+                )
             result = test(
                 path_counts,
                 null_design,
                 alternative_design,
                 max_iter=args.max_iter,
+                **test_kwargs,
             )
             converged = bool(
                 result["null_converged"]
@@ -292,6 +307,7 @@ def fit_tests(args, grouped, members):
                         permuted_design,
                         max_iter=args.max_iter,
                         fitted_null=result,
+                        **test_kwargs,
                     )
                     if (
                         null["null_converged"]
@@ -305,16 +321,12 @@ def fit_tests(args, grouped, members):
                                 "degrees_of_freedom"
                             ],
                             "p_value": null["p_value"],
+                            "statistic": null["statistic"],
                         })
             permutation_p_value = (
-                (
-                    1
-                    + np.sum(
-                        np.asarray(permutation_statistics)
-                        >= result["statistic"]
-                    )
+                differential.permutation_rank_p_value(
+                    result["statistic"], permutation_statistics
                 )
-                / (len(permutation_statistics) + 1)
                 if permutation_statistics
                 else np.nan
             )
@@ -348,6 +360,9 @@ def fit_tests(args, grouped, members):
                 "null_concentration": result.get(
                     "null_concentration", np.nan
                 ),
+                "alternative_concentration": result.get(
+                    "alternative_concentration", np.nan
+                ),
                 "celltype_logit_effects": json.dumps(
                     cell_type_effects.tolist()
                 ),
@@ -368,6 +383,14 @@ def main():
     args = parse_args()
     if args.max_paths is not None and args.max_paths < 2:
         raise ValueError("--max-paths must be at least two")
+    if (
+        args.likelihood != "dirichlet-multinomial"
+        and args.alternative_concentration != "fixed"
+    ):
+        raise ValueError(
+            "--alternative-concentration applies only to "
+            "Dirichlet-multinomial fits"
+        )
     args.output_dir.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()
     block_to_representative, members = block_equivalence(args.block_cache)
@@ -397,6 +420,7 @@ def main():
         "max_paths": args.max_paths,
         "celltype_test": args.celltype_test,
         "likelihood": args.likelihood,
+        "alternative_concentration": args.alternative_concentration,
         "shard_index": args.shard_index,
         "shard_count": args.shard_count,
         "candidate_partitions": len(grouped),

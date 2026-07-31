@@ -234,11 +234,14 @@ The compositional regression is
   \qquad
   \operatorname{logit}_{\mathrm{ref}}(\bm\mu_i)=X_iB.
 \]
-The concentration \(\kappa\) is estimated under the no-condition model and
-held fixed under the alternative, parallel to estimating biological
-variance under the GLS null. If the null estimate reaches the
-no-overdispersion boundary, the implementation switches to the exact
-multinomial likelihood. Analytic gradients are used for both likelihoods.
+The primary analysis estimates the concentration \(\kappa\) under the null
+and holds it fixed under the alternative, parallel to estimating biological
+variance under the GLS null. A sensitivity mode re-estimates one global
+concentration under the alternative. This adds no likelihood-ratio degree of
+freedom because both models contain one concentration nuisance parameter.
+Both modes explicitly evaluate the exact multinomial endpoint
+\(\kappa=\infty\), rather than relying on a large finite approximation.
+Analytic gradients are used for both likelihoods.
 
 \subsection*{Mouse-replicate differential tests}
 
@@ -282,7 +285,10 @@ is the finite-permutation rank
  \qquad R=500.
 \]
 The null fit and its concentration are reused, but each permuted alternative
-is refit. Benjamini--Hochberg correction is then applied across the
+is refit. Statistics within relative tolerance \(10^{-6}\) are counted as
+ties in the permutation rank; this prevents optimizer noise at likelihood
+boundaries from changing exact p-values. Benjamini--Hochberg correction is
+then applied across the
 nonredundant partitions passing the observation-count filter. The earlier
 conditional- and profile-covariance Wald tests are retained as sensitivity
 analyses.
@@ -450,6 +456,18 @@ each block to its two molecule-weighted dominant paths increased coverage;
 with a 1\% path floor it gave 88 discoveries, and removing the floor gave 91,
 under a cross-fitted empirical null. These analyses support the full-path
 exact omnibus test as the primary cell-type analysis.
+
+Allowing the alternative to re-estimate \(\kappa\) also left the result
+unchanged: it found the same 101 partitions in the same 95 genes, with no
+event entering or leaving the 5\% FDR set. Exact p-values from fixed- and
+free-concentration fits had Spearman correlation 0.9995, and both had 148
+nominal events. The null optimum was
+multinomial for 499 of 646 tests, and the alternative optimum was
+multinomial for 580. Among 66 tests with finite concentration in both models,
+the median alternative/null concentration ratio was 1.54, consistent with
+cell-type mean effects explaining some apparent overdispersion. Exact
+permutation calibration absorbs this nuisance-parameter flexibility, so
+freeing \(\kappa\) provides no net power gain here.
 
 \subsection*{Calibration}
 

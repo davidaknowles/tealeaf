@@ -2089,3 +2089,41 @@ runner and shard merger are
 `extra_scripts/run_celltype_compositional_splicing.py` and
 `extra_scripts/merge_celltype_compositional_splicing.py`; the dataset wrapper
 only supplies paths and run parameters.
+
+## 2026-07-31: free alternative concentration
+
+I tested re-estimating one global Dirichlet--multinomial concentration under
+the cell-type alternative instead of fixing it at the null estimate. The
+null and alternative still contain the same number of concentration nuisance
+parameters, so the likelihood-ratio degrees of freedom continue to count
+only cell-type composition coefficients. The implementation now evaluates
+both finite Dirichlet--multinomial fits and the exact multinomial endpoint.
+This was necessary because a finite cap at kappa (10^6) caused 25
+alternatives at the boundary to be reported as nonconverged.
+
+The corrected eight-shard run completed all 646 observed fits and all 323,000
+permutation alternatives. With 500 within-mouse permutations, the 5% path
+floor, and the 30-pseudobulk inference filter, the free-concentration model
+found 101 partitions in 95 genes at 5% FDR. This is exactly the fixed-
+concentration discovery set. In the matched, tolerance-aware reruns, exact
+p-values had Spearman correlation 0.9995; 37 were lower, 556 equal, and 53
+higher under the free model. Both models had 148 nominal events. Thus the
+larger observed likelihood-ratio statistic does not imply uniformly greater
+permutation-calibrated significance.
+
+The null optimum was exact multinomial for 499 of 646 events and the
+alternative optimum for 580. Of 147 events with finite null concentration,
+81 moved to the multinomial endpoint under the alternative. For the 66 with
+finite concentration under both models, median alternative/null kappa was
+1.54. Cell-type mean effects therefore explain part of the residual
+overdispersion, but allowing this change does not increase FDR discoveries.
+
+This run exposed numerical ties in permutation statistics. Strict comparison
+made observed statistics larger than mathematically tied permutations by
+roughly (10^{-8}) to (10^{-7}), creating spuriously minimal ranks. Exact
+ranks now count statistics within relative tolerance (10^{-6}) as ties.
+Recomputing from saved event-specific null draws changed 207 p-values and
+removed four apparent free-kappa discoveries; the final 101-event set was
+unchanged from the fixed-kappa analysis. Future null tables store statistics
+directly, and the shard merger recomputes tolerant ranks when null draws are
+available.

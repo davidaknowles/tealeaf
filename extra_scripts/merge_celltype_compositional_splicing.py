@@ -9,8 +9,10 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import scipy.stats
 
 from extra_scripts.run_differential_splicing import benjamini_hochberg
+from tealeaf.sc import differential
 
 
 def parse_args():
@@ -40,6 +42,12 @@ def parse_args():
             "Quantile bins of median effective count used within each "
             "degrees-of-freedom stratum."
         ),
+    )
+    parser.add_argument(
+        "--permutation-tolerance",
+        type=float,
+        default=1e-6,
+        help="Relative tolerance for ties in exact permutation statistics.",
     )
     return parser.parse_args()
 
@@ -132,6 +140,39 @@ def empirical_null_calibration(table, null, calibration_bins=1):
     return table.drop(columns="_stratum"), null_calibrated
 
 
+def recompute_per_test_p_values(table, null, relative_tolerance):
+    table = table.copy()
+    null = null.copy()
+    if "test_id" not in table:
+        table["test_id"] = table["block_id"]
+    if "test_id" not in null:
+        null["test_id"] = null["block_id"]
+    if "statistic" not in null:
+        null["statistic"] = scipy.stats.chi2.isf(
+            null["p_value"], null["degrees_of_freedom"]
+        )
+    grouped = {
+        test_id: group["statistic"].to_numpy()
+        for test_id, group in null.groupby("test_id")
+    }
+    p_values = []
+    counts = []
+    for row in table.itertuples():
+        statistics = grouped.get(row.test_id, np.empty(0))
+        p_values.append(
+            differential.permutation_rank_p_value(
+                row.statistic,
+                statistics,
+                relative_tolerance=relative_tolerance,
+            )
+        )
+        counts.append(len(statistics))
+    table["permutation_count"] = counts
+    table["permutation_p_value"] = p_values
+    table["p_value"] = p_values
+    return table
+
+
 def main():
     args = parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -155,6 +196,7 @@ def main():
         "gene_id",
         table["block_id"].str.rsplit(":B", n=1).str[0],
     )
+    per_test_recomputed = False
     if args.pvalue_method == "pooled":
         null = pd.concat([
             pd.read_csv(shard / "permutation_null.tsv.gz", sep="\t")
@@ -165,6 +207,17 @@ def main():
         )
     else:
         null_calibrated = np.empty(0)
+        null_paths = [
+            shard / "permutation_null.tsv.gz" for shard in args.shards
+        ]
+        if all(path.is_file() for path in null_paths):
+            null = pd.concat([
+                pd.read_csv(path, sep="\t") for path in null_paths
+            ], ignore_index=True)
+            table = recompute_per_test_p_values(
+                table, null, args.permutation_tolerance
+            )
+            per_test_recomputed = True
     table["inference_eligible"] = (
         table["n_samples"] >= int(args.min_samples)
     )
@@ -203,10 +256,18 @@ def main():
             "max_logratio_variance"
         ],
         "max_paths": summaries[0].get("max_paths"),
+        "alternative_concentration": summaries[0].get(
+            "alternative_concentration", "fixed"
+        ),
         "pvalue_method": args.pvalue_method,
         "calibration_bins": (
             args.calibration_bins
             if args.pvalue_method == "pooled"
+            else None
+        ),
+        "permutation_tolerance": (
+            args.permutation_tolerance
+            if per_test_recomputed
             else None
         ),
         "candidate_partitions": max(

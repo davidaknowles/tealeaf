@@ -1173,6 +1173,26 @@ def project_composition(proportions, covariance, selected):
     return projected_proportions, projected_covariance
 
 
+def permutation_rank_p_value(
+    observed_statistic,
+    null_statistics,
+    *,
+    relative_tolerance=1e-6,
+):
+    """Return a finite-permutation p-value with stable numerical ties."""
+    observed_statistic = float(observed_statistic)
+    null_statistics = np.asarray(null_statistics, dtype=float)
+    if null_statistics.ndim != 1 or np.any(np.isnan(null_statistics)):
+        raise ValueError("null statistics must be a one-dimensional array")
+    tolerance = float(relative_tolerance) * max(
+        1.0, abs(observed_statistic)
+    )
+    return float(
+        (1 + np.sum(null_statistics >= observed_statistic - tolerance))
+        / (len(null_statistics) + 1)
+    )
+
+
 def _dirichlet_multinomial_fit(
     counts,
     design,
@@ -1499,14 +1519,18 @@ def dirichlet_multinomial_test(
         null = {
             "objective": float(fitted_null["null_objective"]),
             "parameters": np.r_[
-                null_coefficients.ravel(), np.log(concentration)
+                null_coefficients.ravel(),
+                np.log(min(concentration, 1e6)),
             ],
             "concentration": concentration,
             "converged": True,
             "iterations": 0,
             "message": "reused fitted null",
         }
-    if null["concentration"] >= 0.99e6:
+    if (
+        null["concentration"] >= 0.99e6
+        and fix_null_concentration
+    ):
         result = multinomial_test(
             counts,
             null_design,
@@ -1518,6 +1542,27 @@ def dirichlet_multinomial_test(
             "alternative_concentration": np.inf,
         })
         return result
+    if null["concentration"] >= 0.99e6:
+        multinomial_null = _multinomial_fit(
+            counts,
+            null_design,
+            initial=null["parameters"][:-1],
+            max_iter=max_iter,
+        )
+        if not multinomial_null["converged"]:
+            multinomial_null = _multinomial_fit(
+                counts,
+                null_design,
+                initial=multinomial_null["parameters"],
+                max_iter=4 * int(max_iter),
+            )
+        null = {
+            **multinomial_null,
+            "parameters": np.r_[
+                multinomial_null["parameters"], np.log(1e6)
+            ],
+            "concentration": np.inf,
+        }
     n_paths = counts.shape[1]
     null_coefficients = null["parameters"][:-1].reshape(
         null_design.shape[1], n_paths - 1
@@ -1550,6 +1595,34 @@ def dirichlet_multinomial_test(
                 else None
             ),
         )
+    if not fix_null_concentration:
+        multinomial_alternative = _multinomial_fit(
+            counts,
+            alternative_design,
+            initial=alternative["parameters"][:
+                alternative_design.shape[1] * (n_paths - 1)
+            ],
+            max_iter=max_iter,
+        )
+        if not multinomial_alternative["converged"]:
+            multinomial_alternative = _multinomial_fit(
+                counts,
+                alternative_design,
+                initial=multinomial_alternative["parameters"],
+                max_iter=4 * int(max_iter),
+            )
+        if (
+            multinomial_alternative["converged"]
+            and (
+                not alternative["converged"]
+                or multinomial_alternative["objective"]
+                <= alternative["objective"]
+            )
+        ):
+            alternative = {
+                **multinomial_alternative,
+                "concentration": np.inf,
+            }
     statistic = max(
         2.0 * (null["objective"] - alternative["objective"]),
         0.0,

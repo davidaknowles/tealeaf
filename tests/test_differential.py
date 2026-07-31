@@ -198,6 +198,13 @@ class DifferentialTest(unittest.TestCase):
         )
         self.assertAlmostEqual(projected_covariance[0, 0], expected)
 
+    def test_permutation_rank_treats_optimizer_noise_as_ties(self):
+        p_value = differential.permutation_rank_p_value(
+            2.0 + 1e-8,
+            [0.5, 2.0, 2.0 - 1e-8],
+        )
+        self.assertEqual(p_value, 0.75)
+
     def test_empirical_null_calibration_excludes_current_block(self):
         table = pd.DataFrame({
             "block_id": ["b1", "b2"],
@@ -273,6 +280,26 @@ class DifferentialTest(unittest.TestCase):
             fitted_null=result,
         )
         self.assertAlmostEqual(reused["statistic"], result["statistic"])
+        free = differential.dirichlet_multinomial_test(
+            counts,
+            np.ones((6, 1)),
+            alternative,
+            fix_null_concentration=False,
+        )
+        self.assertEqual(
+            free["degrees_of_freedom"], result["degrees_of_freedom"]
+        )
+        self.assertGreaterEqual(free["statistic"], result["statistic"])
+        free_reused = differential.dirichlet_multinomial_test(
+            counts,
+            np.ones((6, 1)),
+            alternative,
+            fix_null_concentration=False,
+            fitted_null=free,
+        )
+        self.assertAlmostEqual(
+            free_reused["statistic"], free["statistic"]
+        )
 
     def test_clustered_gls_detects_subject_level_effect(self):
         rng = np.random.default_rng(21)
