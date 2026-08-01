@@ -470,7 +470,7 @@ def fit_tilted_variational(
         method="L-BFGS-B",
         jac=True,
         bounds=bounds,
-        options={"maxiter": int(max_iter), "ftol": 1e-10, "gtol": 1e-5},
+        options={"maxiter": int(max_iter), "ftol": 1e-8, "gtol": 1e-4},
     )
     coefficients, means, log_sds, log_prior_sd = unpack(jnp.asarray(result.x))
     final, gradient = objective(result.x)
@@ -608,7 +608,7 @@ def fit_variational(
             method="L-BFGS-B",
             jac=True,
             bounds=bounds,
-            options={"maxiter": int(max_iter), "ftol": 1e-10, "gtol": 1e-5},
+            options={"maxiter": int(max_iter), "ftol": 1e-8, "gtol": 1e-4},
         )
         optimized = np.asarray(result.x)
         success = bool(result.success)
@@ -718,6 +718,27 @@ def warm_start(fit, n_design_columns):
             0.5 * np.log(np.maximum(fit["random_effect_variance"], 1e-12)).ravel(),
             np.log(fit["random_effect_sd"]),
         ]
+    if fit["family"] == "dirichlet_multinomial":
+        values = np.r_[values, np.log(fit["concentration"])]
+    return values
+
+
+def variational_warm_start(fit, n_design_columns):
+    """Convert a Laplace or VI posterior into a Gaussian-VI initial vector."""
+    coefficients = np.asarray(fit["coefficients"], dtype=float)
+    if n_design_columns < len(coefficients):
+        raise ValueError("warm-start design cannot have fewer columns")
+    expanded = np.zeros((int(n_design_columns), coefficients.shape[1]))
+    expanded[: len(coefficients)] = coefficients
+    values = np.r_[
+        expanded.ravel(),
+        np.asarray(fit["random_effect_mean"]).ravel(),
+        0.5
+        * np.log(
+            np.maximum(fit["random_effect_variance"], 1e-12)
+        ).ravel(),
+        np.log(fit["random_effect_sd"]),
+    ]
     if fit["family"] == "dirichlet_multinomial":
         values = np.r_[values, np.log(fit["concentration"])]
     return values

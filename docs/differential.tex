@@ -1286,6 +1286,83 @@ percentage points at ILR effects 0.25 and 0.5. GEE was less powerful than
 clustered GLS after calibration. No method produced a permutation-calibrated
 5\% FDR discovery in the observed condition analysis.
 
+\subsection*{EC-count GLMM inference benchmark}
+
+The EC-count methods were first compared in 96 independent simulations per
+likelihood and effect size. Each replicate had 12 mice, two observations per
+mouse, two isoforms, two distinct three-EC primer maps, 150 molecules per
+primer and observation, and mouse random-effect standard deviation 0.4.
+Dirichlet--multinomial simulations used concentration 30. The null threshold
+for each method was its own 95th percentile evidence gain at effect zero;
+power was evaluated at an isoform logit effect of 0.5. This calibration is
+required because Laplace likelihoods, tilted ELBOs, and R\'enyi bounds are not
+numerically interchangeable objectives.
+
+\begin{table}[H]
+\centering
+\caption{Ambiguous-EC simulation comparison. RMSE is for the condition logit
+coefficient. Time is median seconds per nested null/alternative fit at effect
+0.5. ESS is the median alternative mouse-level importance ESS out of 128.}
+\label{tab:ec-glmm-simulation}
+\begin{tabular}{llrrrrr}
+\toprule
+Likelihood & Approximation & Null rejection & Power & RMSE & Time & ESS\\
+\midrule
+Multinomial & Laplace & 0.052 & 0.542 & 0.223 & 9.87 & --\\
+Multinomial & Tilted ELBO & 0.052 & 0.542 & 0.223 & 1.87 & --\\
+Multinomial & R\'enyi $\alpha=0.5$ & 0.052 & 0.542 & 0.223 & 1.58 & 127.67\\
+Dirichlet--multinomial & Laplace & 0.052 & 0.417 & 0.236 & 21.41 & --\\
+Dirichlet--multinomial & Monte Carlo ELBO & 0.052 & 0.417 & 0.236 & 3.06 & 127.51\\
+Dirichlet--multinomial & R\'enyi $\alpha=0.5$ & 0.052 & 0.417 & 0.236 & 3.35 & 127.66\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Within each likelihood family, all three approximations had the same
+empirically calibrated power to the reported precision, and their coefficient
+bias differed by less than \(2\times10^{-4}\). The tilted bound's null cutoff
+was 4.70, compared with 4.60 for multinomial Laplace and R\'enyi VI, but this
+small scale difference did not change rejection. Variational fitting was
+five- to seven-fold faster than Laplace. A single global importance weight
+over all mice had ESS 1/128 and collapsed the fitted random-effect variance;
+the mouse-factorized R\'enyi objective corrected this failure and produced
+ESS above 127.5/128 for both likelihoods.
+
+The genome-wide paired-primer comparison retained 65 genes with mean depth
+at least 100 EC UMIs per pseudobulk; this was 65 of 66 depth-eligible genes,
+with one 3,905-EC outlier excluded by the 128-EC computational cap. All
+retained genes had at most six EC-supported isoforms. The authoritative run
+initialized each Gaussian variational posterior from the corresponding
+Laplace means and covariance diagonal, then initialized R\'enyi VI from the
+ELBO fit. Across the 65 condition models, convergence was 98.5\% for both
+Laplace likelihoods, 95.4\% for both ELBO variants, 92.3\% for multinomial
+R\'enyi VI, and 98.5\% for Dirichlet--multinomial R\'enyi VI. Cell-type
+convergence ranged from 93.8\% to 100\%. There were no fit exceptions.
+
+Approximation agreement depended on isoform dimension. Among the 38
+two-isoform genes, multinomial Laplace and R\'enyi evidence gains had Spearman
+correlation 0.974 for condition and 0.9996 for cell type; Laplace and tilted
+ELBO correlations were 0.969 and 0.9995. All 16 two-isoform condition genes
+above the method-specific nominal threshold under multinomial Laplace were
+also above it under R\'enyi VI. For the 20 three-isoform genes, the analogous
+gain correlations fell to 0.49 and 0.59. The mean-field posterior has only a
+diagonal covariance across isoform random effects, whereas Laplace retains
+their within-mouse posterior covariance. The dimension-dependent divergence
+therefore identifies posterior covariance, rather than optimizer failure, as
+the next required variational extension. One-dimensional simulation
+thresholds were not applied to multi-isoform or cell-type omnibus tests.
+
+The tilted surrogate must also be separated from objective evaluation. For
+two-isoform condition models, median nested gains were 5.54 for the tilted
+training bound, 4.95 for an exact-likelihood Monte Carlo ELBO evaluated at
+the same posterior, 4.93 for its R\'enyi evaluation, 4.93 for Laplace, and
+4.95 for separately optimized R\'enyi VI. For cell type, the corresponding
+medians were 89.06, 74.38, 74.36, 72.12, and 74.36. Exact ELBO and R\'enyi
+gains on the same posterior had Spearman correlations 0.998 and 1.000 for
+condition and cell type. The tilted bound becomes looser under the larger
+alternative and therefore overstates nested evidence gains; it is retained
+as a fitting surrogate, not used as a likelihood-ratio statistic.
+
 \subsection*{Cell-type effects within mouse}
 
 The initial Gaussian analysis tested 369 conditional and 218 profile

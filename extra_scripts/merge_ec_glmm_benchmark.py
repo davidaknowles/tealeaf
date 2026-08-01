@@ -25,6 +25,7 @@ def main():
         threshold = float(np.quantile(null, 0.95)) if len(null) else np.nan
         for effect, records in group.groupby("effect"):
             errors = records["estimate"] - records["effect"]
+            ess = records["alternative_importance_ess"].dropna()
             summary.append({
                 "family": family,
                 "method": method,
@@ -41,8 +42,8 @@ def main():
                 )),
                 "median_seconds": float(records["seconds"].median()),
                 "median_alternative_ess": float(
-                    records["alternative_importance_ess"].median()
-                ),
+                    ess.median()
+                ) if len(ess) else np.nan,
             })
     summary = pd.DataFrame(summary)
     summary.to_csv(args.output_dir / "summary.tsv", sep="\t", index=False)

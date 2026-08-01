@@ -43,6 +43,14 @@ def main():
     if args.simulation_replicates is not None:
         simulation = pd.read_csv(args.simulation_replicates, sep="\t")
         for method, positions in table.groupby("method").groups.items():
+            positions = np.asarray(list(positions))
+            calibration_mask = (
+                (table.loc[positions, "contrast"].to_numpy() == "condition")
+                & (table.loc[positions, "n_isoforms"].to_numpy() == 2)
+            )
+            positions = positions[calibration_mask]
+            if not len(positions):
+                continue
             null = simulation.loc[
                 (simulation["method"] == method) & (simulation["effect"] == 0),
                 "evidence_gain",
@@ -76,6 +84,14 @@ def main():
                 records["tested_coefficient_norm"].median()
             ),
             "median_seconds": float(records["seconds"].median()),
+            "simulation_nominal_0.05": int(
+                (
+                    records.get(
+                        "simulation_p_value", pd.Series(dtype=float)
+                    )
+                    <= 0.05
+                ).sum()
+            ),
             "simulation_fdr_0.05": int(
                 (records.get("simulation_fdr", pd.Series(dtype=float)) <= 0.05).sum()
             ),

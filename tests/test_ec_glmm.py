@@ -95,3 +95,16 @@ def test_fixed_effect_design_separates_tested_contrast():
     assert null.shape == (4, 2)
     assert alternative.shape == (4, 3)
     np.testing.assert_array_equal(clusters, ["m1", "m1", "m2", "m2"])
+
+
+def test_laplace_posterior_warm_starts_variational_fit():
+    data = simulated_data()
+    laplace = ec_glmm.fit_laplace(data, max_iter=50, mode_steps=15)
+    initial = ec_glmm.variational_warm_start(
+        laplace, data.design.shape[1]
+    )
+    fit = ec_glmm.fit_tilted_variational(
+        data, initial=initial, max_iter=80
+    )
+    assert fit["converged"]
+    assert fit["coefficients"][2, 0] == pytest.approx(0.9, abs=0.35)

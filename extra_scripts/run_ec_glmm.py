@@ -137,6 +137,17 @@ def fit_one(method, data, args, initial=None):
 def fit_nested(method, null_data, alternative_data, args, starts):
     null_initial = None
     alternative_initial = None
+    laplace_method = {
+        "tilted_elbo": "laplace_multinomial",
+        "elbo_dirichlet_multinomial": "laplace_dirichlet_multinomial",
+    }.get(method)
+    if laplace_method in starts:
+        null_initial = ec_glmm.variational_warm_start(
+            starts[laplace_method][0], null_data.design.shape[1]
+        )
+        alternative_initial = ec_glmm.variational_warm_start(
+            starts[laplace_method][1], alternative_data.design.shape[1]
+        )
     if method == "renyi_multinomial" and "tilted_elbo" in starts:
         null_initial = ec_glmm.warm_start(
             starts["tilted_elbo"][0], null_data.design.shape[1]

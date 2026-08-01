@@ -2259,3 +2259,44 @@ the initial implementation's repeated full sparse-matrix slice per gene was
 the dominant startup cost. The real-data and simulation comparisons are
 running. Final convergence, calibration, power, and timing results will be
 added when those jobs complete.
+
+The simulation comparison used 96 null and 96 effect-0.5 replicates per
+likelihood. Empirical 95th-percentile null thresholds gave 5.21% null
+rejection for every method. Multinomial Laplace, tilted ELBO, and Renyi VI
+all had 54.17% calibrated power and condition-coefficient RMSE 0.223.
+Dirichlet--multinomial Laplace, Monte Carlo ELBO, and Renyi VI all had 41.67%
+power and RMSE 0.236. Median nested-fit times at the nonzero effect were
+9.87, 1.87, and 1.58 seconds for the multinomial methods and 21.41, 3.06,
+and 3.35 seconds for the Dirichlet--multinomial methods. Laplace converged in
+every replicate. VI convergence was 97--100%, and median mouse-level ESS was
+127.5--127.7 of 128. Thus the approximation choice did not affect calibrated
+power or coefficient error in this setting, while VI was five- to seven-fold
+faster. The genome-wide real-data arrays cover 65 of 66 depth-eligible genes;
+the omitted gene has 3,905 ECs, while all retained genes have at most six
+supported isoforms. Both condition and cell-type arrays completed for all 65
+genes without fit exceptions.
+
+The first real-data pass initialized each approximation independently. Its
+pooled multinomial Laplace-versus-Renyi evidence-gain correlation was only
+0.41. A second, authoritative pass initialized diagonal Gaussian VI from the
+Laplace posterior means and variance diagonal and initialized Renyi VI from
+the ELBO fit; relative objective tolerance was relaxed to 1e-8 and the cap
+raised to 500 iterations. This raised convergence to 92--98% for condition
+and 94--100% for cell type, with no fit exceptions. It did not remove the
+dimension-dependent discrepancy: Laplace-versus-Renyi gain correlation was
+0.974 (condition) and 0.9996 (cell type) for 38 two-isoform genes, but 0.49
+and 0.59 for 20 three-isoform genes. This points to the diagonal variational
+covariance, which cannot represent within-mouse posterior correlation among
+isoform logits. A full-covariance Gaussian extension is needed before using
+mean-field VI for multi-isoform evidence comparisons.
+
+For two-isoform genes, the exact-likelihood ELBO and alpha-0.5 Renyi gains
+evaluated at the same tilted-bound posterior were almost identical: Spearman
+correlation 0.998 for condition and 1.0 for cell type. Median condition gains
+were 5.54 for the tilted training bound, 4.95 for exact Monte Carlo ELBO,
+4.93 for Renyi evaluation, 4.93 for Laplace, and 4.95 for separately
+optimized Renyi VI. Cell-type medians were 89.06, 74.38, 74.36, 72.12, and
+74.36. The training bound is differentially looser under the alternative and
+inflates nested gains, so it must not be treated as a likelihood-ratio
+statistic. One-dimensional simulation thresholds apply only to two-isoform
+condition tests, not multi-isoform or cell-type omnibus tests.
