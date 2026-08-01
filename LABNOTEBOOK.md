@@ -2153,3 +2153,18 @@ and is shared across that gene's blocks. Only retained annotated spliced
 isoforms receive nonzero entries in a block's isoform-to-path map. Other
 columns, including modeled unspliced precursors, remain nuisance isoforms so
 their EC probability is represented in the likelihood normalization.
+
+The differential-splicing document now distinguishes the conditional path
+covariance from the full-isoform nuisance covariance previously called only
+the profile calculation. The latter is not an unconstrained refit. It
+evaluates full isoform expected Fisher information at the constrained local
+estimate, propagates its pseudoinverse through the path-ILR Jacobian, and
+rejects responses that overlap an information-null isoform direction. The
+document gives the Jacobian entrywise, the eigenspace thresholds, and the
+identifiability test used by the implementation.
+
+All method pseudocode was moved from prose enumerations into numbered
+algorithm and algpseudocode environments. The full-isoform covariance is now
+a separate algorithm, alongside block construction, local pseudobulk and
+cell-resolved fits, Gaussian and compositional tests, sensitivity tests, and
+joint condition tests.

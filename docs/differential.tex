@@ -5,6 +5,8 @@
 \usepackage{bm}
 \usepackage{booktabs}
 \usepackage{enumitem}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 \usepackage{hyperref}
 
 \newcommand{\Beta}{\bm B}
@@ -225,33 +227,106 @@ Let \(I_{\delta,bi}\in\mathbb S_+^{d_b}\) be the expected Fisher information
 of the summed paired-primer log likelihood with respect to
 \(\bm\delta_{bi}\). The conditional covariance is
 \(V_{bi}^{\rm cond}=I_{\delta,bi}^{-1}\in\mathbb S_+^{d_b}\) when the
-information is positive definite.
+information is positive definite. It conditions on the fitted total spliced
+mass, the isoform mixture within each path, and every nuisance-isoform
+abundance. Its only free directions are the \(d_b\) path perturbations.
 
-The profile calculation instead allows all isoform directions to vary.
-Set \(\bm\eta_{bi}=\log\bm\theta_{bi}\in\mathbb R^{T_g}\),
-\(D_{bi}=\operatorname{diag}(\bm\theta_{bi})\in
+\subsection*{Full-isoform nuisance (profile) covariance}
+
+The profile calculation is a covariance sensitivity analysis, not a second
+estimate of path usage. It retains the same
+\(\widehat{\bm\theta}_{bi}\in\mathbb R_+^{T_g}\) obtained from the
+constrained local fit, but asks how uncertain its path ILRs would be if all
+\(T_g\) isoform log-abundances were locally free. Equivalently, after a
+smooth reparameterization into path ILRs and \(T_g-d_b\) nuisance
+coordinates, it approximates the path-ILR block of the inverse Fisher
+information after profiling the nuisance coordinates. No unconstrained
+isoform likelihood is optimized, so \emph{profile} below means this local
+expected-Fisher approximation rather than an exact profile-likelihood fit.
+
+Set \(\bm\eta_{bi}=\log\widehat{\bm\theta}_{bi}\in\mathbb R^{T_g}\),
+\(D_{bi}=\operatorname{diag}(\widehat{\bm\theta}_{bi})\in
 \mathbb R^{T_g\times T_g}\),
 \(\bm d_{bp}=A_{bp}^\prime\bm1_{E_{bp}}\in\mathbb R^{T_g}\), and
-\(\bm r_{0,bip}=(\bm d_{bp}\odot\bm\theta_{bi})/Z_{bip}
+\(\widehat{\bm q}_{bip}=A_{bp}\widehat{\bm\theta}_{bi}
+\in\mathbb R_+^{E_{bp}}\),
+\(\widehat Z_{bip}=\bm1_{E_{bp}}^\prime\widehat{\bm q}_{bip}
+\in\mathbb R_+\), and
+\(\bm r_{0,bip}=(\bm d_{bp}\odot\widehat{\bm\theta}_{bi})/
+\widehat Z_{bip}
 \in\mathbb R^{T_g}\).
 The primer-specific expected information is
 \[
  I_{\eta,bip}=N_{bip}\left[
  \frac{D_{bi}A_{bp}^\prime
- \operatorname{diag}(\bm q_{bip}^{-1})A_{bp}D_{bi}}{Z_{bip}}
+ \operatorname{diag}(\widehat{\bm q}_{bip}^{-1})A_{bp}D_{bi}}
+ {\widehat Z_{bip}}
  -\bm r_{0,bip}\bm r_{0,bip}^\prime
  \right]\in\mathbb S_+^{T_g}.
 \]
-Let \(J_{bi}=\partial\bm y_{bi}/\partial\bm\eta_{bi}^\prime
-\in\mathbb R^{d_b\times T_g}\). Then
+The paired-primer information is
+\(I_{\eta,bi}=\sum_{p=1}^P I_{\eta,bip}\in\mathbb S_+^{T_g}\).
+
+The covariance must be propagated through the isoform-to-path map. Let
+\(\omega_{bi}^{\rm sp}=\sum_{t\in\mathcal I_b^{\rm sp}}
+\widehat\theta_{bit}\in\mathbb R_+\) and
+\(a_{bis}=\sum_{t:s_b(t)=s}\widehat\theta_{bit}\in\mathbb R_+\).
+Define
+\(R_{bi}=\partial\log\bm\psi_{bi}/\partial\bm\eta_{bi}^\prime
+\in\mathbb R^{S_b\times T_g}\) entrywise by
 \[
- V_{bi}^{\rm prof}=J_{bi}
- \left(\sum_{p=1}^P I_{\eta,bip}\right)^+J_{bi}^\prime
+ (R_{bi})_{st}=
+ \begin{cases}
+  \mathbb 1\{s_b(t)=s\}\widehat\theta_{bit}/a_{bis}
+  -\widehat\theta_{bit}/\omega_{bi}^{\rm sp},
+  &t\in\mathcal I_b^{\rm sp},\\
+  0,&t\notin\mathcal I_b^{\rm sp}.
+ \end{cases}
+\]
+Thus
+\[
+ J_{bi}=\frac{\partial\bm y_{bi}}
+ {\partial\bm\eta_{bi}^\prime}
+ =Q_b^\prime R_{bi}\in\mathbb R^{d_b\times T_g}.
+\]
+
+The multinomial likelihood necessarily has a global-scale null direction,
+and EC ambiguity can create additional null directions. Write the symmetric
+eigendecomposition
+\[
+ I_{\eta,bi}=U_{bi}\operatorname{diag}(\bm\lambda_{bi})U_{bi}^\prime,
+\]
+where \(U_{bi}\in\mathbb R^{T_g\times T_g}\) is orthogonal and
+\(\bm\lambda_{bi}\in\mathbb R^{T_g}\). An eigenvalue is treated as positive
+when
+\(\lambda_{bit}>10^{-8}\max_u|\lambda_{biu}|\). Let
+\(\mathcal P_{bi}\subseteq\{1,\ldots,T_g\}\) index these positive
+eigenvalues, let \(\mathcal N_{bi}\) index the remainder, and let
+\(U_{bi,+}\in\mathbb R^{T_g\times|\mathcal P_{bi}|}\) and
+\(U_{bi,0}\in\mathbb R^{T_g\times|\mathcal N_{bi}|}\) contain the
+corresponding eigenvectors.
+
+The path response is identifiable only if its Jacobian annihilates every
+information-null direction. The implementation requires
+\[
+ \|J_{bi}U_{bi,0}\|_F
+ \leq 10^{-9}\max\{\|J_{bi}\|_F,1\}.
+\]
+If this fails, \(V_{bi}^{\rm prof}\) is set to an infinite matrix and the
+estimate is excluded from profile testing. Otherwise,
+\[
+ V_{bi}^{\rm prof}
+ =J_{bi}U_{bi,+}
+ \operatorname{diag}(\bm\lambda_{bi,\mathcal P}^{-1})
+ U_{bi,+}^\prime J_{bi}^\prime
+ =J_{bi}I_{\eta,bi}^{+}J_{bi}^\prime
  \in\mathbb S_+^{d_b}.
 \]
-If a row direction of \(J_{bi}\) overlaps the information null space, that
-contrast is marked unidentified rather than assigned zero variance by the
-pseudoinverse.
+Unlike \(V_{bi}^{\rm cond}\), this covariance allows EC-supported changes in
+within-path isoform mixtures, spliced mass, and nuisance isoforms to absorb
+information that would otherwise identify a path contrast. It is therefore
+the more conservative sensitivity calculation when those nuisance
+directions are weakly identified.
 
 \subsection*{Cell-resolved likelihood}
 
@@ -460,198 +535,241 @@ gene-level combination is stated. ``Fit'' below means bounded L-BFGS with
 analytic gradients and a fourfold iteration-limit retry after a warm start
 from the first endpoint.
 
-\subsection*{Algorithm 1: construct splice blocks and path maps}
+\begin{algorithm}[H]
+\caption{Construct splice blocks and path maps}
+\label{alg:blocks}
+\begin{algorithmic}[1]
+\Require \(K_g\) annotated spliced isoforms with exon chains; retained set
+  \(\mathcal I_g\), \(|\mathcal I_g|=T_g\)
+\Ensure Blocks \(b\), maps \(C_b\in\{0,1\}^{S_b\times T_g}\), and bases
+  \(Q_b\in\mathbb R^{S_b\times d_b}\)
+\State Split the gene at every annotated exon boundary into atomic intervals.
+\State Merge adjacent intervals exonic in every annotated isoform into
+  constitutive anchors.
+\State Form internal blocks between consecutive anchors and terminal blocks
+  using pseudo-anchors.
+\ForAll{candidate blocks \(b\)}
+  \State Record each annotated isoform's ordered intervening exon chain.
+  \State Assign identical chains to one path and restrict to
+    \(\mathcal I_b^{\rm sp}\subseteq\mathcal I_g\).
+  \State Remap represented path labels to \(\{1,\ldots,S_b\}\).
+  \If{\(S_b<2\)}
+    \State discard \(b\)
+  \Else
+    \State Set \((C_b)_{s_b(t),t}=1\) for
+      \(t\in\mathcal I_b^{\rm sp}\); leave nuisance columns zero.
+    \State Construct the Helmert basis \(Q_b\).
+  \EndIf
+\EndFor
+\State Canonicalize the unordered isoform partition and retain one
+  representative of equivalent blocks.
+\end{algorithmic}
+\end{algorithm}
 
-\textbf{Input:} for one gene, \(K_g\in\mathbb N\) annotated spliced isoforms,
-their ordered zero-based half-open exon intervals, and the retained model
-set \(\mathcal I_g\) of size \(T_g\). \textbf{Output:} blocks
-\(b\), maps \(C_b\in\{0,1\}^{S_b\times T_g}\), and bases
-\(Q_b\in\mathbb R^{S_b\times(S_b-1)}\).
-\begin{enumerate}[leftmargin=*]
-  \item Split the gene at every annotated exon boundary to obtain atomic
-        genomic intervals.
-  \item Mark intervals exonic in every spliced isoform; merge adjacent
-        marked intervals into constitutive anchors.
-  \item For each consecutive anchor pair, record each isoform's ordered
-        chain of intervening exonic intervals. Use terminal pseudo-anchors
-        when no shared first or last anchor exists.
-  \item Assign identical chains to the same path, then restrict the path map
-        to \(\mathcal I_b^{\rm sp}\), the annotated isoforms also present in
-        \(\mathcal I_g\). Remap represented path labels, discard a block if
-        fewer than two paths remain, and embed the one-hot assignments in
-        \(C_b\); columns for \(\mathcal I_g\setminus\mathcal I_b^{\rm sp}\)
-        are zero.
-  \item Construct \(Q_b\) from the Helmert formula above.
-  \item Canonicalize the unordered collection of isoform sets assigned to
-        paths. Retain one representative for identical partitions and attach
-        all equivalent interval identifiers to it.
-\end{enumerate}
+\begin{algorithm}[H]
+\caption{Fit one pseudobulk's local path composition}
+\label{alg:local-fit}
+\begin{algorithmic}[1]
+\Require Counts \(\bm c_{bip}\in\mathbb N_0^{E_{bp}}\), designs
+  \(A_{bp}\in\mathbb R_+^{E_{bp}\times T_g}\), baseline
+  \(\bm\theta_{bi}^{(0)}\in\mathbb R_+^{T_g}\), \(C_b\), and \(Q_b\)
+\Ensure \(\widehat{\bm\theta}_{bi}\), \(\widehat{\bm\psi}_{bi}\),
+  \(\widehat{\bm y}_{bi}\), and \(V_{bi}^{\rm cond}\)
+\State Initialize \(\bm\delta_{bi}\gets\bm0_{d_b}\).
+\If{\(S_b=2\)}
+  \State Evaluate the fixed log-ratio grid and retain its best point.
+\EndIf
+\Function{Objective}{$\bm\delta$}
+  \State Form \(\bm\theta_{bi}(\bm\delta)\), preserving spliced mass and
+    within-path isoform mixtures.
+  \State \Return the negative sum of the \(P=2\) multinomial log likelihoods
+    and its analytic gradient.
+\EndFunction
+\State Minimize \Call{Objective}{$\bm\delta$} by bounded L-BFGS on
+  \([-20,20]^{d_b}\).
+\State Set \(\widehat{\bm\theta}_{bi}\gets
+  \bm\theta_{bi}(\widehat{\bm\delta}_{bi})\).
+\State Set \(\widehat{\bm\psi}_{bi}\gets
+  C_b\widehat{\bm\theta}_{bi}/
+  (\bm1_{S_b}^\prime C_b\widehat{\bm\theta}_{bi})\).
+\State Set \(\widehat{\bm y}_{bi}\gets
+  Q_b^\prime\log\widehat{\bm\psi}_{bi}\).
+\State Compute \(I_{\delta,bi}\) by summing primer expected information.
+\State Apply the eigenvalue/null-space check to
+  \((I_{\delta,bi},I_{d_b})\); if identifiable, set
+  \(V_{bi}^{\rm cond}=I_{\delta,bi}^{-1}\), otherwise set it to infinity.
+\end{algorithmic}
+\end{algorithm}
 
-\subsection*{Algorithm 2: pseudobulk local fit and covariance}
+\begin{algorithm}[H]
+\caption{Compute full-isoform nuisance (profile) covariance}
+\label{alg:profile}
+\begin{algorithmic}[1]
+\Require \(\widehat{\bm\theta}_{bi}\in\mathbb R_+^{T_g}\),
+  \(A_{bp}\), \(N_{bip}\), \(C_b\), \(Q_b\), relative threshold
+  \(r_{\rm eig}=10^{-8}\), and null tolerance \(a_{\rm null}=10^{-9}\)
+\Ensure \(V_{bi}^{\rm prof}\in\mathbb S_+^{d_b}\) and an identifiability flag
+\For{\(p=1,\ldots,P\)}
+  \State Compute \(\widehat{\bm q}_{bip}\), \(\widehat Z_{bip}\), and
+    \(I_{\eta,bip}\in\mathbb S_+^{T_g}\).
+\EndFor
+\State Set \(I_{\eta,bi}\gets\sum_p I_{\eta,bip}\).
+\State Compute path masses \(a_{bis}\), spliced mass
+  \(\omega_{bi}^{\rm sp}\), and
+  \(R_{bi}=\partial\log\bm\psi_{bi}/\partial\bm\eta_{bi}^\prime\).
+\State Set \(J_{bi}\gets Q_b^\prime R_{bi}\).
+\State Eigendecompose
+  \(I_{\eta,bi}=U_{bi}\operatorname{diag}(\bm\lambda_{bi})U_{bi}^\prime\).
+\State Put \(t\) in \(\mathcal P_{bi}\) when
+  \(\lambda_{bit}>r_{\rm eig}\max_u|\lambda_{biu}|\), and put all other
+  indices in \(\mathcal N_{bi}\).
+\If{\(\|J_{bi}U_{bi,0}\|_F>
+  a_{\rm null}\max\{\|J_{bi}\|_F,1\}\)}
+  \State Set \(V_{bi}^{\rm prof}\gets\infty_{d_b\times d_b}\) and mark
+    the response unidentified.
+\Else
+  \State Set \(V_{bi}^{\rm prof}\gets
+    J_{bi}U_{bi,+}\operatorname{diag}
+    (\bm\lambda_{bi,\mathcal P}^{-1})U_{bi,+}^\prime J_{bi}^\prime\).
+  \State Mark the response identifiable.
+\EndIf
+\end{algorithmic}
+\end{algorithm}
 
-\textbf{Input:} \(\bm c_{bip}\in\mathbb N_0^{E_{bp}}\),
-\(A_{bp}\in\mathbb R_+^{E_{bp}\times T_g}\), baseline
-\(\bm\theta_{bi}^{(0)}\in\mathbb R_+^{T_g}\), \(C_b\), and \(Q_b\).
-\textbf{Output:} \(\widehat{\bm\psi}_{bi}\in\Delta^{S_b-1}\),
-\(\widehat{\bm y}_{bi}\in\mathbb R^{d_b}\), and conditional/profile
-covariances in \(\mathbb S_+^{d_b}\).
-\begin{enumerate}[leftmargin=*]
-  \item Initialize \(\bm\delta_{bi}\in[-20,20]^{d_b}\) at zero; for
-        \(S_b=2\), also evaluate a fixed log-ratio grid and retain its best
-        point.
-  \item Form \(\bm\theta_{bi}(\bm\delta_{bi})\) while preserving spliced
-        mass and within-path isoform mixtures.
-  \item Sum the two primer-specific multinomial log likelihoods and optimize
-        over \(\bm\delta_{bi}\).
-  \item Map the fitted isoform vector through \(C_b\), normalize to
-        \(\widehat{\bm\psi}_{bi}\), and compute
-        \(\widehat{\bm y}_{bi}=Q_b^\prime\log
-        \widehat{\bm\psi}_{bi}\).
-  \item Sum primer Fisher information for \(\bm\delta_{bi}\) and invert it
-        to obtain \(V_{bi}^{\rm cond}\). Mark the response unidentified if
-        the information is singular in a tested path direction.
-  \item For the profile sensitivity, sum
-        \(I_{\eta,bip}\in\mathbb S_+^{T_g}\), compute
-        \(J_{bi}\in\mathbb R^{d_b\times T_g}\), and form
-        \(V_{bi}^{\rm prof}\). Apply the information-null-space check.
-  \item Write every estimate and its convergence, identifiability, and
-        reliability flags; do not silently replace a failed covariance.
-\end{enumerate}
+\begin{algorithm}[H]
+\caption{Fit a cell-resolved pseudobulk path composition}
+\label{alg:cell-resolved}
+\begin{algorithmic}[1]
+\Require Cell EC vectors \(\bm c_{bihp}\), baselines
+  \(\bm\theta_{bih}^{(0)}\), weights \(w_{bih}\), and \(A_{bp},C_b,Q_b\)
+\Ensure One pseudobulk response \(\widehat{\bm y}_{bi}\) and covariance
+  \(V_{bi}\)
+\State Allocate one shared \(\bm\delta_{bi}\in\mathbb R^{d_b}\).
+\ForAll{cells \(h\) and primers \(p\)}
+  \State Perturb the cell's baseline, normalize its EC probabilities, and
+    add its multinomial log likelihood and gradient.
+\EndFor
+\State Optimize the summed objective over \(\bm\delta_{bi}\).
+\State Compute each fitted \(\widehat{\bm\psi}_{bih}\) and their normalized
+  \(w_{bih}\)-weighted mean \(\widehat{\bm\psi}_{bi}\).
+\State Sum cell-by-primer Fisher matrices and propagate their inverse through
+  the weighted composition response to obtain \(V_{bi}\).
+\State Set \(\widehat{\bm y}_{bi}=Q_b^\prime\log
+  \widehat{\bm\psi}_{bi}\).
+\end{algorithmic}
+\end{algorithm}
 
-\subsection*{Algorithm 3: cell-resolved local fit}
+\begin{algorithm}[H]
+\caption{Gaussian condition or paired cell-type test}
+\label{alg:gaussian}
+\begin{algorithmic}[1]
+\Require Responses \(\widehat{\bm y}_{bi}\), covariances \(V_{bi}\),
+  mouse, condition, and cell-type labels; test type
+\Ensure One Wald p-value for block \(b\)
+\If{testing condition within a cell type}
+  \State Retain conditions represented by at least three mice.
+  \State Build full design \(X_b\in\mathbb R^{n\times k}\) and reduced
+    design \(X_{0b}\in\mathbb R^{n\times(k-r_b)}\).
+\Else
+  \State Build mouse-effect design
+    \(X_{0b}\in\{0,1\}^{n_b\times M_b}\).
+  \State Append \(L_b-1\) cell-type columns to obtain
+    \(X_{1b}\in\mathbb R^{n_b\times(M_b+L_b-1)}\).
+\EndIf
+\State Require full column rank in both designs.
+\State Estimate \(\tau_b^2\) by REML under the reduced design using
+  \(V_{bi}+\tau_b^2I_{d_b}\).
+\State Hold \(\widehat\tau_b^2\) fixed and fit the full design by GLS.
+\State Stack the tested coefficients and compute their Wald statistic
+  \(W_b\).
+\State Compare \(W_b\) with the applicable chi-squared reference.
+\State Calibrate by mouse-level condition permutations or within-mouse
+  cell-type permutations, as appropriate.
+\end{algorithmic}
+\end{algorithm}
 
-\textbf{Input:} cell EC vectors
-\(\bm c_{bihp}\in\mathbb N_0^{E_{bp}}\), cell baselines
-\(\bm\theta_{bih}^{(0)}\in\mathbb R_+^{T_g}\), weights
-\(w_{bih}\in\mathbb R_+\), and the same \(A_{bp},C_b,Q_b\).
-\textbf{Output:} one pseudobulk response and covariance with dimensions
-identical to Algorithm 2.
-\begin{enumerate}[leftmargin=*]
-  \item Allocate one shared \(\bm\delta_{bi}\in\mathbb R^{d_b}\); do not
-        allocate a free effect per cell.
-  \item For every cell and primer, perturb its own baseline, normalize its EC
-        probabilities, and add its multinomial log likelihood.
-  \item Optimize the summed objective over the shared \(\bm\delta_{bi}\).
-  \item Compute each fitted cell composition
-        \(\widehat{\bm\psi}_{bih}\in\Delta^{S_b-1}\) and take the normalized
-        \(w_{bih}\)-weighted average.
-  \item Sum the \(d_b\)-by-\(d_b\) cell-by-primer Fisher matrices, invert,
-        and propagate through the weighted composition average.
-  \item Send the resulting pseudobulk response to exactly the same
-        mouse-replicate test as Algorithm 4.
-\end{enumerate}
+\begin{algorithm}[H]
+\caption{Paired compositional cell-type test}
+\label{alg:compositional}
+\begin{algorithmic}[1]
+\Require \(\widehat{\bm\psi}_{bi}\), \(V_{bi}^{\rm cond}\), mouse and
+  cell-type labels, and \(R=500\)
+\Ensure One exact permutation p-value \(p_b\) per canonical block
+\State Keep converged, identifiable estimates satisfying the path floor and
+  the three-mouse-per-cell-type requirement.
+\State Convert each \((\widehat{\bm\psi}_{bi},V_{bi}^{\rm cond})\) to
+  \(n_{bi}^{\rm eff}\) and \(\bm x_{bi}\).
+\State Build \(X_{0b}\) from mouse effects and \(X_{1b}\) by appending
+  cell-type effects.
+\State Fit the null coefficients and \(\widehat\kappa_{0b}\).
+\State Fit the observed alternative and compute \(\Lambda_b\).
+\If{using fixed concentration}
+  \State Set \(\kappa_{1b}\gets\widehat\kappa_{0b}\).
+\Else
+  \State Optimize \(\widehat\kappa_{1b}\) and compare the finite optimum with
+    the exact multinomial endpoint.
+\EndIf
+\For{\(r=1,\ldots,R\)}
+  \State Shuffle cell-type labels within each mouse to form \(X_{1b}^{(r)}\).
+  \State Reuse the null fit, refit the alternative, and store
+    \(\Lambda_b^{(r)}\).
+\EndFor
+\State Compute the tolerance-aware finite-permutation rank \(p_b\).
+\State Require \(n_b\geq30\), then apply BH across canonical blocks.
+\end{algorithmic}
+\end{algorithm}
 
-\subsection*{Algorithm 4: Gaussian condition and cell-type tests}
+\begin{algorithm}[H]
+\caption{Pairwise and dominant-path sensitivity tests}
+\label{alg:sensitivities}
+\begin{algorithmic}[1]
+\Require Path estimates and conditional covariances from
+  Algorithm~\ref{alg:local-fit}
+\Ensure Calibrated sensitivity tables
+\ForAll{cell-type pairs}
+  \State Retain \(M\) mice containing both types.
+  \State Use \(X_0\in\mathbb R^{2M\times M}\) for mouse effects and
+    \(X_1\in\mathbb R^{2M\times(M+1)}\) for mouse plus cell type.
+  \State Permute the two labels within mouse and correct across all
+    block-by-pair hypotheses.
+\EndFor
+\ForAll{blocks \(b\)}
+  \State Rank paths by \(\sum_iN_{bi}^{\rm gene}\psi_{bis}\) and select
+    \(\mathcal S_b\), the two largest, without labels.
+  \State Construct selector \(E_b\), two-path basis \(Q_b^{(2)}\), and
+    \(\mathcal R_b=(Q_b^{(2)})^\prime E_b^\prime Q_b\).
+  \State Set \(V_{bi}^{(2)}=\mathcal R_bV_{bi}\mathcal R_b^\prime\) and
+    renormalize the two retained proportions.
+  \State Run Algorithm~\ref{alg:compositional} and record path-floor
+    sensitivity sweeps.
+\EndFor
+\end{algorithmic}
+\end{algorithm}
 
-\textbf{Input:} \(n\) responses
-\(\widehat{\bm y}_{bi}\in\mathbb R^{d_b}\), covariances
-\(V_{bi}\in\mathbb S_+^{d_b}\), and metadata for their mice, conditions,
-and cell types. \textbf{Output:} one Wald p-value for a condition-within-cell-
-type hypothesis or one paired cell-type hypothesis.
-\begin{enumerate}[leftmargin=*]
-  \item For a condition test, retain conditions with at least three
-        biological mice. Construct
-        \(X_b\in\mathbb R^{n\times k}\) from an intercept and condition
-        indicators, and form its reduced design
-        \(X_{0b}\in\mathbb R^{n\times(k-r_b)}\) by deleting the
-        \(r_b\in\mathbb N\) tested condition columns.
-  \item For a cell-type test, let the \(n=n_b\) rows represent \(M_b\) mice
-        and \(L_b\) cell types. Construct
-        \(X_{0b}\in\{0,1\}^{n_b\times M_b}\) from mouse effects and
-        \(X_{1b}\in\mathbb R^{n_b\times(M_b+L_b-1)}\) by appending
-        \(L_b-1\) cell-type indicators. Require the applicable full and
-        reduced designs to have full column rank.
-  \item Under the reduced model, estimate
-        \(\tau_b^2\in\mathbb R_+\) by REML using covariance
-        \(V_{bi}+\tau_b^2I_{d_b}\).
-  \item Hold \(\widehat\tau_b^2\) fixed and fit
-        the applicable full design by GLS. Its coefficient matrix is
-        \(k\times d_b\) for the condition model and
-        \((M_b+L_b-1)\times d_b\) for the cell-type model.
-  \item Stack the tested coefficients: \(r_bd_b\) entries for condition or
-        \((L_b-1)d_b\) for cell type. Compute \(W_b\) and compare it with
-        the corresponding chi-squared reference distribution.
-  \item For calibration, permute condition once per mouse for a condition
-        test, or shuffle cell-type labels only within mouse for a cell-type
-        test. Hold \(\widehat\tau_b^2\) fixed and refit each alternative.
-  \item Apply BH separately by biological question and by conditional versus
-        profile covariance.
-\end{enumerate}
-
-\subsection*{Algorithm 5: paired compositional cell-type test}
-
-\textbf{Input:} path estimates and conditional covariances from Algorithm 2.
-\textbf{Output:} one exact permutation p-value per canonical block.
-\begin{enumerate}[leftmargin=*]
-  \item Keep converged, conditionally identifiable estimates. Require each
-        modeled path proportion to be at least 0.05 and each represented cell
-        type to occur in at least three mice.
-  \item Convert each \((\bm\psi_{bi},V_{bi}^{\rm cond})\) pair to
-        \(n_{bi}^{\rm eff}\in\mathbb R_+\) and
-        \(\bm x_{bi}\in\mathbb R_+^{S_b}\).
-  \item Build \(X_{0b}\in\mathbb R^{n_b\times M_b}\) from mouse fixed
-        effects and \(X_{1b}\in
-        \mathbb R^{n_b\times(M_b+L_b-1)}\) by appending cell-type effects.
-  \item Fit the null coefficients and \(\widehat\kappa_{0b}\). Fit the
-        observed alternative and compute \(\Lambda_b\).
-  \item For the fixed-\(\kappa\) approach, set
-        \(\kappa_{1b}=\widehat\kappa_{0b}\). For the free-\(\kappa\)
-        sensitivity, optimize \(\widehat\kappa_{1b}\) and compare the best finite
-        fit with the exact multinomial endpoint.
-  \item Repeat \(R=500\) times: shuffle cell-type labels within each mouse,
-        rebuild only the appended columns of \(X_{1b}^{(r)}\), reuse the null
-        fit, refit the alternative, and store \(\Lambda_b^{(r)}\).
-  \item Compute the tolerance-aware finite-permutation rank \(p_b\). Require
-        \(n_b\geq30\), then apply BH across canonical blocks.
-\end{enumerate}
-
-\subsection*{Algorithm 6: pairwise and dominant-path sensitivities}
-
-\textbf{Input:} the same path estimates as Algorithm 5. \textbf{Output:}
-calibrated sensitivity tables, not additional primary discoveries.
-\begin{enumerate}[leftmargin=*]
-  \item \emph{Pairwise:} for each cell-type pair, retain only mice containing
-        both types. Use \(X_0\in\mathbb R^{2M\times M}\) for \(M\) mouse
-        effects and \(X_1\in\mathbb R^{2M\times(M+1)}\) for one cell-type
-        effect. Permute the two labels within mouse and correct across every
-        block-by-pair hypothesis.
-  \item \emph{Dominant paths:} rank paths by the scalar aggregate
-        \(\sum_iN_{bi}^{\rm gene}\psi_{bis}\). Select index set
-        \(\mathcal S_b\subseteq\{1,\ldots,S_b\}\), with
-        \(|\mathcal S_b|=2\), without using labels.
-  \item Let \(E_b\in\{0,1\}^{S_b\times2}\) select these paths and let
-        \(Q_b^{(2)}\in\mathbb R^{2\times1}\) be their Helmert basis. Transform
-        covariance with
-        \(\mathcal R_b=(Q_b^{(2)})^\prime E_b^\prime Q_b\in
-        \mathbb R^{1\times d_b}\) and
-        \(V_{bi}^{(2)}=\mathcal R_bV_{bi}\mathcal R_b^\prime
-        \in\mathbb R^{1\times1}\).
-  \item Renormalize the two retained proportions, then run Algorithm 5.
-        Report path-floor sweeps as sensitivity analyses.
-\end{enumerate}
-
-\subsection*{Algorithm 7: joint condition tests}
-
-\textbf{Input:} calibrated block-by-cell-type p-values or ILR responses.
-\textbf{Output:} partition- or gene-level joint p-values.
-\begin{enumerate}[leftmargin=*]
-  \item \emph{ACAT across cell types:} collect the \(J\) valid p-values for
-        one canonical partition and evaluate \(p_{\rm ACAT}\). Optionally
-        apply the same formula to distinct partition p-values within a gene.
-  \item \emph{Naive shared effect, negative control:} fit cell-type
-        intercepts and one condition coefficient while treating rows as
-        independent. Retain this only to measure pseudoreplication inflation.
-  \item \emph{Clustered shared GLS:} construct the block covariance whose
-        diagonal blocks are
-        \(V_{bmc}+(\tau_{\rm mouse}^2+\tau_{\rm resid}^2)I_{d_b}\) and whose
-        same-mouse off-diagonal blocks are \(\tau_{\rm mouse}^2I_{d_b}\).
-        Estimate the
-        two scalar variances under the null by REML.
-  \item Fit the shared condition coefficient by GLS. Permute condition once
-        per mouse, synchronously across all cell types, and refit.
-  \item Apply BH to the resulting canonical-partition family; do not combine
-        discoveries from negative-control and calibrated methods.
-\end{enumerate}
+\begin{algorithm}[H]
+\caption{Joint condition tests}
+\label{alg:joint}
+\begin{algorithmic}[1]
+\Require Calibrated block-by-cell-type p-values or ILR responses
+\Ensure Partition- or gene-level joint p-values
+\State For ACAT, combine valid cell-type p-values within a canonical
+  partition; optionally combine partition p-values within a gene.
+\State As a negative control, fit one shared condition effect while treating
+  cell-type rows as independent.
+\State For clustered GLS, construct diagonal covariance blocks
+  \(V_{bmc}+(\tau_{\rm mouse}^2+\tau_{\rm resid}^2)I_{d_b}\) and
+  same-mouse off-diagonal blocks \(\tau_{\rm mouse}^2I_{d_b}\).
+\State Estimate \(\tau_{\rm mouse}^2\) and \(\tau_{\rm resid}^2\) by REML
+  under the null.
+\State Fit the shared condition coefficient by GLS.
+\ForAll{mouse-level condition permutations}
+  \State Apply one permuted condition to all cell types from that mouse and
+    refit the model.
+\EndFor
+\State Apply BH to the canonical-partition family; keep negative-control and
+  calibrated results separate.
+\end{algorithmic}
+\end{algorithm}
 
 \section*{Implementation Details}
 
@@ -667,7 +785,7 @@ without a shared constitutive region receives one whole-gene block.
 Blocks with one path are discarded. Simple two-path blocks include skipped
 exons, mutually exclusive exons, alternative donors and acceptors, and
 retained introns. The implementation also supports nested and multi-path
-blocks. Precursor features remain nuisance features in the EC model but are
+blocks. Precursor isoforms remain nuisance isoforms in the EC model but are
 not assigned to spliced paths.
 
 Different genomic blocks can induce exactly the same partition of annotated
