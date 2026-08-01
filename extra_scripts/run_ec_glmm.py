@@ -19,16 +19,23 @@ from extra_scripts.run_differential_splicing import (
     gene_structures,
     parse_group,
 )
-from tealeaf.sc import ec_glmm, glm_cv
+from tealeaf.sc import ec_glmm, ec_glmm_full, glm_cv
 
 
 METHODS = (
     "laplace_multinomial",
     "tilted_elbo",
     "renyi_multinomial",
+    "tilted_elbo_full",
+    "elbo_multinomial_full",
+    "renyi_multinomial_full",
+    "laplace_multinomial_noise",
+    "tilted_elbo_full_noise",
     "laplace_dirichlet_multinomial",
     "elbo_dirichlet_multinomial",
     "renyi_dirichlet_multinomial",
+    "elbo_dirichlet_multinomial_full",
+    "renyi_dirichlet_multinomial_full",
 )
 
 
@@ -52,6 +59,7 @@ def parse_args():
     parser.add_argument("--max-genes", type=int)
     parser.add_argument("--max-iter", type=int, default=200)
     parser.add_argument("--vi-samples", type=int, default=128)
+    parser.add_argument("--evaluation-samples", type=int, default=2048)
     parser.add_argument("--renyi-alpha", type=float, default=0.5)
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--shard-count", type=int, default=1)
@@ -114,6 +122,42 @@ def fit_one(method, data, args, initial=None):
             initial=initial,
             max_iter=args.max_iter,
         )
+    if method == "laplace_multinomial_noise":
+        return ec_glmm.fit_laplace(
+            data,
+            family="multinomial",
+            observation_noise=True,
+            initial=initial,
+            max_iter=args.max_iter,
+        )
+    if method in (
+        "tilted_elbo_full",
+        "elbo_multinomial_full",
+        "renyi_multinomial_full",
+        "elbo_dirichlet_multinomial_full",
+        "renyi_dirichlet_multinomial_full",
+        "tilted_elbo_full_noise",
+    ):
+        tilted = method.startswith("tilted")
+        return ec_glmm_full.fit_variational(
+            data,
+            family=(
+                "dirichlet_multinomial"
+                if "dirichlet_multinomial" in method
+                else "multinomial"
+            ),
+            objective="tilted" if tilted else "monte_carlo",
+            alpha=(
+                1.0
+                if tilted or method.startswith("elbo")
+                else args.renyi_alpha
+            ),
+            observation_noise=method.endswith("_noise"),
+            samples=args.vi_samples,
+            seed=args.seed,
+            initial=initial,
+            max_iter=args.max_iter,
+        )
     if method == "laplace_dirichlet_multinomial":
         return ec_glmm.fit_laplace(
             data,
@@ -167,11 +211,40 @@ def fit_nested(method, null_data, alternative_data, args, starts):
             starts["elbo_dirichlet_multinomial"][1],
             alternative_data.design.shape[1],
         )
+    full_start_method = {
+        "tilted_elbo_full": "tilted_elbo",
+        "tilted_elbo_full_noise": "laplace_multinomial_noise",
+        "elbo_dirichlet_multinomial_full": "elbo_dirichlet_multinomial",
+    }.get(method)
+    if full_start_method in starts:
+        null_initial = ec_glmm_full.variational_warm_start(
+            starts[full_start_method][0], null_data.design.shape[1]
+        )
+        alternative_initial = ec_glmm_full.variational_warm_start(
+            starts[full_start_method][1], alternative_data.design.shape[1]
+        )
+    preceding_full_method = {
+        "elbo_multinomial_full": "tilted_elbo_full",
+        "renyi_multinomial_full": "elbo_multinomial_full",
+        "renyi_dirichlet_multinomial_full": "elbo_dirichlet_multinomial_full",
+    }.get(method)
+    if preceding_full_method in starts:
+        null_initial = ec_glmm_full.warm_start(
+            starts[preceding_full_method][0], null_data.design.shape[1]
+        )
+        alternative_initial = ec_glmm_full.warm_start(
+            starts[preceding_full_method][1], alternative_data.design.shape[1]
+        )
     null = fit_one(method, null_data, args, initial=null_initial)
     if alternative_initial is None:
-        alternative_initial = ec_glmm.warm_start(
-            null, alternative_data.design.shape[1]
-        )
+        if "_full" in method:
+            alternative_initial = ec_glmm_full.warm_start(
+                null, alternative_data.design.shape[1]
+            )
+        else:
+            alternative_initial = ec_glmm.warm_start(
+                null, alternative_data.design.shape[1]
+            )
     alternative = fit_one(method, alternative_data, args, initial=alternative_initial)
     return null, alternative
 
@@ -292,6 +365,10 @@ def main():
                     "alternative_converged": alternative["converged"],
                     "null_random_effect_sd": null["random_effect_sd"],
                     "alternative_random_effect_sd": alternative["random_effect_sd"],
+                    "null_observation_noise_sd": null.get("observation_noise_sd", 0.0),
+                    "alternative_observation_noise_sd": alternative.get(
+                        "observation_noise_sd", 0.0
+                    ),
                     "null_concentration": null["concentration"],
                     "alternative_concentration": alternative["concentration"],
                     "tested_coefficient_norm": float(np.linalg.norm(
@@ -304,20 +381,33 @@ def main():
                     row["alternative_importance_ess"] = alternative[
                         "importance_ess"
                     ]
-                if method == "tilted_elbo":
-                    null_scores = ec_glmm.evaluate_variational_objectives(
+                if method in (
+                    "tilted_elbo",
+                    "tilted_elbo_full",
+                    "elbo_multinomial_full",
+                    "renyi_multinomial_full",
+                    "elbo_dirichlet_multinomial_full",
+                    "renyi_dirichlet_multinomial_full",
+                    "tilted_elbo_full_noise",
+                ):
+                    evaluator = (
+                        ec_glmm_full.evaluate_objectives
+                        if "_full" in method
+                        else ec_glmm.evaluate_variational_objectives
+                    )
+                    null_scores = evaluator(
                         null_data,
                         null,
                         alpha=args.renyi_alpha,
-                        samples=args.vi_samples,
+                        samples=args.evaluation_samples,
                         seed=args.seed + 1,
                     )
                     alternative_scores = (
-                        ec_glmm.evaluate_variational_objectives(
+                        evaluator(
                             alternative_data,
                             alternative,
                             alpha=args.renyi_alpha,
-                            samples=args.vi_samples,
+                            samples=args.evaluation_samples,
                             seed=args.seed + 1,
                         )
                     )

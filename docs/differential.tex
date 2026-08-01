@@ -640,6 +640,23 @@ The latter adds pseudobulk-level EC overdispersion. It is a direct
 Dirichlet--multinomial over EC categories, not a Dirichlet model over latent
 isoform allocations.
 
+An alternative overdispersion model retains the multinomial observation but
+adds an isotropic observation-level logistic-normal effect. For pseudobulk
+$i$, let $e_{gi}\in\mathbb R^{d_g}$ and replace the linear predictor by
+
+\[
+ \eta_{gi}=\{X_{gi}B_g+u_{g,m(i)}^\prime+e_{gi}^\prime,0\},
+ \qquad e_{gi}\sim N(0,\tau_g^2I_{d_g}),
+ \quad \tau_g\in\mathbb R_+.
+\]
+The same $e_{gi}$ enters both primer likelihoods, because it perturbs the
+underlying isoform composition rather than each primer's EC probabilities
+independently. Consequently this model allows correlated extra-multinomial
+variation across the two primer halves. It is a logistic-normal analogue of
+the Dirichlet--multinomial, not an identical distribution: its dispersion is
+isotropic in reference-logit coordinates, whereas the
+Dirichlet--multinomial has one concentration on the EC simplex.
+
 Laplace inference maximizes the joint conditional density over
 \(u_g\in\mathbb R^{M_g\times d_g}\). Its negative Hessian satisfies
 \(H_g\in\mathbb S_+^{M_gd_g}\), and the marginal approximation adds the
@@ -683,6 +700,58 @@ multinomial evidence. The cited method is non-conjugate variational message
 passing rather than conjugate CAVI; here ``tilted CAVI'' refers only to this
 block-coordinate implementation.
 
+The full-covariance extension factorizes only across mice. If mouse $m$
+has $q_{gm}\in\mathbb N$ observed pseudobulks, define its complete latent
+block
+\[
+ z_{gm}=(u_{gm}^\prime,e_{gi_1}^\prime,\ldots,e_{gi_{q_{gm}}}^\prime)^\prime
+ \in\mathbb R^{L_{gm}},
+ \qquad L_{gm}=(q_{gm}+1)d_g,
+\]
+where the $e$ components are omitted in the model without observation
+noise. Its prior covariance is diagonal,
+\[
+ P_{gm}=\operatorname{diag}
+ (\sigma_g^2 I_{d_g},\tau_g^2 I_{q_{gm}d_g})
+ \in\mathbb S_+^{L_{gm}},
+\]
+but its posterior approximation is unrestricted within mouse,
+\[
+ Q(z_g)=\prod_{m=1}^{M_g}N(z_{gm};\mu_{gm},\Sigma_{gm}),
+ \quad \mu_{gm}\in\mathbb R^{L_{gm}},\quad
+ \Sigma_{gm}\in\mathbb S_{++}^{L_{gm}}.
+\]
+Thus full covariance describes posterior dependence among isoform logits and
+between a shared mouse effect and its pseudobulk residuals; it does not add
+an unstructured covariance parameter to the generative model.
+
+For row $i$, let $R_{gi}\in\{0,1\}^{d_g\times L_{g,m(i)}}$ select and sum
+its mouse and observation effects. Its free-logit covariance is
+$R_{gi}\Sigma_{g,m(i)}R_{gi}^\prime\in\mathbb S_+^{d_g}$; append a zero row
+and column for the reference isoform to obtain
+$V_{gi}\in\mathbb S_+^{T_g}$. The correlated tilted bound replaces the
+variance vector in the diagonal expression. For
+$m\in\mathbb R^{T_g}$, $V\in\mathbb S_+^{T_g}$, and
+$a\in\Delta^{T_g-1}$,
+\[
+ E\log\sum_t e^{\eta_t}
+ \leq \frac12a^\prime Va
+ +\log\sum_t\exp\{m_t+\tfrac12V_{tt}-(Va)_t\},
+ \qquad
+ a=\operatorname{softmax}\{m+\tfrac12\operatorname{diag}(V)-Va\}.
+\]
+The Gaussian KL term is analytic:
+\[
+ \operatorname{KL}(Q_m\Vert P_m)=\frac12\left[
+ \operatorname{tr}(P_m^{-1}\Sigma_m)
+ +\mu_m^\prime P_m^{-1}\mu_m-L_{gm}
+ +\log|P_m|-\log|\Sigma_m|\right].
+\]
+Each positive-definite $\Sigma_m$ is represented by an unconstrained lower
+Cholesky factor with exponentiated diagonal. The full fit warm-starts from a
+diagonal variational posterior by copying its means and marginal variances
+and setting new off-diagonal entries to zero.
+
 The direct EC Dirichlet--multinomial contains
 \(\log\Gamma\{\kappa_gq_{gipk}(u)+c_{gipk}\}\), so the tilted softmax bound
 does not yield coordinate updates for it. Both likelihood families are
@@ -697,7 +766,8 @@ or the variational R\'enyi bound of order \(\alpha\in(0,1)\),
  \frac{1}{1-\alpha}\log E_Q\{w(u)^{1-\alpha}\}.
 \]
 The comparison uses \(\alpha=0.5\), antithetic Gaussian draws, and the same
-diagonal Gaussian family. Conditional on \(B_g,\sigma_g,\kappa_g\), both
+diagonal or full Gaussian family. Conditional on
+\(B_g,\sigma_g,\kappa_g\), both
 the likelihood and \(Q\) factor by mouse. Writing the corresponding ratio as
 \(w_m(u_{gm})\), the implementation evaluates the equivalent expression
 \[
@@ -708,6 +778,11 @@ the likelihood and \(Q\) factor by mouse. Writing the corresponding ratio as
 This avoids the exponential importance-weight degeneracy caused by forming
 one product weight over all mice. R\'enyi VI is not called CAVI because its
 importance-weighted objective has no coordinate update under this model.
+For the full posterior with observation-level noise, directly optimizing a
+fixed set of Monte Carlo draws is ill-conditioned: the Cholesky factor can
+overfit sample correlations when $L_{gm}$ is not small relative to the
+draw count. This variant is therefore fit with the analytic tilted objective;
+fresh antithetic draws evaluate its exact-likelihood ELBO and R\'enyi bound.
 
 \subsection*{Liang--Zeger multinomial GEE}
 
@@ -1328,6 +1403,26 @@ over all mice had ESS 1/128 and collapsed the fitted random-effect variance;
 the mouse-factorized R\'enyi objective corrected this failure and produced
 ESS above 127.5/128 for both likelihoods.
 
+A second simulation used three isoforms and otherwise retained the same 96
+null and 96 effect replicates. Full-covariance and diagonal VI were nearly
+indistinguishable. Tilted evidence gains had Spearman correlation 0.9999 and
+median absolute difference 0.073 between posterior families; R\'enyi gains
+had correlation 0.99996 and median absolute difference 0.044. Every VI
+variant had calibrated power 0.438 and condition-coefficient RMSE 0.237--0.238.
+The full-covariance tilted fit took a median 2.43 seconds per nested effect
+fit versus 2.00 seconds for diagonal tilted VI. Thus, in a controlled
+multi-isoform setting, omitted posterior covariance was not a material source
+of error.
+
+The same conclusion held for the direct EC Dirichlet--multinomial. In 96
+three-isoform null and effect simulations, diagonal and full ELBO gains had
+correlation 0.9997 and median absolute difference 0.150; diagonal and full
+R\'enyi gains had correlation 0.9999 and median difference 0.092. Both
+posterior families had calibrated power 0.219. In the 65-gene real-data
+analysis, diagonal and full ELBO gains had correlations 0.998 for condition
+and 0.9998 for cell type, with median absolute differences 0.0035 and 0.0050.
+Fixed-draw R\'enyi optimization was again less stable than ELBO optimization.
+
 The genome-wide paired-primer comparison retained 65 genes with mean depth
 at least 100 EC UMIs per pseudobulk; this was 65 of 66 depth-eligible genes,
 with one 3,905-EC outlier excluded by the 128-EC computational cap. All
@@ -1348,8 +1443,9 @@ also above it under R\'enyi VI. For the 20 three-isoform genes, the analogous
 gain correlations fell to 0.49 and 0.59. The mean-field posterior has only a
 diagonal covariance across isoform random effects, whereas Laplace retains
 their within-mouse posterior covariance. The dimension-dependent divergence
-therefore identifies posterior covariance, rather than optimizer failure, as
-the next required variational extension. One-dimensional simulation
+therefore motivated a full-covariance extension, but by itself did not
+distinguish covariance error from objective or optimizer differences.
+One-dimensional simulation
 thresholds were not applied to multi-isoform or cell-type omnibus tests.
 
 The tilted surrogate must also be separated from objective evaluation. For
@@ -1362,6 +1458,41 @@ gains on the same posterior had Spearman correlations 0.998 and 1.000 for
 condition and cell type. The tilted bound becomes looser under the larger
 alternative and therefore overstates nested evidence gains; it is retained
 as a fitting surrogate, not used as a likelihood-ratio statistic.
+
+Full-covariance results did not support posterior covariance as the cause of
+the earlier multi-isoform discrepancy. On the real condition analysis,
+fresh-sample ELBO gains from diagonal and full tilted posteriors had Spearman
+correlation 0.991 across 65 genes and median absolute difference 0.002. Among
+the 20 three-isoform genes, the correlation was 0.938 and median difference
+was 0.024. The corresponding cell-type values were 1.000 overall and within
+the three-isoform subset, with median three-isoform difference 0.023. These
+results, together with the three-isoform simulation, point instead to
+differences in the Laplace objective or its outer optimization. Separately
+optimizing a fixed-draw full-covariance R\'enyi objective was less stable than
+fitting the tilted objective and evaluating both exact objectives with fresh
+draws; the latter is the reported comparison.
+
+The observation-level logistic-normal model was validated with 96 null and
+96 effect simulations using three isoforms, true residual standard deviation
+0.6, and the same ambiguous paired-primer maps. Tilted full-covariance VI
+estimated median residual standard deviation 0.559 under the effect and had
+calibrated power 0.354. Dirichlet--multinomial Laplace had power 0.365, while
+the misspecified ordinary multinomial had power 0.313. Logistic-normal
+Laplace had power 0.146 despite estimating residual scale 0.472, indicating
+that its high-dimensional marginal approximation was not competitive with
+the tilted fit.
+
+In the real data, tilted logistic-normal fits converged under both nested
+models for 80.0\% of condition genes and 86.2\% of cell-type genes. The
+alternative residual standard deviation had median 0.040 for condition and
+0.029 for cell type; the respective interquartile ranges were 0.007--0.239
+and 0.006--0.234. Relative to the multinomial full posterior, fresh ELBO
+condition gains changed by a median absolute 0.335 and retained rank
+correlation 0.809. Cell-type gains changed by 10.68 and retained correlation
+0.959, consistent with extra-multinomial variation having more impact on the
+larger cell-type omnibus statistic. Because residual-scale estimates often
+approached zero and convergence was weaker, this model is retained as an
+overdispersion sensitivity analysis rather than replacing the primary test.
 
 \subsection*{Cell-type effects within mouse}
 

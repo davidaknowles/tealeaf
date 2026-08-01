@@ -2300,3 +2300,68 @@ optimized Renyi VI. Cell-type medians were 89.06, 74.38, 74.36, 72.12, and
 inflates nested gains, so it must not be treated as a likelihood-ratio
 statistic. One-dimensional simulation thresholds apply only to two-isoform
 condition tests, not multi-isoform or cell-type omnibus tests.
+
+## 2026-08-01: full-covariance EC GLMM and logistic-normal overdispersion
+
+I implemented a mouse-factorized full-covariance Gaussian posterior for the
+EC-count multinomial GLMM. Without extra observation noise, each mouse block
+contains all nonreference isoform-logit random intercepts. With observation
+noise, it jointly contains the shared mouse intercept and one isotropic
+logistic-normal residual per observed pseudobulk. The generative covariance
+remains isotropic for both effect classes; only the posterior Cholesky is
+unrestricted. A correlated version of the Knowles--Minka tilted log-sum-exp
+bound uses the full row covariance, and the Gaussian KL is analytic. Exact
+ELBO and alpha-0.5 Renyi objectives use mouse-specific antithetic importance
+weights. Full VI warm-starts from diagonal VI by copying means and marginal
+variances and initializing off-diagonal covariance to zero.
+
+The ordinary Laplace implementation now exposes its full posterior covariance
+and supports the same observation-level residual model through a general
+latent-block selection matrix. Cholesky warm starts symmetrize covariance and
+add the minimum eigenvalue-based jitter needed for positive definiteness. A
+fixed-draw Monte Carlo objective can overfit the much larger residual-model
+Cholesky. The authoritative residual fit therefore uses the analytic tilted
+objective and evaluates exact ELBO and Renyi bounds with fresh draws. The
+reusable full-posterior implementation is `tealeaf/sc/ec_glmm_full.py`; the
+dataset runner and simulation benchmark expose all new variants.
+
+In 96 null and 96 effect simulations with three isoforms, full covariance did
+not materially change multinomial VI. Diagonal and full tilted gains had
+Spearman correlation 0.9999 and median absolute difference 0.073; diagonal
+and full Renyi gains had correlation 0.99996 and median difference 0.044.
+Every VI variant had calibrated power 43.75% and coefficient RMSE 0.237--0.238.
+The full tilted fit took 2.43 seconds per nested effect fit versus 2.00 seconds
+for diagonal tilted VI.
+
+The direct EC Dirichlet--multinomial gave the same result. In 96 three-isoform
+null and effect simulations, diagonal versus full ELBO gains had correlation
+0.9997 and median absolute difference 0.150; diagonal versus full Renyi gains
+had correlation 0.9999 and median difference 0.092. Both posterior families
+had calibrated power 21.88%. Across 65 real-data genes, diagonal versus full
+ELBO gains had correlations 0.998 for condition and 0.9998 for cell type,
+with median absolute differences 0.0035 and 0.0050. Full DM ELBO fits
+converged for every gene. Fixed-draw full Renyi fits were less stable, as in
+the multinomial analysis.
+
+The genome-wide result was consistent. Fresh-sample condition ELBO gains from
+diagonal and full tilted posteriors had correlation 0.991 and median absolute
+difference 0.002 across 65 genes. For the 20 three-isoform genes these were
+0.938 and 0.024; cell-type gains had correlation 1.000 and median difference
+0.023 in that subset. The earlier low Laplace-versus-VI correlation therefore
+was not caused by omitted variational posterior covariance. It more likely
+reflects the Laplace outer objective or optimization; at least one
+three-isoform real-data Laplace fit remains at its all-zero outer start while
+reporting convergence.
+
+I also simulated logistic-normal overdispersion with true residual standard
+deviation 0.6. Tilted full-covariance VI recovered median 0.559 and had 35.42%
+calibrated power, close to direct Dirichlet--multinomial Laplace at 36.46% and
+above the misspecified ordinary multinomial at 31.25%. The high-dimensional
+logistic-normal Laplace approximation had only 14.58% power. In real data,
+the tilted residual model converged under both nested models for 80.0% of
+condition genes and 86.2% of cell-type genes. Median residual standard
+deviations were 0.040 and 0.029. It changed condition ELBO gains modestly
+(median absolute difference 0.335) but reduced the much larger cell-type
+gains by a median absolute 10.68. Given weaker convergence and many residual
+scales near zero, it is an informative overdispersion sensitivity analysis,
+not a replacement for the primary model.

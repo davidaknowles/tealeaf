@@ -23,7 +23,16 @@ def parse_args():
     parser.add_argument("--mice", type=int, default=12)
     parser.add_argument("--total", type=int, default=150)
     parser.add_argument("--random-effect-sd", type=float, default=0.4)
+    parser.add_argument("--observation-noise-sd", type=float, default=0.6)
     parser.add_argument("--concentration", type=float, default=30.0)
+    parser.add_argument("--isoforms", type=int, choices=(2, 3), default=2)
+    parser.add_argument("--include-full-covariance", action="store_true")
+    parser.add_argument(
+        "--families",
+        nargs="+",
+        choices=("multinomial", "logistic_normal", "dirichlet_multinomial"),
+        default=("multinomial", "dirichlet_multinomial"),
+    )
     parser.add_argument("--max-iter", type=int, default=150)
     parser.add_argument("--vi-samples", type=int, default=128)
     parser.add_argument("--renyi-alpha", type=float, default=0.5)
@@ -40,14 +49,40 @@ def simulate(args, family, effect, seed):
     cell_type = np.tile([0, 1], args.mice)
     null_design = np.c_[1 - cell_type, cell_type]
     alternative_design = np.c_[null_design, condition]
-    random_effect = rng.normal(0.0, args.random_effect_sd, args.mice)
-    logits = -0.35 * null_design[:, 0] + 0.25 * null_design[:, 1]
-    logits += float(effect) * condition + random_effect[clusters]
-    abundance = np.c_[np.exp(logits), np.ones(len(logits))]
-    mappings = (
-        np.array([[1.0, 0.0], [0.35, 0.65], [0.0, 1.0]]),
-        np.array([[1.0, 0.0], [0.70, 0.30], [0.0, 1.0]]),
+    dimension = args.isoforms - 1
+    random_effect = rng.normal(
+        0.0, args.random_effect_sd, (args.mice, dimension)
     )
+    baseline = np.linspace(-0.35, 0.2, dimension)
+    cell_shift = np.linspace(0.25, -0.15, dimension)
+    logits = baseline[None, :] + cell_type[:, None] * cell_shift[None, :]
+    logits[:, 0] += float(effect) * condition
+    logits += random_effect[clusters]
+    if family == "logistic_normal":
+        logits += rng.normal(0.0, args.observation_noise_sd, logits.shape)
+    abundance = np.c_[np.exp(logits), np.ones(len(logits))]
+    if args.isoforms == 2:
+        mappings = (
+            np.array([[1.0, 0.0], [0.35, 0.65], [0.0, 1.0]]),
+            np.array([[1.0, 0.0], [0.70, 0.30], [0.0, 1.0]]),
+        )
+    else:
+        mappings = (
+            np.array([
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+                [0.55, 0.45, 0.0],
+                [0.0, 0.35, 0.65],
+            ]),
+            np.array([
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+                [0.25, 0.75, 0.0],
+                [0.0, 0.70, 0.30],
+            ]),
+        )
     counts = []
     for mapping in mappings:
         probabilities = abundance @ mapping.T
@@ -81,13 +116,34 @@ def main():
             "elbo_dirichlet_multinomial",
             "renyi_dirichlet_multinomial",
         ),
+        "logistic_normal": (
+            "laplace_multinomial",
+            "laplace_multinomial_noise",
+            "tilted_elbo_full_noise",
+            "laplace_dirichlet_multinomial",
+        ),
     }
     rows = []
     failures = []
     replicate_ids = range(args.shard_index, args.replicates, args.shard_count)
     for replicate in replicate_ids:
         for effect_number, effect in enumerate(args.effect_sizes):
-            for family_number, (family, methods) in enumerate(method_groups.items()):
+            for family_number, family in enumerate(args.families):
+                methods = method_groups[family]
+                if args.include_full_covariance and family == "multinomial":
+                    methods = methods + (
+                        "tilted_elbo_full",
+                        "elbo_multinomial_full",
+                        "renyi_multinomial_full",
+                    )
+                if (
+                    args.include_full_covariance
+                    and family == "dirichlet_multinomial"
+                ):
+                    methods = methods + (
+                        "elbo_dirichlet_multinomial_full",
+                        "renyi_dirichlet_multinomial_full",
+                    )
                 seed = (
                     args.seed
                     + 100_003 * replicate
@@ -121,6 +177,12 @@ def main():
                             "alternative_random_effect_sd": alternative[
                                 "random_effect_sd"
                             ],
+                            "null_observation_noise_sd": null.get(
+                                "observation_noise_sd", 0.0
+                            ),
+                            "alternative_observation_noise_sd": alternative.get(
+                                "observation_noise_sd", 0.0
+                            ),
                             "null_concentration": null["concentration"],
                             "alternative_concentration": alternative[
                                 "concentration"

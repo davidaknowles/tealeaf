@@ -174,11 +174,20 @@ def fit_laplace(
     data,
     *,
     family="multinomial",
+    observation_noise=False,
     initial=None,
     max_iter=200,
     mode_steps=30,
 ):
-    """Fit an EC-count random-intercept GLMM by Laplace approximation."""
+    """Fit an EC-count random-intercept GLMM by Laplace approximation.
+
+    When ``observation_noise`` is true, the latent block for each cluster also
+    contains an independent isotropic logistic-normal effect for every
+    observation in that cluster.  This supplies multinomial overdispersion on
+    the isoform-logit scale while retaining the EC observation model.
+    """
+    if observation_noise and family != "multinomial":
+        raise ValueError("observation noise is currently supported for multinomial fits")
     (
         jax,
         jnp,
@@ -191,11 +200,50 @@ def fit_laplace(
     ) = _prepared_arrays(data)
     jsp = __import__("jax.scipy", fromlist=["special"])
     dimension = data.n_isoforms - 1
-    initial = _initial_outer(data, family) if initial is None else np.asarray(initial)
+    if observation_noise:
+        base = _initial_outer(data, family)
+        initial = np.r_[base, np.log(0.3)] if initial is None else np.asarray(initial)
+    else:
+        initial = _initial_outer(data, family) if initial is None else np.asarray(initial)
 
     membership = jax.nn.one_hot(
         cluster_index, n_clusters, dtype=jnp.float64
     )
+    cluster_index_np = np.asarray(cluster_index)
+    slots = np.zeros(len(cluster_index_np), dtype=int)
+    cluster_sizes = np.zeros(n_clusters, dtype=int)
+    for row, cluster in enumerate(cluster_index_np):
+        slots[row] = cluster_sizes[cluster]
+        cluster_sizes[cluster] += 1
+    max_cluster_size = int(cluster_sizes.max())
+    latent_blocks = 1 + (max_cluster_size if observation_noise else 0)
+    latent_dimension = latent_blocks * dimension
+    selection = np.zeros((len(design), dimension, latent_dimension), dtype=float)
+    selection[:, :, :dimension] = np.eye(dimension)[None, :, :]
+    if observation_noise:
+        for row, slot in enumerate(slots):
+            start = (1 + slot) * dimension
+            selection[row, :, start : start + dimension] = np.eye(dimension)
+    selection = jnp.asarray(selection)
+
+    def unpack_outer(outer):
+        coefficient_count = design.shape[1] * dimension
+        coefficients = outer[:coefficient_count].reshape(design.shape[1], dimension)
+        log_prior_sd = outer[coefficient_count]
+        cursor = coefficient_count + 1
+        log_kappa = outer[0] * 0.0
+        if family == "dirichlet_multinomial":
+            log_kappa = outer[cursor]
+            cursor += 1
+        log_noise_sd = outer[cursor] if observation_noise else outer[0] * 0.0
+        return coefficients, log_prior_sd, log_noise_sd, log_kappa
+
+    def prior_log_sds(outer):
+        _, log_prior_sd, log_noise_sd, _ = unpack_outer(outer)
+        values = jnp.full((latent_blocks, dimension), log_prior_sd)
+        if observation_noise:
+            values = values.at[1:].set(log_noise_sd)
+        return values.ravel()
 
     def observation_log_likelihood(free_logits, *observed_rows_and_log_kappa):
         observed_rows = observed_rows_and_log_kappa[:-1]
@@ -236,36 +284,43 @@ def fit_laplace(
     )
 
     def mode_derivatives(modes, outer):
-        coefficients, log_prior_sd, log_kappa = _unpack_outer(
-            outer, design.shape[1], dimension, family
-        )
+        coefficients, _, _, log_kappa = unpack_outer(outer)
         fixed_logits = design @ coefficients
-        free_logits = fixed_logits + modes[cluster_index]
+        random_logits = jnp.einsum(
+            "ndi,ni->nd", selection, modes[cluster_index]
+        )
+        free_logits = fixed_logits + random_logits
         score_rows = observation_gradient(
             free_logits, *counts, log_kappa
         )
-        variance = jnp.exp(2.0 * log_prior_sd)
-        score = membership.T @ score_rows - modes / variance
+        log_sds = prior_log_sds(outer)
+        variances = jnp.exp(2.0 * log_sds)
+        latent_score_rows = jnp.einsum("ndi,nd->ni", selection, score_rows)
+        score = membership.T @ latent_score_rows - modes / variances
         curvature_rows = -observation_hessian(
             free_logits, *counts, log_kappa
         )
+        latent_curvature_rows = jnp.einsum(
+            "nai,nab,nbj->nij", selection, curvature_rows, selection
+        )
         hessian = jnp.einsum(
-            "im,ijk->mjk", membership, curvature_rows
-        ) + jnp.eye(dimension)[None, :, :] / variance
-        return fixed_logits, score, hessian, variance, log_kappa
+            "im,ijk->mjk", membership, latent_curvature_rows
+        ) + jnp.diag(1.0 / variances)[None, :, :]
+        return fixed_logits, score, hessian, variances, log_kappa
 
     def negative_joint(modes, outer):
-        fixed_logits, _, _, variance, log_kappa = mode_derivatives(modes, outer)
-        free_logits = fixed_logits + modes[cluster_index]
+        fixed_logits, _, _, variances, log_kappa = mode_derivatives(modes, outer)
+        random_logits = jnp.einsum(
+            "ndi,ni->nd", selection, modes[cluster_index]
+        )
+        free_logits = fixed_logits + random_logits
         logits = jnp.concatenate(
             (free_logits, jnp.zeros((len(design), 1), dtype=free_logits.dtype)), axis=1
         )
-        _, log_prior_sd, _ = _unpack_outer(
-            outer, design.shape[1], dimension, family
-        )
-        log_prior = -0.5 * jnp.sum(modes * modes) / variance
-        log_prior -= n_clusters * dimension * (
-            log_prior_sd + 0.5 * jnp.log(2.0 * jnp.pi)
+        log_sds = prior_log_sds(outer)
+        log_prior = -0.5 * jnp.sum(modes * modes / variances)
+        log_prior -= n_clusters * (
+            jnp.sum(log_sds) + 0.5 * latent_dimension * jnp.log(2.0 * jnp.pi)
         )
         return -(
             _log_likelihood(jnp, jsp, counts, mappings, logits, family, log_kappa)
@@ -273,14 +328,14 @@ def fit_laplace(
         )
 
     def posterior_mode(outer):
-        current = jnp.zeros((n_clusters, dimension), dtype=jnp.float64)
+        current = jnp.zeros((n_clusters, latent_dimension), dtype=jnp.float64)
 
         def update(_, value):
             _, score, hessian, _, _ = mode_derivatives(value, outer)
             eigen_floor = jnp.maximum(
                 1e-6 - jnp.linalg.eigvalsh(hessian)[:, 0], 0.0
             )
-            hessian = hessian + eigen_floor[:, None, None] * jnp.eye(dimension)
+            hessian = hessian + eigen_floor[:, None, None] * jnp.eye(latent_dimension)
             step = jnp.linalg.solve(hessian, score[..., None])[..., 0]
             maximum = jnp.max(jnp.abs(step), axis=1, keepdims=True)
             scale = jnp.minimum(1.0, 2.0 / (maximum + 1e-12))
@@ -308,6 +363,8 @@ def fit_laplace(
     bounds = [(-20.0, 20.0)] * coefficient_count + [(-8.0, 3.0)]
     if family == "dirichlet_multinomial":
         bounds.append((-6.0, np.log(1e7)))
+    if observation_noise:
+        bounds.append((-8.0, 3.0))
     result = scipy.optimize.minimize(
         scipy_objective,
         initial,
@@ -323,9 +380,7 @@ def fit_laplace(
     marginal_variance = np.diagonal(covariance, axis1=1, axis2=2)
     final_value, final_gradient = scipy_objective(result.x)
     mode_score = np.asarray(mode_score)
-    coefficients, log_prior_sd, log_kappa = _unpack_outer(
-        outer, design.shape[1], dimension, family
-    )
+    coefficients, log_prior_sd, log_noise_sd, log_kappa = unpack_outer(outer)
     return {
         "method": "laplace",
         "family": family,
@@ -333,8 +388,15 @@ def fit_laplace(
         "parameters": np.asarray(result.x),
         "coefficients": np.asarray(coefficients),
         "random_effect_sd": float(np.exp(log_prior_sd)),
-        "random_effect_mean": np.asarray(modes),
-        "random_effect_variance": marginal_variance,
+        "random_effect_mean": np.asarray(modes)[:, :dimension],
+        "random_effect_variance": marginal_variance[:, :dimension],
+        "random_effect_covariance": covariance[:, :dimension, :dimension],
+        "latent_mean": np.asarray(modes),
+        "latent_covariance": covariance,
+        "observation_noise_sd": (
+            float(np.exp(log_noise_sd)) if observation_noise else 0.0
+        ),
+        "observation_noise": bool(observation_noise),
         "concentration": (
             float(np.exp(log_kappa)) if family == "dirichlet_multinomial" else np.inf
         ),
@@ -720,6 +782,8 @@ def warm_start(fit, n_design_columns):
         ]
     if fit["family"] == "dirichlet_multinomial":
         values = np.r_[values, np.log(fit["concentration"])]
+    if fit.get("observation_noise", False):
+        values = np.r_[values, np.log(fit["observation_noise_sd"])]
     return values
 
 

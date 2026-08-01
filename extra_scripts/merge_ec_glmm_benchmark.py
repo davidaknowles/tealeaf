@@ -44,6 +44,12 @@ def main():
                 "median_alternative_ess": float(
                     ess.median()
                 ) if len(ess) else np.nan,
+                "median_alternative_observation_noise_sd": float(
+                    records.get(
+                        "alternative_observation_noise_sd",
+                        pd.Series(0.0, index=records.index),
+                    ).median()
+                ),
             })
     summary = pd.DataFrame(summary)
     summary.to_csv(args.output_dir / "summary.tsv", sep="\t", index=False)

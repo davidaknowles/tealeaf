@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from tealeaf.sc import ec_glmm
+from tealeaf.sc import ec_glmm, ec_glmm_full
 from extra_scripts import run_ec_glmm
 
 
@@ -47,6 +47,24 @@ def test_tilted_bound_is_an_upper_bound():
     assert bound - expectation < 0.08
 
 
+def test_full_tilted_bound_handles_correlated_logits():
+    jax, jnp, _ = ec_glmm._jax()
+    means = jnp.asarray([[0.2, -0.4, 0.0]])
+    covariance = jnp.asarray(
+        [[[0.3, -0.18, 0.0], [-0.18, 0.7, 0.0], [0.0, 0.0, 0.0]]]
+    )
+    bound = float(
+        ec_glmm_full._tilted_logsumexp_bound(jnp, means, covariance)[0]
+    )
+    rng = np.random.default_rng(2)
+    samples = rng.multivariate_normal(
+        np.asarray(means[0]), np.asarray(covariance[0]), size=200_000
+    )
+    expectation = float(np.mean(jax.scipy.special.logsumexp(samples, axis=1)))
+    assert bound >= expectation - 3e-3
+    assert bound - expectation < 0.08
+
+
 def test_multinomial_methods_recover_ambiguous_ec_effect():
     data = simulated_data()
     tilted = ec_glmm.fit_tilted_variational(data, max_iter=120)
@@ -80,6 +98,19 @@ def test_laplace_supports_dirichlet_multinomial_ec_counts():
     assert np.isfinite(fit["objective"])
     assert fit["concentration"] > 0
     assert fit["coefficients"][2, 0] == pytest.approx(0.9, abs=0.55)
+    initial = ec_glmm_full.variational_warm_start(
+        fit, data.design.shape[1]
+    )
+    full = ec_glmm_full.fit_variational(
+        data,
+        family="dirichlet_multinomial",
+        objective="monte_carlo",
+        samples=32,
+        initial=initial,
+        max_iter=3,
+    )
+    assert np.isfinite(full["objective"])
+    assert full["concentration"] > 0
 
 
 def test_fixed_effect_design_separates_tested_contrast():
@@ -108,3 +139,26 @@ def test_laplace_posterior_warm_starts_variational_fit():
     )
     assert fit["converged"]
     assert fit["coefficients"][2, 0] == pytest.approx(0.9, abs=0.35)
+
+
+def test_full_covariance_and_observation_noise_fits():
+    data = simulated_data()
+    laplace = ec_glmm.fit_laplace(
+        data, observation_noise=True, max_iter=30, mode_steps=12
+    )
+    assert laplace["observation_noise_sd"] > 0
+    assert laplace["latent_covariance"].shape[1] > data.n_isoforms - 1
+    initial = ec_glmm_full.variational_warm_start(
+        laplace, data.design.shape[1]
+    )
+    fit = ec_glmm_full.fit_variational(
+        data,
+        objective="tilted",
+        observation_noise=True,
+        initial=initial,
+        max_iter=5,
+    )
+    assert np.isfinite(fit["objective"])
+    assert fit["random_effect_covariance"].shape == (10, 1, 1)
+    scores = ec_glmm_full.evaluate_objectives(data, fit, samples=32)
+    assert np.isfinite(list(scores.values())).all()

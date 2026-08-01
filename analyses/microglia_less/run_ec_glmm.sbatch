@@ -24,6 +24,8 @@ CONTRAST=${CONTRAST:-condition}
 OUTPUT_TAG=${OUTPUT_TAG:-ec_glmm_${CONTRAST}}
 METHODS=${METHODS:-laplace_multinomial;tilted_elbo;renyi_multinomial;laplace_dirichlet_multinomial;elbo_dirichlet_multinomial;renyi_dirichlet_multinomial}
 MAX_ITER=${MAX_ITER:-200}
+VI_SAMPLES=${VI_SAMPLES:-128}
+EVALUATION_SAMPLES=${EVALUATION_SAMPLES:-2048}
 MAX_GENES=${MAX_GENES:-}
 IFS=';' read -r -a method_args <<< "${METHODS}"
 max_genes_args=()
@@ -42,6 +44,8 @@ python "${REPO_ROOT}/extra_scripts/run_ec_glmm.py" \
   --contrast "${CONTRAST}" \
   --methods "${method_args[@]}" \
   --max-iter "${MAX_ITER}" \
+  --vi-samples "${VI_SAMPLES}" \
+  --evaluation-samples "${EVALUATION_SAMPLES}" \
   --shard-index "${SHARD_INDEX}" \
   --shard-count "${SHARD_COUNT}" \
   "${max_genes_args[@]}"
