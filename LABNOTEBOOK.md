@@ -2145,3 +2145,11 @@ dominant-path sensitivities, and ACAT or clustered shared-effect condition
 tests. This was a documentation-only change: model implementations and
 reported numerical results were not altered. The standalone document
 compiles without warnings.
+
+The notation was subsequently tightened to distinguish gene-level model
+isoforms from block-specific splice paths. The local EC design contains all
+retained isoforms assigned to the block's gene; this set has size \(T_g\)
+and is shared across that gene's blocks. Only retained annotated spliced
+isoforms receive nonzero entries in a block's isoform-to-path map. Other
+columns, including modeled unspliced precursors, remain nuisance isoforms so
+their EC probability is represented in the likelihood normalization.

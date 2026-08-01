@@ -29,7 +29,7 @@ The analysis asks two distinct questions:
 \end{enumerate}
 The primary analysis aggregates cells into
 \emph{mouse-by-condition-by-cell-type pseudobulks}. An evaluated alternative
-retains each cell's EC counts and transcript baseline in the local likelihood
+retains each cell's EC counts and isoform baseline in the local likelihood
 but estimates one shared path effect for the pseudobulk. Both approaches keep
 biological replication at the mouse level; cells are never treated as
 independent condition replicates.
@@ -37,7 +37,7 @@ independent condition replicates.
 A splice block is a local region between constitutive exonic anchors.
 Transcripts that take the same path through that region are collapsed to one
 subisoform. This targets local splicing choices, which can be identifiable
-even when the corresponding full-length transcripts are not.
+even when the corresponding full-length isoforms are not.
 
 For condition effects, each hypothesis is indexed by a splice block and a
 cell type. It is an omnibus test of
@@ -61,10 +61,10 @@ separately.
 
 The analysis proceeds in five steps:
 \begin{enumerate}[leftmargin=*]
-  \item Construct local splice blocks from the transcript annotation and
-        collapse transcripts to paths within each block.
+  \item Construct local splice blocks from the isoform annotation and
+        collapse isoforms to paths within each block.
   \item Aggregate paired oligo(dT) and random-hexamer EC counts, and
-        hierarchical transcript estimates, within each mouse, condition, and
+        hierarchical isoform estimates, within each mouse, condition, and
         cell type.
   \item Refine path usage in each pseudobulk with the exact paired-primer EC
         likelihood. Optionally, retain separate cell likelihood terms while
@@ -78,28 +78,39 @@ The analysis proceeds in five steps:
 \end{enumerate}
 
 Two inferential covariance calculations are reported. The
-\emph{conditional} calculation fixes the fitted transcript mixture within
-each path. The \emph{profile} calculation allows all transcript directions
+\emph{conditional} calculation fixes the fitted isoform mixture within
+each path. The \emph{profile} calculation allows all isoform directions
 to vary as nuisance parameters. They are sensitivity analyses for the same
 block-by-cell-type hypothesis, not independent biological hypotheses.
 
 \section*{Notation and Dimensions}
 
-An \emph{equivalence class} (EC) is a set of transcripts compatible with one
+An \emph{equivalence class} (EC) is a set of isoforms compatible with one
 UMI. An EC count is therefore observed, whereas its allocation among
-compatible transcripts is latent. A \emph{splice path} is an ordered local
+compatible isoforms is latent. A \emph{splice path} is an ordered local
 exon chain between two constitutive anchors. A \emph{subisoform} is the set
-of full-length transcripts taking the same path through one block. PSI means
+of full-length isoforms taking the same path through one block. PSI means
 percent spliced in; for two paths it is one component of the path-composition
 vector. ILR means isometric log-ratio, an orthonormal coordinate system for a
 composition.
 
-For block \(b\), let \(n_b,T_b,S_b\in\mathbb N\) be its numbers of
-qualifying pseudobulks, modeled transcript features, and spliced paths,
-respectively, with \(S_b\geq2\). Then \(d_b=S_b-1\in\mathbb N\) is its
-number of independent log-ratios. There are \(P=2\) primer protocols.
-Primer \(p\) has \(E_{bp}\in\mathbb N\) ECs for block \(b\). Pseudobulk
-\(i\) contains \(H_{bi}\in\mathbb N\) cells. The principal symbols are:
+Let \(g=g(b)\) denote the gene containing block \(b\), and let
+\(\mathcal I_g\) be the set of isoforms retained by the paired-primer model
+and assigned to gene \(g\) by the isoform-to-gene table. Define
+\(T_g=|\mathcal I_g|\in\mathbb N\). This is a gene-level set, not the set of
+isoforms whose exons overlap the block, and it is therefore shared by every
+block of the gene. Let
+\(\mathcal I_b^{\rm sp}\subseteq\mathcal I_g\) be the retained, annotated
+spliced isoforms represented in the block's GTF-derived path map. Isoforms in
+\(\mathcal I_g\setminus\mathcal I_b^{\rm sp}\), including modeled
+unspliced precursors, remain nuisance isoforms in the EC likelihood.
+
+Let \(n_b,S_b\in\mathbb N\) be the numbers of qualifying pseudobulks and
+represented spliced paths for block \(b\), with \(S_b\geq2\). Then
+\(d_b=S_b-1\in\mathbb N\) is its number of independent log-ratios. There are
+\(P=2\) primer protocols. Primer \(p\) has \(E_{bp}\in\mathbb N\) ECs for
+gene \(g(b)\). Pseudobulk \(i\) contains \(H_{bi}\in\mathbb N\) cells. The
+principal symbols are:
 \[
 \begin{array}{lll}
 \toprule
@@ -109,12 +120,12 @@ b & \{1,\ldots,\mathcal B\} & \text{splice-block index}\\
 i & \{1,\ldots,n_b\} & \text{pseudobulk index within block }b\\
 p & \{1,\ldots,P\} & \text{primer-protocol index}\\
 h & \{1,\ldots,H_{bi}\} & \text{cell index within pseudobulk }i\\
-t & \{1,\ldots,T_b\} & \text{transcript-feature index}\\
+t & \{1,\ldots,T_g\} & \text{isoform index within gene }g(b)\\
 s & \{1,\ldots,S_b\} & \text{splice-path index}\\
 \bm c_{bip} & \mathbb N_0^{E_{bp}} & \text{pseudobulk EC counts}\\
-A_{bp} & \mathbb R_+^{E_{bp}\times T_b} & \text{weighted EC design}\\
-\bm\theta_{bi} & \mathbb R_+^{T_b} & \text{transcript abundance}\\
-C_b & \{0,1\}^{S_b\times T_b} & \text{transcript-to-path map}\\
+A_{bp} & \mathbb R_+^{E_{bp}\times T_g} & \text{weighted EC-by-isoform design}\\
+\bm\theta_{bi} & \mathbb R_+^{T_g} & \text{isoform abundance}\\
+C_b & \{0,1\}^{S_b\times T_g} & \text{isoform-to-path map}\\
 Q_b & \mathbb R^{S_b\times d_b} & \text{Helmert ILR basis}\\
 \bm\delta_{bi} & \mathbb R^{d_b} & \text{local path perturbation}\\
 \bm\psi_{bi} & \Delta^{S_b-1} & \text{path composition}\\
@@ -173,33 +184,33 @@ the primer-specific UMI total,
  \left(N_{bip},\bm q_{bip}/Z_{bip}\right).
 \]
 The oligo(dT) and random-hexamer protocols use separate \(A_{bp}\) matrices
-and likelihood terms. Their different transcript exposures therefore model
+and likelihood terms. Their different isoform exposures therefore model
 primer-specific positional coverage without forcing a common bias profile.
 
 The genome-wide hierarchical model supplies
-\(\bm\theta_{bi}^{(0)}\in\mathbb R_+^{T_b}\). Let
-\(s_b(t)\in\{1,\ldots,S_b\}\) map a spliced transcript feature \(t\) to its
-path, and let \(\mathcal T_b^{\rm sp}\subseteq\{1,\ldots,T_b\}\) be the
-spliced features. Their baseline mass is the scalar
-\(\omega_{bi}^{\rm sp}=\sum_{t\in\mathcal T_b^{\rm sp}}
+\(\bm\theta_{bi}^{(0)}\in\mathbb R_+^{T_g}\). Let
+\(s_b(t)\in\{1,\ldots,S_b\}\) map isoform \(t\in\mathcal I_b^{\rm sp}\) to
+its path. The baseline spliced-isoform mass is the scalar
+\(\omega_{bi}^{\rm sp}=\sum_{t\in\mathcal I_b^{\rm sp}}
 \theta_{bit}^{(0)}\in\mathbb R_+\). For
-\(t\in\mathcal T_b^{\rm sp}\), local refinement uses
+\(t\in\mathcal I_b^{\rm sp}\), local refinement uses
 \[
  \theta_{bit}(\bm\delta_{bi})
  =\omega_{bi}^{\rm sp}\frac{\theta_{bit}^{(0)}
  \exp\{(Q_b)_{s_b(t),\cdot}\bm\delta_{bi}\}}
- {\sum_{u\in\mathcal T_b^{\rm sp}}\theta_{biu}^{(0)}
+ {\sum_{u\in\mathcal I_b^{\rm sp}}\theta_{biu}^{(0)}
  \exp\{(Q_b)_{s_b(u),\cdot}\bm\delta_{bi}\}},
 \]
-where \((Q_b)_{s,\cdot}\in\mathbb R^{1\times d_b}\). Nuisance-feature
+where \((Q_b)_{s,\cdot}\in\mathbb R^{1\times d_b}\). Nuisance-isoform
 abundances are unchanged. This preserves total spliced mass and the relative
-transcript mixture within each path while estimating only
+isoform mixture within each path while estimating only
 \(\bm\delta_{bi}\in\mathbb R^{d_b}\).
 
 \subsection*{Path response and inferential covariance}
 
-Each spliced column of \(C_b\in\{0,1\}^{S_b\times T_b}\) contains one 1 in
-row \(s_b(t)\); nuisance columns are zero. Define
+Each column of \(C_b\in\{0,1\}^{S_b\times T_g}\) corresponding to
+\(t\in\mathcal I_b^{\rm sp}\) contains one 1 in row \(s_b(t)\); nuisance
+isoform columns are zero. Define
 \[
  \bm a_{bi}=C_b\bm\theta_{bi}\in\mathbb R_+^{S_b},\qquad
  \bm\psi_{bi}=\frac{\bm a_{bi}}
@@ -216,23 +227,23 @@ of the summed paired-primer log likelihood with respect to
 \(V_{bi}^{\rm cond}=I_{\delta,bi}^{-1}\in\mathbb S_+^{d_b}\) when the
 information is positive definite.
 
-The profile calculation instead allows all transcript directions to vary.
-Set \(\bm\eta_{bi}=\log\bm\theta_{bi}\in\mathbb R^{T_b}\),
+The profile calculation instead allows all isoform directions to vary.
+Set \(\bm\eta_{bi}=\log\bm\theta_{bi}\in\mathbb R^{T_g}\),
 \(D_{bi}=\operatorname{diag}(\bm\theta_{bi})\in
-\mathbb R^{T_b\times T_b}\),
-\(\bm d_{bp}=A_{bp}^\prime\bm1_{E_{bp}}\in\mathbb R^{T_b}\), and
+\mathbb R^{T_g\times T_g}\),
+\(\bm d_{bp}=A_{bp}^\prime\bm1_{E_{bp}}\in\mathbb R^{T_g}\), and
 \(\bm r_{0,bip}=(\bm d_{bp}\odot\bm\theta_{bi})/Z_{bip}
-\in\mathbb R^{T_b}\).
+\in\mathbb R^{T_g}\).
 The primer-specific expected information is
 \[
  I_{\eta,bip}=N_{bip}\left[
  \frac{D_{bi}A_{bp}^\prime
  \operatorname{diag}(\bm q_{bip}^{-1})A_{bp}D_{bi}}{Z_{bip}}
  -\bm r_{0,bip}\bm r_{0,bip}^\prime
- \right]\in\mathbb S_+^{T_b}.
+ \right]\in\mathbb S_+^{T_g}.
 \]
 Let \(J_{bi}=\partial\bm y_{bi}/\partial\bm\eta_{bi}^\prime
-\in\mathbb R^{d_b\times T_b}\). Then
+\in\mathbb R^{d_b\times T_g}\). Then
 \[
  V_{bi}^{\rm prof}=J_{bi}
  \left(\sum_{p=1}^P I_{\eta,bip}\right)^+J_{bi}^\prime
@@ -247,10 +258,10 @@ pseudoinverse.
 For cell \(h\) in pseudobulk \(i\), let
 \(\bm c_{bihp}\in\mathbb N_0^{E_{bp}}\),
 \(N_{bihp}=\bm1_{E_{bp}}^\prime\bm c_{bihp}\in\mathbb N_0\), and
-\(\bm\theta_{bih}^{(0)}\in\mathbb R_+^{T_b}\) be its EC counts, total, and
+\(\bm\theta_{bih}^{(0)}\in\mathbb R_+^{T_g}\) be its EC counts, total, and
 baseline. Every cell shares the same pseudobulk perturbation
-\(\bm\delta_{bi}\in\mathbb R^{d_b}\), but its transcript vector
-\(\bm\theta_{bih}(\bm\delta_{bi})\in\mathbb R_+^{T_b}\) is normalized using
+\(\bm\delta_{bi}\in\mathbb R^{d_b}\), but its isoform vector
+\(\bm\theta_{bih}(\bm\delta_{bi})\in\mathbb R_+^{T_g}\) is normalized using
 its own baseline. The objective is the scalar
 \[
  \ell_{bi}(\bm\delta_{bi})=
@@ -451,22 +462,27 @@ from the first endpoint.
 
 \subsection*{Algorithm 1: construct splice blocks and path maps}
 
-\textbf{Input:} for one gene, \(T_g\in\mathbb N\) annotated transcripts and
-their ordered zero-based half-open exon intervals.  \textbf{Output:} blocks
-\(b\), maps \(C_b\in\{0,1\}^{S_b\times T_b}\), and bases
+\textbf{Input:} for one gene, \(K_g\in\mathbb N\) annotated spliced isoforms,
+their ordered zero-based half-open exon intervals, and the retained model
+set \(\mathcal I_g\) of size \(T_g\). \textbf{Output:} blocks
+\(b\), maps \(C_b\in\{0,1\}^{S_b\times T_g}\), and bases
 \(Q_b\in\mathbb R^{S_b\times(S_b-1)}\).
 \begin{enumerate}[leftmargin=*]
   \item Split the gene at every annotated exon boundary to obtain atomic
         genomic intervals.
-  \item Mark intervals exonic in every spliced transcript; merge adjacent
+  \item Mark intervals exonic in every spliced isoform; merge adjacent
         marked intervals into constitutive anchors.
-  \item For each consecutive anchor pair, record each transcript's ordered
+  \item For each consecutive anchor pair, record each isoform's ordered
         chain of intervening exonic intervals. Use terminal pseudo-anchors
         when no shared first or last anchor exists.
-  \item Assign identical chains to the same path. Discard a block if
-        \(S_b=1\); otherwise construct one-hot transcript columns in \(C_b\).
+  \item Assign identical chains to the same path, then restrict the path map
+        to \(\mathcal I_b^{\rm sp}\), the annotated isoforms also present in
+        \(\mathcal I_g\). Remap represented path labels, discard a block if
+        fewer than two paths remain, and embed the one-hot assignments in
+        \(C_b\); columns for \(\mathcal I_g\setminus\mathcal I_b^{\rm sp}\)
+        are zero.
   \item Construct \(Q_b\) from the Helmert formula above.
-  \item Canonicalize the unordered collection of transcript sets assigned to
+  \item Canonicalize the unordered collection of isoform sets assigned to
         paths. Retain one representative for identical partitions and attach
         all equivalent interval identifiers to it.
 \end{enumerate}
@@ -474,8 +490,8 @@ their ordered zero-based half-open exon intervals.  \textbf{Output:} blocks
 \subsection*{Algorithm 2: pseudobulk local fit and covariance}
 
 \textbf{Input:} \(\bm c_{bip}\in\mathbb N_0^{E_{bp}}\),
-\(A_{bp}\in\mathbb R_+^{E_{bp}\times T_b}\), baseline
-\(\bm\theta_{bi}^{(0)}\in\mathbb R_+^{T_b}\), \(C_b\), and \(Q_b\).
+\(A_{bp}\in\mathbb R_+^{E_{bp}\times T_g}\), baseline
+\(\bm\theta_{bi}^{(0)}\in\mathbb R_+^{T_g}\), \(C_b\), and \(Q_b\).
 \textbf{Output:} \(\widehat{\bm\psi}_{bi}\in\Delta^{S_b-1}\),
 \(\widehat{\bm y}_{bi}\in\mathbb R^{d_b}\), and conditional/profile
 covariances in \(\mathbb S_+^{d_b}\).
@@ -484,10 +500,10 @@ covariances in \(\mathbb S_+^{d_b}\).
         \(S_b=2\), also evaluate a fixed log-ratio grid and retain its best
         point.
   \item Form \(\bm\theta_{bi}(\bm\delta_{bi})\) while preserving spliced
-        mass and within-path transcript mixtures.
+        mass and within-path isoform mixtures.
   \item Sum the two primer-specific multinomial log likelihoods and optimize
         over \(\bm\delta_{bi}\).
-  \item Map the fitted transcript vector through \(C_b\), normalize to
+  \item Map the fitted isoform vector through \(C_b\), normalize to
         \(\widehat{\bm\psi}_{bi}\), and compute
         \(\widehat{\bm y}_{bi}=Q_b^\prime\log
         \widehat{\bm\psi}_{bi}\).
@@ -495,8 +511,8 @@ covariances in \(\mathbb S_+^{d_b}\).
         to obtain \(V_{bi}^{\rm cond}\). Mark the response unidentified if
         the information is singular in a tested path direction.
   \item For the profile sensitivity, sum
-        \(I_{\eta,bip}\in\mathbb S_+^{T_b}\), compute
-        \(J_{bi}\in\mathbb R^{d_b\times T_b}\), and form
+        \(I_{\eta,bip}\in\mathbb S_+^{T_g}\), compute
+        \(J_{bi}\in\mathbb R^{d_b\times T_g}\), and form
         \(V_{bi}^{\rm prof}\). Apply the information-null-space check.
   \item Write every estimate and its convergence, identifiability, and
         reliability flags; do not silently replace a failed covariance.
@@ -506,7 +522,7 @@ covariances in \(\mathbb S_+^{d_b}\).
 
 \textbf{Input:} cell EC vectors
 \(\bm c_{bihp}\in\mathbb N_0^{E_{bp}}\), cell baselines
-\(\bm\theta_{bih}^{(0)}\in\mathbb R_+^{T_b}\), weights
+\(\bm\theta_{bih}^{(0)}\in\mathbb R_+^{T_g}\), weights
 \(w_{bih}\in\mathbb R_+\), and the same \(A_{bp},C_b,Q_b\).
 \textbf{Output:} one pseudobulk response and covariance with dimensions
 identical to Algorithm 2.
@@ -643,8 +659,8 @@ calibrated sensitivity tables, not additional primary discoveries.
 
 GTF exons are represented by zero-based, half-open intervals. Exon boundaries
 define atomic intervals; intervals exonic in every annotated spliced
-transcript are merged into constitutive anchors. Consecutive anchors define a
-block, and a transcript path is its ordered exon-interval chain between them.
+isoform are merged into constitutive anchors. Consecutive anchors define a
+block, and an isoform path is its ordered exon-interval chain between them.
 Terminal pseudo-anchors include alternative first and last regions. A gene
 without a shared constitutive region receives one whole-gene block.
 
@@ -655,19 +671,19 @@ blocks. Precursor features remain nuisance features in the EC model but are
 not assigned to spliced paths.
 
 Different genomic blocks can induce exactly the same partition of annotated
-transcripts, for example when several exons always occur together. Such
+isoforms, for example when several exons always occur together. Such
 blocks have identical statistical responses and must not count as repeated
-evidence. A canonical partition is the unordered collection of transcript
+evidence. A canonical partition is the unordered collection of isoform
 sets assigned to paths. Equivalent blocks are collapsed before FDR or joint
 testing; all member interval identifiers remain in the output.
 
 \subsection*{Pseudobulks and local fitting}
 
-Cell transcript proportions from the hierarchical decoder are weighted by
+Cell isoform proportions from the hierarchical decoder are weighted by
 cell UMI totals and aggregated by mouse, condition, and cell type.
 Pseudobulks must contain at least 20 cells and \(10^5\) total UMIs. A
 block is fit when its gene has at least 25 gene-assigned UMIs in at least two
-qualifying pseudobulks. Only ECs whose compatible transcripts map uniquely to
+qualifying pseudobulks. Only ECs whose compatible isoforms map uniquely to
 that gene enter the local likelihood.
 
 Bounded L-BFGS optimizes the paired multinomial likelihood, with
@@ -677,7 +693,7 @@ fits are initialized from a log-ratio grid because the paired-primer
 normalizers can make the objective non-concave.
 
 For the cell-resolved variant, sparse cell-by-EC matrices are retained and
-one local transcript matrix is decoded at a time. The optimizer dimension is
+one local isoform matrix is decoded at a time. The optimizer dimension is
 still only the number of paths minus one. Cell-specific Fisher contributions
 are accumulated analytically, so the method does not fit one free splicing
 parameter per cell.
@@ -740,7 +756,7 @@ The initial Gaussian analysis tested 369 conditional and 218 profile
 partitions. It found 22 and five FDR-significant partitions, respectively,
 with all profile discoveries contained in the conditional set. After
 canonicalizing annotation intervals that encode the same
-transcript-to-path partition, these 22 intervals represented 14 distinct
+isoform-to-path partition, these 22 intervals represented 14 distinct
 partitions.
 
 The compositional analysis used converged, conditionally identifiable
@@ -793,7 +809,7 @@ intervals. Independent Gaussian simulations of REML--GLS gave type-I error
 between 2.7\% and 5.0\% across the tested biological-variance settings.
 
 Numerical tests additionally verify skipped-exon block construction,
-identifiable covariance after collapsing indistinguishable transcripts,
+identifiable covariance after collapsing indistinguishable isoforms,
 rejection of information-null path contrasts, the analytic binomial Fisher
 variance, and recovery of imposed GLS effects.
 
@@ -850,12 +866,12 @@ in this dataset. The aggregated EC counts and decoder baseline preserve
 nearly all relevant local information within a cell type, while residual
 between-mouse variation dominates the small reduction in inferential
 variance. Pseudobulk fitting remains the default; the cell-resolved method is
-available for datasets with stronger within-pseudobulk transcript
+available for datasets with stronger within-pseudobulk isoform
 heterogeneity.
 
 \subsection*{Compositional and joint-test assessment}
 
-Collapsing equivalent transcript partitions reduced the 829 conditional
+Collapsing equivalent isoform partitions reduced the 829 conditional
 block-by-cell-type rows to 505 nonredundant tests over 317 partitions. The
 median effective path count was 32 molecules, or 62\% of gene UMIs; only
 0.6\% of estimates reached the gene-UMI cap.
