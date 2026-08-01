@@ -2216,3 +2216,46 @@ Reusable GEE, GLMM, integerization, and stable permutation-rank code is in
 are `extra_scripts/run_clustered_compositional_models.py` and
 `extra_scripts/merge_clustered_compositional_models.py`; the analysis wrapper
 only supplies inputs and execution parameters.
+
+## 2026-08-01: GLMMs on raw equivalence-class counts
+
+I added a paired-primer GLMM whose observations are the integer EC counts,
+not effective splice-path counts. For each gene, fixed condition or cell-type
+effects and mouse random intercepts act on reference-isoform logits. The EC
+probability is the compatibility-weighted isoform mass divided by the sum of
+that mass over gene-assigned ECs. Oligo(dT) and random-hexamer observations
+share biological coefficients and mouse effects while retaining separate
+weighted compatibility matrices and normalizers. Both multinomial and direct
+EC Dirichlet--multinomial likelihoods are implemented.
+
+Three inference families are compared. Laplace inference differentiates
+through damped Newton posterior-mode updates. Its Hessian calculation was
+changed from one dense mouse-by-isoform matrix to mouse-specific blocks built
+by accumulating per-observation Hessians; conditional independence makes
+these formulations identical and removes cubic scaling in the total number
+of mice. The multinomial variational method uses diagonal Gaussian mouse
+effects, analytic latent EC-to-isoform responsibilities, and the tilted
+softmax expectation bound from Knowles and Minka (2011). The cited algorithm
+is NCVMP, not conjugate CAVI; the implementation alternates optimized local
+coordinates and bounded global updates. Exact-likelihood Monte Carlo VI fits
+either the ELBO or the Li and Turner variational Renyi bound at alpha 0.5.
+The Renyi fit uses 128 fixed antithetic draws and warm starts from the ELBO
+fit. An initial global importance ratio over all mice had ESS 1/128 and drove
+the random-effect variance to its lower bound. Because the posterior
+factorizes by mouse conditional on the global parameters, the corrected
+objective sums mouse-specific Renyi log-averages. A simulation then gave
+median ESS above 127/128 and converged for both likelihood families. The
+direct EC Dirichlet--multinomial does not admit the tilted coordinate
+bound because its gamma functions contain nonlinear EC probabilities, so it
+uses only Laplace and Monte Carlo VI.
+
+The reusable implementation is `tealeaf/sc/ec_glmm.py`. Ambiguous-EC
+simulation tests verify the tilted expectation bound, coefficient recovery,
+and Dirichlet--multinomial support. The genome-wide runner keeps genes with
+two to six EC-supported isoforms, at most 128 gene-assigned ECs, and mean
+gene depth of at least 100 UMIs per retained pseudobulk. It precomputes EC
+totals for eligibility scanning and uses a locked 160 MB preparation cache;
+the initial implementation's repeated full sparse-matrix slice per gene was
+the dominant startup cost. The real-data and simulation comparisons are
+running. Final convergence, calibration, power, and timing results will be
+added when those jobs complete.

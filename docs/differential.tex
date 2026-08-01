@@ -588,6 +588,127 @@ Newton updates for every \(\widehat{\bm u}_{bm}\). The null contains
 cell-type intercepts; the alternative appends \(r_b\) condition columns.
 The likelihood-ratio statistic has nominal degrees of freedom \(r_bd_b\).
 
+\subsection*{GLMM with EC counts as observations}
+
+The path-count GLMM above treats estimated effective path counts as its
+response. A second model instead retains the observed equivalence-class
+counts. For gene \(g\), let \(T_g\in\mathbb N\) be its number of supported
+isoforms, \(d_g=T_g-1\), \(I_g\in\mathbb N\) the number of retained
+pseudobulks, \(M_g\in\mathbb N\) the number of mice, and \(P=2\) the primer
+count. Primer \(p\) has \(K_{gp}\in\mathbb N\) gene-assigned ECs. Define
+the observed counts
+\(\bm c_{gip}\in\mathbb N_0^{K_{gp}}\), total
+\(n_{gip}=\bm1_{K_{gp}}^\prime\bm c_{gip}\in\mathbb N_0\), and fixed
+compatibility or conditional-weight matrix
+\(A_{gp}\in\mathbb R_+^{K_{gp}\times T_g}\). Unsupported annotated
+isoforms and ECs not uniquely assigned to \(g\) are excluded.
+
+Let \(X_g\in\mathbb R^{I_g\times q}\) be the fixed-effect design,
+\(B_g\in\mathbb R^{q\times d_g}\) its coefficient matrix, and
+\(u_{gm}\in\mathbb R^{d_g}\) mouse \(m\)'s random isoform-logit intercept.
+With mouse index \(m(i)\in\{1,\ldots,M_g\}\), the reference-isoform
+parameterization is
+\[
+ \eta_{gi}=\{X_{gi}B_g+u_{g,m(i)}^\prime,0\}
+ \in\mathbb R^{T_g},
+ \qquad
+ u_{gm}\sim N(0,\sigma_g^2I_{d_g}).
+\]
+The probability of EC \(k\) from primer \(p\) is
+\[
+ q_{gipk}(\eta_{gi})=
+ \frac{\sum_{t=1}^{T_g}A_{gpkt}\exp(\eta_{git})}
+ {\sum_{h=1}^{K_{gp}}\sum_{t=1}^{T_g}
+  A_{gpht}\exp(\eta_{git})},
+ \qquad
+ \bm q_{gip}\in\Delta^{K_{gp}-1}.
+\]
+Thus the two primers share \(B_g\) and \(u_{gm}\), but retain distinct EC
+maps and positional-coverage weights. The conditional model is either
+\[
+ \bm c_{gip}\mid u_{g,m(i)}
+ \sim\operatorname{Multinomial}(n_{gip},\bm q_{gip})
+\]
+or
+\[
+ \bm c_{gip}\mid u_{g,m(i)}
+ \sim\operatorname{DirichletMultinomial}
+ (n_{gip},\kappa_g\bm q_{gip}),
+ \qquad \kappa_g\in\mathbb R_+.
+\]
+The latter adds pseudobulk-level EC overdispersion. It is a direct
+Dirichlet--multinomial over EC categories, not a Dirichlet model over latent
+isoform allocations.
+
+Laplace inference maximizes the joint conditional density over
+\(u_g\in\mathbb R^{M_g\times d_g}\). Its negative Hessian satisfies
+\(H_g\in\mathbb S_+^{M_gd_g}\), and the marginal approximation adds the
+correction \(-\tfrac12\log|H_g|\). The outer fit optimizes \(B_g\),
+\(\sigma_g\), and, for the overdispersed model, \(\kappa_g\).
+
+For variational inference, use the diagonal Gaussian family
+\[
+ Q(u_g)=\prod_{m=1}^{M_g}\prod_{j=1}^{d_g}
+ N(u_{gmj};\mu_{gmj},s_{gmj}^2),
+ \quad \mu_g,s_g\in\mathbb R^{M_g\times d_g},\quad s_{gmj}>0.
+\]
+For the multinomial likelihood, latent EC-to-isoform responsibilities
+\(r_{gipkt}\in[0,1]\), with
+\(\sum_t r_{gipkt}=1\) on the support of \(A_{gpkt}\), give the optimized
+lower bound
+\[
+ E_Q\!\left[\log\sum_t A_{gpkt}e^{\eta_{git}}\right]
+ \geq
+ \log\sum_t A_{gpkt}e^{E_Q\eta_{git}}.
+\]
+The normalizer needs an upper bound. For one observation and primer, let
+\(m_{gipt}=E_Q\eta_{git}+\log\sum_kA_{gpkt}\),
+\(v_{gipt}=\operatorname{Var}_Q(\eta_{git})\), and
+\(a_{gip}\in\Delta^{T_g-1}\). The tilted softmax bound of
+Knowles and Minka is
+\[
+ E_Q\log\sum_{t=1}^{T_g}e^{\eta_{git}+\log\sum_kA_{gpkt}}
+ \leq \frac12\sum_ta_{gipt}^2v_{gipt}
+ +\log\sum_t\exp\!\left\{
+ m_{gipt}+\frac{1-2a_{gipt}}2v_{gipt}\right\},
+\]
+where the local coordinate satisfies
+\[
+ a_{gip}=\operatorname{softmax}\{m_{gip}
+ +\tfrac12(1-2a_{gip})\mathbin\odot v_{gip}\}.
+\]
+Alternating the analytic responsibilities, this local fixed point, and the
+global Gaussian parameters maximizes a tractable lower bound on the
+multinomial evidence. The cited method is non-conjugate variational message
+passing rather than conjugate CAVI; here ``tilted CAVI'' refers only to this
+block-coordinate implementation.
+
+The direct EC Dirichlet--multinomial contains
+\(\log\Gamma\{\kappa_gq_{gipk}(u)+c_{gipk}\}\), so the tilted softmax bound
+does not yield coordinate updates for it. Both likelihood families are
+therefore also fit with reparameterized Monte Carlo VI. If
+\(w(u)=p(c,u)/Q(u)\), the optimized objective is the ELBO
+\[
+ \mathcal L_1=E_Q\log w(u)
+\]
+or the variational R\'enyi bound of order \(\alpha\in(0,1)\),
+\[
+ \mathcal L_\alpha=
+ \frac{1}{1-\alpha}\log E_Q\{w(u)^{1-\alpha}\}.
+\]
+The comparison uses \(\alpha=0.5\), antithetic Gaussian draws, and the same
+diagonal Gaussian family. Conditional on \(B_g,\sigma_g,\kappa_g\), both
+the likelihood and \(Q\) factor by mouse. Writing the corresponding ratio as
+\(w_m(u_{gm})\), the implementation evaluates the equivalent expression
+\[
+ \mathcal L_\alpha=
+ \sum_{m=1}^{M_g}\frac{1}{1-\alpha}
+ \log E_{Q_m}\{w_m(u_{gm})^{1-\alpha}\}.
+\]
+This avoids the exponential importance-weight degeneracy caused by forming
+one product weight over all mice. R\'enyi VI is not called CAVI because its
+importance-weighted objective has no coordinate update under this model.
+
 \subsection*{Liang--Zeger multinomial GEE}
 
 GEE specifies only the marginal mean and first two moments. It can therefore
@@ -912,6 +1033,39 @@ from the first endpoint.
 \State Compare with \(\chi^2_{r_bd_b}\).
 \State For permutations, reuse the fitted null and refit each permuted
   alternative.
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Inference comparison for the paired EC-count GLMM}
+\label{alg:ec-glmm}
+\begin{algorithmic}[1]
+\Require Paired counts \(\bm c_{gip}\), maps \(A_{gp}\), nested fixed-effect
+  designs, mouse indices, likelihood family, and R\'enyi order \(\alpha=0.5\)
+\Ensure Null and alternative evidence approximations and coefficient estimates
+\ForAll{null and alternative designs}
+  \State Fit the conditional posterior mode of
+    \(u_g\in\mathbb R^{M_g\times d_g}\) by damped Newton updates.
+  \State Optimize the Laplace marginal likelihood over \(B_g\),
+    \(\log\sigma_g\), and optional \(\log\kappa_g\).
+  \If{the likelihood is multinomial}
+    \Repeat
+      \State Update every latent EC-to-isoform responsibility from
+        \(A_{gpkt}\exp(E_Q\eta_{git})\).
+      \State Iterate every tilted coordinate \(a_{gip}\) to its softmax
+        fixed point.
+      \State Update \(B_g,\mu_g,\log s_g,\log\sigma_g\) against the bounded
+        ELBO; damp the global update when the bound decreases.
+    \Until{the ELBO gradient tolerance or iteration limit is reached}
+  \EndIf
+  \State Draw fixed antithetic standard-normal samples and reparameterize
+    \(u_g=\mu_g+s_g\mathbin\odot\epsilon\).
+  \State Optimize the exact-likelihood Monte Carlo ELBO \(\mathcal L_1\).
+  \State Warm-start from the ELBO fit and optimize
+    \(\mathcal L_{0.5}\); report its effective importance-sample size.
+\EndFor
+\State Compare each method's null-to-alternative gain on its own objective;
+  do not compare raw objective values across approximation families.
 \end{algorithmic}
 \end{algorithm}
 
