@@ -725,6 +725,37 @@ Thus full covariance describes posterior dependence among isoform logits and
 between a shared mouse effect and its pseudobulk residuals; it does not add
 an unstructured covariance parameter to the generative model.
 
+For a block-specific cell-type test, the EC likelihood still contains all
+\(T_g\) supported isoforms of gene \(g\); the response is not reduced to path
+counts. Let \(J_b\in\mathbb N\) be the number of represented cell types,
+\(Z_b\in\mathbb R^{I_g\times q_0}\) the one-hot condition design, and
+\(W_b\in\mathbb R^{I_g\times(J_b-1)}\) the treatment-coded cell-type design.
+Define \(D_b\in\mathbb R^{T_g\times d_b}\) by assigning row \(t\) the
+corresponding row of \(Q_b\) when isoform \(t\) takes a represented path
+through block \(b\), and assigning it \(\bm0_{d_b}^\prime\) when the isoform
+is outside the block map. In reference-isoform coordinates,
+\[
+ H_b=D_{b,1:(T_g-1),:}
+     -\bm1_{T_g-1}D_{b,T_g,:}
+ \in\mathbb R^{d_g\times d_b}.
+\]
+The free-logit predictor is
+\[
+ \eta_{gi,-}=Z_{bi}B_{g0}
+ +\sum_{j=1}^{J_b-1}W_{bij}H_b\bm\gamma_{bj}
+ +u_{g,m(i)}+e_{gi}
+ \in\mathbb R^{d_g},
+\]
+where \(B_{g0}\in\mathbb R^{q_0\times d_g}\) contains unrestricted
+condition effects and
+\(\bm\gamma_{bj}\in\mathbb R^{d_b}\) is cell type \(j\)'s block-path
+contrast. The \(e_{gi}\) term is present only in the logistic-normal
+sensitivity model. Isoforms outside the block have no direct cell-type
+coefficient, but remain in every EC probability and its normalizer. The null
+sets all \(\bm\gamma_{bj}=\bm0_{d_b}\); the alternative has
+\((J_b-1)d_b\) additional coefficients. This construction makes the EC GLMM
+a per-block test while preserving gene-wide ambiguity and nuisance mass.
+
 For row $i$, let $R_{gi}\in\{0,1\}^{d_g\times L_{g,m(i)}}$ select and sum
 its mouse and observation effects. Its free-logit covariance is
 $R_{gi}\Sigma_{g,m(i)}R_{gi}^\prime\in\mathbb S_+^{d_g}$; append a zero row
@@ -783,6 +814,25 @@ fixed set of Monte Carlo draws is ill-conditioned: the Cholesky factor can
 overfit sample correlations when $L_{gm}$ is not small relative to the
 draw count. This variant is therefore fit with the analytic tilted objective;
 fresh antithetic draws evaluate its exact-likelihood ELBO and R\'enyi bound.
+
+The block statistic is twice the optimized alternative-minus-null
+variational objective. Its reference distribution is empirical rather than
+\(\chi^2\), because it compares optimized evidence bounds and can inherit
+approximation error. A synchronized permutation randomly reorders cell-type
+labels within each condition-by-mouse subject and applies that ordering to
+all blocks. Each observed statistic is compared with a leave-block-out pool
+of permuted statistics matched by likelihood family, tested dimension
+\((J_b-1)d_b\), and gene-depth quartile. Tested dimensions represented by
+fewer than 20 blocks are combined into a rare-dimension stratum within the
+same likelihood and depth quartile. With null pool \(\mathcal N_{-b}\),
+\[
+ p_b=\frac{1+\sum_{z\in\mathcal N_{-b}}
+                   \mathbf1\{z\geq T_b\}}
+              {1+|\mathcal N_{-b}|}.
+\]
+Every permuted statistic is calibrated by the same leave-block-out rule.
+Benjamini--Hochberg values are reported for a likelihood only if these
+calibrated null \(p\)-values reject between 2.5\% and 7.5\% at level 0.05.
 
 \subsection*{Liang--Zeger multinomial GEE}
 
@@ -1141,6 +1191,36 @@ from the first endpoint.
 \EndFor
 \State Compare each method's null-to-alternative gain on its own objective;
   do not compare raw objective values across approximation families.
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Block-specific paired EC-count GLMM cell-type test}
+\label{alg:ec-block-glmm}
+\begin{algorithmic}[1]
+\Require Block \(b\), paired gene EC counts \(\bm c_{gip}\), maps
+  \(A_{gp}\), condition design \(Z_b\), cell-type design \(W_b\), mouse
+  indices, and \(R\) synchronized permutations
+\Ensure Empirically calibrated block p-value
+\State Construct the Helmert basis \(Q_b\) and isoform-to-path contrast
+  matrix \(H_b\); retain unmapped isoforms as likelihood nuisances.
+\State Form the null fixed-effect tensor from unrestricted condition-by-
+  isoform coefficients \(Z_b\otimes I_{d_g}\).
+\State Fit the null full-covariance posterior and variance parameters.
+\State Append the \((J_b-1)d_b\) columns
+  \(W_{bij}(H_b)_{:s}\), warm-start all null parameters, and fit the
+  observed alternative.
+\State Set \(T_b\gets2(\mathcal L_{1b}-\mathcal L_{0b})\), using the same
+  variational objective for both nested fits.
+\For{\(r=1,\ldots,R\)}
+  \State Permute cell-type labels within each condition-by-mouse subject.
+  \State Rebuild only the appended block-effect columns, reuse the null fit,
+    and optimize the permuted alternative.
+\EndFor
+\State Pool converged permutation statistics by likelihood, tested
+  dimension, and depth stratum, excluding block \(b\)'s permutations.
+\State Compute the finite-pool rank p-value and assess the same rank
+  calculation on every null replicate before applying BH.
 \end{algorithmic}
 \end{algorithm}
 

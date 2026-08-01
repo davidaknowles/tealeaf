@@ -69,7 +69,10 @@ def calibrate(table, null):
     p_values = []
     calibrated_null_rows = []
     for key, records in table.groupby(keys):
-        pool = null_groups.get(key, pd.DataFrame())
+        pool = null_groups.get(key)
+        if pool is None or pool["block_id"].nunique() < 2:
+            p_values.extend((position, np.nan) for position in records.index)
+            continue
         block_null = {
             block: values["statistic"].to_numpy()
             for block, values in pool.groupby("block_id")
@@ -125,7 +128,11 @@ def main():
     table = add_calibration_strata(table, args.min_stratum_events)
     table, calibrated_null = calibrate(table, null)
     table["fdr"] = np.nan
-    eligible = table["null_converged"] & table["alternative_converged"]
+    eligible = (
+        table["null_converged"]
+        & table["alternative_converged"]
+        & table["p_value"].notna()
+    )
     for method, positions in table.loc[eligible].groupby("method").groups.items():
         rejection = np.mean(
             calibrated_null.loc[
@@ -151,6 +158,11 @@ def main():
     )
     summary = []
     for method, records in table.groupby("method"):
+        method_eligible = (
+            records["null_converged"]
+            & records["alternative_converged"]
+            & records["p_value"].notna()
+        )
         method_null = calibrated_null.loc[
             calibrated_null["method"] == method, "p_value"
         ].to_numpy()
@@ -161,7 +173,9 @@ def main():
             "convergence": float(np.mean(
                 records["null_converged"] & records["alternative_converged"]
             )),
-            "nominal": int(np.sum(records["p_value"] <= 0.05)),
+            "nominal": int(np.sum(
+                method_eligible & (records["p_value"] <= 0.05)
+            )),
             "fdr_0.05": int(np.sum(records["fdr"] <= 0.05)),
             "null_replicates": len(method_null),
             "null_rejection_0.05": rejection,

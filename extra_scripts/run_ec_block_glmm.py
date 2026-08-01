@@ -38,6 +38,7 @@ def parse_args():
     parser.add_argument("--max-isoforms", type=int, default=10)
     parser.add_argument("--max-ecs", type=int, default=128)
     parser.add_argument("--max-iter", type=int, default=300)
+    parser.add_argument("--retries", type=int, default=2)
     parser.add_argument("--vi-samples", type=int, default=16)
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--shard-count", type=int, default=1)
@@ -102,6 +103,20 @@ def fit_method(method, data, args, initial=None):
         initial=initial,
         max_iter=args.max_iter,
     )
+
+
+def fit_with_retries(method, data, args, initial=None):
+    """Continue fits that reach a stopping failure without changing tolerances."""
+    fit = fit_method(method, data, args, initial=initial)
+    total_iterations = int(fit["iterations"])
+    attempts = 1
+    while not fit["converged"] and attempts <= args.retries:
+        fit = fit_method(method, data, args, initial=fit["parameters"])
+        total_iterations += int(fit["iterations"])
+        attempts += 1
+    fit["total_iterations"] = total_iterations
+    fit["attempts"] = attempts
+    return fit
 
 
 def main():
@@ -183,13 +198,15 @@ def main():
             for method in args.methods:
                 cache_key = (gene, method)
                 if cache_key not in null_cache:
-                    null_cache[cache_key] = fit_method(method, null_data, args)
+                    null_cache[cache_key] = fit_with_retries(
+                        method, null_data, args
+                    )
                 null = null_cache[cache_key]
                 alternative_data = tensor_data(base, alternative_tensor)
                 initial = ec_glmm_full.fixed_effect_warm_start(
                     null, alternative_tensor.shape[2]
                 )
-                alternative = fit_method(
+                alternative = fit_with_retries(
                     method, alternative_data, args, initial=initial
                 )
                 statistic = 2.0 * (alternative["objective"] - null["objective"])
@@ -212,6 +229,12 @@ def main():
                         "observation_noise_sd"
                     ],
                     "alternative_concentration": alternative["concentration"],
+                    "null_iterations": null["total_iterations"],
+                    "alternative_iterations": alternative["total_iterations"],
+                    "null_gradient_norm": null["gradient_norm"],
+                    "alternative_gradient_norm": alternative["gradient_norm"],
+                    "null_attempts": null["attempts"],
+                    "alternative_attempts": alternative["attempts"],
                 })
                 for permutation, permuted in enumerate(permuted_labels):
                     permuted_tested = treatment_design(permuted, len(cell_types))
@@ -219,7 +242,7 @@ def main():
                         nuisance, permuted_tested, path_index
                     )
                     permuted_data = tensor_data(base, permuted_tensor)
-                    permuted_fit = fit_method(
+                    permuted_fit = fit_with_retries(
                         method, permuted_data, args, initial=initial
                     )
                     null_rows.append({
@@ -232,6 +255,9 @@ def main():
                             2.0 * (permuted_fit["objective"] - null["objective"])
                         ),
                         "converged": permuted_fit["converged"],
+                        "iterations": permuted_fit["total_iterations"],
+                        "gradient_norm": permuted_fit["gradient_norm"],
+                        "attempts": permuted_fit["attempts"],
                     })
         except Exception as exc:
             failures.append({"block_id": block.block_id, "error": repr(exc)})

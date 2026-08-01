@@ -24,6 +24,7 @@ OUTPUT_TAG=${OUTPUT_TAG:-ec_block_glmm}
 METHODS=${METHODS:-multinomial_full;multinomial_noise_full;dirichlet_multinomial_full}
 PERMUTATIONS=${PERMUTATIONS:-20}
 MAX_ITER=${MAX_ITER:-300}
+RETRIES=${RETRIES:-2}
 VI_SAMPLES=${VI_SAMPLES:-16}
 IFS=';' read -r -a method_args <<< "${METHODS}"
 
@@ -36,6 +37,7 @@ python "${REPO_ROOT}/extra_scripts/run_ec_block_glmm.py" \
   --methods "${method_args[@]}" \
   --permutations "${PERMUTATIONS}" \
   --max-iter "${MAX_ITER}" \
+  --retries "${RETRIES}" \
   --vi-samples "${VI_SAMPLES}" \
   --shard-index "${SHARD_INDEX}" \
   --shard-count "${SHARD_COUNT}"
