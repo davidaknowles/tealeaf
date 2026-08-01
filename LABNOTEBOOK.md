@@ -2365,3 +2365,36 @@ deviations were 0.040 and 0.029. It changed condition ELBO gains modestly
 gains by a median absolute 10.68. Given weaker convergence and many residual
 scales near zero, it is an informative overdispersion sensitivity analysis,
 not a replacement for the primary model.
+
+## 2026-08-01: block-specific EC GLMM tests
+
+The original EC GLMM runner tested unrestricted gene-wide isoform effects. It
+therefore could not report splice-block events, even though it retained the EC
+counts. I added a block-specific nested model that continues to evaluate every
+EC and represented isoform in the gene likelihood. Under the null, condition
+has unrestricted nonreference-isoform coefficients. Under the alternative,
+cell-type coefficients are added only in the Helmert contrast space of the
+tested block's paths. Isoforms outside the block remain in the likelihood
+normalizer as nuisance isoforms. Mouse random intercepts remain unrestricted.
+For `J` cell types and `S_b` represented paths, the tested dimension is
+`(J - 1)(S_b - 1)`.
+
+Cell-type labels are permuted synchronously within each condition-by-mouse
+subject. Per-event permutation counts are kept modest, and each observed test
+is calibrated against a leave-event-out pool matched by likelihood, tested
+dimension, and gene-depth quantile. Rare tested dimensions are pooled within
+likelihood and depth strata. The merger also calibrates every permuted
+statistic against the corresponding leave-event-out null pool. It withholds
+FDR values for a likelihood unless the aggregate empirical type-I error at
+the 0.05 threshold lies between 0.025 and 0.075.
+
+There are 406 canonical coverage-eligible blocks in the primary cell-type
+table. Of these, 399 have at least two EC-represented paths and at most ten
+supported gene isoforms and can be tested. The other seven have only one
+represented path in the EC design, so their block effect is not identifiable.
+A real-data smoke fit converged for both nested multinomial models in 300
+iterations; the observed statistic was 124.15 with 12 degrees of freedom.
+The logistic-normal sensitivity model also converged. The full-covariance
+Dirichlet--multinomial objective is memory-sensitive to its fixed Monte Carlo
+sample count; 16 synchronized antithetic samples converged in the smoke fit
+and will be validated by empirical null calibration.

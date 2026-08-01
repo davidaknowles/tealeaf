@@ -38,6 +38,7 @@ class ECGLMMData:
     compatibility: tuple[np.ndarray, ...]
     design: np.ndarray
     clusters: np.ndarray
+    fixed_effect_tensor: np.ndarray | None = None
 
     def __post_init__(self):
         counts = tuple(np.asarray(value, dtype=float) for value in self.counts)
@@ -50,6 +51,11 @@ class ECGLMMData:
         )
         design = np.asarray(self.design, dtype=float)
         clusters = np.asarray(self.clusters)
+        fixed_effect_tensor = (
+            None
+            if self.fixed_effect_tensor is None
+            else np.asarray(self.fixed_effect_tensor, dtype=float)
+        )
         if not counts or len(counts) != len(compatibility):
             raise ValueError("counts and compatibility need one entry per primer")
         n_observations = counts[0].shape[0]
@@ -75,12 +81,24 @@ class ECGLMMData:
             raise ValueError("clusters do not align with counts")
         if np.linalg.matrix_rank(design) != design.shape[1]:
             raise ValueError("the fixed-effect design is rank deficient")
+        if fixed_effect_tensor is not None:
+            expected = (n_observations, n_isoforms - 1)
+            if (
+                fixed_effect_tensor.ndim != 3
+                or fixed_effect_tensor.shape[:2] != expected
+                or fixed_effect_tensor.shape[2] < 1
+            ):
+                raise ValueError(
+                    "fixed_effect_tensor must be observations by free logits "
+                    "by coefficients"
+                )
         if n_isoforms < 2:
             raise ValueError("an EC GLMM needs at least two isoforms")
         object.__setattr__(self, "counts", counts)
         object.__setattr__(self, "compatibility", compatibility)
         object.__setattr__(self, "design", design)
         object.__setattr__(self, "clusters", clusters)
+        object.__setattr__(self, "fixed_effect_tensor", fixed_effect_tensor)
 
     @property
     def n_isoforms(self):

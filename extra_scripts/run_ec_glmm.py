@@ -83,7 +83,9 @@ def fixed_effect_design(groups, contrast):
     return null, alternative, metadata["mouse"].to_numpy(), metadata
 
 
-def local_gene_data(counts, designs, transcripts, ecs, fixed, clusters):
+def local_gene_data(
+    counts, designs, transcripts, ecs, fixed, clusters, *, drop_zero=True
+):
     local_counts = []
     local_mappings = []
     for observed, mapping in zip(counts, designs):
@@ -92,8 +94,8 @@ def local_gene_data(counts, designs, transcripts, ecs, fixed, clusters):
         local_counts.append(np.asarray(observed[:, ecs][:, supported].toarray(), dtype=float))
         local_mappings.append(np.asarray(local_mapping[supported].toarray(), dtype=float))
     totals = sum(value.sum(axis=1) for value in local_counts)
-    retained = totals > 0
-    if not retained.any():
+    retained = totals > 0 if drop_zero else np.ones(len(totals), dtype=bool)
+    if totals.sum() <= 0:
         raise ValueError("gene has no positive observations")
     return ec_glmm.ECGLMMData(
         tuple(value[retained] for value in local_counts),

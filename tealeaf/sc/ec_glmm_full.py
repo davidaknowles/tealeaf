@@ -121,7 +121,16 @@ def fit_variational(
     selection = jnp.asarray(selection_np)
     dimension = data.n_isoforms - 1
     latent_dimension = selection.shape[2]
-    coefficient_count = design.shape[1] * dimension
+    fixed_effect_tensor = (
+        None
+        if data.fixed_effect_tensor is None
+        else jnp.asarray(data.fixed_effect_tensor)
+    )
+    coefficient_count = (
+        design.shape[1] * dimension
+        if fixed_effect_tensor is None
+        else fixed_effect_tensor.shape[2]
+    )
     mean_count = n_clusters * latent_dimension
     triangle_rows_np, triangle_columns_np = np.tril_indices(latent_dimension)
     triangle_rows = jnp.asarray(triangle_rows_np)
@@ -148,7 +157,9 @@ def fit_variational(
         parameters = np.asarray(initial, dtype=float)
 
     def unpack(value):
-        coefficients = value[:coefficient_count].reshape(design.shape[1], dimension)
+        coefficients = value[:coefficient_count]
+        if fixed_effect_tensor is None:
+            coefficients = coefficients.reshape(design.shape[1], dimension)
         cursor = coefficient_count
         means = value[cursor : cursor + mean_count].reshape(
             n_clusters, latent_dimension
@@ -179,6 +190,11 @@ def fit_variational(
             log_kappa,
         )
 
+    def fixed_logits(coefficients):
+        if fixed_effect_tensor is None:
+            return design @ coefficients
+        return jnp.einsum("ndp,p->nd", fixed_effect_tensor, coefficients)
+
     def prior_log_sds(log_mouse_sd, log_noise_sd):
         values = jnp.full((latent_blocks, dimension), log_mouse_sd)
         if observation_noise:
@@ -204,7 +220,7 @@ def fit_variational(
             covariance[cluster_index],
             selection,
         )
-        free_means = design @ coefficients + row_means
+        free_means = fixed_logits(coefficients) + row_means
         means = jnp.concatenate(
             (free_means, jnp.zeros((len(design), 1), dtype=free_means.dtype)), axis=1
         )
@@ -284,7 +300,7 @@ def fit_variational(
         effects = means[None, :, :] + jnp.einsum(
             "mij,smj->smi", cholesky, standard_noise
         )
-        fixed = design @ coefficients
+        fixed = fixed_logits(coefficients)
         log_prior_sds = prior_log_sds(log_mouse_sd, log_noise_sd)
 
         def one_sample(effect, noise):
@@ -396,6 +412,7 @@ def fit_variational(
         "objective": -final,
         "parameters": optimized,
         "coefficients": np.asarray(coefficients),
+        "fixed_effect_count": int(coefficient_count),
         "random_effect_sd": float(np.exp(log_mouse_sd)),
         "random_effect_mean": np.asarray(means)[:, :dimension],
         "random_effect_variance": np.diagonal(
@@ -460,6 +477,16 @@ def warm_start(fit, n_design_columns):
     expanded[: len(coefficients)] = coefficients
     coefficient_count = coefficients.size
     return np.r_[expanded.ravel(), np.asarray(fit["parameters"])[coefficient_count:]]
+
+
+def fixed_effect_warm_start(fit, n_fixed_effects):
+    """Expand a tensor-design fit by appending zero fixed effects."""
+    old_count = int(fit["fixed_effect_count"])
+    if int(n_fixed_effects) < old_count:
+        raise ValueError("warm-start fixed-effect count cannot decrease")
+    expanded = np.zeros(int(n_fixed_effects), dtype=float)
+    expanded[:old_count] = np.asarray(fit["coefficients"]).ravel()
+    return np.r_[expanded, np.asarray(fit["parameters"])[old_count:]]
 
 
 def evaluate_objectives(data, fit, *, alpha=0.5, samples=2048, seed=1):
