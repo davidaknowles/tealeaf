@@ -2168,3 +2168,51 @@ algorithm and algpseudocode environments. The full-isoform covariance is now
 a separate algorithm, alongside block construction, local pseudobulk and
 cell-resolved fits, Gaussian and compositional tests, sensitivity tests, and
 joint condition tests.
+
+## 2026-07-31: formal GLMM and Liang--Zeger GEE comparison
+
+I implemented two formal mouse-clustered models for the joint condition test.
+Both use cell-type-specific baselines and one condition effect shared across
+cell types. The Liang--Zeger GEE fits a reference-category multinomial mean,
+an exchangeable within-mouse working correlation, Pearson scale and
+correlation updates, and the canonical cluster sandwich covariance. The
+GLMM uses a full-path multinomial logit with an isotropic Gaussian
+mouse-level random intercept in the non-reference path coordinates. It fits
+the marginal likelihood by a Laplace approximation, with posterior modes
+found by damped Newton updates and the outer objective differentiated by JAX.
+
+The covariance-matched effective path counts are fractional. GEE can use
+these directly as a quasi-score. A formal multinomial likelihood cannot, so
+the GLMM integerizes each row by largest remainder while preserving its
+rounded effective total. Shape-specialized JAX functions are cached, fitted
+nulls are reused across condition permutations, and GEE permutations warm
+start from the observed coefficients.
+
+The complete comparison contained 359 canonical path partitions. Every
+method used the same 50 synchronized mouse-level condition permutations.
+For 88 two-condition partitions, 50 semi-synthetic replicates at ILR effects
+0.25 and 0.5 yielded 4,369 full-rank replicate designs per effect. There were
+no fit exceptions. Clustered GLS, Dirichlet--multinomial, and GLMM converged
+for all 359 observed tests and all 17,917 null fits. GEE converged for 355
+observed tests and 17,702 null fits.
+
+The asymptotic references were poorly calibrated. Permuted-null rejection at
+0.05 was 2.55% for clustered GLS, 13.79% for Dirichlet--multinomial, 41.49%
+for GEE, and 10.76% for GLMM. GEE's 116 apparent asymptotic FDR discoveries
+are therefore artifacts of severe small-cluster sandwich inflation. The
+Dirichlet--multinomial had one asymptotic FDR call; GLS and GLMM had none.
+After event-matched finite-permutation calibration, no method had a 5% FDR
+discovery. Nominal permutation counts were 17, 18, 8, and 19, respectively.
+
+Event-matched power at ILR effects 0.25 and 0.5 was 17.1% and 32.2% for
+clustered GLS, 18.8% and 36.4% for Dirichlet--multinomial, 13.9% and 26.8%
+for GEE, and 19.9% and 39.0% for GLMM. The GLMM was best, improving over
+clustered GLS by 2.8 and 6.9 percentage points, while canonical GEE was worse
+after calibration. The gain is modest and does not remove the need for
+event-specific permutation inference.
+
+Reusable GEE, GLMM, integerization, and stable permutation-rank code is in
+`tealeaf/sc/differential.py`. The dataset-independent comparison and merger
+are `extra_scripts/run_clustered_compositional_models.py` and
+`extra_scripts/merge_clustered_compositional_models.py`; the analysis wrapper
+only supplies inputs and execution parameters.

@@ -528,6 +528,146 @@ components estimated by two-component REML under the no-condition model.
 Condition labels are permuted once per mouse and applied to all its cell
 types.
 
+\subsection*{Multinomial-logit GLMM}
+
+The formal generalized linear mixed model uses the same shared-condition
+design as the joint Gaussian model but retains the multinomial response. Let
+\(\widetilde{\bm x}_{bmc}\in\mathbb N_0^{S_b}\) be integer path counts with
+\(\widetilde n_{bmc}=\bm1_{S_b}^\prime\widetilde{\bm x}_{bmc}
+\in\mathbb N\). They are obtained from the fractional effective counts
+\(\bm x_{bmc}\) by rounding \(n_{bmc}^{\rm eff}\) to the nearest positive
+integer and distributing the remaining molecules to paths by largest
+fractional remainder. This makes the conditional response a proper
+multinomial while changing each effective total by at most one.
+
+For design row \(X_{bmc}\in\mathbb R^{1\times k}\), fixed coefficients
+\(\Beta_b\in\mathbb R^{k\times d_b}\), and mouse random intercept
+\(\bm u_{bm}\in\mathbb R^{d_b}\), define
+\[
+ \bm\xi_{bmc}=X_{bmc}\Beta_b+\bm u_{bm}^\prime
+ \in\mathbb R^{1\times d_b},
+\qquad
+ \bm\mu_{bmc}=
+ \operatorname{softmax}\{(\bm\xi_{bmc},0)\}
+ \in\Delta^{S_b-1}.
+\]
+The final path is the reference category. The model is
+\[
+ \widetilde{\bm x}_{bmc}\mid\bm u_{bm}
+ \sim\operatorname{Multinomial}(\widetilde n_{bmc},\bm\mu_{bmc}),
+ \qquad
+ \bm u_{bm}\sim N(\bm0_{d_b},\sigma_b^2I_{d_b}),
+\]
+where \(\sigma_b^2\in\mathbb R_+\) is re-estimated under both null and
+alternative. An isotropic random-effect covariance is used because some
+blocks have few mice; an unstructured \(d_b\times d_b\) covariance would
+introduce \(d_b(d_b+1)/2\) variance parameters per block.
+
+Let \(\ell_{bm}(\bm u;\Beta_b,\sigma_b)\in\mathbb R\) be mouse \(m\)'s
+conditional multinomial log likelihood plus its Gaussian log density, and
+let
+\[
+ \widehat{\bm u}_{bm}
+ =\arg\max_{\bm u\in\mathbb R^{d_b}}\ell_{bm}(\bm u;\Beta_b,\sigma_b),
+ \qquad
+ H_{bm}=-\frac{\partial^2\ell_{bm}}
+ {\partial\bm u\,\partial\bm u^\prime}
+ \bigg|_{\widehat{\bm u}_{bm}}\in\mathbb S_+^{d_b}.
+\]
+The Laplace log marginal likelihood, up to constants common to nested
+models, is
+\[
+ \ell_b^{\rm Lap}(\Beta_b,\sigma_b)
+ =\sum_{m=1}^M\left[
+   \ell_{bm}(\widehat{\bm u}_{bm};\Beta_b,\sigma_b)
+   +\frac{d_b}{2}\log(2\pi)-\frac12\log|H_{bm}|
+ \right]\in\mathbb R.
+\]
+The implementation differentiates this approximation through 30 damped
+Newton updates for every \(\widehat{\bm u}_{bm}\). The null contains
+cell-type intercepts; the alternative appends \(r_b\) condition columns.
+The likelihood-ratio statistic has nominal degrees of freedom \(r_bd_b\).
+
+\subsection*{Liang--Zeger multinomial GEE}
+
+GEE specifies only the marginal mean and first two moments. It can therefore
+use the fractional effective counts directly. Define
+\(\bm p_{bmc}=\bm x_{bmc}/n_{bmc}^{\rm eff}\in\Delta^{S_b-1}\), and let
+\(\bm p_{bmc,-}\in\mathbb R^{d_b}\) omit the reference path. Its marginal
+mean uses the same reference-logit regression,
+\[
+ \bm\mu_{bmc}=\operatorname{softmax}\{(X_{bmc}\Beta_b,0)\},
+ \qquad
+ G_{bmc}=\operatorname{diag}(\bm\mu_{bmc,-})
+ -\bm\mu_{bmc,-}\bm\mu_{bmc,-}^\prime
+ \in\mathbb S_+^{d_b}.
+\]
+The working covariance of one proportion vector is
+\(A_{bmc}=G_{bmc}/n_{bmc}^{\rm eff}\in\mathbb S_+^{d_b}\).
+Let \(L_{bmc}\in\mathbb R^{d_b\times d_b}\) be its symmetric square root,
+and let
+\[
+ D_{bmc}=\frac{\partial\bm\mu_{bmc,-}}
+ {\partial\operatorname{vec}(\Beta_b)^\prime}
+ =[X_{bmc,1}G_{bmc}\ \cdots\ X_{bmc,k}G_{bmc}]
+ \in\mathbb R^{d_b\times kd_b}.
+\]
+
+For mouse \(m\), stack its \(q_m\in\mathbb N\) observed cell types into
+\(\bm p_{bm,-}\in\mathbb R^{q_md_b}\), mean
+\(\bm\mu_{bm,-}\in\mathbb R^{q_md_b}\), and derivative
+\(D_{bm}\in\mathbb R^{q_md_b\times kd_b}\). With
+\(L_{bm}=\operatorname{blockdiag}_c(L_{bmc})\) and exchangeable
+\(R_m(\alpha_b)\in\mathbb R^{q_m\times q_m}\), the Liang--Zeger working
+covariance is
+\[
+ W_{bm}=\phi_bL_{bm}
+ \{R_m(\alpha_b)\otimes I_{d_b}\}L_{bm}^\prime
+ \in\mathbb S_+^{q_md_b}.
+\]
+The scale \(\phi_b\in\mathbb R_+\) and working correlation
+\(\alpha_b\in(-1/(q_{\max}-1),1)\) are updated from whitened Pearson
+residuals. Coefficients solve
+\[
+ \sum_{m=1}^M D_{bm}^\prime W_{bm}^{-1}
+ (\bm p_{bm,-}-\bm\mu_{bm,-})=\bm0_{kd_b}.
+\]
+If \(\bm U_{bm}=D_{bm}^\prime W_{bm}^{-1}
+(\bm p_{bm,-}-\bm\mu_{bm,-})\in\mathbb R^{kd_b}\) and
+\(\mathcal H_b=\sum_mD_{bm}^\prime W_{bm}^{-1}D_{bm}
+\in\mathbb S_+^{kd_b}\), the canonical cluster-robust covariance is
+\[
+ \widehat{\operatorname{Var}}\{\operatorname{vec}(\widehat\Beta_b)\}
+ =\mathcal H_b^+
+ \left(\sum_{m=1}^M\bm U_{bm}\bm U_{bm}^\prime\right)
+ \mathcal H_b^+
+ \in\mathbb S_+^{kd_b}.
+\]
+The condition coefficients are tested by a robust Wald statistic. No
+small-sample sandwich correction is imposed; synchronized mouse-level
+permutations assess whether the canonical large-\(M\) reference is adequate.
+
+\subsection*{Matched power benchmark}
+
+Power is evaluated only for partitions represented by exactly two
+conditions. For replicate \(r\), condition labels are first permuted among
+mice. Let \(z_{bmc}^{(r)}\in\{0,1\}\) be the resulting non-reference
+condition indicator and let \(\bm v_b\in\mathbb R^{d_b}\) be a reproducible
+random unit vector. For ILR effect \(\gamma\in\{0.25,0.5\}\), define
+\[
+ \bm y_{bmc}^{(r,\gamma)}
+ =\bm y_{bmc}+\gamma z_{bmc}^{(r)}\bm v_b,\qquad
+ \bm\psi_{bmc}^{(r,\gamma)}
+ =\operatorname{softmax}\{Q_b\bm y_{bmc}^{(r,\gamma)}\}.
+\]
+The shifted effective counts are
+\(n_{bmc}^{\rm eff}\bm\psi_{bmc}^{(r,\gamma)}\). Thus every method sees the
+same imposed ILR effect, observed effective depth, cell-type pattern, and
+mouse clustering. For each simulated alternative, null-calibrated power uses
+the finite-permutation rank of its statistic among synchronized null
+statistics for the same block and method. This event-matched calibration
+preserves dimension, depth, and cluster structure.
+
 \section*{Algorithms}
 
 All algorithms operate independently over canonical blocks unless a joint
@@ -720,6 +860,88 @@ from the first endpoint.
 \end{algorithm}
 
 \begin{algorithm}[H]
+\caption{Liang--Zeger multinomial GEE condition test}
+\label{alg:gee}
+\begin{algorithmic}[1]
+\Require Fractional counts \(\bm x_{bmc}\), design \(X_b\), mouse labels,
+  and tested condition columns
+\Ensure Robust Wald statistic and p-value
+\State Initialize \(\Beta_b\) from independent multinomial regression and
+  set \(\alpha_b\gets0\), \(\phi_b\gets1\).
+\Repeat
+  \State Compute \(\bm\mu_{bmc}\), \(G_{bmc}\), \(A_{bmc}\), and
+    \(D_{bmc}\) for every observation.
+  \State Whiten residuals by \(A_{bmc}^{-1/2}\).
+  \State Update \(\phi_b\) from squared Pearson residuals and
+    \(\alpha_b\) from within-mouse Pearson cross-products.
+  \State Construct every \(W_{bm}\), quasi-score \(\bm U_{bm}\), and
+    sensitivity matrix \(\mathcal H_b\).
+  \State Update
+    \(\operatorname{vec}(\Beta_b)\gets
+    \operatorname{vec}(\Beta_b)+\mathcal H_b^+\sum_m\bm U_{bm}\).
+\Until{the maximum coefficient update is at most \(10^{-8}\)}
+\State Form the cluster sandwich covariance
+  \(\mathcal H_b^+(\sum_m\bm U_{bm}\bm U_{bm}^\prime)\mathcal H_b^+\).
+\State Compute the robust Wald test for all condition coefficients.
+\State Permute condition once per mouse and repeat the complete GEE fit.
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Laplace multinomial GLMM condition test}
+\label{alg:glmm}
+\begin{algorithmic}[1]
+\Require Effective counts, nested designs, mouse labels, and random-effect
+  dimension \(d_b\)
+\Ensure Likelihood-ratio statistic and p-value
+\State Integerize each effective count vector by largest remainder.
+\ForAll{null and alternative models}
+  \State Initialize fixed coefficients from multinomial regression and
+    initialize \(\sigma_b\).
+  \Repeat
+    \ForAll{mice \(m\)}
+      \State Find \(\widehat{\bm u}_{bm}\) with 30 damped Newton updates.
+      \State Compute random-effect Hessian \(H_{bm}\) and its log determinant.
+    \EndFor
+    \State Sum the Laplace log marginal likelihood and differentiate through
+      the Newton updates.
+    \State Update \(\Beta_b\) and \(\log\sigma_b\) by bounded L-BFGS.
+  \Until{the outer gradient tolerance or iteration limit is reached}
+\EndFor
+\State Compute twice the null-to-alternative Laplace log-likelihood gain.
+\State Compare with \(\chi^2_{r_bd_b}\).
+\State For permutations, reuse the fitted null and refit each permuted
+  alternative.
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Matched semi-synthetic power benchmark}
+\label{alg:cluster-power}
+\begin{algorithmic}[1]
+\Require Two-condition partitions, effect sizes \(\gamma\), and replicate
+  count \(R_{\rm power}\)
+\Ensure Asymptotic and null-calibrated power for each method
+\ForAll{eligible blocks \(b\)}
+  \State Draw and fix a unit ILR direction \(\bm v_b\).
+  \For{\(r=1,\ldots,R_{\rm power}\)}
+    \State Permute condition labels among mice.
+    \ForAll{nonzero effect sizes \(\gamma\)}
+      \State Set
+        \(\bm y_{bmc}^{(r,\gamma)}
+        =\bm y_{bmc}+\gamma z_{bmc}^{(r)}\bm v_b\).
+      \State Map shifted ILRs to compositions and effective path counts.
+      \State Fit GEE, GLMM, clustered GLS, and Dirichlet--multinomial tests.
+    \EndFor
+  \EndFor
+\EndFor
+\State Rank each alternative statistic against null statistics for its block
+  and method, using the finite-permutation correction.
+\State Report asymptotic and event-matched permutation rejection at 0.05.
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
 \caption{Pairwise and dominant-path sensitivity tests}
 \label{alg:sensitivities}
 \begin{algorithmic}[1]
@@ -867,6 +1089,48 @@ the corrected number of significant hypotheses and blocks is zero. Thus
 there is no FDR-significant evidence for condition-dependent splicing within
 cell type. The two covariance variants should not be added as if they were
 separate discoveries.
+
+\subsection*{Formal mouse-clustered models}
+
+The shared-condition analysis was repeated with the multinomial-logit GLMM
+and Liang--Zeger GEE defined above. Clustered Gaussian ILR GLS and the
+unclustered Dirichlet--multinomial were refit to the same canonical
+partitions as comparators. Each block used 50 synchronized mouse-level null
+permutations. For 88 two-condition blocks, 50 semi-synthetic replicates were
+generated at each ILR effect size; 4,369 of 4,400 replicate designs had full
+rank. ``Perm. nominal'' below is the number of observed partitions with an
+event-matched permutation p-value at most 0.05.
+Table~\ref{tab:clustered-power} summarizes the complete analysis.
+
+\begin{table}[H]
+\centering
+\caption{Calibration and power comparison. Null rejection uses
+asymptotic p-values on permuted labels; power uses event-matched permutation
+ranks.}
+\label{tab:clustered-power}
+\begin{tabular}{lrrrrrr}
+\toprule
+Method & Tests & Conv. & Null $<.05$ & Perm. nominal &
+  Power $.25$ & Power $.50$\\
+\midrule
+Clustered GLS & 359 & 359 & 0.025 & 17 & 0.171 & 0.322\\
+Dirichlet--multinomial & 359 & 359 & 0.138 & 18 & 0.188 & 0.364\\
+Liang--Zeger GEE & 359 & 355 & 0.415 & 8 & 0.139 & 0.268\\
+Laplace GLMM & 359 & 359 & 0.108 & 19 & 0.199 & 0.390\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The canonical GEE sandwich reference is unusable at the available mouse
+counts: 41.5\% of permuted-null p-values were below 0.05, and its apparent
+116 asymptotic FDR discoveries are artifacts of this inflation. The GLMM
+reference was closer but still anti-conservative at 10.8\%, while clustered
+GLS was conservative at 2.5\%. Event-matched permutation calibration is
+therefore required for all comparisons. On that scale, the GLMM had the
+highest power, improving over clustered GLS by 2.8 and 6.9
+percentage points at ILR effects 0.25 and 0.5. GEE was less powerful than
+clustered GLS after calibration. No method produced a permutation-calibrated
+5\% FDR discovery in the observed condition analysis.
 
 \subsection*{Cell-type effects within mouse}
 

@@ -6,6 +6,7 @@ import unittest
 
 import numpy as np
 import pandas as pd
+import scipy.special
 import scipy.sparse as sp
 
 from extra_scripts import (
@@ -153,6 +154,72 @@ class CovarianceTest(unittest.TestCase):
         self.assertTrue(fit.converged)
         np.testing.assert_allclose(fit.delta, [0.7], atol=1e-4)
 
+
+class ClusteredCompositionalTest(unittest.TestCase):
+    @staticmethod
+    def simulated_counts(seed=17, subjects=36, total=80, effect=0.9):
+        rng = np.random.default_rng(seed)
+        clusters = np.repeat(np.arange(subjects), 2)
+        condition = np.repeat(np.arange(subjects) >= subjects // 2, 2)
+        cell_type = np.tile([0, 1], subjects)
+        null_design = np.c_[1 - cell_type, cell_type]
+        alternative_design = np.c_[null_design, condition]
+        random_intercepts = rng.normal(0.0, 0.55, size=subjects)
+        logits = (
+            -0.4 * null_design[:, 0]
+            + 0.3 * null_design[:, 1]
+            + effect * condition
+            + random_intercepts[clusters]
+        )
+        probabilities = scipy.special.expit(logits)
+        successes = rng.binomial(total, probabilities)
+        counts = np.c_[successes, total - successes].astype(float)
+        return counts, null_design, alternative_design, clusters
+
+    def test_multinomial_gee_recovers_clustered_effect(self):
+        counts, _, design, clusters = self.simulated_counts()
+        result = differential.multinomial_gee_test(
+            counts,
+            design,
+            tested_columns=[2],
+            clusters=clusters,
+        )
+        self.assertTrue(result["converged"])
+        self.assertGreater(result["working_correlation"], 0)
+        self.assertAlmostEqual(result["coefficients"][2, 0], 0.9, delta=0.35)
+        self.assertLess(result["p_value"], 0.05)
+        warm = differential.multinomial_gee_test(
+            counts,
+            design,
+            tested_columns=[2],
+            clusters=clusters,
+            initial=result["coefficients"],
+        )
+        self.assertAlmostEqual(warm["statistic"], result["statistic"], places=5)
+
+    def test_multinomial_glmm_recovers_clustered_effect(self):
+        counts, null, alternative, clusters = self.simulated_counts(
+            subjects=28,
+            total=60,
+        )
+        result = differential.multinomial_glmm_test(
+            counts,
+            null,
+            alternative,
+            clusters,
+            max_iter=100,
+        )
+        self.assertTrue(result["null_converged"])
+        self.assertTrue(result["alternative_converged"])
+        self.assertGreater(result["null_random_effect_sd"], 0.1)
+        self.assertLess(result["p_value"], 0.05)
+
+    def test_integerized_counts_preserve_rounded_totals(self):
+        counts = np.array([[1.2, 2.2, 3.2], [0.1, 0.1, 0.1]])
+        rounded = differential.integerize_compositional_counts(counts)
+        np.testing.assert_array_equal(rounded.sum(axis=1), [7, 1])
+        self.assertTrue(np.issubdtype(rounded.dtype, np.integer))
+        self.assertTrue((rounded >= 0).all())
 
 class DifferentialTest(unittest.TestCase):
     def test_multivariate_gls_detects_condition_effect(self):

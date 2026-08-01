@@ -1117,6 +1117,758 @@ def clustered_multivariate_gls_test(
     return finalize(cluster_variance, residual_variance)
 
 
+def _reference_multinomial_mean(design, coefficients):
+    """Return reference-category multinomial means and derivatives."""
+    design = np.asarray(design, dtype=float)
+    coefficients = np.asarray(coefficients, dtype=float)
+    logits = np.c_[design @ coefficients, np.zeros(len(design))]
+    means = scipy.special.softmax(logits, axis=1)
+    free_means = means[:, :-1]
+    derivatives = np.asarray([
+        np.diag(row) - np.outer(row, row) for row in free_means
+    ])
+    return means, derivatives
+
+
+def _multinomial_gee_fit(
+    counts,
+    design,
+    clusters,
+    *,
+    initial=None,
+    max_iter=100,
+    tolerance=1e-8,
+    exchangeable=True,
+):
+    """Fit a multinomial marginal mean by Liang--Zeger GEE."""
+    counts = np.asarray(counts, dtype=float)
+    design = np.asarray(design, dtype=float)
+    clusters = np.asarray(clusters)
+    if counts.ndim != 2 or counts.shape[1] < 2:
+        raise ValueError("counts must be samples by at least two paths")
+    if (
+        design.ndim != 2
+        or design.shape[0] != len(counts)
+        or len(clusters) != len(counts)
+    ):
+        raise ValueError("counts, design, and clusters must align")
+    if np.any(counts < 0) or np.any(counts.sum(axis=1) <= 0):
+        raise ValueError("each sample needs positive nonnegative counts")
+    if np.linalg.matrix_rank(design) != design.shape[1]:
+        raise ValueError("GEE design is rank deficient")
+    totals = counts.sum(axis=1)
+    response = counts[:, :-1] / totals[:, None]
+    n_paths = counts.shape[1]
+    dimension = n_paths - 1
+    n_coefficients = design.shape[1] * dimension
+    cluster_rows = [
+        np.flatnonzero(clusters == cluster)
+        for cluster in np.unique(clusters)
+    ]
+    if len(cluster_rows) < 2:
+        raise ValueError("GEE needs at least two clusters")
+    if initial is None:
+        fitted = _multinomial_fit(counts, design, max_iter=max_iter)
+        coefficients = fitted["parameters"].reshape(
+            design.shape[1], dimension
+        )
+    else:
+        coefficients = np.asarray(initial, dtype=float).reshape(
+            design.shape[1], dimension
+        ).copy()
+    alpha = 0.0
+    scale = 1.0
+    converged = False
+
+    def components(current_coefficients, current_alpha, current_scale):
+        means, mean_derivatives = _reference_multinomial_mean(
+            design, current_coefficients
+        )
+        free_means = means[:, :-1]
+        residuals = response - free_means
+        observation_roots = []
+        standardized = []
+        derivative_rows = []
+        for row in range(len(counts)):
+            covariance = mean_derivatives[row] / totals[row]
+            eigenvalues, eigenvectors = scipy.linalg.eigh(
+                covariance, check_finite=False
+            )
+            floor = max(float(eigenvalues.max()) * 1e-10, 1e-12)
+            eigenvalues = np.maximum(eigenvalues, floor)
+            root = (eigenvectors * np.sqrt(eigenvalues)) @ eigenvectors.T
+            inverse_root = (
+                eigenvectors * (1.0 / np.sqrt(eigenvalues))
+            ) @ eigenvectors.T
+            observation_roots.append(root)
+            standardized.append(inverse_root @ residuals[row])
+            derivative_rows.append(np.hstack([
+                design[row, column] * mean_derivatives[row]
+                for column in range(design.shape[1])
+            ]))
+        standardized = np.asarray(standardized)
+        pearson_sum = float(np.sum(standardized * standardized))
+        residual_df = max(
+            len(counts) * dimension - n_coefficients, 1
+        )
+        estimated_scale = max(pearson_sum / residual_df, 1e-8)
+        pair_sum = 0.0
+        pair_count = 0
+        for rows in cluster_rows:
+            for first in range(len(rows)):
+                for second in range(first):
+                    pair_sum += float(
+                        standardized[rows[first]]
+                        @ standardized[rows[second]]
+                    )
+                    pair_count += dimension
+        estimated_alpha = (
+            pair_sum / (pair_count * estimated_scale)
+            if pair_count
+            else 0.0
+        )
+        maximum_cluster = max(len(rows) for rows in cluster_rows)
+        lower = (
+            -1.0 / (maximum_cluster - 1) + 1e-6
+            if maximum_cluster > 1
+            else -0.99
+        )
+        estimated_alpha = float(np.clip(estimated_alpha, lower, 0.95))
+        use_alpha = estimated_alpha if exchangeable else 0.0
+        use_scale = estimated_scale
+        bread = np.zeros((n_coefficients, n_coefficients), dtype=float)
+        score = np.zeros(n_coefficients, dtype=float)
+        cluster_scores = []
+        for rows in cluster_rows:
+            size = len(rows)
+            root = scipy.linalg.block_diag(*[
+                observation_roots[row] for row in rows
+            ])
+            correlation = np.kron(
+                np.full((size, size), use_alpha)
+                + np.eye(size) * (1.0 - use_alpha),
+                np.eye(dimension),
+            )
+            working = use_scale * root @ correlation @ root.T
+            inverse = scipy.linalg.pinvh(
+                working, rtol=1e-10, check_finite=False
+            )
+            derivative = np.vstack([
+                derivative_rows[row] for row in rows
+            ])
+            residual = residuals[rows].ravel()
+            cluster_score = derivative.T @ inverse @ residual
+            bread += derivative.T @ inverse @ derivative
+            score += cluster_score
+            cluster_scores.append(cluster_score)
+        return (
+            means,
+            estimated_alpha,
+            estimated_scale,
+            bread,
+            score,
+            cluster_scores,
+        )
+
+    iterations = 0
+    for iterations in range(1, int(max_iter) + 1):
+        (
+            _,
+            estimated_alpha,
+            estimated_scale,
+            bread,
+            score,
+            _,
+        ) = components(coefficients, alpha, scale)
+        step = scipy.linalg.pinvh(
+            bread, rtol=1e-10, check_finite=False
+        ) @ score
+        coefficients += step.reshape(coefficients.shape)
+        alpha = estimated_alpha
+        scale = estimated_scale
+        if np.linalg.norm(step, ord=np.inf) <= float(tolerance):
+            converged = True
+            break
+    (
+        means,
+        alpha,
+        scale,
+        bread,
+        score,
+        cluster_scores,
+    ) = components(coefficients, alpha, scale)
+    bread_inverse = scipy.linalg.pinvh(
+        bread, rtol=1e-10, check_finite=False
+    )
+    meat = sum(
+        np.outer(cluster_score, cluster_score)
+        for cluster_score in cluster_scores
+    )
+    robust_covariance = bread_inverse @ meat @ bread_inverse
+    robust_covariance = 0.5 * (
+        robust_covariance + robust_covariance.T
+    )
+    return {
+        "coefficients": coefficients,
+        "means": means,
+        "working_correlation": alpha,
+        "scale": scale,
+        "model_covariance": bread_inverse,
+        "robust_covariance": robust_covariance,
+        "score_norm": float(np.linalg.norm(score, ord=np.inf)),
+        "converged": bool(converged),
+        "iterations": iterations,
+        "clusters": len(cluster_rows),
+    }
+
+
+def multinomial_gee_test(
+    counts,
+    design,
+    tested_columns,
+    clusters,
+    *,
+    max_iter=100,
+    tolerance=1e-8,
+    exchangeable=True,
+    initial=None,
+):
+    """Liang--Zeger multinomial GEE Wald test with sandwich covariance."""
+    design = np.asarray(design, dtype=float)
+    tested_columns = np.asarray(tested_columns, dtype=np.int64)
+    fit = _multinomial_gee_fit(
+        counts,
+        design,
+        clusters,
+        max_iter=max_iter,
+        tolerance=tolerance,
+        exchangeable=exchangeable,
+        initial=initial,
+    )
+    dimension = np.asarray(counts).shape[1] - 1
+    tested = np.concatenate([
+        np.arange(column * dimension, (column + 1) * dimension)
+        for column in tested_columns
+    ])
+    values = fit["coefficients"].ravel()[tested]
+    covariance = fit["robust_covariance"][np.ix_(tested, tested)]
+    degrees_of_freedom = int(np.linalg.matrix_rank(covariance, tol=1e-10))
+    if degrees_of_freedom:
+        statistic = float(
+            values @ scipy.linalg.pinvh(
+                covariance, rtol=1e-10, check_finite=False
+            ) @ values
+        )
+        p_value = float(
+            scipy.stats.chi2.sf(statistic, degrees_of_freedom)
+        )
+    else:
+        statistic = 0.0
+        p_value = 1.0
+    return {
+        **fit,
+        "statistic": statistic,
+        "degrees_of_freedom": degrees_of_freedom,
+        "p_value": p_value,
+    }
+
+
+def _multinomial_glmm_cluster_mode(
+    counts,
+    fixed_logits,
+    variance,
+    *,
+    initial=None,
+    max_iter=50,
+    tolerance=1e-10,
+):
+    """Find one cluster's Gaussian random-intercept posterior mode."""
+    counts = np.asarray(counts, dtype=float)
+    fixed_logits = np.asarray(fixed_logits, dtype=float)
+    dimension = counts.shape[1] - 1
+    totals = counts.sum(axis=1)
+    mode = (
+        np.zeros(dimension, dtype=float)
+        if initial is None
+        else np.asarray(initial, dtype=float).copy()
+    )
+    precision = 1.0 / float(variance)
+    hessian = np.eye(dimension) * precision
+
+    def log_posterior(value):
+        logits = np.c_[
+            fixed_logits + value[None, :],
+            np.zeros(len(counts)),
+        ]
+        log_means = logits - scipy.special.logsumexp(
+            logits, axis=1, keepdims=True
+        )
+        return (
+            float(np.sum(counts * log_means))
+            - 0.5 * precision * float(value @ value)
+        )
+
+    for _ in range(int(max_iter)):
+        logits = np.c_[
+            fixed_logits + mode[None, :],
+            np.zeros(len(counts)),
+        ]
+        means = scipy.special.softmax(logits, axis=1)
+        free = means[:, :-1]
+        gradient = (
+            counts[:, :-1] - totals[:, None] * free
+        ).sum(axis=0) - precision * mode
+        hessian = np.eye(dimension) * precision
+        for total, row in zip(totals, free):
+            hessian += total * (
+                np.diag(row) - np.outer(row, row)
+            )
+        step = scipy.linalg.solve(
+            hessian, gradient, assume_a="pos", check_finite=False
+        )
+        current = log_posterior(mode)
+        directional = float(gradient @ step)
+        step_size = 1.0
+        while step_size > 1e-8:
+            candidate = mode + step_size * step
+            if log_posterior(candidate) >= (
+                current + 1e-4 * step_size * directional
+            ):
+                break
+            step_size *= 0.5
+        mode += step_size * step
+        if (
+            np.linalg.norm(step_size * step, ord=np.inf)
+            <= float(tolerance)
+        ):
+            break
+    logits = np.c_[fixed_logits + mode[None, :], np.zeros(len(counts))]
+    means = scipy.special.softmax(logits, axis=1)[:, :-1]
+    hessian = np.eye(dimension) * precision
+    for total, row in zip(totals, means):
+        hessian += total * (np.diag(row) - np.outer(row, row))
+    return mode, hessian
+
+
+_GLMM_JAX_FUNCTIONS = {}
+
+
+def _multinomial_glmm_jax_functions(
+    n_samples, n_paths, n_design_columns, n_clusters
+):
+    """Build and cache shape-specialized JAX Laplace functions."""
+    key = (n_samples, n_paths, n_design_columns, n_clusters)
+    if key in _GLMM_JAX_FUNCTIONS:
+        return _GLMM_JAX_FUNCTIONS[key]
+    import jax
+    import jax.numpy as jnp
+    import jax.scipy as jsp
+
+    jax.config.update("jax_enable_x64", True)
+    dimension = n_paths - 1
+    coefficient_count = n_design_columns * dimension
+    identity = jnp.eye(dimension, dtype=jnp.float64)
+
+    def posterior_modes(
+        parameters, counts_jax, design_jax, cluster_jax, membership
+    ):
+        totals = counts_jax.sum(axis=1)
+        coefficients = parameters[:coefficient_count].reshape(
+            n_design_columns, dimension
+        )
+        variance = jnp.exp(2.0 * parameters[-1])
+        fixed_logits = design_jax @ coefficients
+        modes = jnp.zeros((n_clusters, dimension), dtype=jnp.float64)
+
+        def update(_, current_modes):
+            logits = jnp.concatenate(
+                (
+                    fixed_logits + current_modes[cluster_jax],
+                    jnp.zeros((n_samples, 1), dtype=jnp.float64),
+                ),
+                axis=1,
+            )
+            means = jax.nn.softmax(logits, axis=1)[:, :-1]
+            residual = counts_jax[:, :-1] - totals[:, None] * means
+            gradient = membership.T @ residual - current_modes / variance
+            observation_hessian = jax.vmap(
+                lambda total, row: total
+                * (jnp.diag(row) - jnp.outer(row, row))
+            )(totals, means)
+            hessian = (
+                jnp.einsum("im,ijk->mjk", membership, observation_hessian)
+                + identity[None, :, :] / variance
+            )
+            step = jnp.linalg.solve(hessian, gradient[..., None])[..., 0]
+            maximum = jnp.max(jnp.abs(step), axis=1, keepdims=True)
+            damping = jnp.minimum(1.0, 2.0 / (maximum + 1e-12))
+            return current_modes + damping * step
+
+        modes = jax.lax.fori_loop(0, 30, update, modes)
+        return fixed_logits, modes, variance
+
+    def objective(
+        parameters, counts_jax, design_jax, cluster_jax, membership
+    ):
+        totals = counts_jax.sum(axis=1)
+        fixed_logits, modes, variance = posterior_modes(
+            parameters, counts_jax, design_jax, cluster_jax, membership
+        )
+        logits = jnp.concatenate(
+            (
+                fixed_logits + modes[cluster_jax],
+                jnp.zeros((n_samples, 1), dtype=jnp.float64),
+            ),
+            axis=1,
+        )
+        log_means = logits - jsp.special.logsumexp(
+            logits, axis=1, keepdims=True
+        )
+        means = jnp.exp(log_means)[:, :-1]
+        observation_hessian = jax.vmap(
+            lambda total, row: total
+            * (jnp.diag(row) - jnp.outer(row, row))
+        )(totals, means)
+        hessian = (
+            jnp.einsum("im,ijk->mjk", membership, observation_hessian)
+            + identity[None, :, :] / variance
+        )
+        log_determinant = jnp.linalg.slogdet(hessian)[1]
+        value = (
+            jnp.sum(counts_jax * log_means)
+            - 0.5 * jnp.sum(modes * modes) / variance
+            - n_clusters * dimension * parameters[-1]
+            - 0.5 * jnp.sum(log_determinant)
+        )
+        return -value
+
+    functions = (
+        jax.jit(jax.value_and_grad(objective)),
+        jax.jit(posterior_modes),
+        jnp,
+        jax,
+    )
+    _GLMM_JAX_FUNCTIONS[key] = functions
+    return functions
+
+
+def _multinomial_glmm_jax_fit(
+    counts,
+    design,
+    cluster_index,
+    n_clusters,
+    initial,
+    max_iter,
+):
+    """Autodifferentiated Laplace fit used when JAX is available."""
+    value_and_gradient, posterior_modes, jnp, jax = (
+        _multinomial_glmm_jax_functions(
+            len(counts),
+            counts.shape[1],
+            design.shape[1],
+            int(n_clusters),
+        )
+    )
+    counts_jax = jnp.asarray(counts, dtype=jnp.float64)
+    design_jax = jnp.asarray(design, dtype=jnp.float64)
+    cluster_jax = jnp.asarray(cluster_index, dtype=jnp.int32)
+    membership = jax.nn.one_hot(
+        cluster_jax, int(n_clusters), dtype=jnp.float64
+    )
+    dimension = counts.shape[1] - 1
+    coefficient_count = design.shape[1] * dimension
+
+    def scipy_objective(parameters):
+        value, gradient = value_and_gradient(
+            jnp.asarray(parameters),
+            counts_jax,
+            design_jax,
+            cluster_jax,
+            membership,
+        )
+        return float(value), np.asarray(gradient, dtype=float)
+
+    bounds = [(-20.0, 20.0)] * coefficient_count + [(-8.0, 4.0)]
+    result = scipy.optimize.minimize(
+        scipy_objective,
+        np.asarray(initial, dtype=float),
+        method="L-BFGS-B",
+        jac=True,
+        bounds=bounds,
+        options={"maxiter": int(max_iter), "ftol": 1e-9, "gtol": 1e-5},
+    )
+    final_value, final_gradient = scipy_objective(result.x)
+    fixed_logits, modes, variance = posterior_modes(
+        jnp.asarray(result.x),
+        counts_jax,
+        design_jax,
+        cluster_jax,
+        membership,
+    )
+    fixed_logits = np.asarray(fixed_logits)
+    modes = np.asarray(modes)
+    variance = float(variance)
+    mode_score = 0.0
+    for cluster in range(int(n_clusters)):
+        rows = np.flatnonzero(cluster_index == cluster)
+        logits = np.c_[
+            fixed_logits[rows] + modes[cluster][None, :],
+            np.zeros(len(rows)),
+        ]
+        means = scipy.special.softmax(logits, axis=1)[:, :-1]
+        score = (
+            counts[rows, :-1]
+            - counts[rows].sum(axis=1)[:, None] * means
+        ).sum(axis=0) - modes[cluster] / variance
+        mode_score = max(
+            mode_score, float(np.linalg.norm(score, ord=np.inf))
+        )
+    gradient_norm = float(np.linalg.norm(final_gradient, ord=np.inf))
+    return {
+        "objective": final_value,
+        "parameters": np.asarray(result.x),
+        "coefficients": np.asarray(result.x[:coefficient_count]).reshape(
+            design.shape[1], dimension
+        ),
+        "random_effect_sd": float(np.sqrt(variance)),
+        "random_effect_modes": modes,
+        "mode_score_norm": mode_score,
+        "gradient_norm": gradient_norm,
+        "converged": bool(
+            result.success
+            or (
+                np.isfinite(final_value)
+                and gradient_norm <= 1e-3
+                and mode_score <= 1e-6
+            )
+        ),
+        "iterations": int(result.nit),
+        "message": str(result.message),
+    }
+
+
+def _multinomial_glmm_laplace_fit(
+    counts,
+    design,
+    clusters,
+    *,
+    initial=None,
+    max_iter=200,
+):
+    """Fit a multinomial-logit random-intercept GLMM by Laplace ML."""
+    counts = np.asarray(counts, dtype=float)
+    design = np.asarray(design, dtype=float)
+    clusters = np.asarray(clusters)
+    if counts.ndim != 2 or counts.shape[1] < 2:
+        raise ValueError("counts must be samples by at least two paths")
+    if (
+        design.ndim != 2
+        or design.shape[0] != len(counts)
+        or len(clusters) != len(counts)
+    ):
+        raise ValueError("counts, design, and clusters must align")
+    if np.any(counts < 0) or np.any(counts.sum(axis=1) <= 0):
+        raise ValueError("each sample needs positive nonnegative counts")
+    if np.linalg.matrix_rank(design) != design.shape[1]:
+        raise ValueError("GLMM design is rank deficient")
+    unique_clusters, cluster_index = np.unique(
+        clusters, return_inverse=True
+    )
+    cluster_rows = [
+        np.flatnonzero(cluster_index == cluster)
+        for cluster in range(len(unique_clusters))
+    ]
+    dimension = counts.shape[1] - 1
+    coefficient_count = design.shape[1] * dimension
+    if initial is None:
+        fixed = _multinomial_fit(counts, design, max_iter=max_iter)
+        parameters = np.r_[fixed["parameters"], np.log(0.5)]
+    else:
+        parameters = np.asarray(initial, dtype=float).copy()
+    if len(parameters) != coefficient_count + 1:
+        raise ValueError("initial GLMM parameters have the wrong length")
+    try:
+        return _multinomial_glmm_jax_fit(
+            counts,
+            design,
+            cluster_index,
+            len(unique_clusters),
+            parameters,
+            max_iter,
+        )
+    except ImportError:
+        pass
+    cached_modes = np.zeros((len(cluster_rows), dimension), dtype=float)
+
+    def objective(current):
+        coefficients = current[:coefficient_count].reshape(
+            design.shape[1], dimension
+        )
+        log_sd = float(current[-1])
+        variance = float(np.exp(2.0 * log_sd))
+        fixed_logits = design @ coefficients
+        value = 0.0
+        modes = np.zeros_like(cached_modes)
+        maximum_mode_score = 0.0
+        for cluster, rows in enumerate(cluster_rows):
+            mode, hessian = _multinomial_glmm_cluster_mode(
+                counts[rows],
+                fixed_logits[rows],
+                variance,
+                initial=cached_modes[cluster],
+            )
+            modes[cluster] = mode
+            logits = np.c_[
+                fixed_logits[rows] + mode[None, :],
+                np.zeros(len(rows)),
+            ]
+            log_means = logits - scipy.special.logsumexp(
+                logits, axis=1, keepdims=True
+            )
+            log_likelihood = float(np.sum(counts[rows] * log_means))
+            sign, log_determinant = np.linalg.slogdet(hessian)
+            if sign <= 0:
+                return np.inf
+            value += (
+                log_likelihood
+                - 0.5 * np.dot(mode, mode) / variance
+                - dimension * log_sd
+                - 0.5 * log_determinant
+            )
+            totals = counts[rows].sum(axis=1)
+            means = np.exp(log_means)[:, :-1]
+            score = (
+                counts[rows, :-1] - totals[:, None] * means
+            ).sum(axis=0) - mode / variance
+            maximum_mode_score = max(
+                maximum_mode_score,
+                float(np.linalg.norm(score, ord=np.inf)),
+            )
+        cached_modes[:] = modes
+        objective.last_modes = modes
+        objective.last_mode_score = maximum_mode_score
+        return -value
+
+    bounds = [(-20.0, 20.0)] * coefficient_count + [(-8.0, 4.0)]
+    result = scipy.optimize.minimize(
+        objective,
+        parameters,
+        method="L-BFGS-B",
+        bounds=bounds,
+        options={"maxiter": int(max_iter), "ftol": 1e-9, "gtol": 1e-5},
+    )
+    final_objective = objective(result.x)
+    gradient_norm = (
+        float(np.linalg.norm(result.jac, ord=np.inf))
+        if result.jac is not None
+        else np.inf
+    )
+    return {
+        "objective": final_objective,
+        "parameters": np.asarray(result.x),
+        "coefficients": np.asarray(result.x[:coefficient_count]).reshape(
+            design.shape[1], dimension
+        ),
+        "random_effect_sd": float(np.exp(result.x[-1])),
+        "random_effect_modes": np.asarray(objective.last_modes),
+        "mode_score_norm": float(objective.last_mode_score),
+        "gradient_norm": gradient_norm,
+        "converged": bool(
+            result.success
+            or (
+                np.isfinite(final_objective)
+                and gradient_norm <= 1e-3
+                and objective.last_mode_score <= 1e-6
+            )
+        ),
+        "iterations": int(result.nit),
+        "message": str(result.message),
+    }
+
+
+def multinomial_glmm_test(
+    counts,
+    null_design,
+    alternative_design,
+    clusters,
+    *,
+    max_iter=200,
+    fitted_null=None,
+):
+    """Laplace likelihood-ratio test for a multinomial mouse-intercept GLMM."""
+    counts = np.asarray(counts, dtype=float)
+    null_design = np.asarray(null_design, dtype=float)
+    alternative_design = np.asarray(alternative_design, dtype=float)
+    if fitted_null is None:
+        null = _multinomial_glmm_laplace_fit(
+            counts, null_design, clusters, max_iter=max_iter
+        )
+    else:
+        null = {
+            "objective": float(fitted_null["null_objective"]),
+            "coefficients": np.asarray(
+                fitted_null["null_coefficients"], dtype=float
+            ),
+            "parameters": np.r_[
+                np.asarray(
+                    fitted_null["null_coefficients"], dtype=float
+                ).ravel(),
+                np.log(float(fitted_null["null_random_effect_sd"])),
+            ],
+            "random_effect_sd": float(
+                fitted_null["null_random_effect_sd"]
+            ),
+            "converged": bool(fitted_null["null_converged"]),
+            "gradient_norm": float(
+                fitted_null.get("null_gradient_norm", np.nan)
+            ),
+            "mode_score_norm": float(
+                fitted_null.get("null_mode_score_norm", np.nan)
+            ),
+            "iterations": 0,
+        }
+    dimension = counts.shape[1] - 1
+    initial_coefficients = np.zeros(
+        (alternative_design.shape[1], dimension), dtype=float
+    )
+    initial_coefficients[: null_design.shape[1]] = null["coefficients"]
+    initial = np.r_[initial_coefficients.ravel(), null["parameters"][-1]]
+    alternative = _multinomial_glmm_laplace_fit(
+        counts,
+        alternative_design,
+        clusters,
+        initial=initial,
+        max_iter=max_iter,
+    )
+    statistic = max(
+        2.0 * (null["objective"] - alternative["objective"]), 0.0
+    )
+    degrees_of_freedom = (
+        alternative_design.shape[1] - null_design.shape[1]
+    ) * dimension
+    return {
+        "statistic": statistic,
+        "degrees_of_freedom": degrees_of_freedom,
+        "p_value": float(
+            scipy.stats.chi2.sf(statistic, degrees_of_freedom)
+        ),
+        "null_converged": null["converged"],
+        "alternative_converged": alternative["converged"],
+        "null_objective": null["objective"],
+        "alternative_objective": alternative["objective"],
+        "null_random_effect_sd": null["random_effect_sd"],
+        "alternative_random_effect_sd": alternative["random_effect_sd"],
+        "null_coefficients": null["coefficients"],
+        "alternative_coefficients": alternative["coefficients"],
+        "null_gradient_norm": null["gradient_norm"],
+        "alternative_gradient_norm": alternative["gradient_norm"],
+        "null_mode_score_norm": null["mode_score_norm"],
+        "alternative_mode_score_norm": alternative["mode_score_norm"],
+        "null_iterations": null["iterations"],
+        "alternative_iterations": alternative["iterations"],
+    }
+
+
 def effective_multinomial_size(proportions, covariance, maximum=None):
     """Match ILR covariance to a multinomial and return its effective size."""
     proportions = np.asarray(proportions, dtype=float)
@@ -1142,6 +1894,34 @@ def effective_multinomial_size(proportions, covariance, maximum=None):
     if maximum is not None:
         size = min(size, float(maximum))
     return size
+
+
+def integerize_compositional_counts(counts):
+    """Round fractional compositional counts by the largest-remainder rule."""
+    counts = np.asarray(counts, dtype=float)
+    if (
+        counts.ndim != 2
+        or counts.shape[1] < 2
+        or np.any(counts < 0)
+        or np.any(counts.sum(axis=1) <= 0)
+    ):
+        raise ValueError(
+            "counts must be samples by paths with positive row totals"
+        )
+    integer_totals = np.maximum(
+        np.rint(counts.sum(axis=1)).astype(np.int64), 1
+    )
+    proportions = counts / counts.sum(axis=1, keepdims=True)
+    targets = integer_totals[:, None] * proportions
+    result = np.floor(targets).astype(np.int64)
+    for row in range(len(result)):
+        remainder = int(integer_totals[row] - result[row].sum())
+        if remainder:
+            order = np.argsort(
+                -(targets[row] - result[row]), kind="stable"
+            )
+            result[row, order[:remainder]] += 1
+    return result
 
 
 def project_composition(proportions, covariance, selected):
