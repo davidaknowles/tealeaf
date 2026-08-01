@@ -1,7 +1,9 @@
 """Tests for block-specific fixed effects in EC-count GLMMs."""
 
 import numpy as np
+import pandas as pd
 
+from extra_scripts.merge_ec_block_glmm import calibrate
 from tealeaf.sc import ec_block_glmm, ec_glmm, ec_glmm_full
 
 
@@ -12,29 +14,31 @@ def test_path_contrasts_tie_isoforms_on_the_same_path():
     assert not np.allclose(contrasts[0], contrasts[2])
 
 
+def test_path_and_nuisance_bases_span_centered_isoform_logits():
+    path, nuisance = ec_block_glmm.block_effect_bases([0, 0, 1, -1])
+    assert path.shape == (3, 1)
+    assert nuisance.shape == (3, 2)
+    assert np.linalg.matrix_rank(np.column_stack((nuisance, path))) == 3
+
+    def full_centered(reference_logits):
+        full = np.vstack((reference_logits, np.zeros(reference_logits.shape[1])))
+        return full - full.mean(axis=0, keepdims=True)
+
+    np.testing.assert_allclose(
+        full_centered(path).T @ full_centered(nuisance), 0.0, atol=1e-12
+    )
+
+
 def test_block_tensors_are_nested_with_expected_df():
     nuisance = np.array([[1, 0], [0, 1], [1, 0]], dtype=float)
     tested = np.array([[0, 0], [1, 0], [0, 1]], dtype=float)
     null, alternative, degrees = ec_block_glmm.block_fixed_effect_tensors(
         nuisance, tested, [0, 0, 1, 2]
     )
-    assert null.shape == (3, 3, 6)
-    assert alternative.shape == (3, 3, 10)
+    assert null.shape == (3, 3, 8)
+    assert alternative.shape == (3, 3, 12)
     assert degrees == 4
-    np.testing.assert_array_equal(alternative[:, :, :6], null)
-
-
-def test_subject_permutation_preserves_each_subject_labels():
-    values = np.array([0, 1, 2, 0, 1, 2])
-    subjects = np.array(["a", "a", "a", "b", "b", "b"])
-    result = ec_block_glmm.permute_within_subject(
-        values, subjects, np.random.default_rng(4)
-    )
-    for subject in np.unique(subjects):
-        positions = subjects == subject
-        np.testing.assert_array_equal(
-            np.sort(result[positions]), np.sort(values[positions])
-        )
+    np.testing.assert_array_equal(alternative[:, :, :8], null)
 
 
 def test_full_vi_accepts_tensor_fixed_effects_and_warm_start():
@@ -61,3 +65,56 @@ def test_full_vi_accepts_tensor_fixed_effects_and_warm_start():
     )
     assert np.isfinite(alternative["objective"])
     assert alternative["fixed_effect_count"] == 2
+
+
+def test_null_simulation_preserves_primer_totals():
+    counts = (
+        np.array([[8, 2], [3, 7]], dtype=float),
+        np.array([[4, 6], [9, 1]], dtype=float),
+    )
+    tensor = np.ones((2, 1, 1), dtype=float)
+    data = ec_glmm.ECGLMMData(
+        counts,
+        (np.eye(2), np.eye(2)),
+        np.ones((2, 1)),
+        np.array(["a", "b"]),
+        fixed_effect_tensor=tensor,
+    )
+    fit = {
+        "coefficients": np.array([0.3]),
+        "random_effect_sd": 0.2,
+        "observation_noise_sd": 0.1,
+        "concentration": 15.0,
+    }
+    simulated = ec_block_glmm.simulate_null_counts(
+        data,
+        fit,
+        np.random.default_rng(3),
+        family="dirichlet_multinomial",
+        observation_noise=True,
+    )
+    for original, generated in zip(counts, simulated):
+        np.testing.assert_array_equal(
+            original.sum(axis=1), generated.sum(axis=1)
+        )
+
+
+def test_bootstrap_calibration_leaves_out_tested_block():
+    table = pd.DataFrame({
+        "block_id": ["b1", "b2"],
+        "method": ["multinomial_full"] * 2,
+        "df_stratum": ["1"] * 2,
+        "depth_bin": [0] * 2,
+        "statistic": [2.5, 0.5],
+    })
+    null = pd.DataFrame({
+        "block_id": ["b1", "b1", "b2", "b2"],
+        "method": ["multinomial_full"] * 4,
+        "replicate": [0, 1, 0, 1],
+        "depth_bin": [0] * 4,
+        "statistic": [0.0, 1.0, 2.0, 3.0],
+        "converged": [True] * 4,
+    })
+    calibrated, calibrated_null = calibrate(table, null)
+    np.testing.assert_allclose(calibrated["p_value"], [2 / 3, 2 / 3])
+    assert len(calibrated_null) == 4

@@ -22,9 +22,10 @@ SHARD_COUNT=${SHARD_COUNT:-96}
 SHARD_INDEX=${SHARD_INDEX:-${SLURM_ARRAY_TASK_ID}}
 OUTPUT_TAG=${OUTPUT_TAG:-ec_block_glmm}
 METHODS=${METHODS:-multinomial_full;multinomial_noise_full;dirichlet_multinomial_full}
-PERMUTATIONS=${PERMUTATIONS:-20}
+NULL_REPLICATES=${NULL_REPLICATES:-20}
 MAX_ITER=${MAX_ITER:-300}
 RETRIES=${RETRIES:-2}
+NULL_REPLICATE_RETRIES=${NULL_REPLICATE_RETRIES:-${RETRIES}}
 VI_SAMPLES=${VI_SAMPLES:-16}
 IFS=';' read -r -a method_args <<< "${METHODS}"
 
@@ -35,9 +36,10 @@ python "${REPO_ROOT}/extra_scripts/run_ec_block_glmm.py" \
   --event-table "${RUN_ROOT}/differential/celltype_compositional_fixed_kappa_v2_p05_perm500_min30_tolerant/differential_cell_type_compositional.tsv" \
   --output-dir "${RUN_ROOT}/differential/${OUTPUT_TAG}_shard${SHARD_INDEX}" \
   --methods "${method_args[@]}" \
-  --permutations "${PERMUTATIONS}" \
+  --null-replicates "${NULL_REPLICATES}" \
   --max-iter "${MAX_ITER}" \
   --retries "${RETRIES}" \
+  --null-replicate-retries "${NULL_REPLICATE_RETRIES}" \
   --vi-samples "${VI_SAMPLES}" \
   --shard-index "${SHARD_INDEX}" \
   --shard-count "${SHARD_COUNT}"

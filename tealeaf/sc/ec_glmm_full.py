@@ -367,6 +367,7 @@ def fit_variational(
     if len(bounds) != len(parameters):
         raise ValueError("initial full-covariance parameter vector has the wrong size")
     if int(max_iter) > 0:
+        starting_value, starting_gradient = scipy_objective(parameters)
         result = scipy.optimize.minimize(
             scipy_objective,
             parameters,
@@ -379,6 +380,13 @@ def fit_variational(
         success = bool(result.success)
         iterations = int(result.nit)
         message = str(result.message)
+        tolerance = 1e-10 * max(1.0, abs(starting_value))
+        if float(result.fun) > starting_value + tolerance:
+            optimized = np.asarray(parameters)
+            success = bool(
+                np.linalg.norm(starting_gradient, ord=np.inf) <= 1e-3
+            )
+            message = "rejected optimizer result worse than warm start"
     else:
         optimized = np.asarray(parameters)
         success = True

@@ -7,8 +7,8 @@ import numpy as np
 from . import differential
 
 
-def path_contrast_matrix(path_index):
-    """Map orthonormal path contrasts to reference-isoform logits.
+def block_effect_bases(path_index):
+    """Return block-path and orthogonal nuisance bases in reference logits.
 
     ``path_index[t]`` is the represented block path for isoform ``t`` or -1
     when the isoform is retained only as a likelihood-normalization nuisance.
@@ -23,8 +23,21 @@ def path_contrast_matrix(path_index):
     for isoform, path in enumerate(path_index):
         if path >= 0:
             isoform_effects[isoform] = basis[remap[path]]
-    reference = isoform_effects[-1]
-    return isoform_effects[:-1] - reference[None, :]
+    centered = isoform_effects - isoform_effects.mean(axis=0, keepdims=True)
+    complete, _ = np.linalg.qr(
+        np.column_stack((np.ones(len(path_index)), centered)), mode="complete"
+    )
+    nuisance_full = complete[:, len(paths) :]
+
+    def reference_logits(values):
+        return values[:-1] - values[-1][None, :]
+
+    return reference_logits(centered), reference_logits(nuisance_full)
+
+
+def path_contrast_matrix(path_index):
+    """Map block-path contrasts to reference-isoform logits."""
+    return block_effect_bases(path_index)[0]
 
 
 def unrestricted_tensor(design, dimension):
@@ -50,27 +63,67 @@ def block_fixed_effect_tensors(nuisance_design, tested_design, path_index):
     if len(nuisance_design) != len(tested_design):
         raise ValueError("nuisance and tested designs do not align")
     dimension = len(path_index) - 1
-    null = unrestricted_tensor(nuisance_design, dimension)
-    path_contrasts = path_contrast_matrix(path_index)
-    additions = []
+    condition = unrestricted_tensor(nuisance_design, dimension)
+    path_contrasts, orthogonal_nuisance = block_effect_bases(path_index)
+    null_additions = []
+    for column in range(tested_design.shape[1]):
+        for contrast in range(orthogonal_nuisance.shape[1]):
+            null_additions.append(
+                tested_design[:, column, None]
+                * orthogonal_nuisance[:, contrast][None, :]
+            )
+    null = (
+        np.concatenate((condition, np.stack(null_additions, axis=2)), axis=2)
+        if null_additions
+        else condition
+    )
+    tested_additions = []
     for column in range(tested_design.shape[1]):
         for contrast in range(path_contrasts.shape[1]):
-            additions.append(
+            tested_additions.append(
                 tested_design[:, column, None]
                 * path_contrasts[:, contrast][None, :]
             )
     alternative = np.concatenate(
-        (null, np.stack(additions, axis=2)), axis=2
+        (null, np.stack(tested_additions, axis=2)), axis=2
     )
     return null, alternative, path_contrasts.shape[1] * tested_design.shape[1]
 
 
-def permute_within_subject(values, subjects, rng):
-    """Permute labels independently within each paired biological subject."""
-    values = np.asarray(values)
-    subjects = np.asarray(subjects)
-    result = values.copy()
-    for subject in np.unique(subjects):
-        positions = np.flatnonzero(subjects == subject)
-        result[positions] = rng.permutation(result[positions])
-    return result
+def simulate_null_counts(data, fit, rng, *, family, observation_noise=False):
+    """Simulate paired-primer EC counts from a fitted tensor-design null."""
+    if data.fixed_effect_tensor is None:
+        raise ValueError("null simulation requires a fixed-effect tensor")
+    coefficients = np.asarray(fit["coefficients"], dtype=float).ravel()
+    fixed = np.einsum("ndp,p->nd", data.fixed_effect_tensor, coefficients)
+    _, cluster_index = np.unique(data.clusters, return_inverse=True)
+    random_effect = rng.normal(
+        0.0,
+        float(fit["random_effect_sd"]),
+        (cluster_index.max() + 1, data.n_isoforms - 1),
+    )
+    free_logits = fixed + random_effect[cluster_index]
+    if observation_noise:
+        free_logits += rng.normal(
+            0.0,
+            float(fit["observation_noise_sd"]),
+            free_logits.shape,
+        )
+    logits = np.column_stack((free_logits, np.zeros(len(free_logits))))
+    abundance = np.exp(logits - logits.max(axis=1, keepdims=True))
+    simulated = []
+    for observed, mapping in zip(data.counts, data.compatibility):
+        mass = abundance @ np.asarray(mapping, dtype=float).T
+        probability = mass / mass.sum(axis=1, keepdims=True)
+        totals = np.asarray(observed.sum(axis=1), dtype=int)
+        rows = []
+        for total, probabilities in zip(totals, probability):
+            if family == "dirichlet_multinomial" and total > 0:
+                probabilities = rng.dirichlet(
+                    np.maximum(
+                        float(fit["concentration"]) * probabilities, 1e-12
+                    )
+                )
+            rows.append(rng.multinomial(int(total), probabilities))
+        simulated.append(np.asarray(rows, dtype=float))
+    return tuple(simulated)

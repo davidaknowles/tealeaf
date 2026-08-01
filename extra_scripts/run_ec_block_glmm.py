@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fit and permute splice-block EC-count GLMM cell-type tests."""
+"""Fit and bootstrap-calibrate splice-block EC-count GLMM cell-type tests."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import pickle
 import time
+import zlib
 
 import numpy as np
 import pandas as pd
@@ -33,12 +34,13 @@ def parse_args():
     parser.add_argument("--event-table", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--methods", nargs="+", choices=METHODS, default=METHODS)
-    parser.add_argument("--permutations", type=int, default=20)
+    parser.add_argument("--null-replicates", type=int, default=20)
     parser.add_argument("--min-celltype-mice", type=int, default=3)
     parser.add_argument("--max-isoforms", type=int, default=10)
     parser.add_argument("--max-ecs", type=int, default=128)
     parser.add_argument("--max-iter", type=int, default=300)
     parser.add_argument("--retries", type=int, default=2)
+    parser.add_argument("--null-replicate-retries", type=int)
     parser.add_argument("--vi-samples", type=int, default=16)
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--shard-count", type=int, default=1)
@@ -105,12 +107,13 @@ def fit_method(method, data, args, initial=None):
     )
 
 
-def fit_with_retries(method, data, args, initial=None):
+def fit_with_retries(method, data, args, initial=None, retries=None):
     """Continue fits that reach a stopping failure without changing tolerances."""
     fit = fit_method(method, data, args, initial=initial)
     total_iterations = int(fit["iterations"])
     attempts = 1
-    while not fit["converged"] and attempts <= args.retries:
+    retries = args.retries if retries is None else int(retries)
+    while not fit["converged"] and attempts <= retries:
         fit = fit_method(method, data, args, initial=fit["parameters"])
         total_iterations += int(fit["iterations"])
         attempts += 1
@@ -132,7 +135,7 @@ def main():
             f"feature file has {len(features)} rows but EC designs have "
             f"{designs[0].shape[1]} transcript columns"
         )
-    retained, metadata, nuisance, labels, subjects, cell_types = celltype_design(
+    retained, metadata, nuisance, labels, _, cell_types = celltype_design(
         groups, args.min_celltype_mice
     )
     counts = tuple(matrix[retained] for matrix in counts)
@@ -167,11 +170,6 @@ def main():
         candidates.append((block, gene, transcripts, path_index, signatures))
     candidates = candidates[args.shard_index :: args.shard_count]
 
-    rng = np.random.default_rng(args.seed)
-    permuted_labels = np.asarray([
-        ec_block_glmm.permute_within_subject(labels, subjects, rng)
-        for _ in range(args.permutations)
-    ])
     observed_rows = []
     null_rows = []
     failures = []
@@ -196,7 +194,7 @@ def main():
             )
             null_data = tensor_data(base, null_tensor)
             for method in args.methods:
-                cache_key = (gene, method)
+                cache_key = (block.block_id, method)
                 if cache_key not in null_cache:
                     null_cache[cache_key] = fit_with_retries(
                         method, null_data, args
@@ -236,28 +234,79 @@ def main():
                     "null_attempts": null["attempts"],
                     "alternative_attempts": alternative["attempts"],
                 })
-                for permutation, permuted in enumerate(permuted_labels):
-                    permuted_tested = treatment_design(permuted, len(cell_types))
-                    _, permuted_tensor, _ = ec_block_glmm.block_fixed_effect_tensors(
-                        nuisance, permuted_tested, path_index
+                bootstrap_rng = np.random.default_rng(np.random.SeedSequence((
+                    args.seed,
+                    zlib.crc32(block.block_id.encode("utf-8")),
+                    METHODS.index(method),
+                )))
+                for replicate in range(args.null_replicates):
+                    simulated_counts = ec_block_glmm.simulate_null_counts(
+                        null_data,
+                        null,
+                        bootstrap_rng,
+                        family=(
+                            "dirichlet_multinomial"
+                            if method == "dirichlet_multinomial_full"
+                            else "multinomial"
+                        ),
+                        observation_noise=method == "multinomial_noise_full",
                     )
-                    permuted_data = tensor_data(base, permuted_tensor)
-                    permuted_fit = fit_with_retries(
-                        method, permuted_data, args, initial=initial
+                    simulated_null_data = ec_glmm.ECGLMMData(
+                        simulated_counts,
+                        base.compatibility,
+                        np.ones((len(base.clusters), 1), dtype=float),
+                        base.clusters,
+                        fixed_effect_tensor=null_tensor,
+                    )
+                    simulated_null = fit_with_retries(
+                        method,
+                        simulated_null_data,
+                        args,
+                        initial=null["parameters"],
+                        retries=args.null_replicate_retries,
+                    )
+                    simulated_alternative_data = ec_glmm.ECGLMMData(
+                        simulated_counts,
+                        base.compatibility,
+                        np.ones((len(base.clusters), 1), dtype=float),
+                        base.clusters,
+                        fixed_effect_tensor=alternative_tensor,
+                    )
+                    simulated_initial = ec_glmm_full.fixed_effect_warm_start(
+                        simulated_null, alternative_tensor.shape[2]
+                    )
+                    simulated_fit = fit_with_retries(
+                        method,
+                        simulated_alternative_data,
+                        args,
+                        initial=simulated_initial,
+                        retries=args.null_replicate_retries,
                     )
                     null_rows.append({
                         "block_id": block.block_id,
                         "method": method,
-                        "permutation": permutation,
+                        "replicate": replicate,
                         "degrees_of_freedom": degrees,
                         "median_gene_umis": float(np.median(totals)),
                         "statistic": float(
-                            2.0 * (permuted_fit["objective"] - null["objective"])
+                            2.0
+                            * (
+                                simulated_fit["objective"]
+                                - simulated_null["objective"]
+                            )
                         ),
-                        "converged": permuted_fit["converged"],
-                        "iterations": permuted_fit["total_iterations"],
-                        "gradient_norm": permuted_fit["gradient_norm"],
-                        "attempts": permuted_fit["attempts"],
+                        "converged": (
+                            simulated_null["converged"]
+                            and simulated_fit["converged"]
+                        ),
+                        "null_converged": simulated_null["converged"],
+                        "alternative_converged": simulated_fit["converged"],
+                        "null_iterations": simulated_null["total_iterations"],
+                        "iterations": simulated_fit["total_iterations"],
+                        "null_gradient_norm": simulated_null["gradient_norm"],
+                        "gradient_norm": simulated_fit["gradient_norm"],
+                        "null_attempts": simulated_null["attempts"],
+                        "attempts": simulated_fit["attempts"],
                     })
         except Exception as exc:
             failures.append({"block_id": block.block_id, "error": repr(exc)})
@@ -274,7 +323,7 @@ def main():
         args.output_dir / "ec_block_glmm.tsv", sep="\t", index=False
     )
     pd.DataFrame(null_rows).to_csv(
-        args.output_dir / "permutation_null.tsv.gz", sep="\t", index=False
+        args.output_dir / "bootstrap_null.tsv.gz", sep="\t", index=False
     )
     (args.output_dir / "failures.json").write_text(
         json.dumps(failures, indent=2) + "\n"
@@ -285,7 +334,7 @@ def main():
         "null_fits": len(null_rows),
         "failures": len(failures),
         "methods": list(args.methods),
-        "permutations": args.permutations,
+        "null_replicates": args.null_replicates,
         "seconds": time.perf_counter() - started,
     }, indent=2) + "\n")
 

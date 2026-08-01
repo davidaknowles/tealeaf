@@ -2374,16 +2374,25 @@ counts. I added a block-specific nested model that continues to evaluate every
 EC and represented isoform in the gene likelihood. Under the null, condition
 has unrestricted nonreference-isoform coefficients. Under the alternative,
 cell-type coefficients are added only in the Helmert contrast space of the
-tested block's paths. Isoforms outside the block remain in the likelihood
-normalizer as nuisance isoforms. Mouse random intercepts remain unrestricted.
-For `J` cell types and `S_b` represented paths, the tested dimension is
-`(J - 1)(S_b - 1)`.
+tested block's paths. The null also includes cell-type coefficients spanning
+every isoform-logit direction orthogonal to those block effects; without
+these terms, unrelated isoform changes elsewhere in the gene would inflate
+the block statistic. The alternative combines the nuisance and block bases
+and is unrestricted over gene isoform logits. Isoforms outside the block
+remain in the likelihood normalizer as nuisance isoforms. Mouse random
+intercepts remain unrestricted. For `J` cell types and `S_b` represented
+paths, the tested dimension is `(J - 1)(S_b - 1)`.
 
-Cell-type labels are permuted synchronously within each condition-by-mouse
-subject. Per-event permutation counts are kept modest, and each observed test
-is calibrated against a leave-event-out pool matched by likelihood, tested
-dimension, and gene-depth quantile. Rare tested dimensions are pooled within
-likelihood and depth strata. The merger also calibrates every permuted
+Cell-type label permutation is invalid for this conditional block null: it
+would destroy the real orthogonal cell-type effects that the null explicitly
+permits. Calibration instead uses a parametric bootstrap from each fitted
+block null. It draws mouse and optional observation effects, preserves every
+observed primer-row total, generates EC counts under the selected likelihood,
+and refits both nested models. Per-event bootstrap counts are kept modest,
+and each observed test is calibrated against a leave-event-out pool matched
+by likelihood, tested dimension, and gene-depth quantile. Rare tested
+dimensions are pooled across depth within likelihood. The merger also
+calibrates every bootstrap
 statistic against the corresponding leave-event-out null pool. It withholds
 FDR values for a likelihood unless the aggregate empirical type-I error at
 the 0.05 threshold lies between 0.025 and 0.075.
@@ -2392,9 +2401,26 @@ There are 406 canonical coverage-eligible blocks in the primary cell-type
 table. Of these, 399 have at least two EC-represented paths and at most ten
 supported gene isoforms and can be tested. The other seven have only one
 represented path in the EC design, so their block effect is not identifiable.
-A real-data smoke fit converged for both nested multinomial models in 300
-iterations; the observed statistic was 124.15 with 12 degrees of freedom.
-The logistic-normal sensitivity model also converged. The full-covariance
-Dirichlet--multinomial objective is memory-sensitive to its fixed Monte Carlo
-sample count; 16 synchronized antithetic samples converged in the smoke fit
-and will be validated by empirical null calibration.
+A real-data smoke fit of the corrected multinomial model converged for both
+nested models. Its observed statistic was 0.00035 with 12 degrees of freedom,
+and one parametric-bootstrap statistic was 0.000034. This contrasts with the
+much larger statistic from the model that omitted orthogonal cell-type nuisance
+effects and confirms that the omission could create false block attribution.
+The full-covariance Dirichlet--multinomial objective is memory-sensitive to
+its fixed Monte Carlo sample count; the analysis uses 16 synchronized
+antithetic samples and validates the approximation by empirical null
+calibration.
+
+The final pooled calibration used five parametric-bootstrap replicates per
+block, giving 1,830--1,960 converged null statistics per likelihood after
+failed refits were excluded. The ordinary multinomial converged for 395 of
+399 observed blocks, had empirical null rejection 0.0480, and found 111
+nominal and 73 FDR-significant blocks in 66 genes. The logistic-normal model
+converged for 362 blocks, had null rejection 0.0486, and found 104 nominal and
+70 FDR-significant blocks in 63 genes. The direct Dirichlet--multinomial
+converged for 389 blocks, had null rejection 0.0494, and found 70 nominal and
+23 FDR-significant blocks in 21 genes. All methods passed the prespecified
+calibration gate. Multinomial and logistic-normal results shared 66 blocks;
+16 blocks were significant under all three EC likelihoods. Their overlaps
+with the 101-event primary path-count analysis were 29, 29, and seven blocks,
+respectively.

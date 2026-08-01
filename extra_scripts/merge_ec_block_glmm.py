@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Merge and permutation-calibrate splice-block EC GLMM shards."""
+"""Merge and bootstrap-calibrate splice-block EC GLMM shards."""
 
 from __future__ import annotations
 
@@ -46,13 +46,14 @@ def add_depth_bins(table, null, bins):
 
 
 def add_calibration_strata(table, minimum_events):
-    """Pool rare df groups without mixing methods or depth bins."""
+    """Pool rare df groups across depth without mixing methods."""
     table = table.copy()
     counts = table.groupby(
         ["method", "degrees_of_freedom", "depth_bin"]
     )["block_id"].transform("nunique")
     table["df_stratum"] = table["degrees_of_freedom"].astype(str)
     table.loc[counts < int(minimum_events), "df_stratum"] = "rare"
+    table.loc[table["df_stratum"] == "rare", "depth_bin"] = -1
     return table
 
 
@@ -64,6 +65,7 @@ def calibrate(table, null):
         stratum_lookup.loc[(block, method)]
         for block, method in zip(null["block_id"], null["method"])
     ]
+    null.loc[null["df_stratum"] == "rare", "depth_bin"] = -1
     keys = ["method", "df_stratum", "depth_bin"]
     null_groups = {key: group for key, group in null.groupby(keys)}
     p_values = []
@@ -93,7 +95,9 @@ def calibrate(table, null):
             calibrated_null_rows.append({
                 "method": row.method,
                 "block_id": row.block_id,
-                "permutation": row.permutation,
+                "replicate": (
+                    row.replicate if hasattr(row, "replicate") else row.permutation
+                ),
                 "p_value": (
                     (1 + np.sum(comparison >= row.statistic))
                     / (1 + len(comparison))
@@ -112,7 +116,9 @@ def main():
     failures = []
     for shard in args.shards:
         table_path = shard / "ec_block_glmm.tsv"
-        null_path = shard / "permutation_null.tsv.gz"
+        null_path = shard / "bootstrap_null.tsv.gz"
+        if not null_path.is_file():
+            null_path = shard / "permutation_null.tsv.gz"
         if table_path.is_file() and table_path.stat().st_size:
             tables.append(pd.read_csv(table_path, sep="\t"))
         if null_path.is_file() and null_path.stat().st_size:
@@ -149,7 +155,7 @@ def main():
         args.output_dir / "significant_ec_block_glmm.tsv", sep="\t", index=False
     )
     calibrated_null.to_csv(
-        args.output_dir / "calibrated_permutation_null.tsv.gz",
+        args.output_dir / "calibrated_bootstrap_null.tsv.gz",
         sep="\t",
         index=False,
     )
