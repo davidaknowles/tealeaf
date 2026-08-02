@@ -836,10 +836,13 @@ isoform directions. Instead, a parametric bootstrap simulates mouse effects
 and optional observation effects from the fitted block null, generates
 paired-primer EC counts with the observed row totals, and refits both nested
 models. Each observed statistic is compared with a leave-block-out pool of
-bootstrap statistics matched by likelihood family, tested dimension
-\((J_b-1)d_b\), and gene-depth quartile. Tested dimensions represented by
-fewer than 20 blocks are combined across depth into a rare-dimension stratum
-within the same likelihood. With null pool \(\mathcal N_{-b}\),
+bootstrap statistics matched by likelihood family and tested dimension
+\((J_b-1)d_b\). Tested dimensions represented by fewer than 20 blocks are
+combined into a rare-dimension stratum within the same likelihood. Matching
+gene-depth quartiles fragmented the empirical tail enough to limit BH
+resolution in the genome-wide analysis. Depth is therefore an independent
+calibration audit rather than a pooling variable. With null pool
+\(\mathcal N_{-b}\),
 \[
  p_b=\frac{1+\sum_{z\in\mathcal N_{-b}}
                    \mathbf1\{z\geq T_b\}}
@@ -847,7 +850,8 @@ within the same likelihood. With null pool \(\mathcal N_{-b}\),
 \]
 Every bootstrap statistic is calibrated by the same leave-block-out rule.
 Benjamini--Hochberg values are reported for a likelihood only if these
-calibrated null \(p\)-values reject between 2.5\% and 7.5\% at level 0.05.
+calibrated null \(p\)-values reject between 2.5\% and 7.5\% at level 0.05,
+both in aggregate and separately within each gene-depth quartile.
 
 \subsection*{Liang--Zeger multinomial GEE}
 
@@ -1593,42 +1597,53 @@ larger cell-type omnibus statistic. Because residual-scale estimates often
 approached zero and convergence was weaker, this model is retained as an
 overdispersion sensitivity analysis rather than replacing the primary test.
 
-The block-specific EC analysis evaluated the 406 coverage-eligible canonical
-partitions from the primary cell-type analysis. Seven had fewer than two
-paths represented in the EC design, leaving 399 identifiable tests. Five
-parametric-bootstrap replicates per block supplied approximately 2,000 null
-statistics per likelihood; only converged nested refits entered the pooled
-calibration. Table~\ref{tab:ec-block-results} reports the conditional block
-tests after including orthogonal cell-type isoform effects in every null.
+The initial block-specific EC analysis inherited 406 coverage-eligible
+partitions from the path-count analysis and tested 399 after EC
+identifiability filtering. This was unnecessarily restrictive because it
+required reliable path estimates before fitting the EC likelihood. The
+genome-wide EC screen instead counts exactly the primer-specific EC rows in
+the likelihood, retains cell types represented in at least three mice, and
+requires at least two represented cell types. The strict rule additionally
+requires at least 25 gene UMIs and 30 covered pseudobulks; the permissive rule
+requires at least 10 gene UMIs. These rules retain 1,926 and 5,650 blocks,
+respectively. Five parametric-bootstrap replicates per block provide pooled
+null distributions matched by tested dimension. Table~\ref{tab:ec-block-results}
+reports the calibrated tests.
 
 \begin{table}[H]
 \centering
-\small
+\scriptsize
 \caption{Parametric-bootstrap-calibrated cell-type tests using gene EC counts.
-Primary overlap counts discoveries also found by the 101-event exact
-path-count analysis.}
+The depth column gives the range of null rejection rates across independent
+gene-depth quartiles. MN is multinomial, LN is logistic-normal multinomial,
+and DM is Dirichlet--multinomial.}
 \label{tab:ec-block-results}
-\begin{tabular}{lrrrrrr}
+\begin{tabular}{llrrrrrr}
 \toprule
-Likelihood & Tests & Converged & Null $<.05$ & Nominal & FDR &
-  Primary overlap\\
+Coverage & Likelihood & Tests & Conv. & Nominal & FDR & Null $<.05$ &
+  Depth range\\
 \midrule
-Multinomial & 399 & 395 & 0.0480 & 111 & 73 & 29\\
-Logistic-normal multinomial & 399 & 362 & 0.0486 & 104 & 70 & 29\\
-Dirichlet--multinomial & 399 & 389 & 0.0494 & 70 & 23 & 7\\
+Strict & MN & 1,926 & 1.000 & 415 & 174 & 0.0496 & 0.0480--0.0505\\
+Strict & LN & 1,926 & 0.991 & 377 & 157 & 0.0498 & 0.0439--0.0541\\
+Strict & DM & 1,926 & 0.988 & 145 & 0 & 0.0491 & 0.0454--0.0582\\
+Permissive & MN & 5,650 & 0.999 & 997 & 294 & 0.0497 & 0.0475--0.0519\\
+Permissive & LN & 5,650 & 0.984 & 974 & 193 & 0.0497 & 0.0428--0.0541\\
+Permissive & DM & 5,650 & 0.989 & 421 & 0 & 0.0498 & 0.0456--0.0516\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The multinomial and logistic-normal results were similar: 66 discoveries
-were shared, and they represented 66 and 63 genes, respectively. The direct
-Dirichlet--multinomial was more conservative, with 23 discoveries in 21
-genes; 16 were shared by all three EC likelihoods. All three empirical null
-rates were within 0.2 percentage points of 0.05, so BH correction
-was enabled for each method. Agreement with the path-count analysis was
-limited rather than complete. This is expected to reflect both retained EC
-ambiguity and the different null: the EC test conditions on arbitrary
-cell-type isoform effects orthogonal to the local block direction.
+The permissive rule increases absolute discoveries from 174 to 294 for MN
+and from 157 to 193 for LN, while testing 2.9 times as many blocks. MN and LN
+share 152 strict and 192 permissive discoveries. DM has no genome-wide FDR
+discoveries under either rule despite acceptable calibration. On the 1,926
+shared hypotheses, applying BH only to that common family gives 316 MN, 265
+LN, and 40 DM discoveries under the permissive fits, versus 174, 157, and zero
+under the strict fits. Thus lower-count rows add signal, but much of that
+gain is spent on the larger genome-wide hypothesis family. The corresponding
+strict-versus-permissive statistic rank correlations are 0.781, 0.764, and
+0.760, so changing the cutoff also changes individual fits rather than only
+the BH denominator.
 
 \subsection*{Cell-type effects within mouse}
 

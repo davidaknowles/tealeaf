@@ -2448,6 +2448,36 @@ An initial diagnostic that summed every gene-associated EC column suggested
 showed that this total included primer-specific EC rows with no compatibility
 to the retained gene isoforms; those rows are absent from the likelihood.
 Recomputing coverage from exactly the modeled EC rows gives 1,926 and 5,650
-blocks for the same two cutoff rules. Both corrected universes will be fit and
-bootstrap-calibrated to compare discovery power and robustness to lower
-coverage.
+blocks for the same two cutoff rules.
+
+All six likelihood-by-coverage runs completed. Five null replicates per block
+were pooled by likelihood and tested dimension using leave-block-out ranks.
+Splitting each dimension by depth quartile made the minimum attainable
+p-values too coarse for BH over thousands of hypotheses. Pooling by dimension
+alone restored tail resolution, while an independent calibration audit in
+four depth quartiles showed no count-dependent inflation. Aggregate null
+rejection rates were 0.0491--0.0498 for the strict analyses and 0.0497 for all
+three permissive analyses. Across depth quartiles, rates ranged from 0.0439 to
+0.0582 for strict tests and 0.0428 to 0.0541 for permissive tests. Every method
+passed the prespecified 0.025--0.075 calibration interval both overall and in
+each depth quartile.
+
+For the strict universe, multinomial, logistic-normal multinomial, and direct
+Dirichlet--multinomial convergence rates were 1.000, 0.991, and 0.988. They
+gave 415, 377, and 145 nominal discoveries and 174, 157, and zero BH
+discoveries. For the permissive universe, convergence was 0.999, 0.984, and
+0.989; nominal discoveries were 997, 974, and 421; and BH discoveries were
+294, 193, and zero. MN and LN shared 152 strict discoveries and 192
+permissive discoveries.
+
+The permissive cutoff therefore improves absolute empirical discovery yield
+for MN and LN, but less than proportionally to the 2.9-fold larger hypothesis
+family. On the 1,926 shared blocks, refitting with the permissive rows and
+applying BH only within that common family gives 316 MN, 265 LN, and 40 DM
+discoveries, compared with 174, 157, and zero from the strict fits. Lower-count
+rows do add signal; the genome-wide BH burden spends much of that gain. For MN,
+90 blocks are significant under both genome-wide analyses, 84 only under the
+strict analysis, 94 only under the permissive fit among shared blocks, and 110
+only in the expanded universe. The analogous LN counts are 62, 95, 53, and
+78. Statistic rank correlations between strict and permissive fits on shared
+blocks are 0.781, 0.764, and 0.760 for MN, LN, and DM.
