@@ -113,6 +113,9 @@ def simulate_null_counts(data, fit, rng, *, family, observation_noise=False):
     abundance = np.exp(logits - logits.max(axis=1, keepdims=True))
     simulated = []
     for observed, mapping in zip(data.counts, data.compatibility):
+        if mapping.shape[0] == 0:
+            simulated.append(np.zeros_like(observed, dtype=float))
+            continue
         mass = abundance @ np.asarray(mapping, dtype=float).T
         probability = mass / mass.sum(axis=1, keepdims=True)
         totals = np.asarray(observed.sum(axis=1), dtype=int)

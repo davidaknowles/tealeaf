@@ -17,26 +17,32 @@ def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--shards", nargs="+", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
-    parser.add_argument("--depth-bins", type=int, default=4)
+    parser.add_argument("--depth-bins", type=int, default=1)
+    parser.add_argument("--audit-depth-bins", type=int, default=4)
     parser.add_argument("--min-stratum-events", type=int, default=20)
     parser.add_argument("--calibration-lower", type=float, default=0.025)
     parser.add_argument("--calibration-upper", type=float, default=0.075)
     return parser.parse_args()
 
 
-def add_depth_bins(table, null, bins):
-    table = table.copy()
-    null = null.copy()
-    table["depth_bin"] = 0
+def depth_bin_values(table, bins):
+    result = pd.Series(0, index=table.index, dtype=int)
     for method, positions in table.groupby("method").groups.items():
         values = table.loc[positions, "median_gene_umis"]
         edges = np.unique(np.quantile(values, np.linspace(0, 1, bins + 1)))
         if len(edges) <= 2:
             continue
         edges[0], edges[-1] = -np.inf, np.inf
-        table.loc[positions, "depth_bin"] = pd.cut(
+        result.loc[positions] = pd.cut(
             values, edges, labels=False, include_lowest=True
         ).astype(int)
+    return result
+
+
+def add_depth_bins(table, null, bins):
+    table = table.copy()
+    null = null.copy()
+    table["depth_bin"] = depth_bin_values(table, bins)
     lookup = table.set_index(["block_id", "method"])["depth_bin"]
     null["depth_bin"] = [
         lookup.loc[(block, method)]
@@ -133,6 +139,16 @@ def main():
     table, null = add_depth_bins(table, null, args.depth_bins)
     table = add_calibration_strata(table, args.min_stratum_events)
     table, calibrated_null = calibrate(table, null)
+    table["audit_depth_bin"] = depth_bin_values(
+        table, args.audit_depth_bins
+    )
+    audit_lookup = table.set_index(["block_id", "method"])["audit_depth_bin"]
+    calibrated_null["audit_depth_bin"] = [
+        audit_lookup.loc[(block, method)]
+        for block, method in zip(
+            calibrated_null["block_id"], calibrated_null["method"]
+        )
+    ]
     table["fdr"] = np.nan
     eligible = (
         table["null_converged"]
@@ -145,7 +161,18 @@ def main():
                 calibrated_null["method"] == method, "p_value"
             ] <= 0.05
         )
-        if args.calibration_lower <= rejection <= args.calibration_upper:
+        depth_rejection = calibrated_null.loc[
+            calibrated_null["method"] == method
+        ].groupby("audit_depth_bin")["p_value"].apply(
+            lambda values: np.mean(values <= 0.05)
+        )
+        calibrated = (
+            args.calibration_lower <= rejection <= args.calibration_upper
+            and depth_rejection.between(
+                args.calibration_lower, args.calibration_upper
+            ).all()
+        )
+        if calibrated:
             table.loc[positions, "fdr"] = benjamini_hochberg(
                 table.loc[positions, "p_value"].to_numpy()
             )
@@ -173,6 +200,17 @@ def main():
             calibrated_null["method"] == method, "p_value"
         ].to_numpy()
         rejection = float(np.mean(method_null <= 0.05))
+        depth_rejection = calibrated_null.loc[
+            calibrated_null["method"] == method
+        ].groupby("audit_depth_bin")["p_value"].apply(
+            lambda values: np.mean(values <= 0.05)
+        )
+        calibrated = (
+            args.calibration_lower <= rejection <= args.calibration_upper
+            and depth_rejection.between(
+                args.calibration_lower, args.calibration_upper
+            ).all()
+        )
         summary.append({
             "method": method,
             "events": len(records),
@@ -185,9 +223,9 @@ def main():
             "fdr_0.05": int(np.sum(records["fdr"] <= 0.05)),
             "null_replicates": len(method_null),
             "null_rejection_0.05": rejection,
-            "calibration_acceptable": (
-                args.calibration_lower <= rejection <= args.calibration_upper
-            ),
+            "null_rejection_depth_min": float(depth_rejection.min()),
+            "null_rejection_depth_max": float(depth_rejection.max()),
+            "calibration_acceptable": calibrated,
         })
     pd.DataFrame(summary).to_csv(
         args.output_dir / "summary.tsv", sep="\t", index=False

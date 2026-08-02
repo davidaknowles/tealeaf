@@ -103,6 +103,30 @@ def test_null_simulation_preserves_primer_totals():
         )
 
 
+def test_null_simulation_accepts_primer_without_modeled_ecs():
+    counts = (np.array([[8, 2], [3, 7]], dtype=float), np.empty((2, 0)))
+    data = ec_glmm.ECGLMMData(
+        counts,
+        (np.eye(2), np.empty((0, 2))),
+        np.ones((2, 1)),
+        np.array(["a", "b"]),
+        fixed_effect_tensor=np.ones((2, 1, 1)),
+    )
+    fit = {
+        "coefficients": np.array([0.3]),
+        "random_effect_sd": 0.2,
+        "observation_noise_sd": 0.0,
+        "concentration": np.inf,
+    }
+    simulated = ec_block_glmm.simulate_null_counts(
+        data,
+        fit,
+        np.random.default_rng(3),
+        family="multinomial",
+    )
+    assert simulated[1].shape == (2, 0)
+
+
 def test_bootstrap_calibration_leaves_out_tested_block():
     table = pd.DataFrame({
         "block_id": ["b1", "b2"],
