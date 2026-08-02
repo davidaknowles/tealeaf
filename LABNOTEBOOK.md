@@ -2424,3 +2424,30 @@ calibration gate. Multinomial and logistic-normal results shared 66 blocks;
 16 blocks were significant under all three EC likelihoods. Their overlaps
 with the 101-event primary path-count analysis were 29, 29, and seven blocks,
 respectively.
+
+## 2026-08-02: direct EC-count block eligibility
+
+The 399-block EC analysis inherited its test universe from the compositional
+path-count analysis. That was too restrictive for an EC likelihood: its
+upstream filters required identifiable per-pseudobulk path estimates, every
+retained path proportion to be at least 0.05, and at least 30 such estimates.
+Only the requirement that at least two block paths occur in the EC design is
+intrinsic to the EC GLMM.
+
+The EC runner now screens coverage directly from the primer-specific EC rows
+that enter each gene likelihood. For each gene it retains pseudobulks meeting
+a gene-UMI cutoff, retains cell types represented in at least three mice, and
+requires at least two such cell types. The fixed-effect design and degrees of
+freedom are then built from these gene-specific rows and cell types. An event
+table can still be supplied as an optional restriction, but no path-estimate
+table is required.
+
+An initial diagnostic that summed every gene-associated EC column suggested
+2,205 blocks at 25 gene UMIs plus 30 covered pseudobulks and 6,022 blocks at
+10 gene UMIs without the sample-count requirement. An end-to-end smoke test
+showed that this total included primer-specific EC rows with no compatibility
+to the retained gene isoforms; those rows are absent from the likelihood.
+Recomputing coverage from exactly the modeled EC rows gives 1,926 and 5,650
+blocks for the same two cutoff rules. Both corrected universes will be fit and
+bootstrap-calibrated to compare discovery power and robustness to lower
+coverage.

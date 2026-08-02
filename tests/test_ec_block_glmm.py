@@ -4,6 +4,10 @@ import numpy as np
 import pandas as pd
 
 from extra_scripts.merge_ec_block_glmm import calibrate
+from extra_scripts.run_ec_block_glmm import (
+    covered_celltype_design,
+    modeled_gene_umis,
+)
 from tealeaf.sc import ec_block_glmm, ec_glmm, ec_glmm_full
 
 
@@ -118,3 +122,40 @@ def test_bootstrap_calibration_leaves_out_tested_block():
     calibrated, calibrated_null = calibrate(table, null)
     np.testing.assert_allclose(calibrated["p_value"], [2 / 3, 2 / 3])
     assert len(calibrated_null) == 4
+
+
+def test_covered_celltype_design_is_gene_specific():
+    metadata = pd.DataFrame({
+        "cell_type": ["a"] * 3 + ["b"] * 3 + ["c"] * 3,
+        "condition": ["x", "x", "y"] * 3,
+        "mouse": ["m1", "m2", "m3"] * 3,
+    })
+    result = covered_celltype_design(
+        metadata,
+        [25, 30, 40, 50, 30, 35, 100, 100, 0],
+        min_gene_umis=25,
+        min_samples=6,
+        min_cell_types=2,
+        min_celltype_mice=3,
+    )
+    rows, local, nuisance, labels, _, cell_types = result
+    np.testing.assert_array_equal(rows, np.arange(6))
+    assert cell_types == ["a", "b"]
+    assert nuisance.shape == (6, 2)
+    np.testing.assert_array_equal(labels, [0, 0, 0, 1, 1, 1])
+    assert set(local["cell_type"]) == {"a", "b"}
+
+
+def test_modeled_gene_umis_exclude_unsupported_primer_ecs():
+    counts = (
+        np.array([[5, 7], [11, 13]]),
+        np.array([[17, 19], [23, 29]]),
+    )
+    designs = (
+        np.array([[1, 0], [0, 0]]),
+        np.array([[0, 0], [0, 1]]),
+    )
+    np.testing.assert_array_equal(
+        modeled_gene_umis(counts, designs, [0, 1], [0, 1]),
+        [24, 40],
+    )

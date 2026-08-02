@@ -31,10 +31,17 @@ def parse_args():
     parser.add_argument("--data-cache", required=True, type=Path)
     parser.add_argument("--features", required=True, type=Path)
     parser.add_argument("--block-cache", required=True, type=Path)
-    parser.add_argument("--event-table", required=True, type=Path)
+    parser.add_argument(
+        "--event-table",
+        type=Path,
+        help="Optionally restrict tests to inference-eligible rows in this table.",
+    )
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--methods", nargs="+", choices=METHODS, default=METHODS)
     parser.add_argument("--null-replicates", type=int, default=20)
+    parser.add_argument("--min-gene-umis", type=float, default=10.0)
+    parser.add_argument("--min-gene-samples", type=int, default=0)
+    parser.add_argument("--min-cell-types", type=int, default=2)
     parser.add_argument("--min-celltype-mice", type=int, default=3)
     parser.add_argument("--max-isoforms", type=int, default=10)
     parser.add_argument("--max-ecs", type=int, default=128)
@@ -45,18 +52,39 @@ def parse_args():
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--shard-count", type=int, default=1)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
 
 
-def celltype_design(groups, minimum_mice):
-    metadata = pd.DataFrame(
+def group_metadata(groups):
+    return pd.DataFrame(
         [str(group).rsplit("__", 2) for group in groups],
         columns=["cell_type", "condition", "mouse"],
     )
-    represented = metadata.groupby("cell_type")["mouse"].nunique()
-    cell_types = sorted(represented.index[represented >= int(minimum_mice)])
-    retained = metadata["cell_type"].isin(cell_types).to_numpy()
-    metadata = metadata.loc[retained].reset_index(drop=True)
+
+
+def covered_celltype_design(
+    metadata,
+    gene_umis,
+    *,
+    min_gene_umis,
+    min_samples,
+    min_cell_types,
+    min_celltype_mice,
+):
+    """Build a gene-specific design from EC-covered pseudobulks."""
+    covered = np.asarray(gene_umis) >= float(min_gene_umis)
+    if covered.sum() < int(min_samples):
+        return None
+    represented = metadata.loc[covered].groupby("cell_type")["mouse"].nunique()
+    cell_types = sorted(
+        represented.index[represented >= int(min_celltype_mice)]
+    )
+    if len(cell_types) < int(min_cell_types):
+        return None
+    retained = covered & metadata["cell_type"].isin(cell_types).to_numpy()
+    rows = np.flatnonzero(retained)
+    metadata = metadata.iloc[rows].reset_index(drop=True)
     nuisance = pd.get_dummies(metadata["condition"], dtype=float).to_numpy()
     cell_type_index = {value: index for index, value in enumerate(cell_types)}
     labels = np.asarray([cell_type_index[value] for value in metadata["cell_type"]])
@@ -65,7 +93,7 @@ def celltype_design(groups, minimum_mice):
         + "__"
         + metadata["mouse"].astype(str)
     ).to_numpy()
-    return retained, metadata, nuisance, labels, subjects, cell_types
+    return rows, metadata, nuisance, labels, subjects, cell_types
 
 
 def treatment_design(labels, n_levels):
@@ -74,6 +102,18 @@ def treatment_design(labels, n_levels):
     nonreference = labels > 0
     result[np.flatnonzero(nonreference), labels[nonreference] - 1] = 1.0
     return result
+
+
+def modeled_gene_umis(counts, designs, ecs, transcripts):
+    """Count the primer-specific EC rows retained by the gene likelihood."""
+    ecs = np.asarray(ecs)
+    total = np.zeros(counts[0].shape[0], dtype=float)
+    for observed, mapping in zip(counts, designs):
+        supported = np.asarray(
+            mapping[ecs][:, transcripts].sum(axis=1)
+        ).ravel() > 0
+        total += np.asarray(observed[:, ecs[supported]].sum(axis=1)).ravel()
+    return total
 
 
 def tensor_data(base, tensor):
@@ -128,61 +168,113 @@ def main():
         raise ValueError("invalid shard index")
     args.output_dir.mkdir(parents=True, exist_ok=True)
     with args.data_cache.open("rb") as handle:
-        groups, counts, genes, gene_transcripts, gene_ecs, designs = pickle.load(handle)
+        groups, counts, genes, gene_transcripts, gene_ecs, designs = pickle.load(
+            handle
+        )
     features = np.loadtxt(args.features, dtype=str)
     if len(features) != designs[0].shape[1]:
         raise ValueError(
             f"feature file has {len(features)} rows but EC designs have "
             f"{designs[0].shape[1]} transcript columns"
         )
-    retained, metadata, nuisance, labels, _, cell_types = celltype_design(
-        groups, args.min_celltype_mice
-    )
-    counts = tuple(matrix[retained] for matrix in counts)
-    clusters = metadata["mouse"].to_numpy()
+    metadata = group_metadata(groups)
+    globally_represented = metadata.groupby("cell_type")["mouse"].nunique()
+    global_cell_types = globally_represented.index[
+        globally_represented >= int(args.min_celltype_mice)
+    ]
+    global_rows = metadata["cell_type"].isin(global_cell_types).to_numpy()
+    metadata = metadata.loc[global_rows].reset_index(drop=True)
+    counts = tuple(matrix[global_rows] for matrix in counts)
+    screening_counts = tuple(matrix.tocsc() for matrix in counts)
     blocks = load_blocks(args.block_cache, None)
     block_to_representative, _ = block_equivalence(args.block_cache)
-    event_table = pd.read_csv(args.event_table, sep="\t")
-    eligible_blocks = set(
-        event_table.loc[event_table["inference_eligible"], "block_id"].astype(str)
-    )
+    eligible_blocks = None
+    if args.event_table is not None:
+        event_table = pd.read_csv(args.event_table, sep="\t")
+        eligible_blocks = set(
+            event_table.loc[
+                event_table["inference_eligible"], "block_id"
+            ].astype(str)
+        )
     gene_position = {str(gene): index for index, gene in enumerate(genes)}
+    gene_information = {}
     candidates = []
     for block in blocks:
         representative = block_to_representative[block.block_id]
-        if block.block_id != representative or representative not in eligible_blocks:
+        if block.block_id != representative:
+            continue
+        if eligible_blocks is not None and representative not in eligible_blocks:
             continue
         gene = gene_position.get(block.gene_id)
-        if gene is None or not len(gene_ecs[gene]) or len(gene_ecs[gene]) > args.max_ecs:
+        if (
+            gene is None
+            or not len(gene_ecs[gene])
+            or len(gene_ecs[gene]) > args.max_ecs
+        ):
             continue
-        transcripts = np.asarray(gene_transcripts[gene], dtype=int)
-        support = sum(
-            np.asarray(mapping[gene_ecs[gene]][:, transcripts].sum(axis=0)).ravel()
-            for mapping in designs
-        )
-        transcripts = transcripts[support > 0]
-        if not 2 <= len(transcripts) <= args.max_isoforms:
+        if gene not in gene_information:
+            transcripts = np.asarray(gene_transcripts[gene], dtype=int)
+            transcript_support = sum(
+                np.asarray(
+                    mapping[gene_ecs[gene]][:, transcripts].sum(axis=0)
+                ).ravel()
+                for mapping in designs
+            )
+            transcripts = transcripts[transcript_support > 0]
+            if not 2 <= len(transcripts) <= args.max_isoforms:
+                gene_information[gene] = None
+                continue
+            gene_umis = modeled_gene_umis(
+                screening_counts, designs, gene_ecs[gene], transcripts
+            )
+            coverage = covered_celltype_design(
+                metadata,
+                gene_umis,
+                min_gene_umis=args.min_gene_umis,
+                min_samples=args.min_gene_samples,
+                min_cell_types=args.min_cell_types,
+                min_celltype_mice=args.min_celltype_mice,
+            )
+            gene_information[gene] = (transcripts, coverage)
+        information = gene_information[gene]
+        if information is None:
+            continue
+        transcripts, coverage = information
+        if coverage is None:
             continue
         mapped = block_mapping(block, features[transcripts])
         if mapped is None:
             continue
         path_index, signatures = mapped
-        candidates.append((block, gene, transcripts, path_index, signatures))
+        candidates.append(
+            (block, gene, transcripts, path_index, signatures, coverage)
+        )
     candidates = candidates[args.shard_index :: args.shard_count]
+    if args.dry_run:
+        print(json.dumps({
+            "candidate_blocks": len(candidates),
+            "shard_index": args.shard_index,
+            "shard_count": args.shard_count,
+        }, indent=2))
+        return
 
     observed_rows = []
     null_rows = []
     failures = []
     null_cache = {}
     started = time.perf_counter()
-    for position, (block, gene, transcripts, path_index, signatures) in enumerate(candidates):
+    for position, candidate in enumerate(candidates):
+        block, gene, transcripts, path_index, signatures, coverage = candidate
         try:
+            rows, local_metadata, nuisance, labels, _, cell_types = coverage
+            local_counts = tuple(matrix[rows] for matrix in counts)
+            clusters = local_metadata["mouse"].to_numpy()
             base, _, totals = local_gene_data(
-                counts,
+                local_counts,
                 designs,
                 transcripts,
                 gene_ecs[gene],
-                np.ones((len(metadata), 1)),
+                np.ones((len(local_metadata), 1)),
                 clusters,
                 drop_zero=False,
             )
@@ -215,7 +307,8 @@ def main():
                     "n_paths": len(signatures),
                     "n_isoforms": len(transcripts),
                     "n_ecs": len(gene_ecs[gene]),
-                    "n_samples": len(metadata),
+                    "n_samples": len(local_metadata),
+                    "n_cell_types": len(cell_types),
                     "degrees_of_freedom": degrees,
                     "median_gene_umis": float(np.median(totals)),
                     "statistic": float(statistic),
@@ -335,6 +428,10 @@ def main():
         "failures": len(failures),
         "methods": list(args.methods),
         "null_replicates": args.null_replicates,
+        "min_gene_umis": args.min_gene_umis,
+        "min_gene_samples": args.min_gene_samples,
+        "min_cell_types": args.min_cell_types,
+        "min_celltype_mice": args.min_celltype_mice,
         "seconds": time.perf_counter() - started,
     }, indent=2) + "\n")
 
