@@ -2547,3 +2547,21 @@ zero, and zero calls, with an empty four-way intersection. Thus no condition
 partition is robust to the tail threshold. The primary DS procedure is one
 nonredundant logistic-normal block EC GLMM parameterized for either contrast:
 it gives strong cell-type DS but no robust condition DS in this dataset.
+
+## 2026-08-03: differential-splicing manuscript reorganization
+
+The differential-splicing manuscript now presents the implemented
+multinomial and logistic-normal EC GLMMs before every supporting method. The
+main text gives the paired-primer EC probability model, mouse and pseudobulk
+random effects, orthogonal block-path and nuisance tensor construction for
+both biological contrasts, full-covariance tilted variational fit,
+null-to-alternative warm start, parametric bootstrap, cross-fitted GPD
+scoring, global leave-block-out recalibration, supported-partition
+deduplication, and separate BH families. It includes pseudocode for fitting
+and calibration and then reports the primary cell-type and condition results.
+
+The local path-estimate covariance model, Gaussian and compositional tests,
+direct EC Dirichlet--multinomial, GEE, Laplace, CAVI, Monte Carlo and
+R\'enyi variants, power studies, implementation details, and supporting
+results now follow the appendix marker. The document title and notation table
+were also revised to match the primary observed-EC analysis.
