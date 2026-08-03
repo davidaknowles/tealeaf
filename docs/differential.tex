@@ -505,6 +505,31 @@ and zero calls, with an empty intersection. At the primary 90\% threshold the
 minimum FDR is 0.0637. The data therefore support strong cell-type DS but no
 condition DS event that is robust to the tail threshold.
 
+\subsection*{Matched external-method comparison}
+
+LeafCutter, scQuint, and MAJIQ are compared on junction evidence from the same
+cells and biological-replicate definitions used by the EC GLMM. Reads are
+aligned with STARsolo using the three-round Split-seq barcode geometry.
+Spliced alignments are restricted to unique genomic mappings and deduplicated
+by cell barcode, UMI, genomic start, and CIGAR. Junction UMIs are then summed
+within subject-by-cell-type pseudobulks. This prevents individual cells from
+being treated as independent biological replicates and gives every external
+method the same subject and cell-type support.
+
+Condition tests compare conditions separately within each cell type. Cell-type
+tests use only subjects represented in both cell types. LeafCutter includes
+subject as a covariate for the paired cell-type tests. scQuint is run on the
+pseudobulk junction matrix because its differential-splicing interface has no
+covariate argument. MAJIQ v3 builds one common splice graph and PSI-coverage
+object from the pseudobulk BAMs, then applies its replicate-level Heterogen
+test with the conservative 95th percentile of the posterior-bootstrap
+Mann--Whitney p-value. MAJIQ and scQuint therefore use the matched replicates
+but cannot model their cell-type pairing. Each method receives BH correction
+within a pairwise contrast. For a cell-type-wide feature score, pairwise
+p-values are combined by Simes before a second BH correction. The comparison
+is run unchanged on both the mouse microglialess data and an independent
+human Parse Biosciences brain dataset.
+
 \appendix
 
 \section{Alternative Models and Supporting Derivations}

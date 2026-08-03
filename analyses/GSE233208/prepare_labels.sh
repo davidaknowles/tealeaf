@@ -10,6 +10,7 @@ metadata="${DATA_ROOT}/metadata/GSE233208_Human_snRNA-Seq_ADDS_metadata.tsv.gz"
   --metadata "${metadata}" \
   --label-column annotation \
   --group-column CaseNum \
+  --condition-column Diagnosis \
   --batch-map batch1=Batch1 \
   --batch-map batch2=Batch4 \
   --batch-map batch3=Batch2 \
@@ -19,4 +20,5 @@ metadata="${DATA_ROOT}/metadata/GSE233208_Human_snRNA-Seq_ADDS_metadata.tsv.gz"
   --parse-rt-barcodes "${PARSE_RT_BARCODES}" \
   --labels-output "${DATA_ROOT}/metadata/reference_annotation.csv" \
   --groups-output "${DATA_ROOT}/metadata/reference_donor.csv" \
+  --conditions-output "${DATA_ROOT}/metadata/reference_condition.csv" \
   --cell-map-output "${DATA_ROOT}/metadata/reference_cell_map.csv"

@@ -2565,3 +2565,41 @@ direct EC Dirichlet--multinomial, GEE, Laplace, CAVI, Monte Carlo and
 R\'enyi variants, power studies, implementation details, and supporting
 results now follow the appendix marker. The document title and notation table
 were also revised to match the primary observed-EC analysis.
+
+## 2026-08-03: matched junction-method benchmark on two datasets
+
+Implemented a reusable STARsolo junction benchmark for the microglialess and
+GSE233208 datasets. Split-seq barcode extraction uses the three eight-base
+segments from read 2 and the ten-base UMI. STAR writes complex cell barcodes
+with segment separators; the reader and BAM tagger now remove those separators
+before matching reference cell IDs. A 200,000-read GSE233208 smoke run retained
+3,576 junction UMIs across 2,717 cells and recovered all 18,040 labeled cell
+barcodes from that run.
+
+The shared representation is a sparse subject-by-cell-type junction UMI
+matrix plus junction and sample metadata. Spliced BAM evidence is restricted
+to unique alignments and deduplicated by cell, UMI, reference, start, and
+CIGAR before reads are tagged by pseudobulk. This supplies biological
+replicates rather than treating cells as replicates. Reusable adapters export
+LeafCutter junction files, annotate scQuint intron groups once from the GTF,
+and create pairwise condition-within-cell-type and subject-matched cell-type
+contrasts. LeafCutter uses subject as a paired-test covariate. scQuint lacks a
+covariate interface, so it receives the same pseudobulks but cannot use the
+pairing.
+
+MAJIQ academic v3.0.23 was built against the available HTSlib and Zstandard
+libraries. An annotation smoke test found that a VM-built extension required
+a newer glibc than the compute nodes provide, so a reproducible Slurm installer
+now builds the environment on a compute node. Its workflow
+converts the annotation to a splice graph, extracts one SJ object per
+pseudobulk BAM, builds a common splice graph, creates a multi-sample
+PSI-coverage object, and runs Heterogen for every matched contrast. The common
+comparison uses the 95th percentile of the posterior-bootstrap Mann--Whitney
+p-value, which is more conservative than the raw plug-in p-value. MAJIQ also
+lacks a paired-test design, a limitation recorded in the manuscript.
+
+Both full alignment and comparator dependency chains have been submitted.
+The GSE233208 primary multinomial and logistic-normal block EC GLMMs are also
+scheduled with the same cell-type and within-cell-type condition definitions.
+Results will be merged into a common per-feature schema with within-contrast
+BH values and Simes cell-type omnibus scores after all chains complete.

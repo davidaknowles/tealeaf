@@ -30,6 +30,10 @@ def main():
     parser.add_argument("--label-column", default="annotation")
     parser.add_argument("--group-column", default="CaseNum")
     parser.add_argument(
+        "--condition-column",
+        help="optional biological condition column for a two-column cell table",
+    )
+    parser.add_argument(
         "--parse-rt-barcodes",
         type=Path,
         help="ordered 96-barcode Parse RT list; expands each published cell "
@@ -44,6 +48,7 @@ def main():
     )
     parser.add_argument("--labels-output", required=True, type=Path)
     parser.add_argument("--groups-output", required=True, type=Path)
+    parser.add_argument("--conditions-output", type=Path)
     parser.add_argument(
         "--cell-map-output",
         type=Path,
@@ -90,7 +95,7 @@ def main():
     database = sqlite3.connect(conflict_db)
     database.execute(
         "CREATE TABLE metadata "
-        "(cell_id TEXT PRIMARY KEY, label TEXT NOT NULL, group_id TEXT)"
+        "(cell_id TEXT PRIMARY KEY, label TEXT NOT NULL, group_id TEXT, condition TEXT)"
     )
     if args.cell_map_output is not None:
         database.execute(
@@ -107,6 +112,8 @@ def main():
             args.label_column,
             args.group_column,
         }
+        if args.condition_column is not None:
+            required.add(args.condition_column)
         if run_lookup is not None:
             required.add("Sublibrary")
         if args.cell_map_output is not None:
@@ -131,6 +138,7 @@ def main():
             published_barcode = row[args.cell_barcode_column]
             label = row[args.label_column]
             group = row[args.group_column]
+            condition = row[args.condition_column] if args.condition_column else None
             if not published_barcode or not label:
                 continue
             if rt_pairs is None:
@@ -152,17 +160,17 @@ def main():
             for barcode in barcodes:
                 cell_id = f"{prefix}:{barcode}"
                 cursor = database.execute(
-                    "INSERT OR IGNORE INTO metadata VALUES (?, ?, ?)",
-                    (cell_id, label, group or None),
+                    "INSERT OR IGNORE INTO metadata VALUES (?, ?, ?, ?)",
+                    (cell_id, label, group or None, condition or None),
                 )
                 if cursor.rowcount:
                     inserted += 1
                 else:
                     previous = database.execute(
-                        "SELECT label, group_id FROM metadata WHERE cell_id = ?",
+                        "SELECT label, group_id, condition FROM metadata WHERE cell_id = ?",
                         (cell_id,),
                     ).fetchone()
-                    if previous != (label, group or None):
+                    if previous != (label, group or None, condition or None):
                         raise ValueError(f"conflicting metadata for {cell_id}")
                 if inserted % 10_000 == 0:
                     database.commit()
@@ -203,6 +211,18 @@ def main():
                 "WHERE group_id IS NOT NULL ORDER BY cell_id"
             )
         )
+    if args.conditions_output is not None:
+        if args.condition_column is None:
+            raise ValueError("--conditions-output requires --condition-column")
+        args.conditions_output.parent.mkdir(parents=True, exist_ok=True)
+        with open(args.conditions_output, "w", newline="") as handle:
+            writer = csv.writer(handle)
+            writer.writerows(
+                database.execute(
+                    "SELECT cell_id, condition FROM metadata "
+                    "WHERE condition IS NOT NULL ORDER BY cell_id"
+                )
+            )
     if args.cell_map_output is not None:
         args.cell_map_output.parent.mkdir(parents=True, exist_ok=True)
         with open(args.cell_map_output, "w", newline="") as handle:
