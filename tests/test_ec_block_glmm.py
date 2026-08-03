@@ -7,6 +7,7 @@ from extra_scripts.merge_ec_block_glmm import calibrate
 from extra_scripts.run_ec_block_glmm import (
     covered_celltype_design,
     covered_condition_designs,
+    deduplicate_supported_partitions,
     modeled_gene_umis,
 )
 from tealeaf.sc import ec_block_glmm, ec_glmm, ec_glmm_full
@@ -211,3 +212,20 @@ def test_modeled_gene_umis_exclude_unsupported_primer_ecs():
         modeled_gene_umis(counts, designs, [0, 1], [0, 1]),
         [24, 40],
     )
+
+
+def test_supported_partition_deduplication_ignores_path_labels():
+    common = ("gene", 0, np.array([1, 2, 3]), None)
+    suffix = ((), np.array([0, 1]), "ct", ("a", "b"))
+    first = (
+        "b1", "b1", *common[:2], common[2], np.array([0, 0, 1]), *suffix
+    )
+    duplicate = (
+        "b2", "b2", *common[:2], common[2], np.array([2, 2, 5]), *suffix
+    )
+    distinct = (
+        "b3", "b3", *common[:2], common[2], np.array([0, 1, 1]), *suffix
+    )
+    assert [row[0] for row in deduplicate_supported_partitions(
+        [first, duplicate, distinct]
+    )] == ["b1", "b3"]

@@ -2503,3 +2503,26 @@ A production-criteria smoke fit converged under both nested models in 132 and
 179 iterations. The full logistic-normal condition analysis will use five
 parametric-bootstrap replicates per test and the same aggregate, depth, and
 sample-count calibration audits as the cell-type analysis.
+
+The completed condition run initially contained 17,685 annotated
+block-by-cell-type tests. Inspection of tied top statistics showed that
+distinct annotated blocks can induce the same isoform partition after
+unsupported isoforms are removed. Collapsing tests by gene, retained isoforms,
+canonical path partition, covered rows, and contrast levels leaves 14,833
+nonredundant tests over 5,608 representative blocks and 4,080 genes. Of 14,827
+converged and calibratable tests, 1,404 have nominal p-values below 0.05, but
+none pass BH at 0.05; the minimum FDR is 0.163. Empirical null rejection is
+0.0500 overall, 0.0462--0.0611 across depth quartiles, and 0.0475--0.0555
+across sample-count quartiles.
+
+Applying the identical supported-partition collapse to the completed
+cell-type logistic-normal fits reduces 5,650 annotated blocks to 4,825 tests.
+There are 800 nominal results among 4,744 converged and calibratable tests,
+but no BH discoveries; the minimum FDR is 0.0531. Null rejection is 0.0497
+overall, 0.0416--0.0563 across depth quartiles, and 0.0418--0.0579 across
+sample-count quartiles. The previous 193 cell-type calls arose before this
+collapse: repeated identical strong partitions created a favorable BH
+plateau. They are not retained as discoveries. The primary DS procedure is
+therefore one nonredundant logistic-normal block EC GLMM, parameterized for
+either cell-type or within-cell-type condition effects; neither contrast has
+genome-wide discoveries in this dataset.

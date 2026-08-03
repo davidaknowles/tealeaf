@@ -175,7 +175,7 @@ def modeled_gene_umis(counts, designs, ecs, transcripts):
 def candidate_cache_settings(args):
     """Return the screening settings that define a candidate manifest."""
     return {
-        "version": 1,
+        "version": 2,
         "data_cache": str(args.data_cache.resolve()),
         "features": str(args.features.resolve()),
         "block_cache": str(args.block_cache.resolve()),
@@ -192,6 +192,41 @@ def candidate_cache_settings(args):
         "max_isoforms": args.max_isoforms,
         "max_ecs": args.max_ecs,
     }
+
+
+def supported_partition_key(candidate):
+    """Identify tests made equivalent by the EC-supported isoform subset."""
+    (
+        _, _, gene_id, _, transcripts, path_index, _, rows,
+        tested_cell_type, tested_levels,
+    ) = candidate
+    relabeling = {}
+    canonical_paths = []
+    for value in np.asarray(path_index, dtype=int):
+        if value < 0:
+            canonical_paths.append(-1)
+        else:
+            canonical_paths.append(relabeling.setdefault(value, len(relabeling)))
+    return (
+        gene_id,
+        tuple(np.asarray(transcripts, dtype=int)),
+        tuple(canonical_paths),
+        tuple(np.asarray(rows, dtype=int)),
+        tested_cell_type,
+        tuple(tested_levels),
+    )
+
+
+def deduplicate_supported_partitions(candidates):
+    """Keep one annotated block for each identifiable tested partition."""
+    result = []
+    seen = set()
+    for candidate in candidates:
+        key = supported_partition_key(candidate)
+        if key not in seen:
+            result.append(candidate)
+            seen.add(key)
+    return result
 
 
 def local_test_design(metadata, rows, tested_levels, test_effect):
@@ -376,6 +411,7 @@ def main():
                     tested_cell_type,
                     tuple(tested_levels),
                 ))
+        candidates = deduplicate_supported_partitions(candidates)
         if args.candidate_cache is not None:
             args.candidate_cache.parent.mkdir(parents=True, exist_ok=True)
             temporary = args.candidate_cache.with_suffix(

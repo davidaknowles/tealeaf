@@ -5,18 +5,25 @@ from __future__ import annotations
 
 import argparse
 import json
+import pickle
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from extra_scripts.run_differential_splicing import benjamini_hochberg
+from extra_scripts.run_ec_block_glmm import supported_partition_key
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--shards", nargs="+", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
+    parser.add_argument(
+        "--candidate-cache",
+        type=Path,
+        help="Collapse blocks equivalent on the EC-supported isoform subset.",
+    )
     parser.add_argument("--depth-bins", type=int, default=1)
     parser.add_argument("--audit-depth-bins", type=int, default=4)
     parser.add_argument("--audit-sample-bins", type=int, default=4)
@@ -24,6 +31,18 @@ def parse_args():
     parser.add_argument("--calibration-lower", type=float, default=0.025)
     parser.add_argument("--calibration-upper", type=float, default=0.075)
     return parser.parse_args()
+
+
+def supported_partition_representatives(candidate_cache):
+    with candidate_cache.open("rb") as handle:
+        candidates = pickle.load(handle)["candidates"]
+    representatives = {}
+    first = {}
+    for candidate in candidates:
+        key = supported_partition_key(candidate)
+        representative = first.setdefault(key, candidate[0])
+        representatives[candidate[0]] = representative
+    return representatives
 
 
 def quantile_bin_values(table, column, bins):
@@ -152,6 +171,16 @@ def main():
         ["test_id", "method"], keep="last"
     )
     null = pd.concat(nulls, ignore_index=True)
+    if args.candidate_cache is not None:
+        representatives = supported_partition_representatives(
+            args.candidate_cache
+        )
+        keep = table["test_id"].map(representatives).eq(table["test_id"])
+        retained_ids = set(table.loc[keep, "test_id"])
+        table = table.loc[keep].reset_index(drop=True)
+        null = null.loc[
+            null["test_id"].isin(retained_ids)
+        ].reset_index(drop=True)
     table, null = add_depth_bins(table, null, args.depth_bins)
     table = add_calibration_strata(table, args.min_stratum_events)
     table, calibrated_null = calibrate(table, null)

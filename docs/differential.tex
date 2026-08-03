@@ -1645,6 +1645,57 @@ strict-versus-permissive statistic rank correlations are 0.781, 0.764, and
 0.760, so changing the cutoff also changes individual fits rather than only
 the BH denominator.
 
+\subsection*{Unified block EC test for cell type and condition}
+
+The final analysis uses one likelihood and testing construction for both
+biological contrasts: the logistic-normal multinomial block EC GLMM. For the
+cell-type test, condition indicators are nuisance fixed effects and the
+alternative adds block-path-by-cell-type interactions. For the condition
+test, models are fit separately within each cell type; the null has an
+intercept fixed effect and the alternative adds block-path-by-condition
+interactions. Both versions retain a mouse random effect and paired
+primer-specific EC likelihoods. Every retained condition must be represented
+by at least three mice, and every tested pseudobulk must have at least 10
+modeled gene UMIs.
+
+The annotation-level block equivalence relation is insufficient after EC
+screening: removing unsupported isoforms can make two distinct annotated
+blocks induce exactly the same partition of the remaining isoforms. The final
+hypothesis family therefore retains one representative for each tuple of gene,
+EC-supported isoforms, canonical block-path partition, covered observations,
+and tested factor levels. This reduces the permissive cell-type family from
+5,650 to 4,825 tests and the condition family from 17,685 to 14,833
+block-by-cell-type tests over 5,608 representative blocks. This collapse is
+performed before calibration and BH correction.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{The unified, nonredundant logistic-normal block EC GLMM. Condition
+tests are within cell type. Depth and sample columns give empirical null
+rejection ranges over the corresponding quartiles.}
+\label{tab:unified-ec-block-results}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+Contrast & Tests & Conv. & Nominal & FDR & Null $<.05$ & Depth range &
+  Sample range & Minimum FDR\\
+\midrule
+Cell type & 4,825 & 0.983 & 800 & 0 & 0.0497 & 0.0416--0.0563 &
+  0.0418--0.0579 & 0.0531\\
+Condition & 14,833 & 1.000 & 1,404 & 0 & 0.0500 & 0.0462--0.0611 &
+  0.0475--0.0555 & 0.1633\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Thus the same calibrated test is now used for cell-type and condition DS.
+Neither nonredundant family has a discovery at 5\% BH FDR. The earlier 193
+permissive logistic-normal cell-type calls in
+Table~\ref{tab:ec-block-results} preceded the supported-partition collapse.
+Several strong partitions appeared more than once, creating a favorable BH
+plateau; those repeated hypotheses are not treated as independent
+discoveries in the final analysis.
+
 \subsection*{Cell-type effects within mouse}
 
 The initial Gaussian analysis tested 369 conditional and 218 profile
