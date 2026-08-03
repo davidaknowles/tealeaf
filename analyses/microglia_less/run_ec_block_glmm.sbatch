@@ -2,7 +2,7 @@
 #SBATCH -p cpu
 #SBATCH --array=0-95
 #SBATCH --cpus-per-task=2
-#SBATCH --mem=32G
+#SBATCH --mem=8G
 #SBATCH --time=12:00:00
 #SBATCH --job-name=microglia_ec_block
 #SBATCH --output=/scratch/daknowles/tealeaf_ec_block_%A_%a.out
