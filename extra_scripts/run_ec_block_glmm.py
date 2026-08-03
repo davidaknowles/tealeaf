@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fit and bootstrap-calibrate splice-block EC-count GLMM cell-type tests."""
+"""Fit and bootstrap-calibrate splice-block EC-count GLMM DS tests."""
 
 from __future__ import annotations
 
@@ -32,17 +32,29 @@ def parse_args():
     parser.add_argument("--features", required=True, type=Path)
     parser.add_argument("--block-cache", required=True, type=Path)
     parser.add_argument(
+        "--candidate-cache",
+        type=Path,
+        help="Cache the screened genome-wide block/test manifest.",
+    )
+    parser.add_argument(
         "--event-table",
         type=Path,
         help="Optionally restrict tests to inference-eligible rows in this table.",
     )
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--methods", nargs="+", choices=METHODS, default=METHODS)
+    parser.add_argument(
+        "--test-effect",
+        choices=("cell_type", "condition_within_cell_type"),
+        default="cell_type",
+    )
     parser.add_argument("--null-replicates", type=int, default=20)
     parser.add_argument("--min-gene-umis", type=float, default=10.0)
     parser.add_argument("--min-gene-samples", type=int, default=0)
     parser.add_argument("--min-cell-types", type=int, default=2)
     parser.add_argument("--min-celltype-mice", type=int, default=3)
+    parser.add_argument("--min-conditions", type=int, default=2)
+    parser.add_argument("--min-condition-mice", type=int, default=3)
     parser.add_argument("--max-isoforms", type=int, default=10)
     parser.add_argument("--max-ecs", type=int, default=128)
     parser.add_argument("--max-iter", type=int, default=300)
@@ -96,6 +108,50 @@ def covered_celltype_design(
     return rows, metadata, nuisance, labels, subjects, cell_types
 
 
+def covered_condition_designs(
+    metadata,
+    gene_umis,
+    *,
+    min_gene_umis,
+    min_samples,
+    min_conditions,
+    min_condition_mice,
+):
+    """Build condition designs separately within each covered cell type."""
+    covered = np.asarray(gene_umis) >= float(min_gene_umis)
+    results = []
+    for cell_type in sorted(metadata["cell_type"].unique()):
+        in_cell_type = metadata["cell_type"].eq(cell_type).to_numpy()
+        available = covered & in_cell_type
+        represented = (
+            metadata.loc[available].groupby("condition")["mouse"].nunique()
+        )
+        conditions = sorted(
+            represented.index[represented >= int(min_condition_mice)]
+        )
+        if len(conditions) < int(min_conditions):
+            continue
+        retained = (
+            available
+            & metadata["condition"].isin(conditions).to_numpy()
+        )
+        if retained.sum() < int(min_samples):
+            continue
+        rows = np.flatnonzero(retained)
+        local = metadata.iloc[rows].reset_index(drop=True)
+        condition_index = {
+            value: index for index, value in enumerate(conditions)
+        }
+        labels = np.asarray([
+            condition_index[value] for value in local["condition"]
+        ])
+        nuisance = np.ones((len(local), 1), dtype=float)
+        subjects = local["mouse"].astype(str).to_numpy()
+        coverage = (rows, local, nuisance, labels, subjects, conditions)
+        results.append((coverage, cell_type))
+    return results
+
+
 def treatment_design(labels, n_levels):
     labels = np.asarray(labels, dtype=int)
     result = np.zeros((len(labels), int(n_levels) - 1), dtype=float)
@@ -114,6 +170,41 @@ def modeled_gene_umis(counts, designs, ecs, transcripts):
         ).ravel() > 0
         total += np.asarray(observed[:, ecs[supported]].sum(axis=1)).ravel()
     return total
+
+
+def candidate_cache_settings(args):
+    """Return the screening settings that define a candidate manifest."""
+    return {
+        "version": 1,
+        "data_cache": str(args.data_cache.resolve()),
+        "features": str(args.features.resolve()),
+        "block_cache": str(args.block_cache.resolve()),
+        "event_table": (
+            None if args.event_table is None else str(args.event_table.resolve())
+        ),
+        "test_effect": args.test_effect,
+        "min_gene_umis": args.min_gene_umis,
+        "min_gene_samples": args.min_gene_samples,
+        "min_cell_types": args.min_cell_types,
+        "min_celltype_mice": args.min_celltype_mice,
+        "min_conditions": args.min_conditions,
+        "min_condition_mice": args.min_condition_mice,
+        "max_isoforms": args.max_isoforms,
+        "max_ecs": args.max_ecs,
+    }
+
+
+def local_test_design(metadata, rows, tested_levels, test_effect):
+    """Reconstruct one cached candidate's fixed-effect design."""
+    local = metadata.iloc[np.asarray(rows, dtype=int)].reset_index(drop=True)
+    tested_column = "cell_type" if test_effect == "cell_type" else "condition"
+    level_index = {value: index for index, value in enumerate(tested_levels)}
+    labels = np.asarray([level_index[value] for value in local[tested_column]])
+    if test_effect == "cell_type":
+        nuisance = pd.get_dummies(local["condition"], dtype=float).to_numpy()
+    else:
+        nuisance = np.ones((len(local), 1), dtype=float)
+    return local, nuisance, labels
 
 
 def tensor_data(base, tensor):
@@ -178,81 +269,130 @@ def main():
             f"{designs[0].shape[1]} transcript columns"
         )
     metadata = group_metadata(groups)
-    globally_represented = metadata.groupby("cell_type")["mouse"].nunique()
-    global_cell_types = globally_represented.index[
-        globally_represented >= int(args.min_celltype_mice)
-    ]
-    global_rows = metadata["cell_type"].isin(global_cell_types).to_numpy()
-    metadata = metadata.loc[global_rows].reset_index(drop=True)
-    counts = tuple(matrix[global_rows] for matrix in counts)
-    screening_counts = tuple(matrix.tocsc() for matrix in counts)
-    blocks = load_blocks(args.block_cache, None)
-    block_to_representative, _ = block_equivalence(args.block_cache)
-    eligible_blocks = None
-    if args.event_table is not None:
-        event_table = pd.read_csv(args.event_table, sep="\t")
-        eligible_blocks = set(
-            event_table.loc[
-                event_table["inference_eligible"], "block_id"
-            ].astype(str)
-        )
-    gene_position = {str(gene): index for index, gene in enumerate(genes)}
-    gene_information = {}
-    candidates = []
-    for block in blocks:
-        representative = block_to_representative[block.block_id]
-        if block.block_id != representative:
-            continue
-        if eligible_blocks is not None and representative not in eligible_blocks:
-            continue
-        gene = gene_position.get(block.gene_id)
-        if (
-            gene is None
-            or not len(gene_ecs[gene])
-            or len(gene_ecs[gene]) > args.max_ecs
-        ):
-            continue
-        if gene not in gene_information:
-            transcripts = np.asarray(gene_transcripts[gene], dtype=int)
-            transcript_support = sum(
-                np.asarray(
-                    mapping[gene_ecs[gene]][:, transcripts].sum(axis=0)
-                ).ravel()
-                for mapping in designs
+    if args.test_effect == "cell_type":
+        globally_represented = metadata.groupby("cell_type")["mouse"].nunique()
+        global_cell_types = globally_represented.index[
+            globally_represented >= int(args.min_celltype_mice)
+        ]
+        global_rows = metadata["cell_type"].isin(global_cell_types).to_numpy()
+        metadata = metadata.loc[global_rows].reset_index(drop=True)
+        counts = tuple(matrix[global_rows] for matrix in counts)
+    cache_settings = candidate_cache_settings(args)
+    if args.candidate_cache is not None and args.candidate_cache.exists():
+        with args.candidate_cache.open("rb") as handle:
+            cached = pickle.load(handle)
+        if cached.get("settings") != cache_settings:
+            raise ValueError("candidate cache does not match screening settings")
+        candidates = cached["candidates"]
+    else:
+        screening_counts = tuple(matrix.tocsc() for matrix in counts)
+        blocks = load_blocks(args.block_cache, None)
+        block_to_representative, _ = block_equivalence(args.block_cache)
+        eligible_blocks = None
+        if args.event_table is not None:
+            event_table = pd.read_csv(args.event_table, sep="\t")
+            eligible_blocks = set(
+                event_table.loc[
+                    event_table["inference_eligible"], "block_id"
+                ].astype(str)
             )
-            transcripts = transcripts[transcript_support > 0]
-            if not 2 <= len(transcripts) <= args.max_isoforms:
-                gene_information[gene] = None
+        gene_position = {str(gene): index for index, gene in enumerate(genes)}
+        gene_information = {}
+        candidates = []
+        for block in blocks:
+            representative = block_to_representative[block.block_id]
+            if block.block_id != representative:
                 continue
-            gene_umis = modeled_gene_umis(
-                screening_counts, designs, gene_ecs[gene], transcripts
+            if eligible_blocks is not None and representative not in eligible_blocks:
+                continue
+            gene = gene_position.get(block.gene_id)
+            if (
+                gene is None
+                or not len(gene_ecs[gene])
+                or len(gene_ecs[gene]) > args.max_ecs
+            ):
+                continue
+            if gene not in gene_information:
+                transcripts = np.asarray(gene_transcripts[gene], dtype=int)
+                transcript_support = sum(
+                    np.asarray(
+                        mapping[gene_ecs[gene]][:, transcripts].sum(axis=0)
+                    ).ravel()
+                    for mapping in designs
+                )
+                transcripts = transcripts[transcript_support > 0]
+                if not 2 <= len(transcripts) <= args.max_isoforms:
+                    gene_information[gene] = None
+                    continue
+                gene_umis = modeled_gene_umis(
+                    screening_counts, designs, gene_ecs[gene], transcripts
+                )
+                if args.test_effect == "cell_type":
+                    coverage = covered_celltype_design(
+                        metadata,
+                        gene_umis,
+                        min_gene_umis=args.min_gene_umis,
+                        min_samples=args.min_gene_samples,
+                        min_cell_types=args.min_cell_types,
+                        min_celltype_mice=args.min_celltype_mice,
+                    )
+                    coverage_specs = (
+                        [(coverage, None)] if coverage is not None else []
+                    )
+                else:
+                    coverage_specs = covered_condition_designs(
+                        metadata,
+                        gene_umis,
+                        min_gene_umis=args.min_gene_umis,
+                        min_samples=args.min_gene_samples,
+                        min_conditions=args.min_conditions,
+                        min_condition_mice=args.min_condition_mice,
+                    )
+                gene_information[gene] = (transcripts, coverage_specs)
+            information = gene_information[gene]
+            if information is None:
+                continue
+            transcripts, coverage_specs = information
+            if not coverage_specs:
+                continue
+            mapped = block_mapping(block, features[transcripts])
+            if mapped is None:
+                continue
+            path_index, signatures = mapped
+            for coverage, tested_cell_type in coverage_specs:
+                rows, _, _, _, _, tested_levels = coverage
+                test_id = block.block_id
+                if tested_cell_type is not None:
+                    test_id += f"|condition|{tested_cell_type}"
+                candidates.append((
+                    test_id,
+                    block.block_id,
+                    block.gene_id,
+                    gene,
+                    transcripts,
+                    path_index,
+                    signatures,
+                    rows,
+                    tested_cell_type,
+                    tuple(tested_levels),
+                ))
+        if args.candidate_cache is not None:
+            args.candidate_cache.parent.mkdir(parents=True, exist_ok=True)
+            temporary = args.candidate_cache.with_suffix(
+                args.candidate_cache.suffix + ".tmp"
             )
-            coverage = covered_celltype_design(
-                metadata,
-                gene_umis,
-                min_gene_umis=args.min_gene_umis,
-                min_samples=args.min_gene_samples,
-                min_cell_types=args.min_cell_types,
-                min_celltype_mice=args.min_celltype_mice,
-            )
-            gene_information[gene] = (transcripts, coverage)
-        information = gene_information[gene]
-        if information is None:
-            continue
-        transcripts, coverage = information
-        if coverage is None:
-            continue
-        mapped = block_mapping(block, features[transcripts])
-        if mapped is None:
-            continue
-        path_index, signatures = mapped
-        candidates.append(
-            (block, gene, transcripts, path_index, signatures, coverage)
-        )
+            with temporary.open("wb") as handle:
+                pickle.dump(
+                    {"settings": cache_settings, "candidates": candidates},
+                    handle,
+                    protocol=pickle.HIGHEST_PROTOCOL,
+                )
+            temporary.replace(args.candidate_cache)
     candidates = candidates[args.shard_index :: args.shard_count]
     if args.dry_run:
         print(json.dumps({
-            "candidate_blocks": len(candidates),
+            "candidate_tests": len(candidates),
+            "candidate_blocks": len({row[1] for row in candidates}),
             "shard_index": args.shard_index,
             "shard_count": args.shard_count,
         }, indent=2))
@@ -264,9 +404,22 @@ def main():
     null_cache = {}
     started = time.perf_counter()
     for position, candidate in enumerate(candidates):
-        block, gene, transcripts, path_index, signatures, coverage = candidate
+        (
+            test_id,
+            block_id,
+            gene_id,
+            gene,
+            transcripts,
+            path_index,
+            signatures,
+            rows,
+            tested_cell_type,
+            tested_levels,
+        ) = candidate
         try:
-            rows, local_metadata, nuisance, labels, _, cell_types = coverage
+            local_metadata, nuisance, labels = local_test_design(
+                metadata, rows, tested_levels, args.test_effect
+            )
             local_counts = tuple(matrix[rows] for matrix in counts)
             clusters = local_metadata["mouse"].to_numpy()
             base, _, totals = local_gene_data(
@@ -278,7 +431,7 @@ def main():
                 clusters,
                 drop_zero=False,
             )
-            tested = treatment_design(labels, len(cell_types))
+            tested = treatment_design(labels, len(tested_levels))
             null_tensor, alternative_tensor, degrees = (
                 ec_block_glmm.block_fixed_effect_tensors(
                     nuisance, tested, path_index
@@ -286,7 +439,7 @@ def main():
             )
             null_data = tensor_data(base, null_tensor)
             for method in args.methods:
-                cache_key = (block.block_id, method)
+                cache_key = (test_id, method)
                 if cache_key not in null_cache:
                     null_cache[cache_key] = fit_with_retries(
                         method, null_data, args
@@ -301,14 +454,17 @@ def main():
                 )
                 statistic = 2.0 * (alternative["objective"] - null["objective"])
                 observed_rows.append({
-                    "block_id": block.block_id,
-                    "gene_id": block.gene_id,
+                    "test_id": test_id,
+                    "block_id": block_id,
+                    "gene_id": gene_id,
+                    "contrast": args.test_effect,
+                    "cell_type": tested_cell_type,
                     "method": method,
                     "n_paths": len(signatures),
                     "n_isoforms": len(transcripts),
                     "n_ecs": len(gene_ecs[gene]),
                     "n_samples": len(local_metadata),
-                    "n_cell_types": len(cell_types),
+                    "n_test_levels": len(tested_levels),
                     "degrees_of_freedom": degrees,
                     "median_gene_umis": float(np.median(totals)),
                     "statistic": float(statistic),
@@ -329,7 +485,7 @@ def main():
                 })
                 bootstrap_rng = np.random.default_rng(np.random.SeedSequence((
                     args.seed,
-                    zlib.crc32(block.block_id.encode("utf-8")),
+                    zlib.crc32(test_id.encode("utf-8")),
                     METHODS.index(method),
                 )))
                 for replicate in range(args.null_replicates):
@@ -376,7 +532,10 @@ def main():
                         retries=args.null_replicate_retries,
                     )
                     null_rows.append({
-                        "block_id": block.block_id,
+                        "test_id": test_id,
+                        "block_id": block_id,
+                        "contrast": args.test_effect,
+                        "cell_type": tested_cell_type,
                         "method": method,
                         "replicate": replicate,
                         "degrees_of_freedom": degrees,
@@ -402,11 +561,15 @@ def main():
                         "attempts": simulated_fit["attempts"],
                     })
         except Exception as exc:
-            failures.append({"block_id": block.block_id, "error": repr(exc)})
+            failures.append({
+                "test_id": test_id,
+                "block_id": block_id,
+                "error": repr(exc),
+            })
         if (position + 1) % 2 == 0:
             print(json.dumps({
-                "blocks_complete": position + 1,
-                "blocks_total": len(candidates),
+                "tests_complete": position + 1,
+                "tests_total": len(candidates),
                 "observed_fits": len(observed_rows),
                 "null_fits": len(null_rows),
                 "failures": len(failures),
@@ -422,7 +585,8 @@ def main():
         json.dumps(failures, indent=2) + "\n"
     )
     (args.output_dir / "summary.json").write_text(json.dumps({
-        "candidate_blocks": len(candidates),
+        "candidate_tests": len(candidates),
+        "candidate_blocks": len({row[1] for row in candidates}),
         "observed_fits": len(observed_rows),
         "null_fits": len(null_rows),
         "failures": len(failures),
@@ -432,6 +596,9 @@ def main():
         "min_gene_samples": args.min_gene_samples,
         "min_cell_types": args.min_cell_types,
         "min_celltype_mice": args.min_celltype_mice,
+        "min_conditions": args.min_conditions,
+        "min_condition_mice": args.min_condition_mice,
+        "test_effect": args.test_effect,
         "seconds": time.perf_counter() - started,
     }, indent=2) + "\n")
 

@@ -2481,3 +2481,25 @@ strict analysis, 94 only under the permissive fit among shared blocks, and 110
 only in the expanded universe. The analogous LN counts are 62, 95, 53, and
 78. Statistic rank correlations between strict and permissive fits on shared
 blocks are 0.781, 0.764, and 0.760 for MN, LN, and DM.
+
+## 2026-08-02: one block EC GLMM for cell-type and condition DS
+
+The block EC runner now supports both biological contrasts through the same
+nested logistic-normal multinomial GLMM. The cell-type test uses condition as
+a nuisance fixed effect and tests block-path by cell-type interactions. The
+condition test is run separately within each cell type, uses an intercept-only
+nuisance design, and tests block-path by condition interactions. Both retain
+mouse-level random effects, paired primer-specific EC likelihoods, and pooled
+leave-test-out parametric-bootstrap calibration. A test identifier combines
+the block and cell type for condition tests so calibration and multiplicity
+operate on block-by-cell-type hypotheses rather than collapsing them by block.
+
+For condition DS, each retained condition must have EC-covered observations
+from at least three mice. At a cutoff of 10 modeled gene UMIs this gives
+17,685 block-by-cell-type tests over 6,550 distinct blocks. Screening is now
+written to a compact candidate manifest and reused by every shard; this avoids
+repeating genome-wide annotation and EC-support screening in each array task.
+A production-criteria smoke fit converged under both nested models in 132 and
+179 iterations. The full logistic-normal condition analysis will use five
+parametric-bootstrap replicates per test and the same aggregate, depth, and
+sample-count calibration audits as the cell-type analysis.

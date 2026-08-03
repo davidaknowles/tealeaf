@@ -6,6 +6,7 @@ import pandas as pd
 from extra_scripts.merge_ec_block_glmm import calibrate
 from extra_scripts.run_ec_block_glmm import (
     covered_celltype_design,
+    covered_condition_designs,
     modeled_gene_umis,
 )
 from tealeaf.sc import ec_block_glmm, ec_glmm, ec_glmm_full
@@ -129,6 +130,7 @@ def test_null_simulation_accepts_primer_without_modeled_ecs():
 
 def test_bootstrap_calibration_leaves_out_tested_block():
     table = pd.DataFrame({
+        "test_id": ["b1", "b2"],
         "block_id": ["b1", "b2"],
         "method": ["multinomial_full"] * 2,
         "df_stratum": ["1"] * 2,
@@ -136,6 +138,7 @@ def test_bootstrap_calibration_leaves_out_tested_block():
         "statistic": [2.5, 0.5],
     })
     null = pd.DataFrame({
+        "test_id": ["b1", "b1", "b2", "b2"],
         "block_id": ["b1", "b1", "b2", "b2"],
         "method": ["multinomial_full"] * 4,
         "replicate": [0, 1, 0, 1],
@@ -168,6 +171,31 @@ def test_covered_celltype_design_is_gene_specific():
     assert nuisance.shape == (6, 2)
     np.testing.assert_array_equal(labels, [0, 0, 0, 1, 1, 1])
     assert set(local["cell_type"]) == {"a", "b"}
+
+
+def test_condition_designs_are_built_within_cell_type():
+    metadata = pd.DataFrame({
+        "cell_type": ["a"] * 6 + ["b"] * 5,
+        "condition": ["x"] * 3 + ["y"] * 3 + ["x"] * 3 + ["y"] * 2,
+        "mouse": ["m1", "m2", "m3"] * 3 + ["m4", "m5"],
+    })
+    results = covered_condition_designs(
+        metadata,
+        np.full(len(metadata), 25),
+        min_gene_umis=10,
+        min_samples=0,
+        min_conditions=2,
+        min_condition_mice=3,
+    )
+    assert len(results) == 1
+    coverage, cell_type = results[0]
+    rows, local, nuisance, labels, _, conditions = coverage
+    assert cell_type == "a"
+    assert conditions == ["x", "y"]
+    np.testing.assert_array_equal(rows, np.arange(6))
+    np.testing.assert_array_equal(labels, [0, 0, 0, 1, 1, 1])
+    np.testing.assert_array_equal(nuisance, np.ones((6, 1)))
+    assert set(local["cell_type"]) == {"a"}
 
 
 def test_modeled_gene_umis_exclude_unsupported_primer_ecs():
