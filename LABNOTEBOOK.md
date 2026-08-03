@@ -2590,7 +2590,9 @@ pairing.
 MAJIQ academic v3.0.23 was built against the available HTSlib and Zstandard
 libraries. An annotation smoke test found that a VM-built extension required
 a newer glibc than the compute nodes provide, so a reproducible Slurm installer
-now builds the environment on a compute node. Its workflow
+now builds the environment on a compute node. The rebuilt executable applied
+the academic license and parsed 58,870 human and 56,953 mouse genes in
+annotation smoke tests. Its workflow
 converts the annotation to a splice graph, extracts one SJ object per
 pseudobulk BAM, builds a common splice graph, creates a multi-sample
 PSI-coverage object, and runs Heterogen for every matched contrast. The common
