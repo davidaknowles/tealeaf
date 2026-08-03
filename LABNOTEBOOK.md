@@ -2605,3 +2605,9 @@ The GSE233208 primary multinomial and logistic-normal block EC GLMMs are also
 scheduled with the same cell-type and within-cell-type condition definitions.
 Results will be merged into a common per-feature schema with within-contrast
 BH values and Simes cell-type omnibus scores after all chains complete.
+
+The first full mouse alignment array completed STAR successfully for every
+run but failed in the post-alignment tagger because the batch scripts had been
+submitted before the package-path fix. The aligned BAMs and STARsolo junction
+matrices were intact. Added a reusable tag-only array and replaced the stale
+mouse aggregation and comparator dependencies, avoiding any realignment.
