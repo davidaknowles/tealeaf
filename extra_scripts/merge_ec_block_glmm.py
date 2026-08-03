@@ -87,34 +87,38 @@ def calibrate(table, null):
             p_values.extend((position, np.nan) for position in records.index)
             continue
         block_null = {
-            test_id: values["statistic"].to_numpy()
+            test_id: np.sort(values["statistic"].to_numpy())
             for test_id, values in pool.groupby("test_id")
         }
-        all_values = pool["statistic"].to_numpy()
+        all_values = np.sort(pool["statistic"].to_numpy())
         for row in records.itertuples():
             own = block_null.get(row.test_id, np.empty(0))
-            exceed = np.sum(all_values >= row.statistic) - np.sum(
-                own >= row.statistic
+            exceed = (
+                len(all_values)
+                - np.searchsorted(all_values, row.statistic, side="left")
+                - len(own)
+                + np.searchsorted(own, row.statistic, side="left")
             )
             denominator = len(all_values) - len(own)
             p_values.append((row.Index, (1 + exceed) / (1 + denominator)))
-        for row in pool.itertuples():
-            comparison = np.delete(
-                all_values,
-                np.flatnonzero(pool["test_id"].to_numpy() == row.test_id),
+        calibrated = pool[["method", "test_id", "block_id"]].copy()
+        calibrated["replicate"] = (
+            pool["replicate"] if "replicate" in pool else pool["permutation"]
+        )
+        calibrated["p_value"] = np.nan
+        for test_id, positions in pool.groupby("test_id").groups.items():
+            own = block_null[test_id]
+            statistics = pool.loc[positions, "statistic"].to_numpy()
+            exceed = (
+                len(all_values)
+                - np.searchsorted(all_values, statistics, side="left")
+                - len(own)
+                + np.searchsorted(own, statistics, side="left")
             )
-            calibrated_null_rows.append({
-                "method": row.method,
-                "test_id": row.test_id,
-                "block_id": row.block_id,
-                "replicate": (
-                    row.replicate if hasattr(row, "replicate") else row.permutation
-                ),
-                "p_value": (
-                    (1 + np.sum(comparison >= row.statistic))
-                    / (1 + len(comparison))
-                ),
-            })
+            calibrated.loc[positions, "p_value"] = (
+                (1 + exceed) / (1 + len(all_values) - len(own))
+            )
+        calibrated_null_rows.extend(calibrated.to_dict("records"))
     table["p_value"] = np.nan
     for position, value in p_values:
         table.at[position, "p_value"] = value
