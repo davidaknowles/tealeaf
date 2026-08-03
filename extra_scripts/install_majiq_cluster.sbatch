@@ -14,8 +14,9 @@ python -m venv "${MAJIQ_VENV}"
 source "${MAJIQ_VENV}/bin/activate"
 python -m pip install --upgrade pip
 python -m pip install pybind11==2.13.6 scikit-build-core==0.11.1 ninja
-export HTSLIB_LIBRARY_DIR=${EBROOTHTSLIB}/lib
-export HTSLIB_INCLUDE_DIR=${EBROOTHTSLIB}/include
+htslib_root=$(dirname "$(dirname "$(command -v bgzip)")")
+export HTSLIB_LIBRARY_DIR=${htslib_root}/lib
+export HTSLIB_INCLUDE_DIR=${htslib_root}/include
 python -m pip install --no-build-isolation "${MAJIQ_SOURCE}/moccasin"
 python -m pip install --no-build-isolation "${MAJIQ_SOURCE}/majiq"
 python -m pip install --no-build-isolation "${MAJIQ_SOURCE}/voila"
