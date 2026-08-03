@@ -13,7 +13,9 @@ module load Python/3.12.3-GCCcore-13.3.0 HTSlib/1.21 zstd/1.5.6-GCCcore-13.3.0 C
 python -m venv "${MAJIQ_VENV}"
 source "${MAJIQ_VENV}/bin/activate"
 python -m pip install --upgrade pip
-python -m pip install pybind11==2.13.6 scikit-build-core==0.11.1 ninja
+python -m pip install \
+  numpy==2.0.1 pybind11==2.13.6 scikit-build-core==0.11.1 \
+  setuptools_scm==8.2.0 setuptools wheel ninja
 htslib_root=$(dirname "$(dirname "$(command -v bgzip)")")
 export HTSLIB_LIBRARY_DIR=${htslib_root}/lib
 export HTSLIB_INCLUDE_DIR=${htslib_root}/include
