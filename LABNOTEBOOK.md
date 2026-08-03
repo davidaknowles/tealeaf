@@ -2518,11 +2518,32 @@ across sample-count quartiles.
 Applying the identical supported-partition collapse to the completed
 cell-type logistic-normal fits reduces 5,650 annotated blocks to 4,825 tests.
 There are 800 nominal results among 4,744 converged and calibratable tests,
-but no BH discoveries; the minimum FDR is 0.0531. Null rejection is 0.0497
-overall, 0.0416--0.0563 across depth quartiles, and 0.0418--0.0579 across
-sample-count quartiles. The previous 193 cell-type calls arose before this
-collapse: repeated identical strong partitions created a favorable BH
-plateau. They are not retained as discoveries. The primary DS procedure is
-therefore one nonredundant logistic-normal block EC GLMM, parameterized for
-either cell-type or within-cell-type condition effects; neither contrast has
-genome-wide discoveries in this dataset.
+but no BH discoveries under raw empirical ranks; the minimum FDR is 0.0531.
+This apparent loss was a tail-resolution artifact. After equivalent tests
+were removed, each degrees-of-freedom pool had a minimum p-value near
+$4.5\times10^{-4}$, while BH required values near $10^{-5}$ at the first
+ranks.
+
+The corrected calibration cross-fits a generalized Pareto
+peaks-over-threshold model within each degrees-of-freedom stratum, holding out
+whole block tests. It then maps both observed and held-out-null tail scores
+through a global leave-block-out empirical null CDF. The second stage removes
+small GPD tail bias while retaining pooled-null resolution. At a 90% tail
+threshold, held-out null rejection for the cell-type logistic-normal test is
+0.04994, 0.00999, and 0.000977 at p-value thresholds 0.05, 0.01, and 0.001.
+The multinomial values are 0.04999, 0.01000, and 0.000982, and the
+Dirichlet--multinomial values are 0.05001, 0.00997, and 0.001002.
+
+After nonredundant BH correction, multinomial, logistic-normal multinomial,
+and Dirichlet--multinomial identify 272, 243, and 59 cell-type DS partitions.
+The logistic-normal result is stable across 80%, 85%, 90%, and 95% GPD
+thresholds, which give 243, 242, 243, and 239 calls. Their intersection has
+237 partitions; 229 are also multinomial calls, and 44 are called by all
+three EC likelihoods.
+
+For condition within cell type, the 90% threshold remains nonsignificant
+with minimum FDR 0.0637. Thresholds of 80%, 85%, 90%, and 95% give 27, 27,
+zero, and zero calls, with an empty four-way intersection. Thus no condition
+partition is robust to the tail threshold. The primary DS procedure is one
+nonredundant logistic-normal block EC GLMM parameterized for either contrast:
+it gives strong cell-type DS but no robust condition DS in this dataset.

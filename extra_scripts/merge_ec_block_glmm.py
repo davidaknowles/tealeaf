@@ -7,9 +7,11 @@ import argparse
 import json
 import pickle
 from pathlib import Path
+import zlib
 
 import numpy as np
 import pandas as pd
+from scipy.stats import genpareto
 
 from extra_scripts.run_differential_splicing import benjamini_hochberg
 from extra_scripts.run_ec_block_glmm import supported_partition_key
@@ -27,6 +29,13 @@ def parse_args():
     parser.add_argument("--depth-bins", type=int, default=1)
     parser.add_argument("--audit-depth-bins", type=int, default=4)
     parser.add_argument("--audit-sample-bins", type=int, default=4)
+    parser.add_argument(
+        "--calibration-mode",
+        choices=("empirical", "gpd_tail"),
+        default="empirical",
+    )
+    parser.add_argument("--tail-quantile", type=float, default=0.9)
+    parser.add_argument("--tail-folds", type=int, default=5)
     parser.add_argument("--min-stratum-events", type=int, default=20)
     parser.add_argument("--calibration-lower", type=float, default=0.025)
     parser.add_argument("--calibration-upper", type=float, default=0.075)
@@ -144,6 +153,127 @@ def calibrate(table, null):
     return table, pd.DataFrame(calibrated_null_rows)
 
 
+def fit_gpd_tail(values, quantile):
+    """Fit a peaks-over-threshold tail while retaining the empirical body."""
+    values = np.asarray(values, dtype=float)
+    threshold = float(np.quantile(values, quantile))
+    excess = values[values > threshold] - threshold
+    if len(excess) < 20:
+        raise ValueError("too few bootstrap statistics for GPD tail fitting")
+    shape, _, scale = genpareto.fit(excess, floc=0.0)
+    if not np.isfinite(shape) or not np.isfinite(scale) or scale <= 0:
+        raise ValueError("invalid GPD tail fit")
+    return {
+        "threshold": threshold,
+        "tail_probability": len(excess) / len(values),
+        "shape": float(shape),
+        "scale": float(scale),
+        "sorted_values": np.sort(values),
+    }
+
+
+def gpd_tail_p_values(statistics, model):
+    statistics = np.asarray(statistics, dtype=float)
+    values = model["sorted_values"]
+    p_values = (
+        1 + len(values) - np.searchsorted(values, statistics, side="left")
+    ) / (1 + len(values))
+    in_tail = statistics > model["threshold"]
+    p_values[in_tail] = model["tail_probability"] * genpareto.sf(
+        statistics[in_tail] - model["threshold"],
+        model["shape"],
+        loc=0.0,
+        scale=model["scale"],
+    )
+    return np.maximum(p_values, np.finfo(float).tiny)
+
+
+def calibrate_gpd_tail(table, null, quantile, folds):
+    """Cross-fit tail scores, then calibrate them globally by null rank."""
+    table = table.copy()
+    null = null[null["converged"]].copy()
+    stratum_lookup = table.set_index(["test_id", "method"])["df_stratum"]
+    null["df_stratum"] = [
+        stratum_lookup.loc[(test_id, method)]
+        for test_id, method in zip(null["test_id"], null["method"])
+    ]
+    null.loc[null["df_stratum"] == "rare", "depth_bin"] = -1
+    keys = ["method", "df_stratum", "depth_bin"]
+    table["tail_score"] = np.nan
+    null["tail_score"] = np.nan
+    null_groups = {key: group for key, group in null.groupby(keys)}
+    for key, records in table.groupby(keys):
+        pool = null_groups.get(key)
+        if pool is None or pool["test_id"].nunique() < 2:
+            continue
+        null_fold = np.asarray([
+            zlib.crc32(test_id.encode("utf-8")) % int(folds)
+            for test_id in pool["test_id"]
+        ])
+        record_fold = np.asarray([
+            zlib.crc32(test_id.encode("utf-8")) % int(folds)
+            for test_id in records["test_id"]
+        ])
+        for held_out in range(int(folds)):
+            test = null_fold == held_out
+            cross_fit = fit_gpd_tail(
+                pool.loc[~test, "statistic"], quantile
+            )
+            null.loc[pool.index[test], "tail_score"] = gpd_tail_p_values(
+                pool.loc[test, "statistic"], cross_fit
+            )
+            record_test = record_fold == held_out
+            table.loc[
+                records.index[record_test], "tail_score"
+            ] = gpd_tail_p_values(
+                records.loc[record_test, "statistic"], cross_fit
+            )
+
+    table["p_value"] = np.nan
+    calibrated_null_rows = []
+    for method, records in table.groupby("method"):
+        pool = null.loc[
+            null["method"].eq(method) & null["tail_score"].notna()
+        ]
+        all_scores = np.sort(pool["tail_score"].to_numpy())
+        test_scores = {
+            test_id: np.sort(group["tail_score"].to_numpy())
+            for test_id, group in pool.groupby("test_id")
+        }
+        for row in records.loc[records["tail_score"].notna()].itertuples():
+            own = test_scores.get(row.test_id, np.empty(0))
+            count = (
+                np.searchsorted(all_scores, row.tail_score, side="right")
+                - np.searchsorted(own, row.tail_score, side="right")
+            )
+            table.at[row.Index, "p_value"] = (
+                (1 + count) / (1 + len(all_scores) - len(own))
+            )
+        pool_p_values = np.full(len(pool), np.nan)
+        for test_id, positions in pool.groupby("test_id").groups.items():
+            own = test_scores[test_id]
+            scores = pool.loc[positions, "tail_score"].to_numpy()
+            count = (
+                np.searchsorted(all_scores, scores, side="right")
+                - np.searchsorted(own, scores, side="right")
+            )
+            pool_p_values[pool.index.get_indexer(positions)] = (
+                (1 + count) / (1 + len(all_scores) - len(own))
+            )
+        calibrated_null_rows.extend(pd.DataFrame({
+            "method": pool["method"].to_numpy(),
+            "test_id": pool["test_id"].to_numpy(),
+            "block_id": pool["block_id"].to_numpy(),
+            "replicate": (
+                pool["replicate"].to_numpy()
+                if "replicate" in pool
+                else pool["permutation"].to_numpy()
+            ),
+            "p_value": pool_p_values,
+        }).to_dict("records"))
+    return table.drop(columns="tail_score"), pd.DataFrame(calibrated_null_rows)
+
+
 def main():
     args = parse_args()
     tables = []
@@ -182,8 +312,16 @@ def main():
             null["test_id"].isin(retained_ids)
         ].reset_index(drop=True)
     table, null = add_depth_bins(table, null, args.depth_bins)
-    table = add_calibration_strata(table, args.min_stratum_events)
-    table, calibrated_null = calibrate(table, null)
+    min_stratum_events = int(args.min_stratum_events)
+    if args.calibration_mode == "gpd_tail":
+        min_stratum_events = max(min_stratum_events, 100)
+    table = add_calibration_strata(table, min_stratum_events)
+    if args.calibration_mode == "gpd_tail":
+        table, calibrated_null = calibrate_gpd_tail(
+            table, null, args.tail_quantile, args.tail_folds
+        )
+    else:
+        table, calibrated_null = calibrate(table, null)
     table["audit_depth_bin"] = depth_bin_values(
         table, args.audit_depth_bins
     )
@@ -294,11 +432,20 @@ def main():
             "fdr_0.05": int(np.sum(records["fdr"] <= 0.05)),
             "null_replicates": len(method_null),
             "null_rejection_0.05": rejection,
+            "null_rejection_0.01": float(np.mean(method_null <= 0.01)),
+            "null_rejection_0.001": float(np.mean(method_null <= 0.001)),
             "null_rejection_depth_min": float(depth_rejection.min()),
             "null_rejection_depth_max": float(depth_rejection.max()),
             "null_rejection_sample_min": float(sample_rejection.min()),
             "null_rejection_sample_max": float(sample_rejection.max()),
             "calibration_acceptable": calibrated,
+            "calibration_mode": args.calibration_mode,
+            "min_stratum_events": min_stratum_events,
+            "tail_quantile": (
+                args.tail_quantile
+                if args.calibration_mode == "gpd_tail"
+                else np.nan
+            ),
         })
     pd.DataFrame(summary).to_csv(
         args.output_dir / "summary.tsv", sep="\t", index=False

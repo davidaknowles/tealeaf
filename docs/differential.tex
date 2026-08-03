@@ -1671,30 +1671,48 @@ performed before calibration and BH correction.
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{The unified, nonredundant logistic-normal block EC GLMM. Condition
-tests are within cell type. Depth and sample columns give empirical null
-rejection ranges over the corresponding quartiles.}
+\caption{The unified, nonredundant logistic-normal block EC GLMM after
+cross-fitted tail calibration. Condition tests are within cell type. Robust
+calls are significant at every tail threshold from 80\% through 95\%.}
 \label{tab:unified-ec-block-results}
 \begin{tabular}{lrrrrrrrr}
 \toprule
-Contrast & Tests & Conv. & Nominal & FDR & Null $<.05$ & Depth range &
-  Sample range & Minimum FDR\\
+Contrast & Tests & Conv. & Nominal & FDR & Robust & Null $<.05$ &
+  Null $<.01$ & Null $<.001$\\
 \midrule
-Cell type & 4,825 & 0.983 & 800 & 0 & 0.0497 & 0.0416--0.0563 &
-  0.0418--0.0579 & 0.0531\\
-Condition & 14,833 & 1.000 & 1,404 & 0 & 0.0500 & 0.0462--0.0611 &
-  0.0475--0.0555 & 0.1633\\
+Cell type & 4,825 & 0.983 & 751 & 243 & 237 & 0.04994 & 0.00999 &
+  0.00098\\
+Condition & 14,833 & 1.000 & 1,415 & 0 & 0 & 0.04999 & 0.00999 &
+  0.00099\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Thus the same calibrated test is now used for cell-type and condition DS.
-Neither nonredundant family has a discovery at 5\% BH FDR. The earlier 193
-permissive logistic-normal cell-type calls in
-Table~\ref{tab:ec-block-results} preceded the supported-partition collapse.
-Several strong partitions appeared more than once, creating a favorable BH
-plateau; those repeated hypotheses are not treated as independent
-discoveries in the final analysis.
+The initial empirical calibration compared each test only with its
+degrees-of-freedom-specific bootstrap pool. After supported-partition
+deduplication, its minimum attainable p-values were approximately
+$4.5\times10^{-4}$, whereas BH requires resolution near $10^{-5}$ at the
+first ranks. Its zero logistic-normal calls were therefore a bootstrap-tail
+resolution artifact, not disappearance of the cell-type signal.
+
+The final calibration fits a generalized Pareto peaks-over-threshold model
+within each degrees-of-freedom stratum. Fits are cross-fitted by holding out
+whole block tests. The resulting observed and held-out-null tail scores are
+then recalibrated by a global leave-block-out empirical null CDF. This second
+stage corrects residual tail-model bias and gives sufficient pooled
+resolution for genome-wide BH. At a 90\% threshold, multinomial,
+logistic-normal multinomial, and Dirichlet--multinomial EC tests identify 272,
+243, and 59 nonredundant cell-type partitions. Logistic-normal thresholds of
+80\%, 85\%, 90\%, and 95\% give 243, 242, 243, and 239 calls; 237 occur in all
+four sets, 229 of those are multinomial calls, and 44 are called by all three
+likelihoods.
+
+Condition is less stable. The same four thresholds give 27, 27, zero, and
+zero calls, with no partition in all four sets; at the 90\% threshold the
+minimum FDR is 0.0637. The final conclusion is therefore strong calibrated
+cell-type DS, but no robust condition DS. The earlier 193 logistic-normal
+calls in Table~\ref{tab:ec-block-results} used annotation-level duplicates
+and under-resolved empirical tails and are superseded by the 237 robust set.
 
 \subsection*{Cell-type effects within mouse}
 

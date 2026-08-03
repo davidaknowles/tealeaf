@@ -3,7 +3,12 @@
 import numpy as np
 import pandas as pd
 
-from extra_scripts.merge_ec_block_glmm import calibrate
+from extra_scripts.merge_ec_block_glmm import (
+    calibrate,
+    calibrate_gpd_tail,
+    fit_gpd_tail,
+    gpd_tail_p_values,
+)
 from extra_scripts.run_ec_block_glmm import (
     covered_celltype_design,
     covered_condition_designs,
@@ -229,3 +234,38 @@ def test_supported_partition_deduplication_ignores_path_labels():
     assert [row[0] for row in deduplicate_supported_partitions(
         [first, duplicate, distinct]
     )] == ["b1", "b3"]
+
+
+def test_gpd_tail_resolves_beyond_empirical_bootstrap_floor():
+    values = np.random.default_rng(4).exponential(size=1000)
+    model = fit_gpd_tail(values, 0.9)
+    p_value = gpd_tail_p_values([values.max() + 5], model)[0]
+    assert 0 < p_value < 1 / (1 + len(values))
+
+
+def test_gpd_tail_calibration_cross_fits_whole_tests():
+    rng = np.random.default_rng(8)
+    test_ids = [f"b{index}" for index in range(60)]
+    table = pd.DataFrame({
+        "test_id": test_ids,
+        "block_id": test_ids,
+        "method": "multinomial_full",
+        "df_stratum": "1",
+        "depth_bin": 0,
+        "statistic": rng.exponential(size=len(test_ids)),
+    })
+    null = pd.DataFrame({
+        "test_id": np.repeat(test_ids, 5),
+        "block_id": np.repeat(test_ids, 5),
+        "method": "multinomial_full",
+        "replicate": np.tile(np.arange(5), len(test_ids)),
+        "depth_bin": 0,
+        "statistic": rng.exponential(size=5 * len(test_ids)),
+        "converged": True,
+    })
+    calibrated, calibrated_null = calibrate_gpd_tail(
+        table, null, quantile=0.9, folds=5
+    )
+    assert calibrated["p_value"].between(0, 1).all()
+    assert calibrated_null["p_value"].between(0, 1).all()
+    assert len(calibrated_null) == len(null)
