@@ -41,6 +41,37 @@ def test_prepare_reference_labels(tmp_path):
     assert groups.read_text() == "batch2:ACGT,donor1\n"
 
 
+def test_prepare_reference_labels_can_make_groups_globally_unique(tmp_path):
+    metadata = tmp_path / "metadata.tsv"
+    metadata.write_text(
+        "cell_barcode\tBatch\tannotation\tCaseNum\tDiagnosis\n"
+        "AAAA\tBatch1\tEX1\t10\tControl\n"
+        "CCCC\tBatch1\tEX1\t10\tCase\n"
+    )
+    groups = tmp_path / "groups.csv"
+    subprocess.run(
+        [
+            sys.executable,
+            "extra_scripts/prepare_reference_labels.py",
+            "--metadata",
+            str(metadata),
+            "--batch-map",
+            "batch1=Batch1",
+            "--group-prefix-column",
+            "Diagnosis",
+            "--labels-output",
+            str(tmp_path / "labels.csv"),
+            "--groups-output",
+            str(groups),
+        ],
+        check=True,
+    )
+    assert groups.read_text().splitlines() == [
+        "batch1:AAAA,Control:10",
+        "batch1:CCCC,Case:10",
+    ]
+
+
 def test_prepare_reference_labels_expands_parse_primer_halves(tmp_path):
     metadata = tmp_path / "metadata.tsv"
     metadata.write_text(

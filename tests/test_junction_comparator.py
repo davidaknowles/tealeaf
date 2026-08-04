@@ -50,6 +50,34 @@ def test_normalize_majiq_prefers_conservative_bootstrap_pvalue(tmp_path):
     ]
 
 
+def test_normalize_leafcutter_omits_untestable_clusters(tmp_path):
+    contrasts = tmp_path / "contrasts.json"
+    contrasts.write_text(
+        """[
+          {
+            "contrast_id": "condition__A__control__case",
+            "effect": "condition",
+            "stratum": "A",
+            "level_a": "control",
+            "level_b": "case"
+          }
+        ]\n"""
+    )
+    raw = tmp_path / "raw.tsv"
+    raw.write_text("cluster\tp\nclu_1\tNA\nclu_2\tNA\n")
+    output = tmp_path / "normalized.tsv"
+    COMPARATOR.command_normalize_leafcutter(
+        SimpleNamespace(
+            contrasts=contrasts,
+            contrast_index=0,
+            input=raw,
+            output=output,
+        )
+    )
+
+    assert output.read_text() == "\n"
+
+
 def test_summarize_accepts_method_directories(tmp_path):
     input_dir = tmp_path / "method"
     input_dir.mkdir()

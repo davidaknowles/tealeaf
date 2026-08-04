@@ -54,7 +54,29 @@ def scquint_adata(bundle):
 def command_scquint(args):
     if args.scquint_root is not None:
         sys.path.insert(0, str(args.scquint_root))
-    from scquint.differential_splicing import run_differential_splicing
+    import scquint.differential_splicing as scquint_ds
+
+    original_regression = scquint_ds.run_regression
+
+    def conservative_regression(values):
+        try:
+            return original_regression(values)
+        except Exception as error:
+            intron_group, counts, *_ = values
+            group = pd.DataFrame(
+                {
+                    "intron_group": [intron_group],
+                    "p_value": [1.0],
+                    "optimization_failed": [True],
+                    "failure": [str(error)],
+                }
+            )
+            introns = pd.DataFrame(
+                {"psi_a": np.nan, "psi_b": np.nan}, index=np.arange(counts.shape[1])
+            )
+            return group, introns
+
+    scquint_ds.run_regression = conservative_regression
 
     bundle = JunctionBundle.load(args.bundle)
     contrast = load_contrast(args.contrasts, args.contrast_index)
@@ -66,7 +88,7 @@ def command_scquint(args):
     lookup = {sample: index for index, sample in enumerate(adata.obs_names)}
     first = np.asarray([lookup[sample] for sample in contrast["samples_a"] if sample in lookup])
     second = np.asarray([lookup[sample] for sample in contrast["samples_b"] if sample in lookup])
-    groups, introns = run_differential_splicing(
+    groups, introns = scquint_ds.run_differential_splicing(
         adata,
         first,
         second,
@@ -109,13 +131,17 @@ def command_normalize_leafcutter(args):
     table = pd.read_csv(args.input, sep="\t")
     pvalue = next(name for name in ("p", "p_value", "p.adjust") if name in table)
     feature = next(name for name in ("cluster", "intron") if name in table)
-    output = normalize_pvalue_table(
-        table,
-        method="LeafCutter",
-        contrast=contrast,
-        feature_column=feature,
-        pvalue_column=pvalue,
-    )
+    table = table.loc[pd.to_numeric(table[pvalue], errors="coerce").notna()].copy()
+    if table.empty:
+        output = pd.DataFrame()
+    else:
+        output = normalize_pvalue_table(
+            table,
+            method="LeafCutter",
+            contrast=contrast,
+            feature_column=feature,
+            pvalue_column=pvalue,
+        )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     output.to_csv(args.output, sep="\t", index=False)
 

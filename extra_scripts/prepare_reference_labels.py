@@ -30,6 +30,10 @@ def main():
     parser.add_argument("--label-column", default="annotation")
     parser.add_argument("--group-column", default="CaseNum")
     parser.add_argument(
+        "--group-prefix-column",
+        help="optional column prepended to group IDs to make them globally unique",
+    )
+    parser.add_argument(
         "--condition-column",
         help="optional biological condition column for a two-column cell table",
     )
@@ -114,6 +118,8 @@ def main():
         }
         if args.condition_column is not None:
             required.add(args.condition_column)
+        if args.group_prefix_column is not None:
+            required.add(args.group_prefix_column)
         if run_lookup is not None:
             required.add("Sublibrary")
         if args.cell_map_output is not None:
@@ -138,6 +144,8 @@ def main():
             published_barcode = row[args.cell_barcode_column]
             label = row[args.label_column]
             group = row[args.group_column]
+            if group and args.group_prefix_column:
+                group = f"{row[args.group_prefix_column]}:{group}"
             condition = row[args.condition_column] if args.condition_column else None
             if not published_barcode or not label:
                 continue

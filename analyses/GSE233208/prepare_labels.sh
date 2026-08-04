@@ -10,6 +10,7 @@ metadata="${DATA_ROOT}/metadata/GSE233208_Human_snRNA-Seq_ADDS_metadata.tsv.gz"
   --metadata "${metadata}" \
   --label-column annotation \
   --group-column CaseNum \
+  --group-prefix-column Diagnosis \
   --condition-column Diagnosis \
   --batch-map batch1=Batch1 \
   --batch-map batch2=Batch4 \

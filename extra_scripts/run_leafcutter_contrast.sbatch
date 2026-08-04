@@ -23,11 +23,19 @@ python "${REPO_ROOT}/extra_scripts/run_junction_comparator.py" leafcutter-metada
 
 module purge
 module load leafcutter/0.2.9
+set +e
 Rscript "${LEAFCUTTER_ROOT}/scripts/leafcutter_ds.R" \
   --num_threads "${SLURM_CPUS_PER_TASK:-4}" \
   --min_samples_per_intron 3 --min_samples_per_group 3 --min_coverage 20 \
   --output_prefix "${OUTPUT_DIR}/raw/${index}" \
   "${COUNTS}" "${OUTPUT_DIR}/metadata/${index}.tsv"
+leaf_status=$?
+set -e
+significance="${OUTPUT_DIR}/raw/${index}_cluster_significance.txt"
+if [[ ! -s "${significance}" ]]; then
+  echo "LeafCutter failed with status ${leaf_status} without a significance table" >&2
+  exit "${leaf_status}"
+fi
 
 module purge
 module load "${PYTHON_MODULE:-Python/3.12.3-GCCcore-13.3.0}"
@@ -35,5 +43,5 @@ source "${HOME}/venv/cpa_blackwell/bin/activate"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 python "${REPO_ROOT}/extra_scripts/run_junction_comparator.py" normalize-leafcutter \
   --contrasts "${CONTRASTS}" --contrast-index "${index}" \
-  --input "${OUTPUT_DIR}/raw/${index}_cluster_significance.txt" \
+  --input "${significance}" \
   --output "${OUTPUT_DIR}/normalized/${index}.tsv"

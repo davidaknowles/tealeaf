@@ -2611,3 +2611,23 @@ run but failed in the post-alignment tagger because the batch scripts had been
 submitted before the package-path fix. The aligned BAMs and STARsolo junction
 matrices were intact. Added a reusable tag-only array and replaced the stale
 mouse aggregation and comparator dependencies, avoiding any realignment.
+
+## 2026-08-03: junction benchmark recovery
+
+GSE233208 reused numeric case identifiers across diagnoses. Grouping only by
+the published case number therefore combined cells from different biological
+conditions in 84 pseudobulk samples. Reference-label preparation now supports
+an optional group-prefix column, and this dataset uses diagnosis-qualified
+case identifiers. Regeneration produced 792,554 labeled cells from 40 runs,
+51 subjects, and no subject assigned to more than one condition. The completed
+STAR alignments are being retagged and reaggregated; no realignment is needed.
+
+Two sparse-contrast failure modes were found in the mouse comparator run.
+LeafCutter can write a valid cluster-significance table with no finite
+p-values and then fail during its optional effect-size calculation. The
+adapter now accepts that table and records zero testable clusters. scQuint can
+abort a full contrast when one intron-group optimizer does not improve on its
+null fit. The adapter now retains the other groups and assigns the failed
+group a conservative p-value of one with an explicit failure flag. Focused
+adapter and reference-label tests pass, and the affected LeafCutter and
+scQuint arrays have been restarted while the independent MAJIQ run continues.
