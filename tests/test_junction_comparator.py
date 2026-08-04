@@ -103,3 +103,18 @@ def test_summarize_accepts_method_directories(tmp_path):
     assert summary.to_dict("records") == [
         {"method": "test", "effect": "cell_type", "tests": 1, "discoveries": 1}
     ]
+
+
+def test_summarize_skips_blank_no_test_files(tmp_path):
+    input_dir = tmp_path / "method"
+    input_dir.mkdir()
+    (input_dir / "no_tests.tsv").write_text("\n")
+    args = SimpleNamespace(
+        input=None,
+        input_dir=[input_dir],
+        output=tmp_path / "all.tsv",
+        omnibus_output=tmp_path / "omnibus.tsv",
+        summary_output=tmp_path / "summary.tsv",
+    )
+    COMPARATOR.command_summarize(args)
+    assert pd.read_csv(args.summary_output, sep="\t").empty

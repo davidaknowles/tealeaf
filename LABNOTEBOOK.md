@@ -2658,3 +2658,9 @@ submission helper also now initializes Python before reading an already
 existing contrast plan. LeafCutter and scQuint are running, and the MAJIQ
 annotation, 1,449-sample junction extraction, build, tests, and common summary
 are linked in a new dependency chain.
+
+The completed mouse summary initially failed because deliberately empty
+no-test outputs contain a newline but no columns. The common summarizer now
+skips both zero-byte and no-column tables before concatenation. This preserves
+zero testable features for those contrasts without treating them as failed
+analyses.

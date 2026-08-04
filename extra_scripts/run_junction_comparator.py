@@ -202,7 +202,16 @@ def command_summarize(args):
     paths = list(args.input or [])
     for directory in args.input_dir or []:
         paths.extend(sorted(directory.glob("*.tsv")))
-    tables = [pd.read_csv(path, sep="\t") for path in paths if path.stat().st_size]
+    tables = []
+    for path in paths:
+        if not path.stat().st_size:
+            continue
+        try:
+            table = pd.read_csv(path, sep="\t")
+        except pd.errors.EmptyDataError:
+            continue
+        if not table.empty:
+            tables.append(table)
     combined = pd.concat(tables, ignore_index=True) if tables else pd.DataFrame()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     combined.to_csv(args.output, sep="\t", index=False)
