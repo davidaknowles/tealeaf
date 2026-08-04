@@ -2631,3 +2631,30 @@ null fit. The adapter now retains the other groups and assigns the failed
 group a conservative p-value of one with an explicit failure flag. Focused
 adapter and reference-label tests pass, and the affected LeafCutter and
 scQuint arrays have been restarted while the independent MAJIQ run continues.
+
+## 2026-08-04: terminal comparator fixes
+
+The mouse junction and MAJIQ build stages completed for all 936 pseudobulk
+samples. MAJIQ Heterogen then completed each statistical calculation but
+failed while writing its table because v3.0.23 unconditionally dropped an
+optional `mannwhitneyu-stats_extra` column that was not present. A small
+external patch makes that drop tolerant of an absent optional column, and the
+cluster installer now applies the patch reproducibly. An end-to-end contrast
+then completed and produced a normalized result, so the 490 mouse contrasts
+were resubmitted without rebuilding the splice graph or PSI coverage.
+
+Of the 490 repaired mouse scQuint jobs, 480 completed. Nine sparse contrasts
+failed after filtering removed every intron, and one failed when process-based
+joblib workers could not reconstruct their semaphores. The adapter now allows
+an empty intermediate intron matrix to reach scQuint's existing empty-result
+return and uses thread-based group parallelism with one Torch thread per fit.
+The ten affected contrasts were resubmitted; the sparse cases now complete.
+
+GSE233208 retagging, junction aggregation, and pseudobulk BAM splitting all
+completed. The first comparator submission processes exceeded Slurm's default
+memory while loading the aggregate junction bundle. They were rerun with an
+explicit allocation, producing 434 replicate-supported contrasts. The MAJIQ
+submission helper also now initializes Python before reading an already
+existing contrast plan. LeafCutter and scQuint are running, and the MAJIQ
+annotation, 1,449-sample junction extraction, build, tests, and common summary
+are linked in a new dependency chain.

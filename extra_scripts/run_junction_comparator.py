@@ -54,9 +54,12 @@ def scquint_adata(bundle):
 def command_scquint(args):
     if args.scquint_root is not None:
         sys.path.insert(0, str(args.scquint_root))
+    import joblib
     import scquint.differential_splicing as scquint_ds
+    import torch
 
     original_regression = scquint_ds.run_regression
+    original_group_filter = scquint_ds.filter_min_cells_per_intron_group
 
     def conservative_regression(values):
         try:
@@ -78,6 +81,14 @@ def command_scquint(args):
 
     scquint_ds.run_regression = conservative_regression
 
+    def allow_empty_group_filter(adata, *filter_args, **filter_kwargs):
+        if adata.shape[1] == 0:
+            return adata
+        return original_group_filter(adata, *filter_args, **filter_kwargs)
+
+    scquint_ds.filter_min_cells_per_intron_group = allow_empty_group_filter
+    torch.set_num_threads(1)
+
     bundle = JunctionBundle.load(args.bundle)
     contrast = load_contrast(args.contrasts, args.contrast_index)
     adata = scquint_adata(bundle)
@@ -88,15 +99,16 @@ def command_scquint(args):
     lookup = {sample: index for index, sample in enumerate(adata.obs_names)}
     first = np.asarray([lookup[sample] for sample in contrast["samples_a"] if sample in lookup])
     second = np.asarray([lookup[sample] for sample in contrast["samples_b"] if sample in lookup])
-    groups, introns = scquint_ds.run_differential_splicing(
-        adata,
-        first,
-        second,
-        n_jobs=args.jobs,
-        min_cells_per_intron_group=args.min_samples,
-        min_total_cells_per_intron=args.min_samples,
-        min_global_proportion=args.min_global_proportion,
-    )
+    with joblib.parallel_backend("threading", n_jobs=args.jobs):
+        groups, introns = scquint_ds.run_differential_splicing(
+            adata,
+            first,
+            second,
+            n_jobs=args.jobs,
+            min_cells_per_intron_group=args.min_samples,
+            min_total_cells_per_intron=args.min_samples,
+            min_global_proportion=args.min_global_proportion,
+        )
     if groups.empty:
         output = pd.DataFrame()
     else:

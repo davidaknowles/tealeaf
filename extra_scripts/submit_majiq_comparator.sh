@@ -25,10 +25,10 @@ if [[ "${n_samples}" -lt 8 ]]; then
   exit 1
 fi
 contrasts="${BENCHMARK_ROOT}/contrasts.json"
+module load "${PYTHON_MODULE:-Python/3.12.3-GCCcore-13.3.0}"
+source "${HOME}/venv/cpa_blackwell/bin/activate"
+export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 if [[ ! -s "${contrasts}" ]]; then
-  module load "${PYTHON_MODULE:-Python/3.12.3-GCCcore-13.3.0}"
-  source "${HOME}/venv/cpa_blackwell/bin/activate"
-  export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
   python "${REPO_ROOT}/extra_scripts/run_junction_comparator.py" plan \
     --bundle "${BUNDLE}" --min-subjects 4 --output "${contrasts}"
 fi

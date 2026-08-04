@@ -19,6 +19,10 @@ python -m pip install \
 htslib_root=$(dirname "$(dirname "$(command -v bgzip)")")
 export HTSLIB_LIBRARY_DIR=${htslib_root}/lib
 export HTSLIB_INCLUDE_DIR=${htslib_root}/include
+patch_file="$(cd "$(dirname "$0")/.." && pwd)/external_patches/majiq-v3-heterogen-optional-stats.patch"
+patch --directory="${MAJIQ_SOURCE}" --strip=1 --forward --input="${patch_file}" || \
+  grep -q 'errors="ignore"' \
+    "${MAJIQ_SOURCE}/majiq/rna_majiq/src/rna_majiq/_run/heterogen.py"
 python -m pip install --no-build-isolation "${MAJIQ_SOURCE}/moccasin"
 python -m pip install --no-build-isolation "${MAJIQ_SOURCE}/majiq"
 python -m pip install --no-build-isolation "${MAJIQ_SOURCE}/voila"
