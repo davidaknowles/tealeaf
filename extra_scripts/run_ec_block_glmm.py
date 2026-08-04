@@ -331,7 +331,10 @@ def main():
                     event_table["inference_eligible"], "block_id"
                 ].astype(str)
             )
-        gene_position = {str(gene): index for index, gene in enumerate(genes)}
+        gene_position = {
+            str(gene).split(".", 1)[0]: index
+            for index, gene in enumerate(genes)
+        }
         gene_information = {}
         candidates = []
         for block in blocks:
@@ -340,7 +343,7 @@ def main():
                 continue
             if eligible_blocks is not None and representative not in eligible_blocks:
                 continue
-            gene = gene_position.get(block.gene_id)
+            gene = gene_position.get(block.gene_id.split(".", 1)[0])
             if (
                 gene is None
                 or not len(gene_ecs[gene])
@@ -424,6 +427,11 @@ def main():
                     protocol=pickle.HIGHEST_PROTOCOL,
                 )
             temporary.replace(args.candidate_cache)
+    if not candidates:
+        raise ValueError(
+            "no candidate block tests passed screening; check annotation ID "
+            "compatibility and coverage thresholds"
+        )
     candidates = candidates[args.shard_index :: args.shard_count]
     if args.dry_run:
         print(json.dumps({

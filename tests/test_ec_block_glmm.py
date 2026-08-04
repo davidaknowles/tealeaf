@@ -1,5 +1,7 @@
 """Tests for block-specific fixed effects in EC-count GLMMs."""
 
+from types import SimpleNamespace
+
 import numpy as np
 import pandas as pd
 
@@ -15,7 +17,18 @@ from extra_scripts.run_ec_block_glmm import (
     deduplicate_supported_partitions,
     modeled_gene_umis,
 )
+from extra_scripts.run_differential_splicing import block_mapping
 from tealeaf.sc import ec_block_glmm, ec_glmm, ec_glmm_full
+
+
+def test_block_mapping_ignores_ensembl_version_suffixes():
+    block = SimpleNamespace(
+        transcripts=("ENST1.4", "ENST2.1"),
+        path_index=(0, 1),
+        path_signatures=(((),), ((),)),
+    )
+    mapping, _ = block_mapping(block, np.array(["ENST1", "ENST2"]))
+    np.testing.assert_array_equal(mapping, [0, 1])
 
 
 def test_path_contrasts_tie_isoforms_on_the_same_path():

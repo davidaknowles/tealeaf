@@ -2664,3 +2664,15 @@ no-test outputs contain a newline but no columns. The common summarizer now
 skips both zero-byte and no-column tables before concatenation. This preserves
 zero testable features for those contrasts without treating them as failed
 analyses.
+
+## 2026-08-04: GSE233208 EC block identifier mismatch
+
+The first GSE233208 EC block arrays completed all 192 shards but performed no
+fits. The quantification and hierarchical feature files use unversioned
+Ensembl gene and transcript identifiers, whereas the GENCODE block cache uses
+versioned identifiers. Exact matching therefore rejected every block. Gene
+and transcript matching now removes only the terminal Ensembl version suffix;
+block IDs remain unchanged. A corrected cell-type screen retained 11,597
+nonredundant block tests. The runner now fails early when the genome-wide
+screen returns zero candidates, and the merger skips legitimate empty shards
+but rejects a collection with no fitted results.

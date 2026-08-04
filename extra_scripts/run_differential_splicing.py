@@ -236,13 +236,17 @@ def gene_structures(prepared, transcript_to_gene):
 
 
 def block_mapping(block, transcript_names):
+    def canonical_identifier(value):
+        return str(value).split(".", 1)[0]
+
     transcript_position = {
-        transcript: index for index, transcript in enumerate(transcript_names)
+        canonical_identifier(transcript): index
+        for index, transcript in enumerate(transcript_names)
     }
     represented = [
-        (transcript_position[transcript], path)
+        (transcript_position[canonical_identifier(transcript)], path)
         for transcript, path in zip(block.transcripts, block.path_index)
-        if transcript in transcript_position
+        if canonical_identifier(transcript) in transcript_position
     ]
     paths = sorted({path for _, path in represented})
     if len(paths) < 2:
@@ -266,7 +270,9 @@ def estimate_blocks(
     gene_ecs,
     designs,
 ):
-    gene_to_index = {gene: index for index, gene in enumerate(genes)}
+    gene_to_index = {
+        str(gene).split(".", 1)[0]: index for index, gene in enumerate(genes)
+    }
     feature_names = np.asarray(
         np.loadtxt(f"{args.fit_prefix}glm_cols.txt", dtype=str)
     )
@@ -287,7 +293,7 @@ def estimate_blocks(
     cached_gene_data = None
     with gzip.open(estimates_path, "wt") as output:
         for block in blocks:
-            gene = gene_to_index.get(block.gene_id)
+            gene = gene_to_index.get(block.gene_id.split(".", 1)[0])
             if gene is None:
                 continue
             if gene != cached_gene:

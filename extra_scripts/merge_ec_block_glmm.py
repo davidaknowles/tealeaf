@@ -285,18 +285,28 @@ def main():
         if not null_path.is_file():
             null_path = shard / "permutation_null.tsv.gz"
         if table_path.is_file() and table_path.stat().st_size:
-            shard_table = pd.read_csv(table_path, sep="\t")
-            if "test_id" not in shard_table:
-                shard_table["test_id"] = shard_table["block_id"]
-            tables.append(shard_table)
+            try:
+                shard_table = pd.read_csv(table_path, sep="\t")
+            except pd.errors.EmptyDataError:
+                shard_table = pd.DataFrame()
+            if not shard_table.empty:
+                if "test_id" not in shard_table:
+                    shard_table["test_id"] = shard_table["block_id"]
+                tables.append(shard_table)
         if null_path.is_file() and null_path.stat().st_size:
-            shard_null = pd.read_csv(null_path, sep="\t")
-            if "test_id" not in shard_null:
-                shard_null["test_id"] = shard_null["block_id"]
-            nulls.append(shard_null)
+            try:
+                shard_null = pd.read_csv(null_path, sep="\t")
+            except pd.errors.EmptyDataError:
+                shard_null = pd.DataFrame()
+            if not shard_null.empty:
+                if "test_id" not in shard_null:
+                    shard_null["test_id"] = shard_null["block_id"]
+                nulls.append(shard_null)
         failure_path = shard / "failures.json"
         if failure_path.is_file():
             failures.extend(json.loads(failure_path.read_text()))
+    if not tables or not nulls:
+        raise ValueError("no nonempty EC block GLMM shard results to merge")
     table = pd.concat(tables, ignore_index=True).drop_duplicates(
         ["test_id", "method"], keep="last"
     )
