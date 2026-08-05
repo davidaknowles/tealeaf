@@ -2677,3 +2677,13 @@ cell-type block tests and 73,144 condition-within-cell-type tests across 9,191
 blocks. The runner now fails early when the genome-wide
 screen returns zero candidates, and the merger skips legitimate empty shards
 but rejects a collection with no fitted results.
+
+The initial corrected fit layout used 96 shards per contrast family. After
+about eight hours, array-wide progress logs projected median shard runtimes of
+62 hours for cell type and 38 hours for condition, exceeding the submitted
+16-hour limit. Running-job limits could not be extended. The arrays were
+stopped and resubmitted as 768 shards per family, with at most 96 concurrent
+tasks and limits of three days for cell type and two days for condition. This
+reuses both candidate manifests and the prepared EC cache while reducing each
+cell-type shard from about 121 to 15 tests and each condition shard from about
+762 to 95 tests.
