@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import numpy as np
+import scipy.stats
 
-from . import differential
+from . import differential, ec_glmm
 
 
 def block_effect_bases(path_index):
@@ -88,6 +89,83 @@ def block_fixed_effect_tensors(nuisance_design, tested_design, path_index):
         (null, np.stack(tested_additions, axis=2)), axis=2
     )
     return null, alternative, path_contrasts.shape[1] * tested_design.shape[1]
+
+
+def nested_laplace_tests(
+    null_data,
+    alternative_data,
+    *,
+    family="multinomial",
+    observation_noise=False,
+    max_iter=200,
+    mode_steps=30,
+):
+    """Fit nested tensor-design GLMMs and return LRT/BIC inference.
+
+    The alternative tensor must begin with all null fixed-effect columns.  The
+    likelihood-ratio test uses a chi-square reference distribution.  The Bayes
+    factor is the BIC approximation based on the number of independent
+    clusters, not a prior-integrated marginal likelihood.
+    """
+    if (
+        null_data.fixed_effect_tensor is None
+        or alternative_data.fixed_effect_tensor is None
+    ):
+        raise ValueError("nested tests require fixed-effect tensors")
+    null_count = null_data.fixed_effect_tensor.shape[2]
+    alternative_count = alternative_data.fixed_effect_tensor.shape[2]
+    tested_count = alternative_count - null_count
+    if tested_count < 1:
+        raise ValueError(
+            "the alternative needs at least one additional coefficient"
+        )
+    if not np.allclose(
+        alternative_data.fixed_effect_tensor[:, :, :null_count],
+        null_data.fixed_effect_tensor,
+    ):
+        raise ValueError("alternative fixed effects must begin with the null tensor")
+
+    fit_options = {
+        "family": family,
+        "observation_noise": observation_noise,
+        "max_iter": max_iter,
+        "mode_steps": mode_steps,
+    }
+    null_fit = ec_glmm.fit_laplace(null_data, **fit_options)
+    null_parameters = np.asarray(null_fit["parameters"])
+    expanded = np.r_[
+        null_parameters[:null_count],
+        np.zeros(tested_count),
+        null_parameters[null_count:],
+    ]
+    alternative_fit = ec_glmm.fit_laplace(
+        alternative_data,
+        initial=expanded,
+        **fit_options,
+    )
+
+    lrt_statistic = max(
+        0.0,
+        2.0
+        * (float(null_fit["objective"]) - float(alternative_fit["objective"])),
+    )
+    sample_size = len(np.unique(null_data.clusters))
+    log_bayes_factor = 0.5 * (
+        lrt_statistic - tested_count * np.log(sample_size)
+    )
+    return {
+        "null_fit": null_fit,
+        "alternative_fit": alternative_fit,
+        "tested_count": tested_count,
+        "lrt_statistic": lrt_statistic,
+        "lrt_df": tested_count,
+        "lrt_p_value": float(scipy.stats.chi2.sf(lrt_statistic, tested_count)),
+        "bic_log_bayes_factor": float(log_bayes_factor),
+        "bic_bayes_factor": float(
+            np.exp(np.clip(log_bayes_factor, -700.0, 700.0))
+        ),
+        "independent_clusters": sample_size,
+    }
 
 
 def simulate_null_counts(data, fit, rng, *, family, observation_noise=False):

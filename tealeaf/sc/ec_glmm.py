@@ -180,8 +180,12 @@ def _unpack_outer(parameters, n_design, dimension, family):
 
 
 def _initial_outer(data, family):
-    dimension = data.n_isoforms - 1
-    values = np.zeros(data.design.shape[1] * dimension + 1, dtype=float)
+    coefficient_count = (
+        data.design.shape[1] * (data.n_isoforms - 1)
+        if data.fixed_effect_tensor is None
+        else data.fixed_effect_tensor.shape[2]
+    )
+    values = np.zeros(coefficient_count + 1, dtype=float)
     values[-1] = np.log(0.5)
     if family == "dirichlet_multinomial":
         values = np.r_[values, np.log(100.0)]
@@ -218,6 +222,16 @@ def fit_laplace(
     ) = _prepared_arrays(data)
     jsp = __import__("jax.scipy", fromlist=["special"])
     dimension = data.n_isoforms - 1
+    fixed_effect_tensor = (
+        None
+        if data.fixed_effect_tensor is None
+        else jnp.asarray(data.fixed_effect_tensor)
+    )
+    coefficient_count = (
+        design.shape[1] * dimension
+        if fixed_effect_tensor is None
+        else fixed_effect_tensor.shape[2]
+    )
     if observation_noise:
         base = _initial_outer(data, family)
         initial = np.r_[base, np.log(0.3)] if initial is None else np.asarray(initial)
@@ -245,8 +259,9 @@ def fit_laplace(
     selection = jnp.asarray(selection)
 
     def unpack_outer(outer):
-        coefficient_count = design.shape[1] * dimension
-        coefficients = outer[:coefficient_count].reshape(design.shape[1], dimension)
+        coefficients = outer[:coefficient_count]
+        if fixed_effect_tensor is None:
+            coefficients = coefficients.reshape(design.shape[1], dimension)
         log_prior_sd = outer[coefficient_count]
         cursor = coefficient_count + 1
         log_kappa = outer[0] * 0.0
@@ -255,6 +270,11 @@ def fit_laplace(
             cursor += 1
         log_noise_sd = outer[cursor] if observation_noise else outer[0] * 0.0
         return coefficients, log_prior_sd, log_noise_sd, log_kappa
+
+    def fixed_logits(coefficients):
+        if fixed_effect_tensor is None:
+            return design @ coefficients
+        return jnp.einsum("ndp,p->nd", fixed_effect_tensor, coefficients)
 
     def prior_log_sds(outer):
         _, log_prior_sd, log_noise_sd, _ = unpack_outer(outer)
@@ -303,11 +323,11 @@ def fit_laplace(
 
     def mode_derivatives(modes, outer):
         coefficients, _, _, log_kappa = unpack_outer(outer)
-        fixed_logits = design @ coefficients
+        fixed_values = fixed_logits(coefficients)
         random_logits = jnp.einsum(
             "ndi,ni->nd", selection, modes[cluster_index]
         )
-        free_logits = fixed_logits + random_logits
+        free_logits = fixed_values + random_logits
         score_rows = observation_gradient(
             free_logits, *counts, log_kappa
         )
@@ -324,7 +344,7 @@ def fit_laplace(
         hessian = jnp.einsum(
             "im,ijk->mjk", membership, latent_curvature_rows
         ) + jnp.diag(1.0 / variances)[None, :, :]
-        return fixed_logits, score, hessian, variances, log_kappa
+        return fixed_values, score, hessian, variances, log_kappa
 
     def negative_joint(modes, outer):
         fixed_logits, _, _, variances, log_kappa = mode_derivatives(modes, outer)
@@ -377,33 +397,48 @@ def fit_laplace(
         value, gradient = value_and_gradient(jnp.asarray(parameters))
         return float(value), np.asarray(gradient, dtype=float)
 
-    coefficient_count = data.design.shape[1] * dimension
+    initial_value, _ = scipy_objective(initial)
+    optimizer_scale = max(1.0, abs(initial_value))
+
+    def scaled_scipy_objective(parameters):
+        value, gradient = scipy_objective(parameters)
+        return value / optimizer_scale, gradient / optimizer_scale
+
     bounds = [(-20.0, 20.0)] * coefficient_count + [(-8.0, 3.0)]
     if family == "dirichlet_multinomial":
         bounds.append((-6.0, np.log(1e7)))
     if observation_noise:
         bounds.append((-8.0, 3.0))
     result = scipy.optimize.minimize(
-        scipy_objective,
+        scaled_scipy_objective,
         initial,
         method="L-BFGS-B",
         jac=True,
         bounds=bounds,
-        options={"maxiter": int(max_iter), "ftol": 1e-9, "gtol": 1e-5},
+        options={
+            "maxiter": int(max_iter),
+            "ftol": 1e-12,
+            "gtol": 1e-5,
+            "maxls": 100,
+        },
     )
-    outer = jnp.asarray(result.x)
+    parameters = np.asarray(result.x)
+    outer = jnp.asarray(parameters)
     modes = posterior_mode(outer)
     _, mode_score, hessian, _, _ = mode_derivatives(modes, outer)
     covariance = np.asarray(jnp.linalg.inv(hessian))
     marginal_variance = np.diagonal(covariance, axis1=1, axis2=2)
-    final_value, final_gradient = scipy_objective(result.x)
+    final_value, final_gradient = scipy_objective(parameters)
     mode_score = np.asarray(mode_score)
+    gradient_norm = float(np.linalg.norm(final_gradient, ord=np.inf))
+    scaled_gradient_norm = gradient_norm / optimizer_scale
+    mode_score_norm = float(np.linalg.norm(mode_score, ord=np.inf))
     coefficients, log_prior_sd, log_noise_sd, log_kappa = unpack_outer(outer)
     return {
         "method": "laplace",
         "family": family,
         "objective": final_value,
-        "parameters": np.asarray(result.x),
+        "parameters": parameters,
         "coefficients": np.asarray(coefficients),
         "random_effect_sd": float(np.exp(log_prior_sd)),
         "random_effect_mean": np.asarray(modes)[:, :dimension],
@@ -419,16 +454,17 @@ def fit_laplace(
             float(np.exp(log_kappa)) if family == "dirichlet_multinomial" else np.inf
         ),
         "converged": bool(
-            result.success
-            or (
-                np.isfinite(final_value)
-                and np.linalg.norm(final_gradient, ord=np.inf) <= 1e-3
-                and np.linalg.norm(mode_score, ord=np.inf) <= 1e-4
-            )
+            np.isfinite(final_value)
+            and scaled_gradient_norm <= 1e-4
+            and mode_score_norm <= 1e-4
         ),
         "iterations": int(result.nit),
-        "gradient_norm": float(np.linalg.norm(final_gradient, ord=np.inf)),
-        "mode_score_norm": float(np.linalg.norm(mode_score, ord=np.inf)),
+        "gradient_norm": gradient_norm,
+        "scaled_gradient_norm": scaled_gradient_norm,
+        "outer_gradient": np.asarray(final_gradient),
+        "optimizer_scale": float(optimizer_scale),
+        "fixed_effect_count": int(coefficient_count),
+        "mode_score_norm": mode_score_norm,
         "message": str(result.message),
     }
 

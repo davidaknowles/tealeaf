@@ -5,6 +5,8 @@
 #SBATCH --mem=10G
 #SBATCH --time=16:00:00
 #SBATCH --job-name=gse233208_ec_block
+#SBATCH --output=/scratch/daknowles/gse233208_ec_block_%A_%a.out
+#SBATCH --error=/scratch/daknowles/gse233208_ec_block_%A_%a.err
 
 set -euo pipefail
 CONFIG=${CONFIG:-/gpfs/commons/home/daknowles/projects/tealeaf/analyses/GSE233208/config.env}
@@ -20,13 +22,20 @@ SHARD_INDEX=${SHARD_INDEX:-${SLURM_ARRAY_TASK_ID}}
 TEST_EFFECT=${TEST_EFFECT:-cell_type}
 OUTPUT_TAG=${OUTPUT_TAG:-ec_block_${TEST_EFFECT}}
 CANDIDATE_CACHE=${CANDIDATE_CACHE:?set CANDIDATE_CACHE}
-IFS=';' read -r -a methods <<< "${METHODS:-multinomial_full;multinomial_noise_full}"
+CALIBRATION=${CALIBRATION:-bootstrap}
+if [[ "${CALIBRATION}" == "lrt_bic" ]]; then
+  DEFAULT_METHODS="laplace_multinomial;laplace_multinomial_noise"
+else
+  DEFAULT_METHODS="multinomial_full;multinomial_noise_full"
+fi
+IFS=';' read -r -a methods <<< "${METHODS:-${DEFAULT_METHODS}}"
 python "${REPO_ROOT}/extra_scripts/run_ec_block_glmm.py" \
   --data-cache "${RUN_ROOT}/differential/ec_glmm_prepared.pkl" \
   --features "${RUN_ROOT}/hierarchical/full_rank32_joint_glm_cols.txt" \
   --block-cache "${RUN_ROOT}/differential/gencode_v30_splice_blocks.json.gz" \
   --output-dir "${RUN_ROOT}/differential/${OUTPUT_TAG}_shard${SHARD_INDEX}" \
   --methods "${methods[@]}" --test-effect "${TEST_EFFECT}" \
+  --calibration "${CALIBRATION}" \
   --candidate-cache "${CANDIDATE_CACHE}" \
   --null-replicates "${NULL_REPLICATES:-20}" --min-gene-umis "${MIN_GENE_UMIS:-10}" \
   --min-celltype-mice "${MIN_CELLTYPE_SUBJECTS:-4}" \

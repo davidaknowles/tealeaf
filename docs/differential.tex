@@ -505,6 +505,51 @@ and zero calls, with an empty intersection. At the primary 90\% threshold the
 minimum FDR is 0.0637. The data therefore support strong cell-type DS but no
 condition DS event that is robust to the tail threshold.
 
+\subsection*{Nonbootstrap Laplace sensitivity}
+
+Table~\ref{tab:laplace-lrt-sensitivity} compares the analytic Laplace LRT and
+BIC Bayes-factor approximation with the completed mouse bootstrap analysis.
+A Laplace fit is retained only when the infinity norms of its scaled outer
+gradient and random-effect mode score are each at most \(10^{-4}\). Scaling
+the objective and gradient by the absolute initial objective changes neither
+the optimum nor the likelihood ratio, but prevents count depth from setting
+the numerical line-search scale.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Nonbootstrap mouse cell-type sensitivity. BF counts use
+\(\widehat{\mathrm{BF}}_{10}^{\rm BIC}>10\); bootstrap calls use the primary
+GPD calibration.}
+\label{tab:laplace-lrt-sensitivity}
+\begin{tabular}{lrrrrrr}
+\toprule
+Likelihood & Tests & Laplace conv. & LRT nominal & LRT BH & BF & Bootstrap BH\\
+\midrule
+Multinomial & 4,825 & 0.948 & 704 & 309 & 178 & 272\\
+Logistic-normal & 4,825 & 0.936 & 646 & 271 & 139 & 243\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Restricting comparison to tests converged under both fitting strategies gives
+Laplace-versus-bootstrap statistic rank correlations 0.982 for multinomial
+and 0.964 for logistic-normal; p-value rank correlations are 0.950 and 0.922.
+The multinomial analyses share 243 BH calls, and the logistic-normal analyses
+share 204. Among these matched tests, the BF threshold selects 155 and 128
+events, of which 140 and 116 are bootstrap BH calls. Applying the nominal
+chi-square reference to the existing variational-fit null simulations gives
+0.05 rejection rates 0.0389 and 0.0374, indicating mild conservatism for that
+diagnostic rather than inflation.
+
+The logistic-normal alternative estimates its observation-noise standard
+deviation at the lower numerical bound in 758 of 4,438 jointly converged
+fits. Because this nuisance variance is then on a boundary, its Wilks
+reference is less regular. The multinomial LRT is the cleaner nonbootstrap
+sensitivity, while the BF threshold supplies a smaller high-evidence subset;
+neither supersedes the empirically calibrated primary result without the
+mouse comparison above.
+
 \subsection*{Matched external-method comparison}
 
 LeafCutter, scQuint, and MAJIQ are compared on junction evidence from the same
@@ -1030,6 +1075,51 @@ Laplace inference maximizes the joint conditional density over
 correction \(-\tfrac12\log|H_g|\). The outer fit optimizes \(B_g\),
 \(\sigma_g\), and, for the overdispersed model, \(\kappa_g\).
 
+\subsubsection*{Nonbootstrap Laplace inference}
+
+The block test uses the same fixed-effect tensors as the primary variational
+fit. Write the null tensor as
+\(Z_{0b}\in\mathbb R^{I_g\times d_g\times p_{0b}}\) and the alternative as
+\(Z_{1b}\in\mathbb R^{I_g\times d_g\times p_{1b}}\), where the first
+\(p_{0b}\) slices of \(Z_{1b}\) equal \(Z_{0b}\). The remaining
+\(q_b=p_{1b}-p_{0b}=r_bd_b^{\rm path}\) coefficients are exactly the tested
+block-path interactions. For coefficient vector
+\(\bm\beta_b\in\mathbb R^{p_{jb}}\), the fixed nonreference-isoform logits
+for pseudobulk \(i\) are
+\[
+ \bm\eta^{\rm fix}_{gbi}
+ =Z_{jb,i,\cdot,\cdot}\bm\beta_b\in\mathbb R^{d_g},
+ \qquad j\in\{0,1\}.
+\]
+Thus the likelihood still contains every supported gene isoform and EC; only
+the tested fixed-effect subspace is block specific.
+
+Let \(\widehat\ell^{\rm Lap}_{0b}\) and
+\(\widehat\ell^{\rm Lap}_{1b}\) be the maximized Laplace marginal log
+likelihoods, including re-estimation of all shared variance parameters. The
+nonbootstrap likelihood-ratio statistic and nominal reference distribution
+are
+\[
+ D_b=2\{\widehat\ell^{\rm Lap}_{1b}
+          -\widehat\ell^{\rm Lap}_{0b}\},
+ \qquad D_b\mathrel{\dot\sim}\chi^2_{q_b}.
+\]
+The alternative starts from the null estimate with its \(q_b\) added
+coefficients set to zero. A BIC approximation to the alternative-versus-null
+Bayes factor uses the number \(M_g\) of independent mice rather than the
+number of pseudobulks:
+\[
+ \log \widehat{\mathrm{BF}}_{10,b}^{\rm BIC}
+ =\frac12\{D_b-q_b\log M_g\}\in\mathbb R.
+\]
+This is not a prior-integrated Bayes factor. Both calculations require only
+the null and alternative fits, compared with one null and one alternative fit
+for every parametric-bootstrap replicate. Their calibration can fail when
+the number of mice is small, a variance estimate lies on its boundary, or the
+Laplace outer optimizer is inaccurate. They are therefore compared with the
+completed mouse bootstrap analysis before being used as a replacement for
+empirical calibration.
+
 For variational inference, use the diagonal Gaussian family
 \[
  Q(u_g)=\prod_{m=1}^{M_g}\prod_{j=1}^{d_g}
@@ -1544,6 +1634,27 @@ from the first endpoint.
 \State Compare with \(\chi^2_{r_bd_b}\).
 \State For permutations, reuse the fitted null and refit each permuted
   alternative.
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Nonbootstrap paired-EC Laplace block test}
+\label{alg:ec-laplace-lrt}
+\begin{algorithmic}[1]
+\Require Paired EC counts, compatibility matrices, nested tensors
+  \(Z_{0b},Z_{1b}\), and mouse indices
+\Ensure LRT p-value and BIC Bayes-factor approximation
+\State Fit the null by maximizing its Laplace marginal log likelihood.
+\State Append \(q_b\) zero coefficients to the fitted null parameters.
+\State Warm-start and fit the alternative, re-estimating shared variance
+  parameters.
+\State Set \(D_b\gets
+  2\max\{0,\widehat\ell^{\rm Lap}_{1b}
+             -\widehat\ell^{\rm Lap}_{0b}\}\).
+\State Set \(p_b\gets\Pr\{\chi^2_{q_b}\geq D_b\}\).
+\State Set
+  \(\log\widehat{\mathrm{BF}}_{10,b}^{\rm BIC}
+    \gets(D_b-q_b\log M_g)/2\).
 \end{algorithmic}
 \end{algorithm}
 

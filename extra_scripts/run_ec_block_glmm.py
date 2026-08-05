@@ -12,6 +12,7 @@ import zlib
 
 import numpy as np
 import pandas as pd
+import scipy.stats
 
 from extra_scripts.run_compositional_splicing import block_equivalence
 from extra_scripts.run_differential_splicing import block_mapping, load_blocks
@@ -23,6 +24,8 @@ METHODS = (
     "multinomial_full",
     "multinomial_noise_full",
     "dirichlet_multinomial_full",
+    "laplace_multinomial",
+    "laplace_multinomial_noise",
 )
 
 
@@ -42,7 +45,14 @@ def parse_args():
         help="Optionally restrict tests to inference-eligible rows in this table.",
     )
     parser.add_argument("--output-dir", required=True, type=Path)
-    parser.add_argument("--methods", nargs="+", choices=METHODS, default=METHODS)
+    parser.add_argument(
+        "--methods", nargs="+", choices=METHODS, default=METHODS[:3]
+    )
+    parser.add_argument(
+        "--calibration",
+        choices=("bootstrap", "lrt_bic"),
+        default="bootstrap",
+    )
     parser.add_argument(
         "--test-effect",
         choices=("cell_type", "condition_within_cell_type"),
@@ -253,6 +263,14 @@ def tensor_data(base, tensor):
 
 
 def fit_method(method, data, args, initial=None):
+    if method.startswith("laplace_"):
+        return ec_glmm.fit_laplace(
+            data,
+            family="multinomial",
+            observation_noise=method == "laplace_multinomial_noise",
+            initial=initial,
+            max_iter=args.max_iter,
+        )
     return ec_glmm_full.fit_variational(
         data,
         family=(
@@ -290,6 +308,10 @@ def fit_with_retries(method, data, args, initial=None, retries=None):
 
 def main():
     args = parse_args()
+    if args.calibration == "lrt_bic" and any(
+        not method.startswith("laplace_") for method in args.methods
+    ):
+        raise ValueError("lrt_bic calibration requires Laplace methods")
     if not 0 <= args.shard_index < args.shard_count:
         raise ValueError("invalid shard index")
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -482,21 +504,68 @@ def main():
                 )
             )
             null_data = tensor_data(base, null_tensor)
+            completed_methods = {}
             for method in args.methods:
                 cache_key = (test_id, method)
                 if cache_key not in null_cache:
+                    null_initial = None
+                    if (
+                        method == "laplace_multinomial_noise"
+                        and "laplace_multinomial" in completed_methods
+                    ):
+                        null_initial = np.r_[
+                            completed_methods["laplace_multinomial"][
+                                "null"
+                            ]["parameters"],
+                            np.log(0.3),
+                        ]
                     null_cache[cache_key] = fit_with_retries(
-                        method, null_data, args
+                        method, null_data, args, initial=null_initial
                     )
                 null = null_cache[cache_key]
                 alternative_data = tensor_data(base, alternative_tensor)
-                initial = ec_glmm_full.fixed_effect_warm_start(
-                    null, alternative_tensor.shape[2]
-                )
+                if (
+                    method == "laplace_multinomial_noise"
+                    and "laplace_multinomial" in completed_methods
+                ):
+                    initial = np.r_[
+                        completed_methods["laplace_multinomial"][
+                            "alternative"
+                        ]["parameters"],
+                        np.log(0.3),
+                    ]
+                else:
+                    initial = ec_glmm_full.fixed_effect_warm_start(
+                        null, alternative_tensor.shape[2]
+                    )
                 alternative = fit_with_retries(
                     method, alternative_data, args, initial=initial
                 )
-                statistic = 2.0 * (alternative["objective"] - null["objective"])
+                completed_methods[method] = {
+                    "null": null,
+                    "alternative": alternative,
+                }
+                if method.startswith("laplace_"):
+                    statistic = 2.0 * (
+                        null["objective"] - alternative["objective"]
+                    )
+                else:
+                    statistic = 2.0 * (
+                        alternative["objective"] - null["objective"]
+                    )
+                statistic = max(0.0, float(statistic))
+                lrt_p_value = (
+                    float(scipy.stats.chi2.sf(statistic, degrees))
+                    if args.calibration == "lrt_bic"
+                    else np.nan
+                )
+                bic_log_bayes_factor = (
+                    0.5 * (
+                        statistic - degrees * np.log(len(np.unique(clusters)))
+                    )
+                    if args.calibration == "lrt_bic"
+                    else np.nan
+                )
                 observed_rows.append({
                     "test_id": test_id,
                     "block_id": block_id,
@@ -511,7 +580,9 @@ def main():
                     "n_test_levels": len(tested_levels),
                     "degrees_of_freedom": degrees,
                     "median_gene_umis": float(np.median(totals)),
-                    "statistic": float(statistic),
+                    "statistic": statistic,
+                    "lrt_p_value": lrt_p_value,
+                    "bic_log_bayes_factor": bic_log_bayes_factor,
                     "null_converged": null["converged"],
                     "alternative_converged": alternative["converged"],
                     "null_objective": null["objective"],
@@ -524,9 +595,25 @@ def main():
                     "alternative_iterations": alternative["total_iterations"],
                     "null_gradient_norm": null["gradient_norm"],
                     "alternative_gradient_norm": alternative["gradient_norm"],
+                    "null_scaled_gradient_norm": null.get(
+                        "scaled_gradient_norm", np.nan
+                    ),
+                    "alternative_scaled_gradient_norm": alternative.get(
+                        "scaled_gradient_norm", np.nan
+                    ),
+                    "null_optimizer_scale": null.get("optimizer_scale", np.nan),
+                    "alternative_optimizer_scale": alternative.get(
+                        "optimizer_scale", np.nan
+                    ),
+                    "null_mode_score_norm": null.get("mode_score_norm", np.nan),
+                    "alternative_mode_score_norm": alternative.get(
+                        "mode_score_norm", np.nan
+                    ),
                     "null_attempts": null["attempts"],
                     "alternative_attempts": alternative["attempts"],
                 })
+                if args.calibration != "bootstrap":
+                    continue
                 bootstrap_rng = np.random.default_rng(np.random.SeedSequence((
                     args.seed,
                     zlib.crc32(test_id.encode("utf-8")),
@@ -542,7 +629,10 @@ def main():
                             if method == "dirichlet_multinomial_full"
                             else "multinomial"
                         ),
-                        observation_noise=method == "multinomial_noise_full",
+                        observation_noise=method in {
+                            "multinomial_noise_full",
+                            "laplace_multinomial_noise",
+                        },
                     )
                     simulated_null_data = ec_glmm.ECGLMMData(
                         simulated_counts,
@@ -635,6 +725,7 @@ def main():
         "null_fits": len(null_rows),
         "failures": len(failures),
         "methods": list(args.methods),
+        "calibration": args.calibration,
         "null_replicates": args.null_replicates,
         "min_gene_umis": args.min_gene_umis,
         "min_gene_samples": args.min_gene_samples,

@@ -23,7 +23,13 @@ export XLA_FLAGS="--xla_cpu_multi_thread_eigen=true intra_op_parallelism_threads
 SHARD_COUNT=${SHARD_COUNT:-96}
 SHARD_INDEX=${SHARD_INDEX:-${SLURM_ARRAY_TASK_ID}}
 OUTPUT_TAG=${OUTPUT_TAG:-ec_block_glmm}
-METHODS=${METHODS:-multinomial_full;multinomial_noise_full;dirichlet_multinomial_full}
+CALIBRATION=${CALIBRATION:-bootstrap}
+if [[ "${CALIBRATION}" == "lrt_bic" ]]; then
+  DEFAULT_METHODS="laplace_multinomial;laplace_multinomial_noise"
+else
+  DEFAULT_METHODS="multinomial_full;multinomial_noise_full;dirichlet_multinomial_full"
+fi
+METHODS=${METHODS:-${DEFAULT_METHODS}}
 NULL_REPLICATES=${NULL_REPLICATES:-20}
 TEST_EFFECT=${TEST_EFFECT:-cell_type}
 MIN_GENE_UMIS=${MIN_GENE_UMIS:-10}
@@ -45,6 +51,7 @@ ARGS=(
   --block-cache "${RUN_ROOT}/differential/gencode_vM32_splice_blocks.json.gz"
   --output-dir "${RUN_ROOT}/differential/${OUTPUT_TAG}_shard${SHARD_INDEX}"
   --methods "${method_args[@]}"
+  --calibration "${CALIBRATION}"
   --null-replicates "${NULL_REPLICATES}"
   --test-effect "${TEST_EFFECT}"
   --min-gene-umis "${MIN_GENE_UMIS}"

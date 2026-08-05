@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from tealeaf.sc import ec_glmm, ec_glmm_full
+from tealeaf.sc import ec_block_glmm, ec_glmm, ec_glmm_full
 from extra_scripts import run_ec_glmm
 
 
@@ -95,6 +95,7 @@ def test_laplace_supports_dirichlet_multinomial_ec_counts():
         max_iter=80,
         mode_steps=20,
     )
+    assert fit["converged"]
     assert np.isfinite(fit["objective"])
     assert fit["concentration"] > 0
     assert fit["coefficients"][2, 0] == pytest.approx(0.9, abs=0.55)
@@ -111,6 +112,34 @@ def test_laplace_supports_dirichlet_multinomial_ec_counts():
     )
     assert np.isfinite(full["objective"])
     assert full["concentration"] > 0
+
+
+def test_tensor_laplace_nested_lrt_detects_effect():
+    data = simulated_data(effect=1.2)
+    dimension = data.n_isoforms - 1
+    null_tensor = ec_block_glmm.unrestricted_tensor(data.design[:, :2], dimension)
+    alternative_tensor = ec_block_glmm.unrestricted_tensor(data.design, dimension)
+
+    def with_tensor(tensor):
+        return ec_glmm.ECGLMMData(
+            data.counts,
+            data.compatibility,
+            data.design,
+            data.clusters,
+            fixed_effect_tensor=tensor,
+        )
+
+    tests = ec_block_glmm.nested_laplace_tests(
+        with_tensor(null_tensor),
+        with_tensor(alternative_tensor),
+        max_iter=80,
+        mode_steps=20,
+    )
+    assert tests["null_fit"]["converged"]
+    assert tests["alternative_fit"]["converged"]
+    assert tests["tested_count"] == 1
+    assert tests["lrt_p_value"] < 0.05
+    assert tests["bic_log_bayes_factor"] > 0
 
 
 def test_fixed_effect_design_separates_tested_contrast():

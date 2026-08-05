@@ -2687,3 +2687,88 @@ tasks and limits of three days for cell type and two days for condition. This
 reuses both candidate manifests and the prepared EC cache while reducing each
 cell-type shard from about 121 to 15 tests and each condition shard from about
 762 to 95 tests.
+## 2026-08-05: nonbootstrap EC-block inference
+
+The parametric bootstrap requires one observed null/alternative pair plus a
+null/alternative pair for every simulated replicate. I implemented a
+nonbootstrap sensitivity analysis using the actual Laplace marginal
+likelihood rather than treating an ELBO difference as a likelihood ratio.
+The Laplace fitter now accepts the block-specific fixed-effect tensor used by
+the primary GLMM. The alternative tensor begins with every null column and
+appends only the block-path interaction columns, so the tested degrees of
+freedom are the number of appended coefficients. The alternative is
+warm-started by copying the null parameters and setting those coefficients to
+zero.
+
+For maximized negative Laplace objectives \(L_0\) and \(L_1\), the runner
+reports \(D=2\max(0,L_0-L_1)\), the nominal chi-square p-value with the tested
+dimension, and the BIC approximation
+\(\log \widehat{\mathrm{BF}}_{10}=(D-q\log M)/2\), where \(M\) is the number
+of independent subjects. The latter is an approximation, not a
+prior-integrated Bayes factor. Both results require two fits instead of two
+fits per bootstrap replicate. A merger deduplicates EC-equivalent block
+partitions and applies BH within method.
+
+I also tested a nuisance-adjusted score calculation based on automatic
+differentiation of the Laplace objective. A full observed Hessian used more
+than a gigabyte for a two-isoform unit test, and differentiating clusterwise
+objective contributions had similar scaling because both differentiate
+through the iterative random-effect mode. That route was removed rather than
+used genome-wide. Hessian-vector or analytic implicit-differentiation methods
+remain possible future work, but they are not needed by the LRT/BIC path.
+
+Twenty-two focused EC-GLMM tests pass. One real mouse block required about 49
+seconds for null and alternative fits under both multinomial and
+logistic-normal Laplace models. Its six-degree-of-freedom LRT p-value was
+0.708 under both models, compared with completed bootstrap/GPD p-values 0.594
+and 0.536. Its observation-noise estimate reached the numerical lower bound,
+so the full mouse comparison must assess both calibration agreement and the
+frequency of variance-boundary fits before this can replace bootstrap
+calibration. That validation is running over the same direct-coverage
+candidate family used by the completed mouse benchmark.
+
+The first unscaled validation batch exposed line-search failures in about 5\%
+of fits. These stopped after only a few iterations with gradients in the
+thousands. The Laplace objective is a sum over all observed molecules, and
+its magnitude varied enough across genes to make one set of L-BFGS stopping
+and line-search scales unreliable. The optimizer now divides both objective
+and gradient by the absolute initial objective while retaining the unscaled
+objective for the LRT. This positive constant leaves every optimum and
+likelihood ratio unchanged. A previously failed block then converged in 37
+null and 17 alternative iterations for the multinomial model, and in 36 and
+34 iterations for the logistic-normal model. The scaled full validation was
+restarted; the partial unscaled results are not used for final inference.
+
+As a separate calibration diagnostic, applying the nominal chi-square
+reference to the 26,373 converged multinomial statistics already simulated
+under the variational-fit null gave rejection rates 0.0389, 0.00781, and
+0.00091 at levels 0.05, 0.01, and 0.001. The corresponding 21,955
+logistic-normal null statistics gave 0.0374, 0.00824, and 0.00087. Thus the
+chi-square reference is mildly conservative for those simulated null
+statistics rather than anti-conservative. This is informative but not a
+substitute for comparing the completed Laplace results with the empirical
+bootstrap analysis, because the fitting objectives differ.
+
+The final strict mouse run completed all 4,825 nonredundant cell-type tests.
+The multinomial Laplace null and alternative both met the scaled-gradient and
+mode-score criteria for 94.8% of tests; logistic-normal convergence was 93.6%.
+Among tests converged under both Laplace and the completed bootstrap fit, the
+Laplace and variational statistics had Spearman correlations 0.982 for
+multinomial and 0.964 for logistic-normal. P-value rank correlations were
+0.950 and 0.922. The multinomial LRT gave 703 nominal calls and 309 BH calls
+among jointly converged tests, compared with 753 and 261 for bootstrap/GPD;
+243 BH calls overlapped. Logistic-normal gave 633 nominal and 266 BH calls,
+compared with 707 and 230; 204 BH calls overlapped. The differing nominal and
+BH ordering reflects the more extreme analytic chi-square tail despite fewer
+p-values below 0.05.
+
+The BIC threshold \(\widehat{\mathrm{BF}}_{10}>10\) selected 155 multinomial
+and 128 logistic-normal tests in the jointly converged comparison. Of these,
+149 and 122 were also LRT BH calls, while 140 and 116 were bootstrap BH calls.
+This is a conservative high-confidence subset rather than an MHT-corrected
+decision rule. In the logistic-normal model, 758 of 4,438 jointly converged
+alternative fits put the observation-noise SD at its lower bound. The
+ordinary multinomial LRT is therefore the cleaner nonbootstrap sensitivity;
+the logistic-normal Wilks approximation is less regular and remains a
+secondary result. The same two analyses have been launched for cell-type and
+within-cell-type condition tests in the independent human dataset.
