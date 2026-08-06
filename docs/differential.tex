@@ -126,6 +126,7 @@ Q_b & \mathbb R^{S_b\times d_b} & \text{Helmert ILR basis}\\
 H_b & \mathbb R^{r_g\times d_b} & \text{tested block-path basis}\\
 N_b & \mathbb R^{r_g\times(T_g-S_b)} & \text{orthogonal nuisance basis}\\
 \bm u_{gm} & \mathbb R^{r_g} & \text{mouse random effect}\\
+\bm s_{gm} & \mathbb R^{r_g} & \text{mouse-specific cell-type slope}\\
 \bm e_{gi} & \mathbb R^{r_g} & \text{logistic-normal row effect}\\
 \bottomrule
 \end{array}
@@ -247,6 +248,31 @@ variation across the paired primer halves. The multinomial model is the
 special case \(\tau_g=0\). This logistic-normal construction is the primary
 overdispersion model; the direct EC Dirichlet--multinomial is retained only
 as an appendix sensitivity analysis.
+
+\subsection*{Paired random-slope EC GLMM}
+
+For a pairwise cell-type comparison, every retained mouse contributes one
+pseudobulk from each level. Let \(z_i\in\{-1/2,1/2\}\) be the centered
+cell-type indicator for row \(i\). The paired random-slope model replaces the
+independent row effect by a structured mouse-by-cell-type effect:
+
+\begin{align}
+ \bm\eta_{gi,-}
+ &=\mathcal F_{bi}(\bm\beta_b)+\bm u_{g,m(i)}+z_i\bm s_{g,m(i)},\\
+ \bm u_{gm}&\sim N(\bm0_{r_g},\sigma_g^2I_{r_g}),\\
+ \bm s_{gm}&\sim N(\bm0_{r_g},\omega_g^2I_{r_g}),
+ \qquad \bm s_{gm}\in\mathbb R^{r_g},\quad\omega_g>0.
+\end{align}
+
+The intercept and slope vectors are independent, and their standard
+deviations are estimated separately under each nested model. Both the null
+and alternative contain the same random intercept and slope structure; the
+LRT adds only the population-average block-path contrast. Thus
+\(\bm s_{gm}\) absorbs subject-specific departures from the average
+cell-type contrast without assigning an unrelated latent composition to every
+pseudobulk. The model reduces to the random-intercept multinomial GLMM when
+\(\omega_g=0\). It applies only to paired cell-type tests; condition tests
+retain the models above.
 
 \subsection*{Block contrast and nested fixed-effect tensors}
 

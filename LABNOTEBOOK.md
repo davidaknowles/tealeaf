@@ -3024,3 +3024,14 @@ deviations 0.0058 and 0.182. Genome-wide observed fits for both subject folds
 and a 1,000-test fold-0 paired-label-swap calibration run were submitted. No
 power comparison should be made until the permutation tail and matched split
 results complete.
+
+The fold-0 label-swap run completed all 1,000 sampled tests. Of these, 961
+nested fits converged; 6.04% had asymptotic p-values at most 0.05, 0.104% had
+p-values at most 0.001, and none survived BH at 0.05. Restricting to the 275
+tests with at least eight paired subjects gives a 5.09% nominal rate, no
+p-values at most 0.001, and no BH calls. This subject-count threshold was
+selected from null behavior before inspecting the observed split benchmark.
+The reproducibility scorer now supports the corresponding independent filter,
+and both unfiltered and eight-subject comparisons are queued. A second
+1,000-test label-swap run in fold 1 will check that the calibration conclusion
+replicates independently.
