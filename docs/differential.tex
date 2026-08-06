@@ -607,6 +607,64 @@ p-values are combined by Simes before a second BH correction. The comparison
 is run unchanged on both the mouse microglialess data and an independent
 human Parse Biosciences brain dataset.
 
+Tables~\ref{tab:mouse-method-comparison} and
+\ref{tab:human-method-comparison} report the resulting genome-wide test and
+discovery counts. These are comparisons of practical discovery yield, not
+estimates of relative power: no ground truth is available, and the methods
+test different units. Tealeaf tests EC-supported splice-block path
+partitions, LeafCutter tests intron clusters, MAJIQ tests local splicing
+variations (LSVs), and scQuint tests intron groups. Their filters consequently
+produce different testing universes. The discovery fraction is reported to
+make that difference visible, but it is not an accuracy measure. In
+particular, a larger fraction can reflect stronger filtering as well as
+greater sensitivity.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Matched mouse differential-splicing results. Tealeaf uses the
+primary empirically calibrated logistic-normal EC GLMM; its cell-type count
+uses the 90\% GPD threshold and its condition count is the robust zero-call
+result. External-method cell-type rows are Simes omnibus tests over pairwise
+contrasts; their condition rows are pairwise feature-by-contrast tests. All
+discovery counts use BH FDR 0.05. Rate is discoveries divided by tests.}
+\label{tab:mouse-method-comparison}
+\begin{tabular}{llrrr@{\qquad}rrr}
+\toprule
+& & \multicolumn{3}{c}{Cell type} & \multicolumn{3}{c}{Condition}\\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}
+Method & Test unit & Tests & BH & Rate & Tests & BH & Rate\\
+\midrule
+Tealeaf EC GLMM & EC block & 4,825 & 243 & 5.04\% & 14,833 & 0 & 0.00\%\\
+LeafCutter & Intron cluster & 13,630 & 1,007 & 7.39\% & 10,279 & 40 & 0.39\%\\
+MAJIQ Heterogen & LSV & 787 & 188 & 23.89\% & 3,836 & 34 & 0.89\%\\
+scQuint & Intron group & 586,476 & 11,381 & 1.94\% & 161,711 & 16 & 0.01\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Matched human differential-splicing results. Tealeaf uses the
+recommended multinomial EC GLMM with a Laplace LRT; external-method summaries
+are constructed as in Table~\ref{tab:mouse-method-comparison}. All discovery
+counts use BH FDR 0.05. Rate is discoveries divided by tests.}
+\label{tab:human-method-comparison}
+\begin{tabular}{llrrr@{\qquad}rrr}
+\toprule
+& & \multicolumn{3}{c}{Cell type} & \multicolumn{3}{c}{Condition}\\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}
+Method & Test unit & Tests & BH & Rate & Tests & BH & Rate\\
+\midrule
+Tealeaf EC GLMM & EC block & 11,597 & 1,487 & 12.82\% & 73,144 & 191 & 0.26\%\\
+LeafCutter & Intron cluster & 58,086 & 3,043 & 5.24\% & 5,238 & 475 & 9.07\%\\
+MAJIQ Heterogen & LSV & 25,682 & 7,700 & 29.98\% & 3,522 & 278 & 7.89\%\\
+scQuint & Intron group & 2,034,311 & 104,583 & 5.14\% & 85,852 & 36 & 0.04\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \appendix
 
 \section{Alternative Models and Supporting Derivations}

@@ -2799,3 +2799,24 @@ The nominal rate among converged condition tests is 0.0799, compared with
 counts without its convergence filter; the per-test table and BH values were
 unaffected. The summary now applies the same nested-convergence requirement
 to BF counts, and all mouse and human summaries were regenerated.
+
+## 2026-08-05: matched external-method result tables
+
+The differential-splicing manuscript now reports matched Tealeaf,
+LeafCutter, MAJIQ Heterogen, and scQuint results for both datasets. Each table
+gives the number of tests, BH discoveries, and discovery fraction separately
+for cell-type and condition effects. The mouse Tealeaf row uses the primary
+empirically calibrated logistic-normal EC GLMM (243 cell-type and zero
+condition discoveries); the human row uses the recommended multinomial
+Laplace LRT (1,487 and 191 discoveries). The corresponding LeafCutter, MAJIQ,
+and scQuint cell-type discovery counts are 1,007, 188, and 11,381 in mouse and
+3,043, 7,700, and 104,583 in human. Condition counts are 40, 34, and 16 in
+mouse and 475, 278, and 36 in human.
+
+The tables explicitly avoid interpreting raw discovery count or fraction as
+power. Tealeaf, LeafCutter, MAJIQ, and scQuint test EC blocks, intron clusters,
+LSVs, and intron groups, respectively, and method-specific filtering creates
+substantially different test universes. The datasets have no ground-truth DS
+labels. External-method cell-type entries are Simes omnibus summaries of
+pairwise tests, whereas the Tealeaf cell-type hypothesis is fit directly as
+an omnibus model.
