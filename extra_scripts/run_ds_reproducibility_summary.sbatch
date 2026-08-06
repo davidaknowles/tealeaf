@@ -33,6 +33,7 @@ fi
   --tealeaf-label "${TEALEAF_LABEL:-Tealeaf EC GLMM}" \
   --tealeaf-fit-method \
     "${TEALEAF_FIT_METHOD:-laplace_multinomial}" \
+  --min-median-gene-umis "${MIN_MEDIAN_GENE_UMIS:-0}" \
   "${pair_args[@]}" \
   --output-dir \
     "${BENCHMARK_ROOT}/reproducibility/${COMPARISON_SUBDIR:-comparison}"

@@ -27,6 +27,7 @@ def parse_args():
     parser.add_argument("--tealeaf-subdir", default="tealeaf")
     parser.add_argument("--tealeaf-label", default="Tealeaf EC GLMM")
     parser.add_argument("--tealeaf-fit-method", default="laplace_multinomial")
+    parser.add_argument("--min-median-gene-umis", type=float, default=0.0)
     parser.add_argument("--match-pairs", action="store_true")
     parser.add_argument("--output-dir", type=Path, required=True)
     return parser.parse_args()
@@ -38,6 +39,7 @@ def load_fold(
     tealeaf_subdir: str,
     tealeaf_label: str,
     tealeaf_fit_method: str,
+    min_median_gene_umis: float,
 ) -> pd.DataFrame:
     external = pd.read_csv(path / "comparison/cell_type_simes.tsv.gz", sep="\t")
     external.loc[external.method.eq("LeafCutter"), "gene_id"] = external.loc[
@@ -48,6 +50,7 @@ def load_fold(
     )
     tealeaf = tealeaf.loc[
         tealeaf.method.eq(tealeaf_fit_method)
+        & tealeaf.median_gene_umis.ge(min_median_gene_umis)
         & tealeaf.null_converged
         & tealeaf.alternative_converged,
         ["block_id", "gene_id", "p_value"],
@@ -67,6 +70,7 @@ def load_pairwise_fold(
     tealeaf_subdir: str,
     tealeaf_label: str,
     tealeaf_fit_method: str,
+    min_median_gene_umis: float,
 ) -> pd.DataFrame:
     external = pd.read_csv(path / "comparison/all_tests.tsv.gz", sep="\t")
     external = external.loc[external.effect.eq("cell_type")].copy()
@@ -78,6 +82,7 @@ def load_pairwise_fold(
     )
     tealeaf = tealeaf.loc[
         tealeaf.method.eq(tealeaf_fit_method)
+        & tealeaf.median_gene_umis.ge(min_median_gene_umis)
         & tealeaf.null_converged
         & tealeaf.alternative_converged,
         ["gene_id", "level_a", "level_b", "p_value"],
@@ -113,6 +118,7 @@ def main():
                 args.tealeaf_subdir,
                 args.tealeaf_label,
                 args.tealeaf_fit_method,
+                args.min_median_gene_umis,
             )
             for path in args.fold_dir
         ]
@@ -127,6 +133,7 @@ def main():
                 args.tealeaf_subdir,
                 args.tealeaf_label,
                 args.tealeaf_fit_method,
+                args.min_median_gene_umis,
             )
             for path in args.fold_dir
         ]

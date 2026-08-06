@@ -2962,3 +2962,13 @@ In the first 908 converged observation-noise null fits, 7.49% had
 substantial tail correction but still shows mild nominal inflation. Full
 observed split fits are required to determine whether the better-calibrated
 model retains enough replicated power.
+
+The label-independent coverage sweep shows why filtering must be tied to
+calibration. At median gene UMI at least 150, the uncalibrated plain model has
+9 versus 2 replicated genes for scQuint and 6 versus 4 for LeafCutter, but its
+permuted nominal rate remains 12.7%, so this is not valid evidence of higher
+power. For the observation-noise model, a median gene UMI threshold of 100 has
+a 5.8% null nominal rate, no null p-values below 0.001, and no BH null
+discoveries in the calibration subset. The scorer now supports this
+label-independent threshold; 100 UMIs is the calibration-selected threshold
+for the final noise-model comparison.
