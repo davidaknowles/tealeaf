@@ -2957,3 +2957,8 @@ by a shared subject random intercept. Observed replicated discoveries from
 this model cannot be interpreted as calibrated power. A matched null run with
 the logistic-normal observation-noise model was submitted to test whether its
 per-observation isotropic logit random effect controls this heterogeneity.
+In the first 908 converged observation-noise null fits, 7.49% had
+`p <= 0.05`, 0.44% had `p <= 0.001`, and none survived BH at 0.05. This is a
+substantial tail correction but still shows mild nominal inflation. Full
+observed split fits are required to determine whether the better-calibrated
+model retains enough replicated power.

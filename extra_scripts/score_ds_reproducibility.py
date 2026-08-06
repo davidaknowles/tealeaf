@@ -26,6 +26,7 @@ def parse_args():
     parser.add_argument("--leafcutter-map", type=Path, required=True)
     parser.add_argument("--tealeaf-subdir", default="tealeaf")
     parser.add_argument("--tealeaf-label", default="Tealeaf EC GLMM")
+    parser.add_argument("--tealeaf-fit-method", default="laplace_multinomial")
     parser.add_argument("--match-pairs", action="store_true")
     parser.add_argument("--output-dir", type=Path, required=True)
     return parser.parse_args()
@@ -36,6 +37,7 @@ def load_fold(
     leaf_map: pd.DataFrame,
     tealeaf_subdir: str,
     tealeaf_label: str,
+    tealeaf_fit_method: str,
 ) -> pd.DataFrame:
     external = pd.read_csv(path / "comparison/cell_type_simes.tsv.gz", sep="\t")
     external.loc[external.method.eq("LeafCutter"), "gene_id"] = external.loc[
@@ -45,7 +47,7 @@ def load_fold(
         path / tealeaf_subdir / "ec_block_glmm.tsv", sep="\t"
     )
     tealeaf = tealeaf.loc[
-        tealeaf.method.eq("laplace_multinomial")
+        tealeaf.method.eq(tealeaf_fit_method)
         & tealeaf.null_converged
         & tealeaf.alternative_converged,
         ["block_id", "gene_id", "p_value"],
@@ -64,6 +66,7 @@ def load_pairwise_fold(
     leaf_map: pd.DataFrame,
     tealeaf_subdir: str,
     tealeaf_label: str,
+    tealeaf_fit_method: str,
 ) -> pd.DataFrame:
     external = pd.read_csv(path / "comparison/all_tests.tsv.gz", sep="\t")
     external = external.loc[external.effect.eq("cell_type")].copy()
@@ -74,7 +77,7 @@ def load_pairwise_fold(
         path / tealeaf_subdir / "ec_block_glmm.tsv", sep="\t"
     )
     tealeaf = tealeaf.loc[
-        tealeaf.method.eq("laplace_multinomial")
+        tealeaf.method.eq(tealeaf_fit_method)
         & tealeaf.null_converged
         & tealeaf.alternative_converged,
         ["gene_id", "level_a", "level_b", "p_value"],
@@ -105,7 +108,11 @@ def main():
     if args.match_pairs:
         folds = [
             load_pairwise_fold(
-                path, leaf_map, args.tealeaf_subdir, args.tealeaf_label
+                path,
+                leaf_map,
+                args.tealeaf_subdir,
+                args.tealeaf_label,
+                args.tealeaf_fit_method,
             )
             for path in args.fold_dir
         ]
@@ -114,7 +121,13 @@ def main():
         )
     else:
         folds = [
-            load_fold(path, leaf_map, args.tealeaf_subdir, args.tealeaf_label)
+            load_fold(
+                path,
+                leaf_map,
+                args.tealeaf_subdir,
+                args.tealeaf_label,
+                args.tealeaf_fit_method,
+            )
             for path in args.fold_dir
         ]
         metrics, topk, genes = shared_gene_reproducibility(
