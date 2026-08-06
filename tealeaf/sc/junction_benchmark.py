@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 import re
+import zlib
 
 import numpy as np
 import pandas as pd
@@ -35,6 +36,64 @@ def benjamini_hochberg(pvalues) -> np.ndarray:
     )[::-1]
     result = np.empty_like(adjusted)
     result[order] = np.minimum(adjusted, 1.0)
+    return result
+
+
+def permute_paired_contrasts(
+    contrasts: list[dict],
+    samples: pd.DataFrame,
+    seed: int,
+    max_contrasts: int | None = None,
+) -> list[dict]:
+    """Swap paired cell-type labels within subjects reproducibly."""
+    subject_lookup = samples.set_index("sample_id")["subject"].astype(str).to_dict()
+    selected = list(contrasts)
+    if max_contrasts is not None and len(selected) > int(max_contrasts):
+        rng = np.random.default_rng(np.random.SeedSequence((int(seed), 0xC011A57)))
+        positions = np.sort(
+            rng.choice(len(selected), int(max_contrasts), replace=False)
+        )
+        selected = [selected[position] for position in positions]
+
+    result = []
+    for contrast in selected:
+        if contrast.get("effect") != "cell_type":
+            raise ValueError("paired permutation requires cell-type contrasts")
+        by_subject = {}
+        for side, key in enumerate(("samples_a", "samples_b")):
+            for sample in contrast[key]:
+                if sample not in subject_lookup:
+                    raise ValueError(f"contrast sample {sample!r} is absent")
+                subject = subject_lookup[sample]
+                pair = by_subject.setdefault(subject, [None, None])
+                if pair[side] is not None:
+                    raise ValueError(
+                        f"subject {subject!r} has duplicate samples in one level"
+                    )
+                pair[side] = sample
+        if any(left is None or right is None for left, right in by_subject.values()):
+            raise ValueError("each subject must have one sample from each level")
+
+        pair_hash = zlib.crc32(
+            f"{contrast['level_a']}\0{contrast['level_b']}".encode("utf-8")
+        )
+        permuted_a, permuted_b = [], []
+        for subject in sorted(by_subject):
+            left, right = by_subject[subject]
+            subject_hash = zlib.crc32(subject.encode("utf-8"))
+            rng = np.random.default_rng(
+                np.random.SeedSequence((int(seed), pair_hash, subject_hash))
+            )
+            if rng.random() < 0.5:
+                left, right = right, left
+            permuted_a.append(left)
+            permuted_b.append(right)
+        local = dict(contrast)
+        local["samples_a"] = permuted_a
+        local["samples_b"] = permuted_b
+        local["paired_subjects"] = sorted(by_subject)
+        local["permutation_seed"] = int(seed)
+        result.append(local)
     return result
 
 

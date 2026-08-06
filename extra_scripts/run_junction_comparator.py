@@ -13,6 +13,7 @@ import pandas as pd
 from tealeaf.sc.junction_benchmark import (
     JunctionBundle,
     normalize_pvalue_table,
+    permute_paired_contrasts,
     plan_pairwise_contrasts,
     simes_omnibus,
     stratified_subject_folds,
@@ -50,6 +51,20 @@ def command_split_subjects(args):
     args.output.parent.mkdir(parents=True, exist_ok=True)
     folds.to_csv(args.output, sep="\t", index=False)
     print(f"subjects={len(folds)} folds={args.folds}")
+
+
+def command_permute_contrasts(args):
+    bundle = JunctionBundle.load(args.bundle)
+    contrasts = json.loads(args.contrasts.read_text())
+    permuted = permute_paired_contrasts(
+        contrasts,
+        bundle.samples,
+        args.seed,
+        max_contrasts=args.max_contrasts,
+    )
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(permuted, indent=2) + "\n")
+    print(f"permuted_contrasts={len(permuted)} seed={args.seed}")
 
 
 def scquint_adata(bundle):
@@ -339,6 +354,14 @@ def parser():
     split.add_argument("--seed", type=int, default=20260805)
     split.add_argument("--output", type=Path, required=True)
     split.set_defaults(function=command_split_subjects)
+
+    permute = commands.add_parser("permute-contrasts")
+    permute.add_argument("--bundle", type=Path, required=True)
+    permute.add_argument("--contrasts", type=Path, required=True)
+    permute.add_argument("--seed", type=int, required=True)
+    permute.add_argument("--max-contrasts", type=int)
+    permute.add_argument("--output", type=Path, required=True)
+    permute.set_defaults(function=command_permute_contrasts)
 
     scquint = commands.add_parser("scquint")
     scquint.add_argument("--bundle", type=Path, required=True)
