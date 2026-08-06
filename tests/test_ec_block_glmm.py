@@ -17,6 +17,7 @@ from extra_scripts.run_ec_block_glmm import (
     covered_condition_designs,
     deduplicate_supported_partitions,
     modeled_gene_umis,
+    partition_candidates,
     reparameterize_fixed_effects,
 )
 from extra_scripts.run_differential_splicing import block_mapping
@@ -299,6 +300,30 @@ def test_supported_partition_deduplication_ignores_path_labels():
     assert [row[0] for row in deduplicate_supported_partitions(
         [first, duplicate, distinct]
     )] == ["b1", "b3"]
+
+
+def test_candidate_partition_keeps_shared_alternatives_together():
+    def candidate(test, gene, rows):
+        return (
+            test, test, gene, gene, np.array([0, 1]), np.array([0, 1]),
+            (), np.array(rows), None, ("a", "b"),
+        )
+
+    candidates = [
+        candidate("a1", 1, [0, 1]),
+        candidate("a2", 1, [0, 1]),
+        candidate("a3", 1, [0, 1]),
+        candidate("b1", 2, [2, 3]),
+        candidate("b2", 2, [2, 3]),
+        candidate("c1", 3, [4, 5]),
+    ]
+    shards = partition_candidates(candidates, 2)
+    locations = {
+        row[0]: index for index, shard in enumerate(shards) for row in shard
+    }
+    assert locations["a1"] == locations["a2"] == locations["a3"]
+    assert locations["b1"] == locations["b2"]
+    assert sorted(map(len, shards)) == [3, 3]
 
 
 def test_gpd_tail_resolves_beyond_empirical_bootstrap_floor():

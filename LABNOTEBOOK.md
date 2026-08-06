@@ -2936,3 +2936,7 @@ maps the first block-null warm start into that basis by least squares, and
 caches the fitted alternative by gene, retained rows, and method. This avoids
 refitting identical alternatives for genes with multiple tested blocks while
 leaving each block-specific null and LRT degrees of freedom unchanged.
+Candidate sharding now treats all tests sharing `(gene, retained rows)` as an
+indivisible group and greedily balances those groups by test count. The prior
+stride partition could place reusable alternatives in different workers and
+defeat the cache.

@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+from collections import defaultdict
+import heapq
 import json
 from pathlib import Path
 import pickle
@@ -299,6 +301,24 @@ def deduplicate_supported_partitions(candidates):
     return result
 
 
+def partition_candidates(candidates, shard_count):
+    """Balance shards without splitting candidates that share an alternative."""
+    groups = defaultdict(list)
+    for candidate in candidates:
+        gene = candidate[3]
+        rows = tuple(np.asarray(candidate[7], dtype=int))
+        groups[(gene, rows)].append(candidate)
+    shards = [[] for _ in range(int(shard_count))]
+    heap = [(0, index) for index in range(int(shard_count))]
+    heapq.heapify(heap)
+    ordered = sorted(groups.values(), key=len, reverse=True)
+    for group in ordered:
+        load, index = heapq.heappop(heap)
+        shards[index].extend(group)
+        heapq.heappush(heap, (load + len(group), index))
+    return shards
+
+
 def local_test_design(metadata, rows, tested_levels, test_effect):
     """Reconstruct one cached candidate's fixed-effect design."""
     local = metadata.iloc[np.asarray(rows, dtype=int)].reset_index(drop=True)
@@ -551,7 +571,9 @@ def main():
             "no candidate block tests passed screening; check annotation ID "
             "compatibility and coverage thresholds"
         )
-    candidates = candidates[args.shard_index :: args.shard_count]
+    candidates = partition_candidates(candidates, args.shard_count)[
+        args.shard_index
+    ]
     if args.dry_run:
         print(json.dumps({
             "candidate_tests": len(candidates),
