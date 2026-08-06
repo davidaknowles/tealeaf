@@ -29,6 +29,7 @@ METHODS = (
     "laplace_multinomial",
     "laplace_multinomial_noise",
     "laplace_multinomial_slope",
+    "laplace_multinomial_slope_collapsed",
 )
 
 
@@ -409,7 +410,10 @@ def fit_method(method, data, args, initial=None):
             data,
             family="multinomial",
             observation_noise=method == "laplace_multinomial_noise",
-            random_slopes=method == "laplace_multinomial_slope",
+            random_slopes=method in {
+                "laplace_multinomial_slope",
+                "laplace_multinomial_slope_collapsed",
+            },
             initial=initial,
             max_iter=args.max_iter,
         )
@@ -662,6 +666,7 @@ def main():
     failures = []
     null_cache = {}
     alternative_cache = {}
+    pooled_weight_cache = {}
     started = time.perf_counter()
     for position, candidate in enumerate(candidates):
         (
@@ -726,8 +731,72 @@ def main():
                 full_alternative_tensor,
                 random_effect_design=random_effect_design,
             )
+            collapsed_spec = None
+            if "laplace_multinomial_slope_collapsed" in args.methods:
+                weight_key = (gene, tuple(rows))
+                if weight_key not in pooled_weight_cache:
+                    pooled_weight_cache[weight_key] = (
+                        ec_block_glmm.pooled_isoform_weights(
+                            base.counts, base.compatibility
+                        )
+                    )
+                collapsed_mappings, collapsed_paths, _ = (
+                    ec_block_glmm.collapse_within_paths(
+                        base.compatibility,
+                        pooled_weight_cache[weight_key],
+                        path_index,
+                    )
+                )
+                collapsed_base = ec_glmm.ECGLMMData(
+                    base.counts,
+                    collapsed_mappings,
+                    base.design,
+                    base.clusters,
+                )
+                collapsed_null_tensor, collapsed_alternative_tensor, _ = (
+                    ec_block_glmm.block_fixed_effect_tensors(
+                        nuisance, tested, collapsed_paths
+                    )
+                )
+                collapsed_full_tensor = (
+                    ec_block_glmm.full_fixed_effect_tensor(
+                        nuisance, tested, collapsed_base.n_isoforms - 1
+                    )
+                )
+                collapsed_spec = (
+                    tensor_data(
+                        collapsed_base,
+                        collapsed_null_tensor,
+                        random_effect_design=random_effect_design,
+                    ),
+                    tensor_data(
+                        collapsed_base,
+                        collapsed_full_tensor,
+                        random_effect_design=random_effect_design,
+                    ),
+                    collapsed_null_tensor,
+                    collapsed_alternative_tensor,
+                    collapsed_full_tensor,
+                    collapsed_base,
+                )
             completed_methods = {}
             for method in args.methods:
+                if method == "laplace_multinomial_slope_collapsed":
+                    (
+                        method_null_data,
+                        method_alternative_data,
+                        method_null_tensor,
+                        method_block_alternative_tensor,
+                        method_full_alternative_tensor,
+                        method_base,
+                    ) = collapsed_spec
+                else:
+                    method_null_data = null_data
+                    method_alternative_data = full_alternative_data
+                    method_null_tensor = null_tensor
+                    method_block_alternative_tensor = alternative_tensor
+                    method_full_alternative_tensor = full_alternative_tensor
+                    method_base = base
                 cache_key = (test_id, method)
                 if cache_key not in null_cache:
                     null_initial = None
@@ -742,10 +811,14 @@ def main():
                             np.log(0.3),
                         ]
                     null_cache[cache_key] = fit_with_retries(
-                        method, null_data, args, initial=null_initial
+                        method, method_null_data, args, initial=null_initial
                     )
                 null = null_cache[cache_key]
-                alternative_key = (gene, tuple(rows), method)
+                alternative_key = (
+                    (gene, tuple(rows), method, block_id)
+                    if method == "laplace_multinomial_slope_collapsed"
+                    else (gene, tuple(rows), method)
+                )
                 alternative_reused = alternative_key in alternative_cache
                 if not alternative_reused:
                     if (
@@ -760,11 +833,13 @@ def main():
                         ]
                     else:
                         initial = reparameterize_fixed_effects(
-                            null, null_tensor, full_alternative_tensor
+                            null,
+                            method_null_tensor,
+                            method_full_alternative_tensor,
                         )
                     alternative_cache[alternative_key] = fit_with_retries(
                         method,
-                        full_alternative_data,
+                        method_alternative_data,
                         args,
                         initial=initial,
                     )
@@ -813,7 +888,8 @@ def main():
                     "method": method,
                     "pairwise_null_seed": args.pairwise_null_seed,
                     "n_paths": len(signatures),
-                    "n_isoforms": len(transcripts),
+                    "n_isoforms": method_base.n_isoforms,
+                    "n_original_isoforms": len(transcripts),
                     "n_ecs": len(gene_ecs[gene]),
                     "n_samples": len(local_metadata),
                     "n_test_levels": len(tested_levels),
@@ -869,7 +945,7 @@ def main():
                 )))
                 for replicate in range(args.null_replicates):
                     simulated_counts = ec_block_glmm.simulate_null_counts(
-                        null_data,
+                        method_null_data,
                         null,
                         bootstrap_rng,
                         family=(
@@ -881,14 +957,17 @@ def main():
                             "multinomial_noise_full",
                             "laplace_multinomial_noise",
                         },
-                        random_slopes=method == "laplace_multinomial_slope",
+                        random_slopes=method in {
+                            "laplace_multinomial_slope",
+                            "laplace_multinomial_slope_collapsed",
+                        },
                     )
                     simulated_null_data = ec_glmm.ECGLMMData(
                         simulated_counts,
-                        base.compatibility,
-                        np.ones((len(base.clusters), 1), dtype=float),
-                        base.clusters,
-                        fixed_effect_tensor=null_tensor,
+                        method_base.compatibility,
+                        np.ones((len(method_base.clusters), 1), dtype=float),
+                        method_base.clusters,
+                        fixed_effect_tensor=method_null_tensor,
                         random_effect_design=random_effect_design,
                     )
                     simulated_null = fit_with_retries(
@@ -900,14 +979,14 @@ def main():
                     )
                     simulated_alternative_data = ec_glmm.ECGLMMData(
                         simulated_counts,
-                        base.compatibility,
-                        np.ones((len(base.clusters), 1), dtype=float),
-                        base.clusters,
-                        fixed_effect_tensor=alternative_tensor,
+                        method_base.compatibility,
+                        np.ones((len(method_base.clusters), 1), dtype=float),
+                        method_base.clusters,
+                        fixed_effect_tensor=method_block_alternative_tensor,
                         random_effect_design=random_effect_design,
                     )
                     simulated_initial = ec_glmm_full.fixed_effect_warm_start(
-                        simulated_null, alternative_tensor.shape[2]
+                        simulated_null, method_block_alternative_tensor.shape[2]
                     )
                     simulated_fit = fit_with_retries(
                         method,

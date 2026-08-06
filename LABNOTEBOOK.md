@@ -3035,3 +3035,22 @@ The reproducibility scorer now supports the corresponding independent filter,
 and both unfiltered and eight-subject comparisons are queued. A second
 1,000-test label-swap run in fold 1 will check that the calibration conclusion
 replicates independently.
+
+The observation-noise model was rescored on the independently selected
+high-confidence universe of at least eight paired subjects and at least 75
+median gene UMIs. It still trails LeafCutter (5 versus 11 replicated genes)
+and scQuint (12 versus 20), although its held-out nominal replication against
+LeafCutter is higher (0.889 versus 0.780). Filtering alone therefore does not
+establish a power advantage.
+
+An experimental pooled path-collapse likelihood was implemented to reduce
+the fixed-effect nuisance dimension. For each gene and retained subject set,
+pooled paired-primer EC counts estimate label-independent isoform weights by
+multinomial maximum likelihood. Isoforms assigned to the same represented
+block path are then projected to one path column using their normalized pooled
+weights; every unrepresented or unspliced isoform remains a separate nuisance
+column. The resulting EC maps use the same random-slope GLMM and path LRT.
+This is not yet a recommended method. In a three-test real-data smoke run all
+fits converged, but the only test whose dimension changed became less
+significant (p-value 1.7e-5 to 4.1e-4). An observed/null subset screen is
+required before considering a genome-wide run.

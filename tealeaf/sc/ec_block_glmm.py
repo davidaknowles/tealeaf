@@ -3,9 +3,93 @@
 from __future__ import annotations
 
 import numpy as np
+import scipy.optimize
 import scipy.stats
 
 from . import differential, ec_glmm
+
+
+def pooled_isoform_weights(counts, compatibility, max_iter=200):
+    """Estimate label-independent isoform weights from pooled EC counts."""
+    counts = tuple(np.asarray(value, dtype=float).sum(axis=0) for value in counts)
+    mappings = tuple(np.asarray(value, dtype=float) for value in compatibility)
+    n_isoforms = mappings[0].shape[1]
+    if n_isoforms < 2:
+        return np.ones(n_isoforms, dtype=float)
+
+    def objective(free_logits):
+        logits = np.r_[free_logits, 0.0]
+        abundance = np.exp(logits - np.max(logits))
+        value = 0.0
+        gradient = np.zeros(n_isoforms, dtype=float)
+        scale = 0.0
+        for observed, mapping in zip(counts, mappings):
+            total = float(observed.sum())
+            if total <= 0:
+                continue
+            mass = np.maximum(mapping @ abundance, 1e-300)
+            total_mass = float(mass.sum())
+            value += float(observed @ np.log(mass)) - total * np.log(total_mass)
+            gradient += abundance * (
+                mapping.T @ (observed / mass)
+                - total * mapping.sum(axis=0) / total_mass
+            )
+            scale += total
+        scale = max(scale, 1.0)
+        return -value / scale, -gradient[:-1] / scale
+
+    result = scipy.optimize.minimize(
+        objective,
+        np.zeros(n_isoforms - 1, dtype=float),
+        method="L-BFGS-B",
+        jac=True,
+        bounds=[(-20.0, 20.0)] * (n_isoforms - 1),
+        options={"maxiter": int(max_iter), "ftol": 1e-12, "gtol": 1e-7},
+    )
+    logits = np.r_[result.x, 0.0]
+    weights = np.exp(logits - np.max(logits))
+    return weights / weights.sum()
+
+
+def collapse_within_paths(compatibility, weights, path_index):
+    """Collapse represented isoforms within paths using fixed pooled weights.
+
+    Each isoform outside the represented block remains its own nuisance class.
+    This reduces within-path nuisance dimensions without merging unspliced or
+    otherwise unrepresented isoforms.
+    """
+    path_index = np.asarray(path_index, dtype=int)
+    weights = np.asarray(weights, dtype=float)
+    if len(path_index) != len(weights):
+        raise ValueError("path assignments and pooled weights do not align")
+    represented = [
+        ("path", int(path))
+        for path in sorted(set(path_index[path_index >= 0]))
+    ]
+    nuisance = [
+        ("nuisance", int(index)) for index in np.flatnonzero(path_index < 0)
+    ]
+    classes = represented + nuisance
+    projection = np.zeros((len(weights), len(classes)), dtype=float)
+    collapsed_paths = []
+    for column, (kind, value) in enumerate(classes):
+        members = (
+            np.flatnonzero(path_index == value)
+            if kind == "path"
+            else np.asarray([value], dtype=int)
+        )
+        local = weights[members]
+        local = (
+            local / local.sum()
+            if local.sum() > 0
+            else np.full(len(members), 1 / len(members))
+        )
+        projection[members, column] = local
+        collapsed_paths.append(value if kind == "path" else -1)
+    collapsed = tuple(
+        np.asarray(mapping, dtype=float) @ projection for mapping in compatibility
+    )
+    return collapsed, np.asarray(collapsed_paths, dtype=int), projection
 
 
 def block_effect_bases(path_index):

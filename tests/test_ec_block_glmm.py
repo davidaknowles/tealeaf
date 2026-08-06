@@ -177,6 +177,25 @@ def test_null_simulation_accepts_primer_without_modeled_ecs():
     assert simulated[1].shape == (2, 0)
 
 
+def test_pooled_weights_and_path_collapse_reduce_nuisance_dimension():
+    mappings = (
+        np.array([[1.0, 0.0, 0.0, 0.0],
+                  [0.0, 1.0, 0.0, 0.0],
+                  [0.0, 0.0, 1.0, 0.0],
+                  [0.0, 0.0, 0.0, 1.0]]),
+    )
+    counts = (np.array([[80, 20, 30, 10], [80, 20, 30, 10]]),)
+    weights = ec_block_glmm.pooled_isoform_weights(counts, mappings)
+    assert weights[0] > weights[1]
+    collapsed, paths, projection = ec_block_glmm.collapse_within_paths(
+        mappings, weights, np.array([0, 0, 1, -1])
+    )
+    assert collapsed[0].shape == (4, 3)
+    np.testing.assert_array_equal(paths, [0, 1, -1])
+    assert projection[0, 0] > projection[1, 0]
+    np.testing.assert_allclose(projection.sum(axis=0), 1.0)
+
+
 def test_bootstrap_calibration_leaves_out_tested_block():
     table = pd.DataFrame({
         "test_id": ["b1", "b2"],
