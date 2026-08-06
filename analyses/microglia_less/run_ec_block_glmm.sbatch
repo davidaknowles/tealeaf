@@ -73,5 +73,8 @@ fi
 if [[ -n "${CANDIDATE_CACHE}" ]]; then
   ARGS+=(--candidate-cache "${CANDIDATE_CACHE}")
 fi
+if [[ -n "${SUBJECT_FOLDS:-}" ]]; then
+  ARGS+=(--subject-folds "${SUBJECT_FOLDS}" --subject-fold "${SUBJECT_FOLD:?}")
+fi
 
 python "${REPO_ROOT}/extra_scripts/run_ec_block_glmm.py" "${ARGS[@]}"

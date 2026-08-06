@@ -29,18 +29,23 @@ else
   DEFAULT_METHODS="multinomial_full;multinomial_noise_full"
 fi
 IFS=';' read -r -a methods <<< "${METHODS:-${DEFAULT_METHODS}}"
-python "${REPO_ROOT}/extra_scripts/run_ec_block_glmm.py" \
-  --data-cache "${RUN_ROOT}/differential/ec_glmm_prepared.pkl" \
-  --features "${RUN_ROOT}/hierarchical/full_rank32_joint_glm_cols.txt" \
-  --block-cache "${RUN_ROOT}/differential/gencode_v30_splice_blocks.json.gz" \
-  --output-dir "${RUN_ROOT}/differential/${OUTPUT_TAG}_shard${SHARD_INDEX}" \
-  --methods "${methods[@]}" --test-effect "${TEST_EFFECT}" \
-  --calibration "${CALIBRATION}" \
-  --candidate-cache "${CANDIDATE_CACHE}" \
-  --null-replicates "${NULL_REPLICATES:-20}" --min-gene-umis "${MIN_GENE_UMIS:-10}" \
-  --min-celltype-mice "${MIN_CELLTYPE_SUBJECTS:-4}" \
-  --min-condition-mice "${MIN_CONDITION_SUBJECTS:-4}" \
-  --max-iter "${MAX_ITER:-300}" --retries "${RETRIES:-2}" \
-  --null-replicate-retries "${NULL_REPLICATE_RETRIES:-2}" \
-  --vi-samples "${VI_SAMPLES:-16}" \
+ARGS=(
+  --data-cache "${RUN_ROOT}/differential/ec_glmm_prepared.pkl"
+  --features "${RUN_ROOT}/hierarchical/full_rank32_joint_glm_cols.txt"
+  --block-cache "${RUN_ROOT}/differential/gencode_v30_splice_blocks.json.gz"
+  --output-dir "${RUN_ROOT}/differential/${OUTPUT_TAG}_shard${SHARD_INDEX}"
+  --methods "${methods[@]}" --test-effect "${TEST_EFFECT}"
+  --calibration "${CALIBRATION}"
+  --candidate-cache "${CANDIDATE_CACHE}"
+  --null-replicates "${NULL_REPLICATES:-20}" --min-gene-umis "${MIN_GENE_UMIS:-10}"
+  --min-celltype-mice "${MIN_CELLTYPE_SUBJECTS:-4}"
+  --min-condition-mice "${MIN_CONDITION_SUBJECTS:-4}"
+  --max-iter "${MAX_ITER:-300}" --retries "${RETRIES:-2}"
+  --null-replicate-retries "${NULL_REPLICATE_RETRIES:-2}"
+  --vi-samples "${VI_SAMPLES:-16}"
   --shard-index "${SHARD_INDEX}" --shard-count "${SHARD_COUNT}"
+)
+if [[ -n "${SUBJECT_FOLDS:-}" ]]; then
+  ARGS+=(--subject-folds "${SUBJECT_FOLDS}" --subject-fold "${SUBJECT_FOLD:?}")
+fi
+python "${REPO_ROOT}/extra_scripts/run_ec_block_glmm.py" "${ARGS[@]}"

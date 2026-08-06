@@ -13,12 +13,15 @@ set -euo pipefail
 : "${OUTPUT_DIR:?set OUTPUT_DIR}"
 : "${MAJIQ_LICENSE_FILE:?set MAJIQ_LICENSE_FILE}"
 
-module purge
+unset LOADEDMODULES
+for variable in $(compgen -A variable _ModuleTable); do
+  unset "${variable}"
+done
 module load Python/3.12.3-GCCcore-13.3.0 HTSlib/1.21 zstd/1.5.6-GCCcore-13.3.0
-source "${MAJIQ_VENV:-${HOME}/venv/majiq_cluster}/bin/activate"
+MAJIQ_VENV=${MAJIQ_VENV:-${HOME}/venv/majiq_cluster}
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 mkdir -p "${OUTPUT_DIR}/raw" "${OUTPUT_DIR}/normalized"
-mapfile -t fields < <(python - "${CONTRASTS}" "${SLURM_ARRAY_TASK_ID}" <<'PY'
+mapfile -t fields < <("${MAJIQ_VENV}/bin/python" - "${CONTRASTS}" "${SLURM_ARRAY_TASK_ID}" <<'PY'
 import json, sys
 x = json.load(open(sys.argv[1]))[int(sys.argv[2])]
 print(x["contrast_id"])
@@ -32,7 +35,7 @@ contrast=${fields[0]}
 read -ra group_a <<< "${fields[3]}"
 read -ra group_b <<< "${fields[4]}"
 raw="${OUTPUT_DIR}/raw/${contrast}.tsv"
-majiq-v3 heterogen -psi1 "${PSICOV}" -psi2 "${PSICOV}" \
+"${MAJIQ_VENV}/bin/majiq-v3" heterogen -psi1 "${PSICOV}" -psi2 "${PSICOV}" \
   --select-grp1-prefixes "${group_a[@]}" \
   --select-grp2-prefixes "${group_b[@]}" \
   -n "${fields[1]}" "${fields[2]}" --min-experiments 0.5 \
@@ -40,6 +43,7 @@ majiq-v3 heterogen -psi1 "${PSICOV}" -psi2 "${PSICOV}" \
   --splicegraph "${SPLICEGRAPH}" --annotated "${ANNOTATED_SPLICEGRAPH}" \
   --output-tsv "${raw}" --nthreads "${SLURM_CPUS_PER_TASK:-4}" \
   --license "${MAJIQ_LICENSE_FILE}"
-python "${REPO_ROOT}/extra_scripts/run_junction_comparator.py" normalize-majiq \
+"${MAJIQ_VENV}/bin/python" \
+  "${REPO_ROOT}/extra_scripts/run_junction_comparator.py" normalize-majiq \
   --contrasts "${CONTRASTS}" --contrast-index "${SLURM_ARRAY_TASK_ID}" \
   --input "${raw}" --output "${OUTPUT_DIR}/normalized/${contrast}.tsv"

@@ -11,6 +11,7 @@ from tealeaf.sc.junction_benchmark import (
     annotate_scquint_groups,
     normalize_starsolo_barcode,
     prepare_splitseq_whitelists,
+    stratified_subject_folds,
     write_leafcutter_junctions,
 )
 
@@ -92,3 +93,18 @@ def test_annotate_scquint_groups_uses_exon_boundaries(tmp_path):
     result = annotate_scquint_groups(bundle, gtf)
     assert result.junctions.intron_group.nunique() == 1
     assert result.junctions.intron_group_size.tolist() == [2, 2]
+
+
+def test_stratified_subject_folds_balances_conditions_and_subjects():
+    samples = pd.DataFrame(
+        {
+            "subject": np.repeat([f"s{i}" for i in range(8)], 2),
+            "condition": np.repeat(["A"] * 4 + ["B"] * 4, 2),
+            "cell_type": ["X", "Y"] * 8,
+        }
+    )
+    folds = stratified_subject_folds(samples, n_folds=2, seed=3)
+    assert folds.subject.is_unique
+    assert folds.groupby(["fold", "condition"]).size().eq(2).all()
+    repeated = stratified_subject_folds(samples, n_folds=2, seed=3)
+    pd.testing.assert_frame_equal(folds, repeated)

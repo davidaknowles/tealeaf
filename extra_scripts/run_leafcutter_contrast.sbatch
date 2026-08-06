@@ -14,10 +14,14 @@ set -euo pipefail
 index=${SLURM_ARRAY_TASK_ID}
 mkdir -p "${OUTPUT_DIR}/metadata" "${OUTPUT_DIR}/raw" "${OUTPUT_DIR}/normalized"
 
-module load "${PYTHON_MODULE:-Python/3.12.3-GCCcore-13.3.0}"
-source "${HOME}/venv/cpa_blackwell/bin/activate"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
-python "${REPO_ROOT}/extra_scripts/run_junction_comparator.py" leafcutter-metadata \
+PYTHON="${HOME}/venv/cpa_blackwell/bin/python"
+unset LOADEDMODULES
+for variable in $(compgen -A variable _ModuleTable); do
+  unset "${variable}"
+done
+module load "${PYTHON_MODULE:-Python/3.12.3-GCCcore-13.3.0}"
+"${PYTHON}" "${REPO_ROOT}/extra_scripts/run_junction_comparator.py" leafcutter-metadata \
   --bundle "${BUNDLE}" --contrasts "${CONTRASTS}" --contrast-index "${index}" \
   --output "${OUTPUT_DIR}/metadata/${index}.tsv"
 
@@ -39,9 +43,7 @@ fi
 
 module purge
 module load "${PYTHON_MODULE:-Python/3.12.3-GCCcore-13.3.0}"
-source "${HOME}/venv/cpa_blackwell/bin/activate"
-export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
-python "${REPO_ROOT}/extra_scripts/run_junction_comparator.py" normalize-leafcutter \
+"${PYTHON}" "${REPO_ROOT}/extra_scripts/run_junction_comparator.py" normalize-leafcutter \
   --contrasts "${CONTRASTS}" --contrast-index "${index}" \
   --input "${significance}" \
   --output "${OUTPUT_DIR}/normalized/${index}.tsv"

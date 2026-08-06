@@ -369,6 +369,35 @@ def plan_pairwise_contrasts(samples: pd.DataFrame, min_subjects: int = 4) -> lis
     return contrasts
 
 
+def stratified_subject_folds(
+    samples: pd.DataFrame, n_folds: int = 2, seed: int = 0
+) -> pd.DataFrame:
+    """Assign biological subjects to condition-balanced reproducibility folds."""
+    subject_conditions = samples.groupby("subject")["condition"].agg(
+        lambda values: sorted(set(map(str, values)))
+    )
+    if subject_conditions.map(len).ne(1).any():
+        raise ValueError("each subject must have exactly one condition")
+    subjects = pd.DataFrame(
+        {
+            "subject": subject_conditions.index.astype(str),
+            "condition": subject_conditions.map(lambda values: values[0]).to_numpy(),
+        }
+    )
+    if int(n_folds) < 2:
+        raise ValueError("n_folds must be at least two")
+    rng = np.random.default_rng(seed)
+    fold = np.full(len(subjects), -1, dtype=int)
+    for _, indices in subjects.groupby("condition", sort=True).groups.items():
+        indices = np.asarray(list(indices), dtype=int)
+        if len(indices) < int(n_folds):
+            raise ValueError("each condition must contain at least n_folds subjects")
+        indices = rng.permutation(indices)
+        fold[indices] = np.arange(len(indices)) % int(n_folds)
+    subjects["fold"] = fold
+    return subjects.sort_values(["fold", "condition", "subject"]).reset_index(drop=True)
+
+
 def normalize_pvalue_table(
     table: pd.DataFrame,
     *,
@@ -413,8 +442,23 @@ def simes_omnibus(pairwise: pd.DataFrame) -> pd.DataFrame:
         if not len(pvalues):
             continue
         simes = min(1.0, np.min(pvalues * len(pvalues) / np.arange(1, len(pvalues) + 1)))
-        rows.append((method, feature, simes, len(pvalues)))
-    result = pd.DataFrame(rows, columns=["method", "feature_id", "p_value", "n_pairwise"])
+        metadata = {}
+        for column in ("gene_id", "gene_name"):
+            if column in local:
+                values = local[column].dropna().astype(str).unique()
+                metadata[column] = values[0] if len(values) == 1 else np.nan
+        rows.append({
+            "method": method,
+            "feature_id": feature,
+            "p_value": simes,
+            "n_pairwise": len(pvalues),
+            **metadata,
+        })
+    result = pd.DataFrame(rows)
+    if result.empty:
+        result = pd.DataFrame(
+            columns=["method", "feature_id", "p_value", "n_pairwise"]
+        )
     result["q_value"] = np.nan
     for method, indices in result.groupby("method").groups.items():
         result.loc[indices, "q_value"] = benjamini_hochberg(

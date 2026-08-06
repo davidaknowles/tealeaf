@@ -74,6 +74,8 @@ def parse_args():
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--shard-count", type=int, default=1)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--subject-folds", type=Path)
+    parser.add_argument("--subject-fold", type=int)
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
 
@@ -185,7 +187,7 @@ def modeled_gene_umis(counts, designs, ecs, transcripts):
 def candidate_cache_settings(args):
     """Return the screening settings that define a candidate manifest."""
     return {
-        "version": 2,
+        "version": 3,
         "data_cache": str(args.data_cache.resolve()),
         "features": str(args.features.resolve()),
         "block_cache": str(args.block_cache.resolve()),
@@ -201,6 +203,10 @@ def candidate_cache_settings(args):
         "min_condition_mice": args.min_condition_mice,
         "max_isoforms": args.max_isoforms,
         "max_ecs": args.max_ecs,
+        "subject_folds": (
+            None if args.subject_folds is None else str(args.subject_folds.resolve())
+        ),
+        "subject_fold": args.subject_fold,
     }
 
 
@@ -326,6 +332,18 @@ def main():
             f"{designs[0].shape[1]} transcript columns"
         )
     metadata = group_metadata(groups)
+    if args.subject_folds is not None:
+        if args.subject_fold is None:
+            raise ValueError("--subject-fold is required with --subject-folds")
+        folds = pd.read_csv(args.subject_folds, sep="\t", dtype={"subject": str})
+        selected = set(
+            folds.loc[folds.fold.eq(args.subject_fold), "subject"].astype(str)
+        )
+        selected_rows = metadata["mouse"].astype(str).isin(selected).to_numpy()
+        if not selected_rows.any():
+            raise ValueError("subject fold selects no EC-count pseudobulks")
+        metadata = metadata.loc[selected_rows].reset_index(drop=True)
+        counts = tuple(matrix[selected_rows] for matrix in counts)
     if args.test_effect == "cell_type":
         globally_represented = metadata.groupby("cell_type")["mouse"].nunique()
         global_cell_types = globally_represented.index[
@@ -734,6 +752,10 @@ def main():
         "min_conditions": args.min_conditions,
         "min_condition_mice": args.min_condition_mice,
         "test_effect": args.test_effect,
+        "subject_folds": (
+            None if args.subject_folds is None else str(args.subject_folds)
+        ),
+        "subject_fold": args.subject_fold,
         "seconds": time.perf_counter() - started,
     }, indent=2) + "\n")
 

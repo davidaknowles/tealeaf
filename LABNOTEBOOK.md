@@ -2808,15 +2808,62 @@ gives the number of tests, BH discoveries, and discovery fraction separately
 for cell-type and condition effects. The mouse Tealeaf row uses the primary
 empirically calibrated logistic-normal EC GLMM (243 cell-type and zero
 condition discoveries); the human row uses the recommended multinomial
-Laplace LRT (1,487 and 191 discoveries). The corresponding LeafCutter, MAJIQ,
-and scQuint cell-type discovery counts are 1,007, 188, and 11,381 in mouse and
-3,043, 7,700, and 104,583 in human. Condition counts are 40, 34, and 16 in
+Laplace LRT (1,487 and 191 discoveries). After correcting the cell-type
+omnibus summary, the corresponding LeafCutter, MAJIQ, and scQuint cell-type
+discovery counts are 229, 27, and 828 in mouse and 238, 342, and 2,239 in
+human. Condition counts are 40, 34, and 16 in
 mouse and 475, 278, and 36 in human.
 
 The tables explicitly avoid interpreting raw discovery count or fraction as
 power. Tealeaf, LeafCutter, MAJIQ, and scQuint test EC blocks, intron clusters,
-LSVs, and intron groups, respectively, and method-specific filtering creates
+LSV edges, and intron groups, respectively, and method-specific filtering creates
 substantially different test universes. The datasets have no ground-truth DS
 labels. External-method cell-type entries are Simes omnibus summaries of
 pairwise tests, whereas the Tealeaf cell-type hypothesis is fit directly as
 an omnibus model.
+
+## 2026-08-05: comparator audit and split-subject power benchmark
+
+The original external-method summary counted every feature-by-pairwise-cell-
+type row even though the manuscript described a feature-level Simes omnibus.
+The omnibus table was computed but not used to construct `summary.tsv`. This
+inflated mouse scQuint cell-type tests from 16,081 unique intron groups to
+586,476 pairwise rows and human tests from 27,097 to 2,034,311. The same issue
+affected LeafCutter and MAJIQ. The summarizer now uses the omnibus table for
+cell type and retains pairwise rows for within-cell-type condition tests.
+
+MAJIQ normalization had selected `raw_pvalue` through a fallback while the
+manuscript claimed the 95th-percentile posterior statistic. MAJIQ's own
+documentation says that posterior quantile is conservative but not calibrated
+as a p-value, so BH must use the raw per-LSV-edge test p-value. MAJIQ edge IDs
+are now built from genomic coordinates and gene metadata rather than unstable
+within-gene row numbers. The corrected mouse cell-type omnibus counts are
+1,020/229 for LeafCutter, 46/27 for MAJIQ, and 16,081/828 for scQuint
+(tests/BH discoveries). Human counts are 2,155/238, 582/342, and 27,097/2,239.
+
+scQuint's remaining larger universe is real but permissive. The mouse and
+human junction bundles contain 80,986 and 107,912 annotated three-prime groups
+with at least two junctions; 46,236 and 57,280 contain exactly two. Running
+scQuint on pseudobulks with only three nonzero samples required per arm allows
+16,081 and 27,097 groups into at least one cell-type contrast. Tealeaf instead
+requires EC-identifiable block paths and block-level gene coverage.
+
+A two-fold mouse reproducibility benchmark was implemented and submitted.
+Each fold contains 24 mice, exactly four from each of six conditions. Tealeaf,
+LeafCutter, scQuint, and MAJIQ are rerun independently in each half. Features
+are mapped to genes, within-gene p-values are combined by Simes, and scoring
+uses a pairwise shared universe: each comparator and Tealeaf are evaluated on
+the intersection of genes eligible for both methods in both folds. This avoids
+letting MAJIQ's small mouse universe determine every comparison. The
+primary endpoint applies BH to the conjunction p-value
+`max(p_fold0, p_fold1)`; secondary endpoints are held-fold nominal replication,
+log-p rank correlation, and top-K overlap. A junction-coordinate map assigns
+6,568 LeafCutter clusters uniquely to genes. Subject-label permutations remain
+necessary to establish calibration before replicated discovery count is
+described as power.
+
+The first LeafCutter split arrays inherited a malformed Lmod module table from
+the submission shell, causing most tasks to fail before R started. A direct
+smoke contrast completed after resetting the module state. Both LeafCutter
+arrays and their dependent summaries were resubmitted with that fix; the
+failed logs were retained.

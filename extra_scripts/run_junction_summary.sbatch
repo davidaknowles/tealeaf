@@ -8,12 +8,11 @@ set -euo pipefail
 : "${REPO_ROOT:?set REPO_ROOT}"
 : "${BENCHMARK_ROOT:?set BENCHMARK_ROOT}"
 
-module load "${PYTHON_MODULE:-Python/3.12.3-GCCcore-13.3.0}"
-source "${HOME}/venv/cpa_blackwell/bin/activate"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 output="${BENCHMARK_ROOT}/comparison"
 mkdir -p "${output}"
-python "${REPO_ROOT}/extra_scripts/run_junction_comparator.py" summarize \
+"${HOME}/venv/cpa_blackwell/bin/python" \
+  "${REPO_ROOT}/extra_scripts/run_junction_comparator.py" summarize \
   --input-dir "${BENCHMARK_ROOT}/leafcutter/tests/normalized" \
   --input-dir "${BENCHMARK_ROOT}/scquint/tests" \
   --input-dir "${BENCHMARK_ROOT}/majiq/tests/normalized" \

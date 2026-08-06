@@ -599,8 +599,10 @@ subject as a covariate for the paired cell-type tests. scQuint is run on the
 pseudobulk junction matrix because its differential-splicing interface has no
 covariate argument. MAJIQ v3 builds one common splice graph and PSI-coverage
 object from the pseudobulk BAMs, then applies its replicate-level Heterogen
-test with the conservative 95th percentile of the posterior-bootstrap
-Mann--Whitney p-value. MAJIQ and scQuint therefore use the matched replicates
+Mann--Whitney test to each LSV edge. Its raw test p-value is used for BH. The
+95th percentile over tests of posterior PSI draws is retained as a sensitivity
+statistic, but MAJIQ documents that quantity as uncalibrated as a p-value, so
+it is not used for MHT. MAJIQ and scQuint therefore use the matched replicates
 but cannot model their cell-type pairing. Each method receives BH correction
 within a pairwise contrast. For a cell-type-wide feature score, pairwise
 p-values are combined by Simes before a second BH correction. The comparison
@@ -612,8 +614,8 @@ Tables~\ref{tab:mouse-method-comparison} and
 discovery counts. These are comparisons of practical discovery yield, not
 estimates of relative power: no ground truth is available, and the methods
 test different units. Tealeaf tests EC-supported splice-block path
-partitions, LeafCutter tests intron clusters, MAJIQ tests local splicing
-variations (LSVs), and scQuint tests intron groups. Their filters consequently
+partitions, LeafCutter tests intron clusters, MAJIQ tests edges within local
+splicing variations (LSVs), and scQuint tests intron groups. Their filters consequently
 produce different testing universes. The discovery fraction is reported to
 make that difference visible, but it is not an accuracy measure. In
 particular, a larger fraction can reflect stronger filtering as well as
@@ -636,9 +638,9 @@ discovery counts use BH FDR 0.05. Rate is discoveries divided by tests.}
 Method & Test unit & Tests & BH & Rate & Tests & BH & Rate\\
 \midrule
 Tealeaf EC GLMM & EC block & 4,825 & 243 & 5.04\% & 14,833 & 0 & 0.00\%\\
-LeafCutter & Intron cluster & 13,630 & 1,007 & 7.39\% & 10,279 & 40 & 0.39\%\\
-MAJIQ Heterogen & LSV & 787 & 188 & 23.89\% & 3,836 & 34 & 0.89\%\\
-scQuint & Intron group & 586,476 & 11,381 & 1.94\% & 161,711 & 16 & 0.01\%\\
+LeafCutter & Intron cluster & 1,020 & 229 & 22.45\% & 10,279 & 40 & 0.39\%\\
+MAJIQ Heterogen & LSV edge & 46 & 27 & 58.70\% & 3,836 & 34 & 0.89\%\\
+scQuint & Intron group & 16,081 & 828 & 5.15\% & 161,711 & 16 & 0.01\%\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -658,12 +660,25 @@ counts use BH FDR 0.05. Rate is discoveries divided by tests.}
 Method & Test unit & Tests & BH & Rate & Tests & BH & Rate\\
 \midrule
 Tealeaf EC GLMM & EC block & 11,597 & 1,487 & 12.82\% & 73,144 & 191 & 0.26\%\\
-LeafCutter & Intron cluster & 58,086 & 3,043 & 5.24\% & 5,238 & 475 & 9.07\%\\
-MAJIQ Heterogen & LSV & 25,682 & 7,700 & 29.98\% & 3,522 & 278 & 7.89\%\\
-scQuint & Intron group & 2,034,311 & 104,583 & 5.14\% & 85,852 & 36 & 0.04\%\\
+LeafCutter & Intron cluster & 2,155 & 238 & 11.04\% & 5,238 & 475 & 9.07\%\\
+MAJIQ Heterogen & LSV edge & 582 & 342 & 58.76\% & 3,522 & 278 & 7.89\%\\
+scQuint & Intron group & 27,097 & 2,239 & 8.26\% & 85,852 & 36 & 0.04\%\\
 \bottomrule
 \end{tabular}
 \end{table}
+
+Raw yield still does not establish that one method is better. The planned
+power comparison divides biological subjects into two condition-balanced
+halves and reruns every cell-type analysis independently. Each method's
+features are mapped to genes, feature p-values are combined within gene by
+Simes, and each Tealeaf--comparator evaluation is restricted to genes eligible
+for both methods in both halves. The primary reproducibility hypothesis uses
+\(p_g^{\rm rep}=\max(p_{g1},p_{g2})\), which tests whether gene \(g\) has DS
+signal in both independent halves; BH is then applied once over the shared
+gene universe. Secondary endpoints are held-half nominal replication,
+Spearman correlation of \(-\log_{10}p\), and top-\(K\) overlap. Subject-label
+permutations are required to compare calibration before a larger replicated
+set is interpreted as improved power.
 
 \appendix
 
