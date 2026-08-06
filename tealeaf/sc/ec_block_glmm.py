@@ -57,6 +57,17 @@ def unrestricted_tensor(design, dimension):
     return result
 
 
+def full_fixed_effect_tensor(nuisance_design, tested_design, dimension):
+    """Build the canonical unrestricted alternative for a tested effect."""
+    return np.concatenate(
+        (
+            unrestricted_tensor(nuisance_design, dimension),
+            unrestricted_tensor(tested_design, dimension),
+        ),
+        axis=2,
+    )
+
+
 def block_fixed_effect_tensors(nuisance_design, tested_design, path_index):
     """Build nested null and block-path alternative fixed-effect tensors."""
     nuisance_design = np.asarray(nuisance_design, dtype=float)

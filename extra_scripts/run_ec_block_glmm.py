@@ -368,6 +368,19 @@ def fit_with_retries(method, data, args, initial=None, retries=None):
     return fit
 
 
+def reparameterize_fixed_effects(fit, source_tensor, target_tensor):
+    """Map fitted logits into an equivalent fixed-effect tensor basis."""
+    source_count = source_tensor.shape[2]
+    coefficients = np.asarray(fit["parameters"][:source_count], dtype=float)
+    fitted_logits = source_tensor.reshape(-1, source_count) @ coefficients
+    target_coefficients = np.linalg.lstsq(
+        target_tensor.reshape(-1, target_tensor.shape[2]),
+        fitted_logits,
+        rcond=None,
+    )[0]
+    return np.r_[target_coefficients, fit["parameters"][source_count:]]
+
+
 def main():
     args = parse_args()
     if args.calibration == "lrt_bic" and any(
@@ -552,6 +565,7 @@ def main():
     null_rows = []
     failures = []
     null_cache = {}
+    alternative_cache = {}
     started = time.perf_counter()
     for position, candidate in enumerate(candidates):
         (
@@ -588,6 +602,10 @@ def main():
                 )
             )
             null_data = tensor_data(base, null_tensor)
+            full_alternative_tensor = ec_block_glmm.full_fixed_effect_tensor(
+                nuisance, tested, base.n_isoforms - 1
+            )
+            full_alternative_data = tensor_data(base, full_alternative_tensor)
             completed_methods = {}
             for method in args.methods:
                 cache_key = (test_id, method)
@@ -607,24 +625,30 @@ def main():
                         method, null_data, args, initial=null_initial
                     )
                 null = null_cache[cache_key]
-                alternative_data = tensor_data(base, alternative_tensor)
-                if (
-                    method == "laplace_multinomial_noise"
-                    and "laplace_multinomial" in completed_methods
-                ):
-                    initial = np.r_[
-                        completed_methods["laplace_multinomial"][
-                            "alternative"
-                        ]["parameters"],
-                        np.log(0.3),
-                    ]
-                else:
-                    initial = ec_glmm_full.fixed_effect_warm_start(
-                        null, alternative_tensor.shape[2]
+                alternative_key = (gene, tuple(rows), method)
+                alternative_reused = alternative_key in alternative_cache
+                if not alternative_reused:
+                    if (
+                        method == "laplace_multinomial_noise"
+                        and "laplace_multinomial" in completed_methods
+                    ):
+                        initial = np.r_[
+                            completed_methods["laplace_multinomial"][
+                                "alternative"
+                            ]["parameters"],
+                            np.log(0.3),
+                        ]
+                    else:
+                        initial = reparameterize_fixed_effects(
+                            null, null_tensor, full_alternative_tensor
+                        )
+                    alternative_cache[alternative_key] = fit_with_retries(
+                        method,
+                        full_alternative_data,
+                        args,
+                        initial=initial,
                     )
-                alternative = fit_with_retries(
-                    method, alternative_data, args, initial=initial
-                )
+                alternative = alternative_cache[alternative_key]
                 completed_methods[method] = {
                     "null": null,
                     "alternative": alternative,
@@ -684,6 +708,10 @@ def main():
                     "alternative_observation_noise_sd": alternative[
                         "observation_noise_sd"
                     ],
+                    "null_random_effect_sd": null["random_effect_sd"],
+                    "alternative_random_effect_sd": alternative[
+                        "random_effect_sd"
+                    ],
                     "alternative_concentration": alternative["concentration"],
                     "null_iterations": null["total_iterations"],
                     "alternative_iterations": alternative["total_iterations"],
@@ -705,6 +733,7 @@ def main():
                     ),
                     "null_attempts": null["attempts"],
                     "alternative_attempts": alternative["attempts"],
+                    "alternative_reused": alternative_reused,
                 })
                 if args.calibration != "bootstrap":
                     continue

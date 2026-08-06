@@ -2927,3 +2927,12 @@ manifests from 7,671 to 31,004 tests (935 to 2,503 genes) in fold 0 and from
 5,140 to 23,055 tests (750 to 2,238 genes) in fold 1. The lower threshold must
 be evaluated by held-out reproducibility and null calibration rather than by
 raw discovery count alone.
+
+For a fixed gene and tested cell-type pair, every block-specific alternative
+is the same unrestricted cell-type effect on the isoform logits. Blocks differ
+only in which path contrast is removed under the null. The implementation now
+expresses this shared alternative in a canonical unrestricted tensor basis,
+maps the first block-null warm start into that basis by least squares, and
+caches the fitted alternative by gene, retained rows, and method. This avoids
+refitting identical alternatives for genes with multiple tested blocks while
+leaving each block-specific null and LRT degrees of freedom unchanged.

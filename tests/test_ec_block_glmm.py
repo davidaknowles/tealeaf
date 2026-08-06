@@ -17,6 +17,7 @@ from extra_scripts.run_ec_block_glmm import (
     covered_condition_designs,
     deduplicate_supported_partitions,
     modeled_gene_umis,
+    reparameterize_fixed_effects,
 )
 from extra_scripts.run_differential_splicing import block_mapping
 from tealeaf.sc import ec_block_glmm, ec_glmm, ec_glmm_full
@@ -64,6 +65,31 @@ def test_block_tensors_are_nested_with_expected_df():
     assert alternative.shape == (3, 3, 12)
     assert degrees == 4
     np.testing.assert_array_equal(alternative[:, :, :8], null)
+
+
+def test_canonical_full_alternative_has_same_block_model_span():
+    nuisance = np.array([[1, 0], [0, 1], [1, 0]], dtype=float)
+    tested = np.array([[0], [1], [0]], dtype=float)
+    null, block_alternative, _ = ec_block_glmm.block_fixed_effect_tensors(
+        nuisance, tested, [0, 0, 1, 2]
+    )
+    canonical = ec_block_glmm.full_fixed_effect_tensor(nuisance, tested, 3)
+    block_flat = block_alternative.reshape(-1, block_alternative.shape[2])
+    canonical_flat = canonical.reshape(-1, canonical.shape[2])
+    assert np.linalg.matrix_rank(block_flat) == np.linalg.matrix_rank(canonical_flat)
+    assert np.linalg.matrix_rank(np.column_stack((block_flat, canonical_flat))) == (
+        np.linalg.matrix_rank(canonical_flat)
+    )
+
+    parameters = np.r_[np.arange(null.shape[2], dtype=float), -0.7]
+    initial = reparameterize_fixed_effects(
+        {"parameters": parameters}, null, canonical
+    )
+    np.testing.assert_allclose(
+        canonical_flat @ initial[: canonical.shape[2]],
+        null.reshape(-1, null.shape[2]) @ parameters[:-1],
+    )
+    assert initial[-1] == parameters[-1]
 
 
 def test_full_vi_accepts_tensor_fixed_effects_and_warm_start():
