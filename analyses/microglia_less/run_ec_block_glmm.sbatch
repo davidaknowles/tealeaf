@@ -29,7 +29,7 @@ SHARD_INDEX=${SHARD_INDEX:-${SLURM_ARRAY_TASK_ID}}
 OUTPUT_TAG=${OUTPUT_TAG:-ec_block_glmm}
 CALIBRATION=${CALIBRATION:-bootstrap}
 if [[ "${CALIBRATION}" == "lrt_bic" ]]; then
-  DEFAULT_METHODS="laplace_multinomial;laplace_multinomial_noise"
+  DEFAULT_METHODS="laplace_multinomial;laplace_multinomial_noise;laplace_multinomial_slope"
 else
   DEFAULT_METHODS="multinomial_full;multinomial_noise_full;dirichlet_multinomial_full"
 fi

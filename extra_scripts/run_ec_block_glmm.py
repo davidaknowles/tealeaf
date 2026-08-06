@@ -28,6 +28,7 @@ METHODS = (
     "dirichlet_multinomial_full",
     "laplace_multinomial",
     "laplace_multinomial_noise",
+    "laplace_multinomial_slope",
 )
 
 
@@ -391,13 +392,14 @@ def local_test_design(metadata, rows, tested_levels, test_effect):
     return local, nuisance, labels
 
 
-def tensor_data(base, tensor):
+def tensor_data(base, tensor, random_effect_design=None):
     return ec_glmm.ECGLMMData(
         base.counts,
         base.compatibility,
         np.ones((len(base.clusters), 1), dtype=float),
         base.clusters,
         fixed_effect_tensor=tensor,
+        random_effect_design=random_effect_design,
     )
 
 
@@ -407,6 +409,7 @@ def fit_method(method, data, args, initial=None):
             data,
             family="multinomial",
             observation_noise=method == "laplace_multinomial_noise",
+            random_slopes=method == "laplace_multinomial_slope",
             initial=initial,
             max_iter=args.max_iter,
         )
@@ -705,11 +708,24 @@ def main():
                     nuisance, tested, path_index
                 )
             )
-            null_data = tensor_data(base, null_tensor)
+            random_effect_design = None
+            if args.test_effect == "cell_type_pairwise":
+                centered_labels = np.asarray(labels, dtype=float)
+                centered_labels -= centered_labels.mean()
+                random_effect_design = np.column_stack(
+                    (np.ones(len(labels), dtype=float), centered_labels)
+                )
+            null_data = tensor_data(
+                base, null_tensor, random_effect_design=random_effect_design
+            )
             full_alternative_tensor = ec_block_glmm.full_fixed_effect_tensor(
                 nuisance, tested, base.n_isoforms - 1
             )
-            full_alternative_data = tensor_data(base, full_alternative_tensor)
+            full_alternative_data = tensor_data(
+                base,
+                full_alternative_tensor,
+                random_effect_design=random_effect_design,
+            )
             completed_methods = {}
             for method in args.methods:
                 cache_key = (test_id, method)
@@ -813,6 +829,10 @@ def main():
                     "alternative_observation_noise_sd": alternative[
                         "observation_noise_sd"
                     ],
+                    "null_random_slope_sd": null.get("random_slope_sd", 0.0),
+                    "alternative_random_slope_sd": alternative.get(
+                        "random_slope_sd", 0.0
+                    ),
                     "null_random_effect_sd": null["random_effect_sd"],
                     "alternative_random_effect_sd": alternative[
                         "random_effect_sd"
@@ -861,6 +881,7 @@ def main():
                             "multinomial_noise_full",
                             "laplace_multinomial_noise",
                         },
+                        random_slopes=method == "laplace_multinomial_slope",
                     )
                     simulated_null_data = ec_glmm.ECGLMMData(
                         simulated_counts,
@@ -868,6 +889,7 @@ def main():
                         np.ones((len(base.clusters), 1), dtype=float),
                         base.clusters,
                         fixed_effect_tensor=null_tensor,
+                        random_effect_design=random_effect_design,
                     )
                     simulated_null = fit_with_retries(
                         method,
@@ -882,6 +904,7 @@ def main():
                         np.ones((len(base.clusters), 1), dtype=float),
                         base.clusters,
                         fixed_effect_tensor=alternative_tensor,
+                        random_effect_design=random_effect_design,
                     )
                     simulated_initial = ec_glmm_full.fixed_effect_warm_start(
                         simulated_null, alternative_tensor.shape[2]
@@ -912,13 +935,13 @@ def main():
                         "replicate": replicate,
                         "degrees_of_freedom": degrees,
                         "median_gene_umis": float(np.median(totals)),
-                        "statistic": float(
-                            2.0
-                            * (
-                                simulated_fit["objective"]
-                                - simulated_null["objective"]
-                            )
-                        ),
+                        "statistic": float(2.0 * (
+                            simulated_null["objective"]
+                            - simulated_fit["objective"]
+                            if method.startswith("laplace_")
+                            else simulated_fit["objective"]
+                            - simulated_null["objective"]
+                        )),
                         "converged": (
                             simulated_null["converged"]
                             and simulated_fit["converged"]

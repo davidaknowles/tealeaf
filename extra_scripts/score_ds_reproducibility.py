@@ -72,7 +72,9 @@ def load_pairwise_fold(
     tealeaf_fit_method: str,
     min_median_gene_umis: float,
 ) -> pd.DataFrame:
-    external = pd.read_csv(path / "comparison/all_tests.tsv.gz", sep="\t")
+    external = pd.read_csv(
+        path / "comparison/all_tests.tsv.gz", sep="\t", low_memory=False
+    )
     external = external.loc[external.effect.eq("cell_type")].copy()
     external.loc[external.method.eq("LeafCutter"), "gene_id"] = external.loc[
         external.method.eq("LeafCutter"), "feature_id"

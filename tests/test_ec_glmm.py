@@ -191,3 +191,33 @@ def test_full_covariance_and_observation_noise_fits():
     assert fit["random_effect_covariance"].shape == (10, 1, 1)
     scores = ec_glmm_full.evaluate_objectives(data, fit, samples=32)
     assert np.isfinite(list(scores.values())).all()
+
+
+def test_laplace_supports_paired_random_slopes():
+    rng = np.random.default_rng(17)
+    subjects = 18
+    clusters = np.repeat(np.arange(subjects), 2)
+    labels = np.tile([-0.5, 0.5], subjects)
+    random_design = np.column_stack((np.ones(2 * subjects), labels))
+    design = np.column_stack((np.ones(2 * subjects), labels))
+    mapping = np.eye(2)
+    intercepts = rng.normal(0.0, 0.25, subjects)
+    slopes = rng.normal(0.0, 0.8, subjects)
+    logits = 0.5 * labels + intercepts[clusters] + labels * slopes[clusters]
+    probabilities = np.column_stack((np.exp(logits), np.ones(len(logits))))
+    probabilities /= probabilities.sum(axis=1, keepdims=True)
+    counts = np.asarray([rng.multinomial(400, row) for row in probabilities])
+    data = ec_glmm.ECGLMMData(
+        (counts,),
+        (mapping,),
+        design,
+        clusters,
+        random_effect_design=random_design,
+    )
+    fit = ec_glmm.fit_laplace(
+        data, random_slopes=True, max_iter=100, mode_steps=20
+    )
+    assert fit["converged"]
+    assert fit["random_effect_sds"].shape == (2,)
+    assert fit["random_slope_sd"] > 0.2
+    assert fit["random_term_mean"].shape == (subjects, 2, 1)

@@ -2994,3 +2994,33 @@ label-swap subset it selects noise for 11.5% of tests, has an 8.1% nominal
 rate, and has no BH null discoveries. It does not improve the 100-UMI split
 benchmark over the noise model, so it is retained as an ablation rather than
 the recommended test.
+
+## 2026-08-06: paired random-slope EC GLMM
+
+The independent observation-level logistic-normal effect improves the null
+tail but discards power because it gives every pseudobulk a separate latent
+isoform-logit perturbation. The paired cell-type design instead suggests a
+structured source of overdispersion: subjects can differ in their cell-type
+contrast. The Laplace EC GLMM now accepts an explicit random-effect design.
+For a pairwise test it uses an intercept and a centered cell-type indicator,
+so subject (i)'s free-isoform logits include
+
+```
+b_i + (z_ij - mean(z)) s_i,
+```
+
+where the intercept vector `b_i` and slope vector `s_i` have independent
+isotropic Gaussian priors with separately estimated standard deviations. The
+same random-effect design and variances are fit under the null and alternative;
+the LRT still tests only the population-average block-path contrast. Existing
+intercept-only and observation-noise fits retain their prior behavior.
+
+Null simulation was generalized to sample every configured random term, and
+the bootstrap LRT sign was corrected for Laplace objectives. A synthetic
+paired simulation recovers a nonzero slope variance, and the focused EC GLMM
+and block-runner suite passes 28 tests. A real fold-0 block smoke fit converged
+under both hypotheses with estimated null intercept and slope standard
+deviations 0.0058 and 0.182. Genome-wide observed fits for both subject folds
+and a 1,000-test fold-0 paired-label-swap calibration run were submitted. No
+power comparison should be made until the permutation tail and matched split
+results complete.

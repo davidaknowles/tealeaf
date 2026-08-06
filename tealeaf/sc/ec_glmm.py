@@ -39,6 +39,7 @@ class ECGLMMData:
     design: np.ndarray
     clusters: np.ndarray
     fixed_effect_tensor: np.ndarray | None = None
+    random_effect_design: np.ndarray | None = None
 
     def __post_init__(self):
         counts = tuple(np.asarray(value, dtype=float) for value in self.counts)
@@ -55,6 +56,11 @@ class ECGLMMData:
             None
             if self.fixed_effect_tensor is None
             else np.asarray(self.fixed_effect_tensor, dtype=float)
+        )
+        random_effect_design = (
+            None
+            if self.random_effect_design is None
+            else np.asarray(self.random_effect_design, dtype=float)
         )
         if not counts or len(counts) != len(compatibility):
             raise ValueError("counts and compatibility need one entry per primer")
@@ -79,6 +85,20 @@ class ECGLMMData:
             raise ValueError("the fixed-effect design does not align with counts")
         if len(clusters) != n_observations:
             raise ValueError("clusters do not align with counts")
+        if random_effect_design is not None:
+            if (
+                random_effect_design.ndim != 2
+                or random_effect_design.shape[0] != n_observations
+                or random_effect_design.shape[1] < 1
+            ):
+                raise ValueError(
+                    "random_effect_design must be observations by random terms"
+                )
+            if (
+                np.linalg.matrix_rank(random_effect_design)
+                != random_effect_design.shape[1]
+            ):
+                raise ValueError("the random-effect design is rank deficient")
         if np.linalg.matrix_rank(design) != design.shape[1]:
             raise ValueError("the fixed-effect design is rank deficient")
         if fixed_effect_tensor is not None:
@@ -99,6 +119,7 @@ class ECGLMMData:
         object.__setattr__(self, "design", design)
         object.__setattr__(self, "clusters", clusters)
         object.__setattr__(self, "fixed_effect_tensor", fixed_effect_tensor)
+        object.__setattr__(self, "random_effect_design", random_effect_design)
 
     @property
     def n_isoforms(self):
@@ -197,11 +218,18 @@ def fit_laplace(
     *,
     family="multinomial",
     observation_noise=False,
+    random_slopes=False,
     initial=None,
     max_iter=200,
     mode_steps=30,
 ):
-    """Fit an EC-count random-intercept GLMM by Laplace approximation.
+    """Fit an EC-count GLMM by Laplace approximation.
+
+    By default the latent model has an isotropic isoform-logit random
+    intercept per cluster.  With ``random_slopes=True``, columns of
+    ``data.random_effect_design`` define independent isotropic random terms,
+    each with an estimated standard deviation.  The first column should be
+    the intercept.
 
     When ``observation_noise`` is true, the latent block for each cluster also
     contains an independent isotropic logistic-normal effect for every
@@ -209,7 +237,11 @@ def fit_laplace(
     the isoform-logit scale while retaining the EC observation model.
     """
     if observation_noise and family != "multinomial":
-        raise ValueError("observation noise is currently supported for multinomial fits")
+        raise ValueError(
+            "observation noise is currently supported for multinomial fits"
+        )
+    if random_slopes and data.random_effect_design is None:
+        raise ValueError("random slopes require data.random_effect_design")
     (
         jax,
         jnp,
@@ -232,11 +264,27 @@ def fit_laplace(
         if fixed_effect_tensor is None
         else fixed_effect_tensor.shape[2]
     )
+    random_design = (
+        np.asarray(data.random_effect_design, dtype=float)
+        if random_slopes
+        else np.ones((len(data.clusters), 1), dtype=float)
+    )
+    n_random_terms = random_design.shape[1]
+    random_design = jnp.asarray(random_design)
+    base = np.r_[
+        np.zeros(coefficient_count, dtype=float),
+        np.full(n_random_terms, np.log(0.5), dtype=float),
+    ]
+    if family == "dirichlet_multinomial":
+        base = np.r_[base, np.log(100.0)]
     if observation_noise:
-        base = _initial_outer(data, family)
-        initial = np.r_[base, np.log(0.3)] if initial is None else np.asarray(initial)
+        initial = (
+            np.r_[base, np.log(0.3)]
+            if initial is None
+            else np.asarray(initial)
+        )
     else:
-        initial = _initial_outer(data, family) if initial is None else np.asarray(initial)
+        initial = base if initial is None else np.asarray(initial)
 
     membership = jax.nn.one_hot(
         cluster_index, n_clusters, dtype=jnp.float64
@@ -248,13 +296,18 @@ def fit_laplace(
         slots[row] = cluster_sizes[cluster]
         cluster_sizes[cluster] += 1
     max_cluster_size = int(cluster_sizes.max())
-    latent_blocks = 1 + (max_cluster_size if observation_noise else 0)
+    latent_blocks = n_random_terms + (max_cluster_size if observation_noise else 0)
     latent_dimension = latent_blocks * dimension
     selection = np.zeros((len(design), dimension, latent_dimension), dtype=float)
-    selection[:, :, :dimension] = np.eye(dimension)[None, :, :]
+    for term in range(n_random_terms):
+        start = term * dimension
+        selection[:, :, start : start + dimension] = (
+            np.asarray(random_design)[:, term, None, None]
+            * np.eye(dimension)[None, :, :]
+        )
     if observation_noise:
         for row, slot in enumerate(slots):
-            start = (1 + slot) * dimension
+            start = (n_random_terms + slot) * dimension
             selection[row, :, start : start + dimension] = np.eye(dimension)
     selection = jnp.asarray(selection)
 
@@ -262,14 +315,16 @@ def fit_laplace(
         coefficients = outer[:coefficient_count]
         if fixed_effect_tensor is None:
             coefficients = coefficients.reshape(design.shape[1], dimension)
-        log_prior_sd = outer[coefficient_count]
-        cursor = coefficient_count + 1
+        log_random_sds = outer[
+            coefficient_count : coefficient_count + n_random_terms
+        ]
+        cursor = coefficient_count + n_random_terms
         log_kappa = outer[0] * 0.0
         if family == "dirichlet_multinomial":
             log_kappa = outer[cursor]
             cursor += 1
         log_noise_sd = outer[cursor] if observation_noise else outer[0] * 0.0
-        return coefficients, log_prior_sd, log_noise_sd, log_kappa
+        return coefficients, log_random_sds, log_noise_sd, log_kappa
 
     def fixed_logits(coefficients):
         if fixed_effect_tensor is None:
@@ -277,10 +332,16 @@ def fit_laplace(
         return jnp.einsum("ndp,p->nd", fixed_effect_tensor, coefficients)
 
     def prior_log_sds(outer):
-        _, log_prior_sd, log_noise_sd, _ = unpack_outer(outer)
-        values = jnp.full((latent_blocks, dimension), log_prior_sd)
+        _, log_random_sds, log_noise_sd, _ = unpack_outer(outer)
+        values = jnp.repeat(log_random_sds[:, None], dimension, axis=1)
         if observation_noise:
-            values = values.at[1:].set(log_noise_sd)
+            values = jnp.concatenate(
+                (
+                    values,
+                    jnp.full((max_cluster_size, dimension), log_noise_sd),
+                ),
+                axis=0,
+            )
         return values.ravel()
 
     def observation_log_likelihood(free_logits, *observed_rows_and_log_kappa):
@@ -404,7 +465,8 @@ def fit_laplace(
         value, gradient = scipy_objective(parameters)
         return value / optimizer_scale, gradient / optimizer_scale
 
-    bounds = [(-20.0, 20.0)] * coefficient_count + [(-8.0, 3.0)]
+    bounds = [(-20.0, 20.0)] * coefficient_count
+    bounds += [(-8.0, 3.0)] * n_random_terms
     if family == "dirichlet_multinomial":
         bounds.append((-6.0, np.log(1e7)))
     if observation_noise:
@@ -433,19 +495,29 @@ def fit_laplace(
     gradient_norm = float(np.linalg.norm(final_gradient, ord=np.inf))
     scaled_gradient_norm = gradient_norm / optimizer_scale
     mode_score_norm = float(np.linalg.norm(mode_score, ord=np.inf))
-    coefficients, log_prior_sd, log_noise_sd, log_kappa = unpack_outer(outer)
+    coefficients, log_random_sds, log_noise_sd, log_kappa = unpack_outer(outer)
+    random_effect_sds = np.exp(np.asarray(log_random_sds, dtype=float))
+    random_latent_dimension = n_random_terms * dimension
     return {
         "method": "laplace",
         "family": family,
         "objective": final_value,
         "parameters": parameters,
         "coefficients": np.asarray(coefficients),
-        "random_effect_sd": float(np.exp(log_prior_sd)),
+        "random_effect_sd": float(random_effect_sds[0]),
+        "random_effect_sds": random_effect_sds,
+        "random_slope_sd": (
+            float(random_effect_sds[1]) if n_random_terms > 1 else 0.0
+        ),
+        "random_slopes": bool(random_slopes),
         "random_effect_mean": np.asarray(modes)[:, :dimension],
         "random_effect_variance": marginal_variance[:, :dimension],
         "random_effect_covariance": covariance[:, :dimension, :dimension],
         "latent_mean": np.asarray(modes),
         "latent_covariance": covariance,
+        "random_term_mean": np.asarray(modes)[:, :random_latent_dimension].reshape(
+            n_clusters, n_random_terms, dimension
+        ),
         "observation_noise_sd": (
             float(np.exp(log_noise_sd)) if observation_noise else 0.0
         ),

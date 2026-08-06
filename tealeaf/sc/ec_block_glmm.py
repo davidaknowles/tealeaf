@@ -179,19 +179,37 @@ def nested_laplace_tests(
     }
 
 
-def simulate_null_counts(data, fit, rng, *, family, observation_noise=False):
+def simulate_null_counts(
+    data, fit, rng, *, family, observation_noise=False, random_slopes=False
+):
     """Simulate paired-primer EC counts from a fitted tensor-design null."""
     if data.fixed_effect_tensor is None:
         raise ValueError("null simulation requires a fixed-effect tensor")
     coefficients = np.asarray(fit["coefficients"], dtype=float).ravel()
     fixed = np.einsum("ndp,p->nd", data.fixed_effect_tensor, coefficients)
     _, cluster_index = np.unique(data.clusters, return_inverse=True)
+    random_design = (
+        np.asarray(data.random_effect_design, dtype=float)
+        if random_slopes
+        else np.ones((len(data.clusters), 1), dtype=float)
+    )
+    random_sds = np.asarray(
+        fit.get("random_effect_sds", [fit["random_effect_sd"]]), dtype=float
+    )
+    if len(random_sds) != random_design.shape[1]:
+        raise ValueError("fitted random terms do not match random-effect design")
     random_effect = rng.normal(
         0.0,
-        float(fit["random_effect_sd"]),
-        (cluster_index.max() + 1, data.n_isoforms - 1),
+        random_sds[None, :, None],
+        (
+            cluster_index.max() + 1,
+            random_design.shape[1],
+            data.n_isoforms - 1,
+        ),
     )
-    free_logits = fixed + random_effect[cluster_index]
+    free_logits = fixed + np.einsum(
+        "nr,nrd->nd", random_design, random_effect[cluster_index]
+    )
     if observation_noise:
         free_logits += rng.normal(
             0.0,
