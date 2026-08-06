@@ -83,7 +83,10 @@ def main():
             ),
             "fdr_0.05": int(np.sum(records["fdr"] <= 0.05)),
             "bic_bf_above_10": int(
-                np.sum(records["bic_log_bayes_factor"] > np.log(10))
+                np.sum(
+                    converged
+                    & (records["bic_log_bayes_factor"] > np.log(10))
+                )
             ),
         })
     pd.DataFrame(summaries).to_csv(

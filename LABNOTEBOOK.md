@@ -2770,5 +2770,32 @@ decision rule. In the logistic-normal model, 758 of 4,438 jointly converged
 alternative fits put the observation-noise SD at its lower bound. The
 ordinary multinomial LRT is therefore the cleaner nonbootstrap sensitivity;
 the logistic-normal Wilks approximation is less regular and remains a
-secondary result. The same two analyses have been launched for cell-type and
-within-cell-type condition tests in the independent human dataset.
+secondary result. Both likelihoods were retained for the independent human
+cell-type analysis; its larger within-cell-type condition analysis uses the
+recommended multinomial model.
+
+Before the human run, the logistic-normal nested fits were changed to
+warm-start from the corresponding multinomial null and alternative fits by
+appending only the observation-noise scale. On a mouse smoke block this
+reduced logistic-normal outer iterations from 38 and 34 to 14 and 18, while
+changing the LRT statistic from 3.7691 to 3.7701. This warm start is used only
+when both Laplace methods are requested in multinomial-first order.
+
+The human analysis completed 11,597 cell-type tests under both likelihoods
+and 73,144 within-cell-type condition tests under the recommended multinomial
+model. Cell-type convergence was 0.949 for multinomial and 0.943 for
+logistic-normal. The methods gave 2,580 and 2,161 nominal calls, 1,487 and
+1,125 BH calls, and 237 and 148 converged-fit BIC BF values above 10. Their BH
+sets overlap at 1,113 tests, so only 12 logistic-normal calls are absent from
+the multinomial result.
+
+The condition analysis converged for 0.941 of tests and gave 5,503 nominal
+calls, 191 BH calls, and 521 converged-fit BIC BF values above 10. The 191 BH
+calls represent 137 blocks and 135 genes; 175 also have BIC BF above 10. They
+are distributed across cell types: EX1, EX2, EX5, EX3, and EX4 contribute 63,
+31, 21, 19, and 14, with smaller counts in other neuronal and glial groups.
+The nominal rate among converged condition tests is 0.0799, compared with
+0.2345 for multinomial cell-type tests. The merger initially summarized BF
+counts without its convergence filter; the per-test table and BH values were
+unaffected. The summary now applies the same nested-convergence requirement
+to BF counts, and all mouse and human summaries were regenerated.

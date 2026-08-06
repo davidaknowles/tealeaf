@@ -526,8 +526,8 @@ GPD calibration.}
 \toprule
 Likelihood & Tests & Laplace conv. & LRT nominal & LRT BH & BF & Bootstrap BH\\
 \midrule
-Multinomial & 4,825 & 0.948 & 704 & 309 & 178 & 272\\
-Logistic-normal & 4,825 & 0.936 & 646 & 271 & 139 & 243\\
+Multinomial & 4,825 & 0.948 & 704 & 309 & 155 & 272\\
+Logistic-normal & 4,825 & 0.936 & 646 & 271 & 128 & 243\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -549,6 +549,38 @@ reference is less regular. The multinomial LRT is the cleaner nonbootstrap
 sensitivity, while the BF threshold supplies a smaller high-evidence subset;
 neither supersedes the empirically calibrated primary result without the
 mouse comparison above.
+
+The independent human analysis gives the results in
+Table~\ref{tab:human-laplace-lrt}. Cell-type tests use both likelihoods;
+within-cell-type condition tests use the recommended multinomial model. The
+two cell-type analyses share 1,113 BH calls, comprising 98.9\% of the
+logistic-normal calls. The condition calls span 137 distinct blocks and 135
+genes; 175 of 191 also exceed the BIC BF threshold. EX1, EX2, EX5, EX3, and
+EX4 contribute 63, 31, 21, 19, and 14 condition calls, respectively, with
+the remainder distributed across other neuronal and glial cell types.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Nonbootstrap human EC-block results. Condition hypotheses are
+block-by-cell-type tests. BF counts include only converged nested fits.}
+\label{tab:human-laplace-lrt}
+\begin{tabular}{llrrrrr}
+\toprule
+Contrast & Likelihood & Tests & Conv. & Nominal & LRT BH & BF\\
+\midrule
+Cell type & Multinomial & 11,597 & 0.949 & 2,580 & 1,487 & 237\\
+Cell type & Logistic-normal & 11,597 & 0.943 & 2,161 & 1,125 & 148\\
+Condition & Multinomial & 73,144 & 0.941 & 5,503 & 191 & 521\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The condition nominal rate is 0.0799 among converged tests, whereas the
+cell-type multinomial rate is 0.2345, as expected for the stronger biological
+contrast. The BF and BH counts need not be ordered: \(\mathrm{BF}>10\) is an
+uncorrected evidence threshold whose BIC penalty depends on tested dimension
+and subject count, while BH controls a genome-wide frequentist error rate.
 
 \subsection*{Matched external-method comparison}
 
