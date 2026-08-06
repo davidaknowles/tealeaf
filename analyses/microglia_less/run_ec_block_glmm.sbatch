@@ -49,6 +49,7 @@ VI_SAMPLES=${VI_SAMPLES:-16}
 CANDIDATE_CACHE=${CANDIDATE_CACHE:-}
 PAIRWISE_NULL_SEED=${PAIRWISE_NULL_SEED:-}
 MAX_CANDIDATES=${MAX_CANDIDATES:-}
+JOINT_GENE_TEST=${JOINT_GENE_TEST:-0}
 IFS=';' read -r -a method_args <<< "${METHODS}"
 
 ARGS=(
@@ -87,6 +88,9 @@ if [[ -n "${PAIRWISE_NULL_SEED}" ]]; then
 fi
 if [[ -n "${MAX_CANDIDATES}" ]]; then
   ARGS+=(--max-candidates "${MAX_CANDIDATES}")
+fi
+if [[ "${JOINT_GENE_TEST}" == "1" ]]; then
+  ARGS+=(--joint-gene-test)
 fi
 
 python "${REPO_ROOT}/extra_scripts/run_ec_block_glmm.py" "${ARGS[@]}"

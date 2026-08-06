@@ -84,6 +84,7 @@ def parse_args():
     parser.add_argument("--subject-fold", type=int)
     parser.add_argument("--pairwise-null-seed", type=int)
     parser.add_argument("--max-candidates", type=int)
+    parser.add_argument("--joint-gene-test", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
 
@@ -282,6 +283,7 @@ def candidate_cache_settings(args):
             None if args.subject_folds is None else str(args.subject_folds.resolve())
         ),
         "subject_fold": args.subject_fold,
+        "joint_gene_test": args.joint_gene_test,
     }
 
 
@@ -336,6 +338,42 @@ def partition_candidates(candidates, shard_count):
         shards[index].extend(group)
         heapq.heappush(heap, (load + len(group), index))
     return shards
+
+
+def joint_gene_candidates(candidates):
+    """Collapse block candidates to one unrestricted test per gene and design."""
+    result = []
+    seen = set()
+    for candidate in candidates:
+        (
+            _, _, gene_id, gene, transcripts, _, _, rows,
+            tested_cell_type, tested_levels,
+        ) = candidate
+        key = (
+            gene,
+            tuple(np.asarray(transcripts, dtype=int)),
+            tuple(np.asarray(rows, dtype=int)),
+            tested_cell_type,
+            tuple(tested_levels),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        suffix = "|".join(map(str, tested_levels))
+        test_id = f"{gene_id}|joint|{suffix}"
+        result.append((
+            test_id,
+            f"{gene_id}:JOINT",
+            gene_id,
+            gene,
+            transcripts,
+            np.arange(len(transcripts), dtype=int),
+            tuple((index,) for index in range(len(transcripts))),
+            rows,
+            tested_cell_type,
+            tested_levels,
+        ))
+    return result
 
 
 def local_test_design(metadata, rows, tested_levels, test_effect):
@@ -464,7 +502,9 @@ def main():
     if args.candidate_cache is not None and args.candidate_cache.exists():
         with args.candidate_cache.open("rb") as handle:
             cached = pickle.load(handle)
-        if cached.get("settings") != cache_settings:
+        cached_settings = dict(cached.get("settings", {}))
+        cached_settings.setdefault("joint_gene_test", False)
+        if cached_settings != cache_settings:
             raise ValueError("candidate cache does not match screening settings")
         candidates = cached["candidates"]
     else:
@@ -573,6 +613,8 @@ def main():
                     tuple(tested_levels),
                 ))
         candidates = deduplicate_supported_partitions(candidates)
+        if args.joint_gene_test:
+            candidates = joint_gene_candidates(candidates)
         if args.candidate_cache is not None:
             args.candidate_cache.parent.mkdir(parents=True, exist_ok=True)
             temporary = args.candidate_cache.with_suffix(
@@ -936,6 +978,7 @@ def main():
         "subject_fold": args.subject_fold,
         "pairwise_null_seed": args.pairwise_null_seed,
         "max_candidates": args.max_candidates,
+        "joint_gene_test": args.joint_gene_test,
         "seconds": time.perf_counter() - started,
     }, indent=2) + "\n")
 

@@ -17,6 +17,7 @@ from extra_scripts.run_ec_block_glmm import (
     covered_condition_designs,
     deduplicate_supported_partitions,
     modeled_gene_umis,
+    joint_gene_candidates,
     partition_candidates,
     permute_paired_labels,
     reparameterize_fixed_effects,
@@ -325,6 +326,24 @@ def test_candidate_partition_keeps_shared_alternatives_together():
     assert locations["a1"] == locations["a2"] == locations["a3"]
     assert locations["b1"] == locations["b2"]
     assert sorted(map(len, shards)) == [3, 3]
+
+
+def test_joint_gene_candidates_keep_one_unrestricted_test_per_design():
+    common = (
+        "g1.1", 1, np.array([4, 5, 6]), None, np.array([0, 1]), None,
+        ("a", "b"),
+    )
+    candidates = [
+        ("b1", "b1", common[0], common[1], common[2], np.array([0, 0, 1]),
+         common[3], common[4], common[5], common[6]),
+        ("b2", "b2", common[0], common[1], common[2], np.array([0, 1, 1]),
+         common[3], common[4], common[5], common[6]),
+    ]
+    result = joint_gene_candidates(candidates)
+    assert len(result) == 1
+    assert result[0][0] == "g1.1|joint|a|b"
+    assert result[0][1] == "g1.1:JOINT"
+    np.testing.assert_array_equal(result[0][5], [0, 1, 2])
 
 
 def test_pairwise_null_permutation_swaps_only_within_subject():

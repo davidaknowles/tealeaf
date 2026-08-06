@@ -2972,3 +2972,25 @@ a 5.8% null nominal rate, no null p-values below 0.001, and no BH null
 discoveries in the calibration subset. The scorer now supports this
 label-independent threshold; 100 UMIs is the calibration-selected threshold
 for the final noise-model comparison.
+
+The calibrated noise model at 100 UMIs ties scQuint at 11 replicated genes
+and remains behind LeafCutter. At 150 UMIs it exceeds scQuint (8 versus 2) and
+LeafCutter (4 versus 3), with higher held-out replication, but choosing that
+cutoff from the observed benchmark would overstate the evidence. The
+calibration-compatible 75-UMI threshold still trails both comparators.
+
+A joint gene-level EC test was added to address block-level multiplicity. For
+each gene and eligible cell-type pair, its null allows condition effects but
+no cell-type effect on any isoform logit; its alternative allows an
+unrestricted cell-type effect with `n_isoforms - 1` degrees of freedom.
+Block-level tests remain the localization stage after a joint discovery. This
+produces 5,710 gene-pair tests across 935 genes in fold 0 and 3,930 tests
+across 750 genes in fold 1, replacing 7,671 and 5,140 block-pair tests.
+
+A null-BIC hybrid selector was also implemented. It selects the
+logistic-normal model when twice its improvement in the null objective exceeds
+`log(n_subjects)` and otherwise uses the plain multinomial result. On the
+label-swap subset it selects noise for 11.5% of tests, has an 8.1% nominal
+rate, and has no BH null discoveries. It does not improve the 100-UMI split
+benchmark over the noise model, so it is retained as an ablation rather than
+the recommended test.
