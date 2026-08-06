@@ -55,7 +55,11 @@ def parse_args():
     )
     parser.add_argument(
         "--test-effect",
-        choices=("cell_type", "condition_within_cell_type"),
+        choices=(
+            "cell_type",
+            "cell_type_pairwise",
+            "condition_within_cell_type",
+        ),
         default="cell_type",
     )
     parser.add_argument("--null-replicates", type=int, default=20)
@@ -118,6 +122,56 @@ def covered_celltype_design(
         + metadata["mouse"].astype(str)
     ).to_numpy()
     return rows, metadata, nuisance, labels, subjects, cell_types
+
+
+def covered_celltype_pairwise_designs(
+    metadata,
+    gene_umis,
+    *,
+    min_gene_umis,
+    min_samples,
+    min_celltype_mice,
+):
+    """Build paired two-cell-type designs from gene-covered subjects."""
+    covered = np.asarray(gene_umis) >= float(min_gene_umis)
+    cell_types = sorted(metadata.loc[covered, "cell_type"].unique())
+    results = []
+    for first_index, first in enumerate(cell_types):
+        first_subjects = set(
+            metadata.loc[covered & metadata.cell_type.eq(first), "mouse"]
+        )
+        for second in cell_types[first_index + 1 :]:
+            second_subjects = set(
+                metadata.loc[covered & metadata.cell_type.eq(second), "mouse"]
+            )
+            shared = first_subjects & second_subjects
+            if len(shared) < int(min_celltype_mice):
+                continue
+            retained = (
+                covered
+                & metadata.cell_type.isin([first, second]).to_numpy()
+                & metadata.mouse.isin(shared).to_numpy()
+            )
+            if retained.sum() < max(int(min_samples), 2 * len(shared)):
+                continue
+            rows = np.flatnonzero(retained)
+            local = metadata.iloc[rows].reset_index(drop=True)
+            subject_counts = local.groupby(["mouse", "cell_type"]).size()
+            if len(subject_counts) != 2 * len(shared) or not subject_counts.eq(1).all():
+                continue
+            nuisance = pd.get_dummies(local["condition"], dtype=float).to_numpy()
+            labels = local.cell_type.eq(second).to_numpy(dtype=int)
+            subjects = local.mouse.astype(str).to_numpy()
+            coverage = (
+                rows,
+                local,
+                nuisance,
+                labels,
+                subjects,
+                (first, second),
+            )
+            results.append((coverage, None))
+    return results
 
 
 def covered_condition_designs(
@@ -248,10 +302,12 @@ def deduplicate_supported_partitions(candidates):
 def local_test_design(metadata, rows, tested_levels, test_effect):
     """Reconstruct one cached candidate's fixed-effect design."""
     local = metadata.iloc[np.asarray(rows, dtype=int)].reset_index(drop=True)
-    tested_column = "cell_type" if test_effect == "cell_type" else "condition"
+    tested_column = (
+        "cell_type" if test_effect.startswith("cell_type") else "condition"
+    )
     level_index = {value: index for index, value in enumerate(tested_levels)}
     labels = np.asarray([level_index[value] for value in local[tested_column]])
-    if test_effect == "cell_type":
+    if test_effect.startswith("cell_type"):
         nuisance = pd.get_dummies(local["condition"], dtype=float).to_numpy()
     else:
         nuisance = np.ones((len(local), 1), dtype=float)
@@ -344,7 +400,7 @@ def main():
             raise ValueError("subject fold selects no EC-count pseudobulks")
         metadata = metadata.loc[selected_rows].reset_index(drop=True)
         counts = tuple(matrix[selected_rows] for matrix in counts)
-    if args.test_effect == "cell_type":
+    if args.test_effect.startswith("cell_type"):
         globally_represented = metadata.groupby("cell_type")["mouse"].nunique()
         global_cell_types = globally_represented.index[
             globally_represented >= int(args.min_celltype_mice)
@@ -417,6 +473,14 @@ def main():
                     coverage_specs = (
                         [(coverage, None)] if coverage is not None else []
                     )
+                elif args.test_effect == "cell_type_pairwise":
+                    coverage_specs = covered_celltype_pairwise_designs(
+                        metadata,
+                        gene_umis,
+                        min_gene_umis=args.min_gene_umis,
+                        min_samples=args.min_gene_samples,
+                        min_celltype_mice=args.min_celltype_mice,
+                    )
                 else:
                     coverage_specs = covered_condition_designs(
                         metadata,
@@ -442,6 +506,8 @@ def main():
                 test_id = block.block_id
                 if tested_cell_type is not None:
                     test_id += f"|condition|{tested_cell_type}"
+                elif args.test_effect == "cell_type_pairwise":
+                    test_id += "|cell_type|" + "|".join(tested_levels)
                 candidates.append((
                     test_id,
                     block.block_id,
@@ -590,6 +656,16 @@ def main():
                     "gene_id": gene_id,
                     "contrast": args.test_effect,
                     "cell_type": tested_cell_type,
+                    "level_a": (
+                        tested_levels[0]
+                        if args.test_effect == "cell_type_pairwise"
+                        else None
+                    ),
+                    "level_b": (
+                        tested_levels[1]
+                        if args.test_effect == "cell_type_pairwise"
+                        else None
+                    ),
                     "method": method,
                     "n_paths": len(signatures),
                     "n_isoforms": len(transcripts),
@@ -688,6 +764,16 @@ def main():
                         "block_id": block_id,
                         "contrast": args.test_effect,
                         "cell_type": tested_cell_type,
+                        "level_a": (
+                            tested_levels[0]
+                            if args.test_effect == "cell_type_pairwise"
+                            else None
+                        ),
+                        "level_b": (
+                            tested_levels[1]
+                            if args.test_effect == "cell_type_pairwise"
+                            else None
+                        ),
                         "method": method,
                         "replicate": replicate,
                         "degrees_of_freedom": degrees,

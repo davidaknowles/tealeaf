@@ -39,6 +39,26 @@ def aggregate_gene_pvalues(table: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
+def aggregate_feature_pvalues(table: pd.DataFrame) -> pd.DataFrame:
+    """Combine pairwise p-values into one Simes p-value per feature."""
+    required = {"method", "feature_id", "gene_id", "p_value"}
+    if missing := required - set(table):
+        raise ValueError(f"pairwise table is missing {sorted(missing)}")
+    local = table.loc[
+        table.feature_id.notna()
+        & table.gene_id.notna()
+        & table.p_value.notna()
+    ].copy()
+    local["gene_id"] = local.gene_id.astype(str).str.split(".").str[0]
+    return (
+        local.groupby(["method", "feature_id", "gene_id"], sort=False)[
+            "p_value"
+        ]
+        .agg(p_value=simes_pvalue, n_pairwise="size")
+        .reset_index()
+    )
+
+
 def leafcutter_cluster_gene_map(
     junction_table: str | Path, counts_path: str | Path
 ) -> pd.DataFrame:

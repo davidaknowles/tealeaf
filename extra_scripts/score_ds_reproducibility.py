@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 
 from tealeaf.sc.ds_benchmark import (
+    aggregate_feature_pvalues,
     aggregate_gene_pvalues,
     leafcutter_cluster_gene_map,
     shared_gene_reproducibility,
@@ -22,23 +23,33 @@ def parse_args():
     parser.add_argument("--junction-table", type=Path, required=True)
     parser.add_argument("--leafcutter-counts", type=Path, required=True)
     parser.add_argument("--leafcutter-map", type=Path, required=True)
+    parser.add_argument("--tealeaf-subdir", default="tealeaf")
+    parser.add_argument("--tealeaf-label", default="Tealeaf EC GLMM")
     parser.add_argument("--output-dir", type=Path, required=True)
     return parser.parse_args()
 
 
-def load_fold(path: Path, leaf_map: pd.DataFrame) -> pd.DataFrame:
+def load_fold(
+    path: Path,
+    leaf_map: pd.DataFrame,
+    tealeaf_subdir: str,
+    tealeaf_label: str,
+) -> pd.DataFrame:
     external = pd.read_csv(path / "comparison/cell_type_simes.tsv.gz", sep="\t")
     external.loc[external.method.eq("LeafCutter"), "gene_id"] = external.loc[
         external.method.eq("LeafCutter"), "feature_id"
     ].map(leaf_map.set_index("feature_id").gene_id)
-    tealeaf = pd.read_csv(path / "tealeaf/ec_block_glmm.tsv", sep="\t")
+    tealeaf = pd.read_csv(
+        path / tealeaf_subdir / "ec_block_glmm.tsv", sep="\t"
+    )
     tealeaf = tealeaf.loc[
         tealeaf.method.eq("laplace_multinomial")
         & tealeaf.null_converged
         & tealeaf.alternative_converged,
         ["block_id", "gene_id", "p_value"],
     ].rename(columns={"block_id": "feature_id"})
-    tealeaf.insert(0, "method", "Tealeaf EC GLMM")
+    tealeaf.insert(0, "method", tealeaf_label)
+    tealeaf = aggregate_feature_pvalues(tealeaf)
     features = pd.concat(
         [external[["method", "feature_id", "gene_id", "p_value"]], tealeaf],
         ignore_index=True,
@@ -59,8 +70,13 @@ def main():
         )
         args.leafcutter_map.parent.mkdir(parents=True, exist_ok=True)
         leaf_map.to_csv(args.leafcutter_map, sep="\t", index=False)
-    folds = [load_fold(path, leaf_map) for path in args.fold_dir]
-    metrics, topk, genes = shared_gene_reproducibility(folds)
+    folds = [
+        load_fold(path, leaf_map, args.tealeaf_subdir, args.tealeaf_label)
+        for path in args.fold_dir
+    ]
+    metrics, topk, genes = shared_gene_reproducibility(
+        folds, reference_method=args.tealeaf_label
+    )
     metrics.to_csv(args.output_dir / "gene_metrics.tsv", sep="\t", index=False)
     topk.to_csv(args.output_dir / "topk_overlap.tsv", sep="\t", index=False)
     genes.to_csv(

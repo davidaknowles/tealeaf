@@ -25,4 +25,6 @@ python_bin="${PYTHON_BIN:-${HOME}/venv/cpa_blackwell/bin/python}"
     "${BENCHMARK_ROOT}/leafcutter/clustering/benchmark_perind_numers.counts.gz" \
   --leafcutter-map \
     "${BENCHMARK_ROOT}/reproducibility/leafcutter_cluster_gene.tsv.gz" \
+  --tealeaf-subdir "${TEALEAF_SUBDIR:-tealeaf}" \
+  --tealeaf-label "${TEALEAF_LABEL:-Tealeaf EC GLMM}" \
   --output-dir "${BENCHMARK_ROOT}/reproducibility/comparison"

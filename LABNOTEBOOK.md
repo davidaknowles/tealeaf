@@ -2889,3 +2889,23 @@ scQuint, and 0.833 versus 0.786 for MAJIQ. These results do not support a
 claim of improved Tealeaf power over the alternatives. Calibration by
 subject-label permutation and investigation of Tealeaf's restrictive shared
 gene universe remain necessary.
+
+## 2026-08-06: paired cell-type EC-GLMM
+
+The initial split comparison was not hypothesis-matched. LeafCutter, scQuint,
+and MAJIQ were run for each eligible pair of cell types using only subjects
+represented in both members of the pair; feature-level p-values were then
+combined by Simes. Tealeaf instead fit one omnibus cell-type effect using all
+covered pseudobulks. Its degrees of freedom ranged from 1 to 48, so sparse
+high-dimensional alternatives could lose power relative to pairwise tests.
+
+`run_ec_block_glmm.py` now supports `cell_type_pairwise`. For each gene and
+cell-type pair, it retains subjects with at least the requested gene EC count
+in both cell types, includes condition as a nuisance effect, and clusters the
+random effect by the shared subject. Each block LRT then has only
+`n_paths - 1` tested degrees of freedom. Pairwise p-values are combined by
+Simes within block, followed by Simes across blocks within gene, matching the
+comparator aggregation hierarchy. The split candidate manifests contain
+7,671 tests, 1,293 blocks, and 935 genes in fold 0, and 5,140 tests, 1,036
+blocks, and 750 genes in fold 1. The two folds have 34 and 31 eligible
+cell-type pairs, respectively.

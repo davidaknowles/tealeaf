@@ -13,6 +13,7 @@ from extra_scripts.merge_ec_block_glmm import (
 )
 from extra_scripts.run_ec_block_glmm import (
     covered_celltype_design,
+    covered_celltype_pairwise_designs,
     covered_condition_designs,
     deduplicate_supported_partitions,
     modeled_gene_umis,
@@ -215,6 +216,31 @@ def test_condition_designs_are_built_within_cell_type():
     np.testing.assert_array_equal(labels, [0, 0, 0, 1, 1, 1])
     np.testing.assert_array_equal(nuisance, np.ones((6, 1)))
     assert set(local["cell_type"]) == {"a"}
+
+
+def test_pairwise_celltype_designs_require_gene_covered_shared_subjects():
+    metadata = pd.DataFrame({
+        "cell_type": ["a", "a", "a", "b", "b", "b", "c", "c"],
+        "condition": ["x", "x", "y", "x", "x", "y", "x", "y"],
+        "mouse": ["m1", "m2", "m3", "m1", "m2", "m4", "m1", "m3"],
+    })
+    results = covered_celltype_pairwise_designs(
+        metadata,
+        np.full(len(metadata), 25),
+        min_gene_umis=10,
+        min_samples=0,
+        min_celltype_mice=2,
+    )
+    assert len(results) == 2
+    by_levels = {coverage[-1]: coverage for coverage, _ in results}
+    paired = by_levels[("a", "b")]
+    rows, local, nuisance, labels, subjects, levels = paired
+    np.testing.assert_array_equal(rows, [0, 1, 3, 4])
+    np.testing.assert_array_equal(labels, [0, 0, 1, 1])
+    assert levels == ("a", "b")
+    assert set(subjects) == {"m1", "m2"}
+    assert nuisance.shape == (4, 1)
+    assert set(local.cell_type) == {"a", "b"}
 
 
 def test_modeled_gene_umis_exclude_unsupported_primer_ecs():
