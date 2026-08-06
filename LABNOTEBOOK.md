@@ -2909,3 +2909,21 @@ comparator aggregation hierarchy. The split candidate manifests contain
 7,671 tests, 1,293 blocks, and 935 genes in fold 0, and 5,140 tests, 1,036
 blocks, and 750 genes in fold 1. The two folds have 34 and 31 eligible
 cell-type pairs, respectively.
+
+The first gene-level scorer matched only genes, which can still compare
+different biological hypotheses when gene-specific coverage changes the set
+of eligible cell-type pairs. The paired scorer now first intersects
+`(gene, unordered cell-type pair)` keys across both methods and both folds.
+It combines feature tests within each matched gene-pair and then combines the
+matched pair p-values within gene. Thus neither method can gain discoveries
+from a cell-type contrast unavailable to the other method.
+
+An audit of the base candidate universe found that the complexity caps are not
+the main source of attrition: 10,681 genes pass the limits of 10 supported
+isoforms and 128 ECs, while only 34 additional genes would pass if those caps
+were raised to 50 isoforms and 512 ECs. The per-pseudobulk gene-count cutoff
+is consequential. Reducing it from 25 to 10 increases the paired split
+manifests from 7,671 to 31,004 tests (935 to 2,503 genes) in fold 0 and from
+5,140 to 23,055 tests (750 to 2,238 genes) in fold 1. The lower threshold must
+be evaluated by held-out reproducibility and null calibration rather than by
+raw discovery count alone.

@@ -15,6 +15,10 @@ done
 module load "${PYTHON_MODULE:-Python/3.12.3-GCCcore-13.3.0}"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 python_bin="${PYTHON_BIN:-${HOME}/venv/cpa_blackwell/bin/python}"
+pair_args=()
+if [[ "${MATCH_PAIRS:-0}" == "1" ]]; then
+  pair_args+=(--match-pairs)
+fi
 
 "${python_bin}" \
   "${REPO_ROOT}/extra_scripts/score_ds_reproducibility.py" \
@@ -27,5 +31,6 @@ python_bin="${PYTHON_BIN:-${HOME}/venv/cpa_blackwell/bin/python}"
     "${BENCHMARK_ROOT}/reproducibility/leafcutter_cluster_gene.tsv.gz" \
   --tealeaf-subdir "${TEALEAF_SUBDIR:-tealeaf}" \
   --tealeaf-label "${TEALEAF_LABEL:-Tealeaf EC GLMM}" \
+  "${pair_args[@]}" \
   --output-dir \
     "${BENCHMARK_ROOT}/reproducibility/${COMPARISON_SUBDIR:-comparison}"

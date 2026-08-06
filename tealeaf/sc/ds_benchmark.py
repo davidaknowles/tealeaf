@@ -59,6 +59,82 @@ def aggregate_feature_pvalues(table: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def aggregate_gene_pair_pvalues(table: pd.DataFrame) -> pd.DataFrame:
+    """Combine feature tests within each gene and unordered level pair."""
+    required = {"method", "gene_id", "level_a", "level_b", "p_value"}
+    if missing := required - set(table):
+        raise ValueError(f"pairwise table is missing {sorted(missing)}")
+    local = table.loc[
+        table.gene_id.notna()
+        & table.level_a.notna()
+        & table.level_b.notna()
+        & table.p_value.notna()
+    ].copy()
+    local["gene_id"] = local.gene_id.astype(str).str.split(".").str[0]
+    levels = np.sort(
+        local[["level_a", "level_b"]].astype(str).to_numpy(), axis=1
+    )
+    local["pair_id"] = levels[:, 0] + "||" + levels[:, 1]
+    return (
+        local.groupby(["method", "gene_id", "pair_id"], sort=False)[
+            "p_value"
+        ]
+        .agg(p_value=simes_pvalue, n_features="size")
+        .reset_index()
+    )
+
+
+def shared_pair_gene_reproducibility(
+    fold_tables: list[pd.DataFrame],
+    top_k=(25, 50, 100, 200, 500),
+    reference_method: str = "Tealeaf paired EC GLMM",
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Score methods after matching gene-by-level-pair hypotheses."""
+    if len(fold_tables) != 2:
+        raise ValueError("exactly two fold tables are required")
+    paired = [aggregate_gene_pair_pvalues(table) for table in fold_tables]
+    methods = sorted(set(paired[0].method) & set(paired[1].method))
+    if reference_method not in methods:
+        raise ValueError(f"reference method {reference_method!r} is absent")
+    metrics = []
+    topk = []
+    genes = []
+    for comparator in (method for method in methods if method != reference_method):
+        key_sets = []
+        for table in paired:
+            for method in (reference_method, comparator):
+                local = table.loc[table.method.eq(method), ["gene_id", "pair_id"]]
+                key_sets.append(set(map(tuple, local.to_numpy())))
+        shared = set.intersection(*key_sets)
+        fold_genes = []
+        for table in paired:
+            method_tables = []
+            for method in (reference_method, comparator):
+                local = table.loc[table.method.eq(method)].copy()
+                keys = list(zip(local.gene_id, local.pair_id))
+                local = local.loc[[key in shared for key in keys]]
+                method_tables.append(
+                    aggregate_gene_pvalues(local[["method", "gene_id", "p_value"]])
+                )
+            fold_genes.append(pd.concat(method_tables, ignore_index=True))
+        local_metrics, local_topk, local_genes = shared_gene_reproducibility(
+            fold_genes,
+            top_k=top_k,
+            reference_method=reference_method,
+        )
+        local_metrics["shared_gene_pairs"] = len(shared)
+        local_topk["shared_gene_pairs"] = len(shared)
+        local_genes["shared_gene_pairs"] = len(shared)
+        metrics.append(local_metrics)
+        topk.append(local_topk)
+        genes.append(local_genes)
+    return (
+        pd.concat(metrics, ignore_index=True),
+        pd.concat(topk, ignore_index=True),
+        pd.concat(genes, ignore_index=True),
+    )
+
+
 def leafcutter_cluster_gene_map(
     junction_table: str | Path, counts_path: str | Path
 ) -> pd.DataFrame:

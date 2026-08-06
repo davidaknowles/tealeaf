@@ -4,6 +4,8 @@ import pandas as pd
 from tealeaf.sc.ds_benchmark import (
     aggregate_feature_pvalues,
     aggregate_gene_pvalues,
+    aggregate_gene_pair_pvalues,
+    shared_pair_gene_reproducibility,
     shared_gene_reproducibility,
     simes_pvalue,
 )
@@ -65,4 +67,23 @@ def test_shared_gene_reproducibility_uses_cross_method_intersection():
     assert metrics.shared_genes.tolist() == [1, 1]
     assert metrics.replicated_bh.tolist() == [1, 1]
     assert topk.overlap_fraction.tolist() == [1.0, 1.0]
+    assert set(genes.gene_id) == {"g1"}
+
+
+def test_pairwise_reproducibility_matches_gene_and_level_pair():
+    fold0 = pd.DataFrame({
+        "method": ["a", "a", "b", "b"],
+        "gene_id": ["g1", "g1", "g1", "g1"],
+        "level_a": ["x", "x", "x", "x"],
+        "level_b": ["y", "z", "y", "w"],
+        "p_value": [1e-8, 1e-10, 1e-7, 1e-12],
+    })
+    fold1 = fold0.copy()
+    paired = aggregate_gene_pair_pvalues(fold0)
+    assert set(paired.pair_id) == {"x||y", "x||z", "w||x"}
+    metrics, _, genes = shared_pair_gene_reproducibility(
+        [fold0, fold1], top_k=(1,), reference_method="a"
+    )
+    assert metrics.shared_gene_pairs.tolist() == [1, 1]
+    assert metrics.replicated_bh.tolist() == [1, 1]
     assert set(genes.gene_id) == {"g1"}
