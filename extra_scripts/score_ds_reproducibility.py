@@ -4,10 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import warnings
 from pathlib import Path
 
 import pandas as pd
-from plotnine import aes, facet_wrap, geom_line, geom_point, ggplot, labs, theme_bw
 
 from tealeaf.sc.ds_benchmark import (
     aggregate_gene_pvalues,
@@ -66,15 +66,28 @@ def main():
     genes.to_csv(
         args.output_dir / "gene_reproducibility.tsv.gz", sep="\t", index=False
     )
-    plot = (
-        ggplot(topk, aes("k", "overlap_fraction", color="method"))
-        + geom_line()
-        + geom_point()
-        + facet_wrap("comparison", scales="free_x")
-        + theme_bw()
-        + labs(x="Top genes per fold", y="Cross-fold overlap fraction")
-    )
-    plot.save(args.output_dir / "topk_overlap.pdf", width=6.5, height=4.2)
+    try:
+        from plotnine import (
+            aes,
+            facet_wrap,
+            geom_line,
+            geom_point,
+            ggplot,
+            labs,
+            theme_bw,
+        )
+    except ImportError:
+        warnings.warn("plotnine is unavailable; skipping top-K overlap plot")
+    else:
+        plot = (
+            ggplot(topk, aes("k", "overlap_fraction", color="method"))
+            + geom_line()
+            + geom_point()
+            + facet_wrap("comparison", scales="free_x")
+            + theme_bw()
+            + labs(x="Top genes per fold", y="Cross-fold overlap fraction")
+        )
+        plot.save(args.output_dir / "topk_overlap.pdf", width=6.5, height=4.2)
     print(metrics.to_string(index=False))
 
 

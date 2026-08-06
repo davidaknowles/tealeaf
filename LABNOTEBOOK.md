@@ -2867,3 +2867,25 @@ the submission shell, causing most tasks to fail before R started. A direct
 smoke contrast completed after resetting the module state. Both LeafCutter
 arrays and their dependent summaries were resubmitted with that fix; the
 failed logs were retained.
+
+The completed split fits were initially held up at comparator summarization:
+the summary launcher invoked the Python virtual environment without loading
+its matching Python module, so both jobs exited before reading results. The
+launcher now resets inherited Lmod state and loads the configured Python
+module, matching the reproducibility scorer. No model fits need to be rerun.
+The scorer's launcher also accepts `PYTHON_BIN`; plotting requires the
+`benchmark` optional dependencies, which now explicitly include plotnine.
+Metric tables are written before plotting, and plotting is skipped with a
+warning when plotnine is unavailable. This keeps optional visualization
+dependencies from blocking the statistical benchmark.
+
+The repaired split-subject benchmark completed on 2026-08-06. On each
+method-specific shared gene universe, replicated discoveries based on BH of
+the conjunction p-value were 26 Tealeaf versus 30 LeafCutter (166 genes), 34
+Tealeaf versus 66 scQuint (608 genes), and 2 Tealeaf versus 4 MAJIQ (10
+genes). The MAJIQ comparison is too small to interpret. Held-out nominal
+replication was 0.696 versus 0.700 for LeafCutter, 0.666 versus 0.767 for
+scQuint, and 0.833 versus 0.786 for MAJIQ. These results do not support a
+claim of improved Tealeaf power over the alternatives. Calibration by
+subject-label permutation and investigation of Tealeaf's restrictive shared
+gene universe remain necessary.

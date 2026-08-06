@@ -14,8 +14,9 @@ for variable in $(compgen -A variable _ModuleTable); do
 done
 module load "${PYTHON_MODULE:-Python/3.12.3-GCCcore-13.3.0}"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
+python_bin="${PYTHON_BIN:-${HOME}/venv/cpa_blackwell/bin/python}"
 
-"${HOME}/venv/cpa_blackwell/bin/python" \
+"${python_bin}" \
   "${REPO_ROOT}/extra_scripts/score_ds_reproducibility.py" \
   --fold-dir "${BENCHMARK_ROOT}/reproducibility/fold0" \
   --fold-dir "${BENCHMARK_ROOT}/reproducibility/fold1" \

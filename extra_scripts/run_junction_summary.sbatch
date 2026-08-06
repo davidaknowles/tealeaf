@@ -8,6 +8,11 @@ set -euo pipefail
 : "${REPO_ROOT:?set REPO_ROOT}"
 : "${BENCHMARK_ROOT:?set BENCHMARK_ROOT}"
 
+unset LOADEDMODULES
+for variable in $(compgen -A variable _ModuleTable); do
+  unset "${variable}"
+done
+module load "${PYTHON_MODULE:-Python/3.12.3-GCCcore-13.3.0}"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 output="${BENCHMARK_ROOT}/comparison"
 mkdir -p "${output}"
