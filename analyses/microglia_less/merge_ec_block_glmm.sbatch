@@ -12,6 +12,10 @@ source "${CONFIG}"
 : "${MERGE_OUTPUT:?set MERGE_OUTPUT}"
 : "${CANDIDATE_CACHE:?set CANDIDATE_CACHE}"
 
+unset LOADEDMODULES
+for variable in $(compgen -A variable _ModuleTable); do
+  unset "${variable}"
+done
 module load "${PYTHON_MODULE}"
 source "${HOME}/venv/cpa_blackwell/bin/activate"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
