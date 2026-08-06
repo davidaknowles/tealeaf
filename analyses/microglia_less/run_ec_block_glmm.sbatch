@@ -47,6 +47,8 @@ RETRIES=${RETRIES:-2}
 NULL_REPLICATE_RETRIES=${NULL_REPLICATE_RETRIES:-${RETRIES}}
 VI_SAMPLES=${VI_SAMPLES:-16}
 CANDIDATE_CACHE=${CANDIDATE_CACHE:-}
+PAIRWISE_NULL_SEED=${PAIRWISE_NULL_SEED:-}
+MAX_CANDIDATES=${MAX_CANDIDATES:-}
 IFS=';' read -r -a method_args <<< "${METHODS}"
 
 ARGS=(
@@ -79,6 +81,12 @@ if [[ -n "${CANDIDATE_CACHE}" ]]; then
 fi
 if [[ -n "${SUBJECT_FOLDS:-}" ]]; then
   ARGS+=(--subject-folds "${SUBJECT_FOLDS}" --subject-fold "${SUBJECT_FOLD:?}")
+fi
+if [[ -n "${PAIRWISE_NULL_SEED}" ]]; then
+  ARGS+=(--pairwise-null-seed "${PAIRWISE_NULL_SEED}")
+fi
+if [[ -n "${MAX_CANDIDATES}" ]]; then
+  ARGS+=(--max-candidates "${MAX_CANDIDATES}")
 fi
 
 python "${REPO_ROOT}/extra_scripts/run_ec_block_glmm.py" "${ARGS[@]}"

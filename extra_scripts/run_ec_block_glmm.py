@@ -82,6 +82,8 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--subject-folds", type=Path)
     parser.add_argument("--subject-fold", type=int)
+    parser.add_argument("--pairwise-null-seed", type=int)
+    parser.add_argument("--max-candidates", type=int)
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
 
@@ -226,6 +228,23 @@ def treatment_design(labels, n_levels):
     nonreference = labels > 0
     result[np.flatnonzero(nonreference), labels[nonreference] - 1] = 1.0
     return result
+
+
+def permute_paired_labels(metadata, labels, tested_levels, seed):
+    """Swap paired labels within subjects using a reproducible null draw."""
+    labels = np.asarray(labels, dtype=int).copy()
+    pair_hash = zlib.crc32("||".join(map(str, tested_levels)).encode("utf-8"))
+    for subject, positions in metadata.groupby("mouse", sort=False).groups.items():
+        positions = np.asarray(list(positions), dtype=int)
+        if len(positions) != 2 or set(labels[positions]) != {0, 1}:
+            raise ValueError("pairwise null permutation requires one row per level")
+        subject_hash = zlib.crc32(str(subject).encode("utf-8"))
+        rng = np.random.default_rng(
+            np.random.SeedSequence((int(seed), pair_hash, subject_hash))
+        )
+        if rng.integers(2):
+            labels[positions] = 1 - labels[positions]
+    return labels
 
 
 def modeled_gene_umis(counts, designs, ecs, transcripts):
@@ -571,6 +590,16 @@ def main():
             "no candidate block tests passed screening; check annotation ID "
             "compatibility and coverage thresholds"
         )
+    if args.max_candidates is not None:
+        if args.max_candidates < 1:
+            raise ValueError("--max-candidates must be positive")
+        rng = np.random.default_rng(args.seed)
+        selected = rng.choice(
+            len(candidates),
+            size=min(int(args.max_candidates), len(candidates)),
+            replace=False,
+        )
+        candidates = [candidates[index] for index in sorted(selected)]
     candidates = partition_candidates(candidates, args.shard_count)[
         args.shard_index
     ]
@@ -606,6 +635,17 @@ def main():
             local_metadata, nuisance, labels = local_test_design(
                 metadata, rows, tested_levels, args.test_effect
             )
+            if args.pairwise_null_seed is not None:
+                if args.test_effect != "cell_type_pairwise":
+                    raise ValueError(
+                        "--pairwise-null-seed requires cell_type_pairwise"
+                    )
+                labels = permute_paired_labels(
+                    local_metadata,
+                    labels,
+                    tested_levels,
+                    args.pairwise_null_seed,
+                )
             local_counts = tuple(matrix[rows] for matrix in counts)
             clusters = local_metadata["mouse"].to_numpy()
             base, _, totals = local_gene_data(
@@ -713,6 +753,7 @@ def main():
                         else None
                     ),
                     "method": method,
+                    "pairwise_null_seed": args.pairwise_null_seed,
                     "n_paths": len(signatures),
                     "n_isoforms": len(transcripts),
                     "n_ecs": len(gene_ecs[gene]),
@@ -893,6 +934,8 @@ def main():
             None if args.subject_folds is None else str(args.subject_folds)
         ),
         "subject_fold": args.subject_fold,
+        "pairwise_null_seed": args.pairwise_null_seed,
+        "max_candidates": args.max_candidates,
         "seconds": time.perf_counter() - started,
     }, indent=2) + "\n")
 

@@ -2940,3 +2940,10 @@ Candidate sharding now treats all tests sharing `(gene, retained rows)` as an
 indivisible group and greedily balances those groups by test count. The prior
 stride partition could place reusable alternatives in different workers and
 defeat the cache.
+
+For inexpensive calibration checks, `--pairwise-null-seed` now performs a
+deterministic label swap within each paired subject. The swap is shared across
+genes for a given cell-type pair and preserves one observation from each level
+per subject. `--max-candidates` selects a reproducible genome-wide subset
+before grouped sharding, allowing the null p-value distribution to be checked
+without a full permutation run.

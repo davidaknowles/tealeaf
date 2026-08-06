@@ -18,6 +18,7 @@ from extra_scripts.run_ec_block_glmm import (
     deduplicate_supported_partitions,
     modeled_gene_umis,
     partition_candidates,
+    permute_paired_labels,
     reparameterize_fixed_effects,
 )
 from extra_scripts.run_differential_splicing import block_mapping
@@ -324,6 +325,23 @@ def test_candidate_partition_keeps_shared_alternatives_together():
     assert locations["a1"] == locations["a2"] == locations["a3"]
     assert locations["b1"] == locations["b2"]
     assert sorted(map(len, shards)) == [3, 3]
+
+
+def test_pairwise_null_permutation_swaps_only_within_subject():
+    metadata = pd.DataFrame({
+        "mouse": np.repeat([f"m{i}" for i in range(12)], 2),
+        "cell_type": ["a", "b"] * 12,
+    })
+    labels = np.tile([0, 1], 12)
+    permuted = permute_paired_labels(metadata, labels, ("a", "b"), 7)
+    np.testing.assert_array_equal(
+        permuted.reshape(-1, 2).sum(axis=1), np.ones(12, dtype=int)
+    )
+    assert np.any(permuted != labels)
+    np.testing.assert_array_equal(
+        permuted,
+        permute_paired_labels(metadata, labels, ("a", "b"), 7),
+    )
 
 
 def test_gpd_tail_resolves_beyond_empirical_bootstrap_floor():
