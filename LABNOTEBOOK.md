@@ -2947,3 +2947,13 @@ genes for a given cell-type pair and preserves one observation from each level
 per subject. `--max-candidates` selects a reproducible genome-wide subset
 before grouped sharding, allowing the null p-value distribution to be checked
 without a full permutation run.
+
+The first 1,000-test fold-0 label-swap diagnostic rejects the plain
+multinomial asymptotic calibration. Of 1,000 fits, 984 converged; 10.98% had
+`p <= 0.05`, 2.03% had `p <= 0.001`, and 21 survived BH at 0.05 under the
+permuted labels. The uniform KS p-value was `1.43e-17`. The excess tail is
+consistent with subject-specific cell-type heterogeneity that is not captured
+by a shared subject random intercept. Observed replicated discoveries from
+this model cannot be interpreted as calibrated power. A matched null run with
+the logistic-normal observation-noise model was submitted to test whether its
+per-observation isotropic logit random effect controls this heterogeneity.
