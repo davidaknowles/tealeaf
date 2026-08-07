@@ -34,6 +34,7 @@ fi
   --leafcutter-map \
     "${BENCHMARK_ROOT}/reproducibility/leafcutter_cluster_gene.tsv.gz" \
   --tealeaf-subdir "${TEALEAF_SUBDIR:-tealeaf}" \
+  --comparison-input-subdir "${COMPARISON_INPUT_SUBDIR:-comparison}" \
   --tealeaf-label "${TEALEAF_LABEL:-Tealeaf EC GLMM}" \
   --tealeaf-fit-method \
     "${TEALEAF_FIT_METHOD:-laplace_multinomial}" \

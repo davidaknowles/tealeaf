@@ -28,6 +28,11 @@ def parse_args():
     parser.add_argument("--leafcutter-counts", type=Path, required=True)
     parser.add_argument("--leafcutter-map", type=Path, required=True)
     parser.add_argument("--tealeaf-subdir", default="tealeaf")
+    parser.add_argument(
+        "--comparison-input-subdir",
+        default="comparison",
+        help="Fold-relative directory containing external comparator summaries.",
+    )
     parser.add_argument("--tealeaf-label", default="Tealeaf EC GLMM")
     parser.add_argument("--tealeaf-fit-method", default="laplace_multinomial")
     parser.add_argument(
@@ -55,8 +60,11 @@ def load_fold(
     tealeaf_fit_method: str,
     min_median_gene_umis: float,
     min_paired_subjects: int,
+    comparison_input_subdir: str = "comparison",
 ) -> pd.DataFrame:
-    external = pd.read_csv(path / "comparison/cell_type_simes.tsv.gz", sep="\t")
+    external = pd.read_csv(
+        path / comparison_input_subdir / "cell_type_simes.tsv.gz", sep="\t"
+    )
     external.loc[external.method.eq("LeafCutter"), "gene_id"] = external.loc[
         external.method.eq("LeafCutter"), "feature_id"
     ].map(leaf_map.set_index("feature_id").gene_id)
@@ -89,9 +97,12 @@ def load_pairwise_fold(
     min_median_gene_umis: float,
     min_paired_subjects: int,
     tealeaf_format: str = "ec",
+    comparison_input_subdir: str = "comparison",
 ) -> pd.DataFrame:
     external = pd.read_csv(
-        path / "comparison/all_tests.tsv.gz", sep="\t", low_memory=False
+        path / comparison_input_subdir / "all_tests.tsv.gz",
+        sep="\t",
+        low_memory=False,
     )
     external = external.loc[external.effect.eq("cell_type")].copy()
     external.loc[external.method.eq("LeafCutter"), "gene_id"] = external.loc[
@@ -164,6 +175,7 @@ def main():
                 args.min_median_gene_umis,
                 args.min_paired_subjects,
                 args.tealeaf_format,
+                args.comparison_input_subdir,
             )
             for path in args.fold_dir
         ]
@@ -188,6 +200,7 @@ def main():
                 args.tealeaf_fit_method,
                 args.min_median_gene_umis,
                 args.min_paired_subjects,
+                args.comparison_input_subdir,
             )
             for path in args.fold_dir
         ]

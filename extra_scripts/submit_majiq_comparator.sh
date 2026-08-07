@@ -34,6 +34,10 @@ if [[ ! -s "${contrasts}" ]]; then
 fi
 n_contrasts=$(python -c 'import json,sys; print(len(json.load(open(sys.argv[1]))))' "${contrasts}")
 common="ALL,MAJIQ_LICENSE_FILE=${MAJIQ_LICENSE_FILE}"
+common+=",MAJIQ_MIN_EXPERIMENTS=${MAJIQ_MIN_EXPERIMENTS:-0.5}"
+common+=",MAJIQ_BUILD_MIN_EXPERIMENTS=${MAJIQ_BUILD_MIN_EXPERIMENTS:-0.5}"
+common+=",MAJIQ_QUANTIFY_MINREADS=${MAJIQ_QUANTIFY_MINREADS:-10}"
+common+=",MAJIQ_QUANTIFY_MINBINS=${MAJIQ_QUANTIFY_MINBINS:-3}"
 annotation_job=$(sbatch --parsable --job-name=majiq-annotation \
   --output="${BENCHMARK_ROOT}/majiq/logs/annotation.%j.out" \
   --export="${common},GTF=${GTF},OUTPUT_DIR=${BENCHMARK_ROOT}/majiq" \

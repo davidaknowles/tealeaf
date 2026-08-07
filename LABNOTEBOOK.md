@@ -3100,3 +3100,42 @@ GEE had a 0.13 null rate at nominal 0.05 and extreme zero p-values, so it is
 not valid for discovery. A Laplace Dirichlet-multinomial EC smoke benchmark
 was instead too conservative, with no p-values below 0.05 in either observed
 or null fits. These approaches are not recommended for the benchmark.
+
+## 2026-08-07: expanded MAJIQ sensitivity analysis
+
+The stringent split-subject MAJIQ comparison was limited to 12 common genes.
+This was not caused by Tealeaf's eight-paired-subject filter: zero-, four-,
+and eight-subject Tealeaf thresholds all produced the same MAJIQ universe.
+The two original MAJIQ folds contained only 700 and 1,096 feature-contrast
+rows, with 46 unique LSV edges from 13 genes. The common build had supplied
+all 936 pseudobulks as one experiment group while retaining MAJIQ's default
+50% build support. Together with PSI-coverage defaults of 10 reads and three
+nonzero bins per pseudobulk and 50% Heterogen support per arm, this selected
+only ubiquitous, highly expressed genes.
+
+The MAJIQ wrappers now expose build support, PSI-coverage read/bin thresholds,
+and Heterogen support as parameters. The original defaults remain unchanged.
+The relaxed UMI sensitivity analysis uses absolute support in three
+pseudobulks at build, at least three UMIs in one nonzero bin per quantified
+pseudobulk, and at least three quantified pseudobulks in each Heterogen arm.
+Strict/nonredundant LSV selection is retained. Existing SJ files are reusable
+through an independently configurable SJ directory, so changing build
+filters does not require BAM reprocessing.
+
+The relaxed IMM-versus-PER smoke contrast expanded from zero to 985 edge tests
+across 250 genes. Genome-wide relaxed runs completed all 190 contrasts in
+each subject fold plus 32 non-identity paired-label null permutations. The
+folds contain 20,954 and 18,914 unique LSV features. After matching genes and
+cell-type pairs in both folds and requiring eight Tealeaf paired subjects,
+the common universe expands from 12 to 1,630 genes and from 133 to 24,722
+gene-pair tests.
+
+On this expanded universe Tealeaf has 490 replicated genes, held-half
+replication 0.791, and fold Spearman correlation 0.638. MAJIQ has 50
+replicated genes, held-half replication 0.723, and correlation 0.369 using
+its native p-values. Across 178,793 relaxed MAJIQ null edge tests, nominal
+rates at 0.05, 0.01, and 0.001 are 0.03197, 0.00456, and 0.000151, and no
+permutation family has a BH discovery. Mapping observed MAJIQ p-values through
+this conservative empirical null raises its replicated count to 89, still
+well below Tealeaf's 490. Thus Tealeaf's advantage is not an artifact of the
+original small MAJIQ universe.

@@ -21,6 +21,7 @@ module load Python/3.12.3-GCCcore-13.3.0 HTSlib/1.21 zstd/1.5.6-GCCcore-13.3.0
 MAJIQ_VENV=${MAJIQ_VENV:-${HOME}/venv/majiq_cluster}
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 mkdir -p "${OUTPUT_DIR}/raw" "${OUTPUT_DIR}/normalized"
+min_experiments=${MAJIQ_MIN_EXPERIMENTS:-0.5}
 mapfile -t fields < <("${MAJIQ_VENV}/bin/python" - "${CONTRASTS}" "${SLURM_ARRAY_TASK_ID}" <<'PY'
 import json, sys
 x = json.load(open(sys.argv[1]))[int(sys.argv[2])]
@@ -38,7 +39,7 @@ raw="${OUTPUT_DIR}/raw/${contrast}.tsv"
 "${MAJIQ_VENV}/bin/majiq-v3" heterogen -psi1 "${PSICOV}" -psi2 "${PSICOV}" \
   --select-grp1-prefixes "${group_a[@]}" \
   --select-grp2-prefixes "${group_b[@]}" \
-  -n "${fields[1]}" "${fields[2]}" --min-experiments 0.5 \
+  -n "${fields[1]}" "${fields[2]}" --min-experiments "${min_experiments}" \
   --stats mannwhitneyu --psisamples 100 --pvalue-quantiles 0.95 \
   --splicegraph "${SPLICEGRAPH}" --annotated "${ANNOTATED_SPLICEGRAPH}" \
   --output-tsv "${raw}" --nthreads "${SLURM_CPUS_PER_TASK:-4}" \

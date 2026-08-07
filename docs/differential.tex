@@ -635,6 +635,16 @@ p-values are combined by Simes before a second BH correction. The comparison
 is run unchanged on both the mouse microglialess data and an independent
 human Parse Biosciences brain dataset.
 
+Two MAJIQ coverage configurations are retained. The stringent configuration
+uses its bulk-RNA defaults: 50\% experiment support at splice-graph build and
+Heterogen, then at least 10 reads across three nonzero bins per pseudobulk for
+PSI coverage. Because all 936 mouse pseudobulks form one build group, the
+first threshold requires global support in approximately 468 pseudobulks. The
+relaxed UMI configuration instead requires absolute support in three
+pseudobulks at build, three UMIs in one nonzero bin for PSI coverage, and
+three quantified pseudobulks in each Heterogen arm. It retains MAJIQ's strict,
+nonredundant LSV selection.
+
 Tables~\ref{tab:mouse-method-comparison} and
 \ref{tab:human-method-comparison} report the resulting genome-wide test and
 discovery counts. These are comparisons of practical discovery yield, not
@@ -801,6 +811,7 @@ Comparator & genes & Rep. & held & \(\rho\) & Rep. & held & \(\rho\)\\
 \midrule
 LeafCutter & 264 & 193 & 0.906 & 0.685 & 36 & 0.712 & 0.449\\
 MAJIQ Heterogen & 12 & 11 & 0.958 & 0.713 & 6 & 0.875 & 0.769\\
+MAJIQ relaxed UMI & 1,630 & 490 & 0.791 & 0.638 & 50 & 0.723 & 0.369\\
 scQuint & 2,164 & 646 & 0.788 & 0.642 & 154 & 0.819 & 0.435\\
 \bottomrule
 \end{tabular}
@@ -826,6 +837,19 @@ power conclusion therefore does not depend on favorable comparator
 miscalibration; correcting it increases Tealeaf's margin. The 32-family
 calibration is intended to validate the body and moderate tail of each null,
 not to estimate genome-wide p-values smaller than its empirical resolution.
+
+The stringent MAJIQ universe is small because its combined build and
+quantification defaults leave only 46 LSV edges from 13 genes; the
+cross-fold, common-pair intersection contains 12 genes. Lowering only the
+Heterogen experiment fraction increases feature--contrast rows but cannot add
+features absent from PSI coverage. Rebuilding with the relaxed UMI thresholds
+produces 20,954 and 18,914 fold-specific LSV features and a common comparison
+of 1,630 genes. Its 178,793 null edge tests reject at rates 0.0320, 0.00456,
+and 0.000151 at nominal levels 0.05, 0.01, and 0.001, with no within-family BH
+discoveries in 32 permutations. Empirical-null calibration corrects this
+conservatism. On the expanded universe, Tealeaf has 490 replicated genes
+versus 50 for native MAJIQ and 89 for calibrated MAJIQ. The power advantage
+therefore persists after removing the stringent MAJIQ coverage bottleneck.
 
 \appendix
 

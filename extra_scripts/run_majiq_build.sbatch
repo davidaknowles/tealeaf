@@ -14,15 +14,23 @@ module purge
 module load Python/3.12.3-GCCcore-13.3.0 HTSlib/1.21 zstd/1.5.6-GCCcore-13.3.0
 source "${MAJIQ_VENV:-${HOME}/venv/majiq_cluster}/bin/activate"
 mkdir -p "${OUTPUT_DIR}"
+sj_dir=${MAJIQ_SJ_DIR:-${OUTPUT_DIR}/sj}
+min_experiments=${MAJIQ_BUILD_MIN_EXPERIMENTS:-0.5}
+quantify_minreads=${MAJIQ_QUANTIFY_MINREADS:-10}
+quantify_minbins=${MAJIQ_QUANTIFY_MINBINS:-3}
 sjs=()
 prefixes=()
 while IFS=$'\t' read -r sample bam; do
-  sjs+=("${OUTPUT_DIR}/sj/${sample}.sj")
+  sjs+=("${sj_dir}/${sample}.sj")
   prefixes+=("${sample}")
 done < "${BAM_MANIFEST}"
 majiq-v3 build "${ANNOTATED_SPLICEGRAPH}" "${OUTPUT_DIR}/combined.splicegraph" \
-  --sjs "${sjs[@]}" --no-introns --nthreads "${SLURM_CPUS_PER_TASK:-8}" \
+  --sjs "${sjs[@]}" --no-introns \
+  --min-experiments "${min_experiments}" \
+  --nthreads "${SLURM_CPUS_PER_TASK:-8}" \
   --license "${MAJIQ_LICENSE_FILE}" --overwrite
 majiq-v3 psi-coverage "${OUTPUT_DIR}/combined.splicegraph" "${OUTPUT_DIR}/all.psicov" \
-  "${sjs[@]}" --prefixes "${prefixes[@]}" --nthreads "${SLURM_CPUS_PER_TASK:-8}" \
+  "${sjs[@]}" --prefixes "${prefixes[@]}" \
+  --minreads "${quantify_minreads}" --minbins "${quantify_minbins}" \
+  --nthreads "${SLURM_CPUS_PER_TASK:-8}" \
   --license "${MAJIQ_LICENSE_FILE}" --overwrite
