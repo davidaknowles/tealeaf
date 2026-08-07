@@ -693,18 +693,139 @@ scQuint & Intron group & 27,097 & 2,239 & 8.26\% & 85,852 & 36 & 0.04\%\\
 \end{tabular}
 \end{table}
 
-Raw yield still does not establish that one method is better. The planned
-power comparison divides biological subjects into two condition-balanced
-halves and reruns every cell-type analysis independently. Each method's
-features are mapped to genes, feature p-values are combined within gene by
-Simes, and each Tealeaf--comparator evaluation is restricted to genes eligible
-for both methods in both halves. The primary reproducibility hypothesis uses
-\(p_g^{\rm rep}=\max(p_{g1},p_{g2})\), which tests whether gene \(g\) has DS
-signal in both independent halves; BH is then applied once over the shared
-gene universe. Secondary endpoints are held-half nominal replication,
-Spearman correlation of \(-\log_{10}p\), and top-\(K\) overlap. Subject-label
-permutations are required to compare calibration before a larger replicated
-set is interpreted as improved power.
+Raw yield still does not establish that one method is better. We therefore
+use an independent-subject reproducibility benchmark on a common gene and
+cell-type-pair universe. For this benchmark Tealeaf uses a paired junction
+log-ratio test. It deliberately uses the same filtered junction groups as
+scQuint, so its advantage cannot be attributed to EC ambiguity resolution or
+a larger testing universe.
+
+\subsection*{Paired junction log-ratio test}
+
+For one junction group, let \(K\geq2\) be its number of retained introns and
+let \(n\) be the number of subjects represented exactly once in each of two
+cell types. For subject \(i\in\{1,\ldots,n\}\), cell type
+\(c\in\{0,1\}\), and intron \(k\in\{1,\ldots,K\}\), let
+\(y_{ick}\in\mathbb N_0\) be the pseudobulk junction count. Define
+\(\bm y_{ic}=(y_{ic1},\ldots,y_{icK})^\prime\in\mathbb N_0^K\), the
+centered log-ratio
+\[
+ \operatorname{clr}(\bm y_{ic})
+ =\log(\bm y_{ic}+1/2)
+  -\frac{\bm1_K}{K}\bm1_K^\prime\log(\bm y_{ic}+1/2)
+ \in\mathbb R^K,
+\]
+and the within-subject difference
+\(\bm d_i=H_K^\prime\{\operatorname{clr}(\bm y_{i1})-
+\operatorname{clr}(\bm y_{i0})\}\in\mathbb R^{K-1}\). Here
+\(H_K\in\mathbb R^{K\times(K-1)}\) is an orthonormal Helmert basis for the
+subspace orthogonal to \(\bm1_K\); the result is invariant to the particular
+orthonormal basis. Pairing removes every additive subject effect shared by
+the two cell types, while the log-ratio removes junction-group depth.
+
+The null is \(H_0:\mathbb E(\bm d_i)=\bm0_{K-1}\). For \(K=2\), Tealeaf
+uses the exact two-sided one-sample Student \(t\) test. For \(K>2\), with
+\(q=K-1\), sample mean \(\bar{\bm d}\in\mathbb R^q\), and sample covariance
+\(S_d\in\mathbb R^{q\times q}\), it computes
+\[
+ T^2=n\bar{\bm d}^{\prime}S_d^{-1}\bar{\bm d},\qquad
+ \frac{n-q}{q(n-1)}T^2\sim F_{q,n-q}\quad\text{under }H_0.
+\]
+The test requires \(n\geq8\), \(n>q\), and full-rank \(S_d\). The
+eight-subject threshold was fixed from permutation calibration before the
+observed split comparison. Junction groups use the scQuint filters: each
+intron must occur in at least three samples per arm, have global proportion
+at least \(10^{-3}\), and belong to a nonsingleton group.
+
+\begin{algorithm}[H]
+\caption{Paired junction log-ratio test for one cell-type pair}
+\label{alg:paired-junction-logratio}
+\begin{algorithmic}[1]
+\Require Count vectors \(\bm y_{ic}\in\mathbb N_0^K\) and subject labels.
+\State Keep subjects with exactly one observation from each cell type and
+nonzero junction-group depth in both observations.
+\State Apply the junction filters and require \(n\geq8\), \(n>K-1\).
+\For{each retained subject \(i\)}
+  \State Compute \(\bm d_i=H_K^\prime\{\operatorname{clr}(\bm y_{i1})-
+  \operatorname{clr}(\bm y_{i0})\}\).
+\EndFor
+\If{\(K=2\)}
+  \State Return the two-sided one-sample \(t\)-test p-value.
+\Else
+  \State Estimate \(S_d\); mark the feature ineligible if \(S_d\) is rank deficient.
+  \State Return the exact Hotelling \(T^2\)-to-\(F\) p-value.
+\EndIf
+\end{algorithmic}
+\end{algorithm}
+
+\subsection*{Independent-subject power comparison}
+
+The benchmark divides biological subjects into two condition-balanced halves
+and reruns every cell-type analysis independently. Features are mapped to
+genes and feature p-values are combined within gene by Simes. Each
+Tealeaf--comparator evaluation is restricted to genes and cell-type pairs
+eligible for both methods in both halves. For method \(m\), gene \(g\), and
+fold \(h\in\{1,2\}\), let \(p_{mgh}\in[0,1]\) be the Simes gene p-value.
+The conjunction p-value
+\[
+ p_{mg}^{\rm rep}=\max(p_{mg1},p_{mg2})
+\]
+tests whether the gene has signal in both independent halves. BH at 0.05 is
+applied once to these conjunction p-values on the shared gene universe.
+Secondary endpoints are the fraction of nominal discoveries in one half with
+\(p\leq0.05\) in the other and Spearman correlation of
+\(-\log_{10}p\) across all shared gene--pair tests.
+
+Table~\ref{tab:paired-reproducibility} gives the uncalibrated comparator
+results. Tealeaf finds more independently replicated genes than every
+comparator: 5.4 times as many as LeafCutter, 4.2 times as many as scQuint, and
+1.8 times as many as MAJIQ. The MAJIQ universe is small, so its comparison is
+less precise. Tealeaf also has higher held-half replication than LeafCutter
+and MAJIQ and markedly higher fold-to-fold rank correlation than LeafCutter
+and scQuint.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Cell-type differential-splicing reproducibility across independent
+subject halves. ``Rep.'' is the number of genes passing BH on
+\(p^{\rm rep}\); ``held'' is held-half nominal replication; \(\rho\) is
+Spearman correlation of gene--pair \(-\log_{10}p\). Comparator p-values in
+this table are their native, uncalibrated values.}
+\label{tab:paired-reproducibility}
+\begin{tabular}{lrrrrrrr}
+\toprule
+& Shared & \multicolumn{3}{c}{Tealeaf} & \multicolumn{3}{c}{Comparator}\\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}
+Comparator & genes & Rep. & held & \(\rho\) & Rep. & held & \(\rho\)\\
+\midrule
+LeafCutter & 264 & 193 & 0.906 & 0.685 & 36 & 0.712 & 0.449\\
+MAJIQ Heterogen & 12 & 11 & 0.958 & 0.713 & 6 & 0.875 & 0.769\\
+scQuint & 2,164 & 646 & 0.788 & 0.642 & 154 & 0.819 & 0.435\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Calibration uses 32 paired-label-swap families. Within each cell-type pair,
+subjects are swapped independently, conditional on at least one swapped and
+one unswapped subject; this excludes the identity and complete-reversal
+configurations, both of which reproduce the observed two-sided contrast.
+Across 12,760 eligible Tealeaf null tests, the rejection rates at
+\(0.05,0.01,0.001,10^{-4}\) are respectively
+\(0.0509,0.00964,0.000627,0.0000784\). Reapplying BH within each permuted
+family yields two discoveries across 32 families. Thus the native Tealeaf
+p-values are adequately calibrated at the selected threshold.
+
+The comparator nulls are not uniformly calibrated: their pooled nominal
+0.05 rates are 0.0620 for LeafCutter, 0.0837 for scQuint, and 0.0260 for
+MAJIQ. As a sensitivity analysis, each comparator p-value is mapped through
+its method-specific pooled empirical null CDF before repeating the same
+benchmark. Tealeaf remains unchanged and has 193 versus 21 replicated genes
+for LeafCutter, 646 versus 134 for scQuint, and 11 versus 0 for MAJIQ. The
+power conclusion therefore does not depend on favorable comparator
+miscalibration; correcting it increases Tealeaf's margin. The 32-family
+calibration is intended to validate the body and moderate tail of each null,
+not to estimate genome-wide p-values smaller than its empirical resolution.
 
 \appendix
 

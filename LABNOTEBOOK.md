@@ -3054,3 +3054,49 @@ This is not yet a recommended method. In a three-test real-data smoke run all
 fits converged, but the only test whose dimension changed became less
 significant (p-value 1.7e-5 to 4.1e-4). An observed/null subset screen is
 required before considering a genome-wide run.
+
+## 2026-08-06: calibrated paired junction benchmark
+
+The cross-method cell-type benchmark now includes a Tealeaf paired junction
+log-ratio test on exactly the filtered junction groups used by scQuint. For
+each subject and two-cell-type contrast, the test adds a 0.5 pseudocount,
+takes the within-sample CLR of the junction counts, differences the two CLR
+vectors within subject, and projects to Helmert coordinates. A two-junction
+group uses a paired one-sample t test; a larger group uses Hotelling T-squared
+with its finite-sample F reference. Tests require at least eight paired
+subjects, more subjects than log-ratio dimensions, and a full-rank sample
+covariance.
+
+The eight-subject threshold is calibration selected. Across 12,760 eligible
+tests from 32 paired-label-swap families, the empirical rates at p-value
+thresholds 0.05, 0.01, 0.001, and 0.0001 are 0.05086, 0.00964, 0.000627, and
+0.0000784. Recomputing BH within each filtered null family produces two calls
+across 32 families. The paired-null generator was corrected to exclude both
+the all-unswapped and all-swapped patterns: for a two-sided paired test either
+pattern reproduces the observed contrast and is not a null randomization.
+
+Subjects were divided into two condition-balanced halves. Every method was
+rerun in each half, feature tests were combined to genes by Simes, and each
+Tealeaf-comparator comparison was restricted to the genes and cell-type pairs
+available to both methods in both halves. BH was applied to the conjunction
+p-value `max(p_fold0, p_fold1)`. With native comparator p-values, Tealeaf has
+193 versus 36 replicated genes for LeafCutter, 646 versus 154 for scQuint,
+and 11 versus 6 for MAJIQ. Tealeaf's held-half nominal replication and
+fold-to-fold Spearman correlation are respectively 0.906 and 0.685 against
+LeafCutter, 0.788 and 0.642 against scQuint, and 0.958 and 0.713 against
+MAJIQ.
+
+The corrected null nominal 0.05 rates are 0.0620 for LeafCutter, 0.0837 for
+scQuint, and 0.0260 for MAJIQ. Mapping each comparator's p-values through its
+pooled method-specific null CDF reduces its replicated discoveries to 21,
+134, and 0, respectively; Tealeaf remains at 193, 646, and 11. Therefore the
+power advantage is present under native p-values and grows after a
+label-independent calibration sensitivity analysis.
+
+Several lower-power or invalid approaches remain useful negative controls.
+The paired dominant-two-path Dirichlet-multinomial model produced at most six
+replicated Tealeaf genes in preliminary split fits. A junction multinomial
+GEE had a 0.13 null rate at nominal 0.05 and extreme zero p-values, so it is
+not valid for discovery. A Laplace Dirichlet-multinomial EC smoke benchmark
+was instead too conservative, with no p-values below 0.05 in either observed
+or null fits. These approaches are not recommended for the benchmark.
