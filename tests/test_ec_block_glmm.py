@@ -23,6 +23,9 @@ from extra_scripts.run_ec_block_glmm import (
     permute_paired_labels,
     reparameterize_fixed_effects,
 )
+from extra_scripts.run_celltype_compositional_splicing import (
+    paired_celltype_design,
+)
 from extra_scripts.run_differential_splicing import block_mapping
 from tealeaf.sc import ec_block_glmm, ec_glmm, ec_glmm_full
 
@@ -45,6 +48,21 @@ def test_laplace_dirichlet_multinomial_dispatches_family(monkeypatch):
     assert captured["observation_noise"] is False
     assert captured["random_slopes"] is False
     assert captured["max_iter"] == 17
+
+
+def test_celltype_design_can_omit_subject_fixed_effects():
+    records = [
+        {"cluster": cell_type, "condition": "A", "mouse": mouse}
+        for mouse in ("m1", "m2", "m3")
+        for cell_type in ("x", "y")
+    ]
+    fixed = paired_celltype_design(records, 3, "fixed")
+    marginal = paired_celltype_design(records, 3, "none")
+    assert fixed[-2].shape == (6, 3)
+    assert fixed[-1].shape == (6, 4)
+    assert marginal[-2].shape == (6, 1)
+    assert marginal[-1].shape == (6, 2)
+    np.testing.assert_array_equal(marginal[-2], 1.0)
 
 
 def test_block_mapping_ignores_ensembl_version_suffixes():

@@ -259,6 +259,7 @@ def main():
         "alternative_concentration": summaries[0].get(
             "alternative_concentration", "fixed"
         ),
+        "subject_effect": summaries[0].get("subject_effect", "fixed"),
         "pvalue_method": args.pvalue_method,
         "calibration_bins": (
             args.calibration_bins

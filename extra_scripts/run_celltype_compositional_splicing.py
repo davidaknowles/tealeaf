@@ -62,6 +62,15 @@ def parse_args():
             "under the alternative."
         ),
     )
+    parser.add_argument(
+        "--subject-effect",
+        choices=("fixed", "none"),
+        default="fixed",
+        help=(
+            "Use mouse fixed effects, or absorb between-mouse variation only "
+            "through the compositional dispersion model."
+        ),
+    )
     parser.add_argument("--max-blocks", type=int)
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--shard-count", type=int, default=1)
@@ -137,7 +146,7 @@ def read_identifiable_estimates(
     return projected
 
 
-def paired_celltype_design(records, min_mice):
+def paired_celltype_design(records, min_mice, subject_effect="fixed"):
     counts = Counter(
         (record["cluster"], record["condition"], record["mouse"])
         for record in records
@@ -164,25 +173,26 @@ def paired_celltype_design(records, min_mice):
     cell_type_index = {
         cell_type: index for index, cell_type in enumerate(cell_types)
     }
-    null_design = np.zeros((len(records), len(subjects)), dtype=float)
+    nuisance_columns = len(subjects) if subject_effect == "fixed" else 1
+    null_design = np.zeros((len(records), nuisance_columns), dtype=float)
     null_design[:, 0] = 1.0
     alternative_design = np.zeros(
-        (len(records), len(subjects) + len(cell_types) - 1),
+        (len(records), nuisance_columns + len(cell_types) - 1),
         dtype=float,
     )
-    alternative_design[:, : len(subjects)] = null_design
+    alternative_design[:, :nuisance_columns] = null_design
     row_subject = np.empty(len(records), dtype=np.int64)
     for row, record in enumerate(records):
         subject = (record["condition"], record["mouse"])
         subject_column = subject_index[subject]
         row_subject[row] = subject_column
-        if subject_column:
+        if subject_effect == "fixed" and subject_column:
             null_design[row, subject_column] = 1.0
             alternative_design[row, subject_column] = 1.0
         cell_type_column = cell_type_index[record["cluster"]]
         if cell_type_column:
             alternative_design[
-                row, len(subjects) + cell_type_column - 1
+                row, nuisance_columns + cell_type_column - 1
             ] = 1.0
     if (
         len(records) <= alternative_design.shape[1]
@@ -200,7 +210,7 @@ def paired_celltype_design(records, min_mice):
     )
 
 
-def pairwise_celltype_designs(records, min_mice):
+def pairwise_celltype_designs(records, min_mice, subject_effect="fixed"):
     by_celltype_subject = {
         (record["cluster"], record["condition"], record["mouse"]): record
         for record in records
@@ -226,7 +236,9 @@ def pairwise_celltype_designs(records, min_mice):
             for subject in subjects
             for cell_type in (first, second)
         ]
-        prepared = paired_celltype_design(paired_records, min_mice)
+        prepared = paired_celltype_design(
+            paired_records, min_mice, subject_effect
+        )
         if prepared is not None:
             designs.append((f"{first}_vs_{second}", prepared))
     return designs
@@ -245,11 +257,11 @@ def fit_tests(args, grouped, members):
     for block_id, unfiltered in items:
         if args.celltype_test == "pairwise":
             designs = pairwise_celltype_designs(
-                unfiltered, args.min_celltype_mice
+                unfiltered, args.min_celltype_mice, args.subject_effect
             )
         else:
             prepared = paired_celltype_design(
-                unfiltered, args.min_celltype_mice
+                unfiltered, args.min_celltype_mice, args.subject_effect
             )
             designs = [("omnibus", prepared)] if prepared is not None else []
         for contrast, prepared in designs:
@@ -341,6 +353,7 @@ def fit_tests(args, grouped, members):
                 ),
                 "contrast": contrast,
                 "method": f"paired_{args.likelihood.replace('-', '_')}",
+                "subject_effect": args.subject_effect,
                 "fitted_model": result["model"],
                 "cell_types": ",".join(cell_types),
                 "n_cell_types": len(cell_types),
@@ -437,6 +450,7 @@ def main():
         "celltype_test": args.celltype_test,
         "likelihood": args.likelihood,
         "alternative_concentration": args.alternative_concentration,
+        "subject_effect": args.subject_effect,
         "shard_index": args.shard_index,
         "shard_count": args.shard_count,
         "candidate_partitions": len(grouped),
