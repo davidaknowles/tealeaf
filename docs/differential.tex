@@ -237,6 +237,20 @@ The local coordinate is iterated for 25 fixed-point updates. The Gaussian KL ter
 
 Summing bounded expected log likelihoods and subtracting these KL terms gives the optimized objective \(\mathcal L_b^{(h)}\in\mathbb R\). JAX supplies 64-bit gradients; bounded L-BFGS runs for at most 300 iterations per attempt. If the convergence criterion is not met, fitting resumes from the complete previous parameter vector for up to three retries. The alternative copies the fitted null fixed effects, variational means, Cholesky factors, and variance parameters, initializes only the new block coefficients to zero, and then optimizes. This warm start keeps the nested objective comparison on the same local branch.
 
+\subsection*{Bouchard coordinate-ascent alternative}
+
+A deterministic alternative uses Bouchard's quadratic softmax bound. EC-to-isoform responsibilities give a linear lower bound for each positive EC numerator, while the Bouchard--Jaakkola construction gives a quadratic upper bound for each subtracted primer normalizer. After collecting terms, pseudobulk \(i\)'s bounded log likelihood has the form
+\[
+ -\tfrac12E_q(\bm\eta_{gi,-}^\prime\Omega_{gi}\bm\eta_{gi,-})
+ +\bm h_{gi}^\prime E_q(\bm\eta_{gi,-})+C_{gi},
+ \qquad \Omega_{gi}\in\mathbb S_+^{r_g},\quad\bm h_{gi}\in\mathbb R^{r_g}.
+\]
+This restores closed-form coordinate updates for every full-covariance mouse factor, the fixed effects, and the empirical-Bayes variance components. One sweep updates EC responsibilities, Bouchard location and curvature parameters, mouse Gaussian moments, fixed effects, and variance components. No gradient optimizer is used. Because the fixed effects and variances remain point estimates, this is coordinate-ascent variational EM; conjugate priors would give fully Bayesian CAVI. The complete derivation and dimensions are given in \texttt{docs/cavi.tex}.
+
+The CAVI posterior uses the same packed representation as the tilted fit and can initialize tilted L-BFGS directly. In six null and six effect random-intercept simulations, 25 CAVI initialization sweeps reduced median tilted iterations from 39.5 to 37.0 under the null and from 45.5 to 43.5 under the effect, but did not change convergence or the final objective and increased total time. In the harder three-isoform logistic-normal simulations, direct and hybrid tilted fitting each converged in four of six null replicates, while direct fitting converged in four of six effect replicates and the hybrid in three of six. Standalone CAVI had a much looser bound and larger coefficient error. CAVI is therefore retained as an alternative and initialization experiment rather than the primary optimizer or a convergence remedy.
+
+The 65-gene real-data logistic-normal screens make the convergence result stronger. The established Laplace-initialized tilted fit converged under both nested models for 52 condition genes and 56 cell-type genes, or 80.0\% and 86.2\%. With 25 CAVI initialization sweeps, the same tilted optimizer converged under both models for only 11 condition genes and 10 cell-type genes, and rescued none of the historical failures. Where both initializations converged, their final tilted objectives agreed closely. The Bouchard solution can lead to the same optimum, but its loose separable bound places the optimizer too far from that optimum to improve convergence in these data.
+
 \begin{algorithm}[H]
 \caption{Fit one multinomial or logistic-normal block EC GLMM test}
 \label{alg:primary-ec-glmm}

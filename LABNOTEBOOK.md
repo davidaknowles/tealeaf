@@ -3121,3 +3121,42 @@ Hard wrapping was removed from `docs/differential.tex`. Prose, captions, list
 items, algorithm statements, and table rows now occupy one logical source line;
 display equations retain their semantic multiline layout. A whitespace-free
 comparison confirmed that the document content did not change.
+
+## 2026-08-07: Bouchard CAVI for the EC GLMM
+
+I added a deterministic quadratic variational alternative for the multinomial
+EC GLMM. EC-to-isoform responsibilities lower-bound each positive EC
+numerator. Bouchard's softmax majorization followed by the Jaakkola--Jordan
+softplus bound makes every subtracted primer normalizer quadratic in the
+isoform logits. This gives closed-form updates for the full within-mouse
+Gaussian factors and weighted least-squares updates for fixed effects. Mouse
+and pseudobulk variance components use empirical-Bayes second-moment updates,
+so the implementation is coordinate-ascent variational EM rather than fully
+Bayesian CAVI for every parameter.
+
+The reusable implementation is in `tealeaf/sc/ec_glmm_full.py`. It supports
+the random-intercept and logistic-normal variants, returns the same packed
+posterior representation as tilted full-covariance VI, and exposes both pure
+CAVI and CAVI followed by tilted L-BFGS refinement. Both gene-level and
+block-level EC runners expose these methods. The derivation and variable
+dimensions are in `docs/cavi.tex`; `docs/differential.tex` gives the high-level
+description and comparison.
+
+In six null and six effect simulations per setting, CAVI initialization did
+not improve tilted convergence. In the three-isoform logistic-normal setting,
+direct and hybrid fitting each converged in four of six null replicates;
+direct fitting converged in four of six effect replicates and the hybrid in
+three. In the random-intercept setting, the hybrid reduced median tilted
+iterations by two to three but added CAVI time and left final objectives and
+errors unchanged. Standalone CAVI optimized a substantially looser bound and
+had larger effect error.
+
+The exact 65-gene logistic-normal screens gave a stronger negative result.
+The established Laplace-initialized tilted procedure converged under both
+nested models for 52 condition genes and 56 cell-type genes. Replacing its
+initializer with 25 CAVI sweeps reduced those counts to 11 and 10 and rescued
+none of the historical failures. Pure CAVI converged under both models for
+five genes in each contrast by 200 sweeps. On genes where both tilted fits
+converged, their final objectives were close, indicating that the CAVI start
+impedes reaching the same optimum rather than identifying a better one. CAVI
+therefore remains an opt-in reference method, not the default initializer.

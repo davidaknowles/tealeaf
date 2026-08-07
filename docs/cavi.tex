@@ -1,0 +1,174 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\title{Bouchard Coordinate-Ascent Variational Inference for the Tealeaf EC GLMM}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Model and dimensions}
+
+Fix a gene \(g\) with \(T_g\in\mathbb N\) supported isoforms and \(r_g=T_g-1\) free reference-logit coordinates. Pseudobulk \(i\in\{1,\ldots,I_g\}\) belongs to mouse \(m(i)\in\{1,\ldots,M_g\}\), and primer \(p\in\{1,\ldots,P\}\) has \(K_{gp}\in\mathbb N_0\) retained equivalence classes (ECs). The observed count vector is \(\bm c_{gip}\in\mathbb N_0^{K_{gp}}\), its total is \(n_{gip}=\bm1_{K_{gp}}^\prime\bm c_{gip}\in\mathbb N_0\), and the fixed nonnegative EC-by-isoform map is \(A_{gp}\in\mathbb R_+^{K_{gp}\times T_g}\).
+
+Here \(\bm1_k\in\mathbb R^k\) is the vector of ones, \(I_k\in\mathbb R^{k\times k}\) is the identity, and \(\mathbb S_{++}^k\) is the set of symmetric positive-definite \(k\times k\) matrices.
+
+Let \(\bm\eta_{gi}=(\bm\eta_{gi,-}^\prime,0)^\prime\in\mathbb R^{T_g}\), where \(\bm\eta_{gi,-}\in\mathbb R^{r_g}\). For nested hypothesis \(h\in\{0,1\}\), let \(F_{gi}^{(h)}\in\mathbb R^{r_g\times a_h}\) map the fixed coefficient vector \(\bm\beta_g^{(h)}\in\mathbb R^{a_h}\) to free logits. Let \(\bm z_{gm}\in\mathbb R^{L_{gm}}\) collect mouse \(m\)'s random intercept and, in the logistic-normal model, all pseudobulk residual effects belonging to that mouse. The selector \(S_{gi}\in\{0,1\}^{r_g\times L_{g,m(i)}}\) maps this latent block to pseudobulk \(i\), so the free logits are
+\[
+ \bm\eta_{gi,-}=F_{gi}^{(h)}\bm\beta_g^{(h)}+S_{gi}\bm z_{g,m(i)}.
+\]
+The random-intercept prior is \(N(\bm0_{r_g},\sigma_g^2I_{r_g})\). With observation noise, each residual block has prior \(N(\bm0_{r_g},\tau_g^2I_{r_g})\). Thus \(\bm z_{gm}\sim N(\bm0_{L_{gm}},P_{gm})\), where \(P_{gm}\in\mathbb S_{++}^{L_{gm}}\) is block diagonal. The variational approximation factorizes across mice but retains a full covariance within mouse,
+\[
+ q(\bm z_g)=\prod_{m=1}^{M_g}N(\bm z_{gm};\bm\mu_{gm},\Sigma_{gm}),
+ \qquad \bm\mu_{gm}\in\mathbb R^{L_{gm}},\quad
+ \Sigma_{gm}\in\mathbb S_{++}^{L_{gm}}.
+\]
+
+\section{Paired-primer EC likelihood}
+
+Define the primer exposure of isoform \(t\) by \(\ell_{gpt}=\sum_{k=1}^{K_{gp}}A_{gpkt}\in\mathbb R_+\). Conditional on the primer total, the log likelihood for pseudobulk \(i\) and primer \(p\), including the count-only multinomial constant, is
+\begin{align}
+ \log p(\bm c_{gip}\mid\bm\eta_{gi})
+ &=\log\frac{n_{gip}!}{\prod_kc_{gipk}!}
+   +\sum_{k=1}^{K_{gp}}c_{gipk}
+      \log\sum_{t=1}^{T_g}A_{gpkt}e^{\eta_{git}}\notag\\
+ &\quad-n_{gip}\log\sum_{t:\ell_{gpt}>0}
+      e^{\eta_{git}+\log\ell_{gpt}}.
+\end{align}
+The first log-sum-exp is positive and must receive a lower bound; the final normalizer is subtracted and must receive an upper bound.
+
+\section{EC allocation bound}
+
+For every observed EC \(k\), introduce \(\rho_{gipkt}\in[0,1]\), supported only where \(A_{gpkt}>0\), with \(\sum_t\rho_{gipkt}=1\). Jensen's inequality gives
+\[
+ \log\sum_tA_{gpkt}e^{\eta_{git}}
+ \geq\sum_t\rho_{gipkt}
+ \{\log A_{gpkt}+\eta_{git}-\log\rho_{gipkt}\}.
+\]
+For fixed Gaussian moments, the coordinate optimum is
+\[
+ \rho_{gipkt}
+ =\frac{A_{gpkt}\exp\{E_q(\eta_{git})\}}
+ {\sum_{u:A_{gpku}>0}A_{gpku}\exp\{E_q(\eta_{giu})\}}.
+\]
+Define the expected allocation to isoform \(t\) by \(a_{git}=\sum_p\sum_kc_{gipk}\rho_{gipkt}\in\mathbb R_+\). The logit-dependent contribution of all numerator bounds is then \(\sum_ta_{git}E_q(\eta_{git})\).
+
+\section{Bouchard quadratic normalizer bound}
+
+For one pseudobulk and primer, let \(\mathcal T_{gp}=\{t:\ell_{gpt}>0\}\), \(J_{gp}=|\mathcal T_{gp}|\), and \(x_{gipt}=\eta_{git}+\log\ell_{gpt}\). Bouchard's first majorization introduces \(\alpha_{gip}\in\mathbb R\),
+\[
+ \log\sum_{t\in\mathcal T_{gp}}e^{x_{gipt}}
+ \leq \alpha_{gip}+\sum_{t\in\mathcal T_{gp}}
+ \log\{1+e^{x_{gipt}-\alpha_{gip}}\}.
+\]
+For \(\xi>0\), define the Jaakkola--Jordan coefficient
+\[
+ \lambda(\xi)=\frac{\operatorname{logit}^{-1}(\xi)-1/2}{2\xi}
+ =\frac{\tanh(\xi/2)}{4\xi},
+ \qquad \lambda(0)=\frac18.
+\]
+The softplus term has the quadratic upper bound
+\[
+ \log(1+e^y)
+ \leq\lambda(\xi)(y^2-\xi^2)
+ +\frac{y-\xi}{2}+\log(1+e^\xi).
+\]
+Writing \(\bar x_{gipt}=E_q(x_{gipt})\) and \(v_{git}=\operatorname{Var}_q(\eta_{git})\), the coordinate updates are
+\begin{align}
+ \xi_{gipt}^2
+ &=v_{git}+(\bar x_{gipt}-\alpha_{gip})^2,\\
+ d_{gipt}&=2\lambda(\xi_{gipt}),\\
+ \alpha_{gip}
+ &=\frac{J_{gp}/2-1+\sum_{t\in\mathcal T_{gp}}d_{gipt}\bar x_{gipt}}
+ {\sum_{t\in\mathcal T_{gp}}d_{gipt}}.
+\end{align}
+The implementation alternates these two local updates 25 times. When \(J_{gp}=1\), the normalizer is linear and is evaluated exactly instead of applying the bound.
+
+\section{Quadratic pseudo-likelihood}
+
+For free isoform \(t\leq r_g\), collect the quadratic and linear coefficients
+\begin{align}
+ w_{git}
+ &=\sum_{p:t\in\mathcal T_{gp}}
+ 2n_{gip}\lambda(\xi_{gipt}),\\
+ h_{git}
+ &=a_{git}-\sum_{p:t\in\mathcal T_{gp}}n_{gip}
+ \left[\frac12+2\lambda(\xi_{gipt})
+ \{\log\ell_{gpt}-\alpha_{gip}\}\right].
+\end{align}
+Let \(\Omega_{gi}=\operatorname{diag}(\bm w_{gi})\in\mathbb S_+^{r_g}\) and \(\bm h_{gi}\in\mathbb R^{r_g}\). Up to terms independent of the free logits, the bounded expected log likelihood is
+\[
+ -\frac12E_q(\bm\eta_{gi,-}^\prime\Omega_{gi}\bm\eta_{gi,-})
+ +\bm h_{gi}^\prime E_q(\bm\eta_{gi,-}).
+\]
+This quadratic form is the step that restores Gaussian conjugacy. Contributions from the two primer protocols add to the same \(\Omega_{gi}\) and \(\bm h_{gi}\), because they share \(\bm\eta_{gi}\).
+
+\section{Gaussian and model-parameter updates}
+
+Let \(\mathcal O_{gm}=\{i:m(i)=m\}\). Holding local parameters and model parameters fixed, the coordinate optimum for mouse \(m\)'s full Gaussian factor is
+\begin{align}
+ \Sigma_{gm}^{-1}
+ &=P_{gm}^{-1}
+ +\sum_{i\in\mathcal O_{gm}}S_{gi}^\prime\Omega_{gi}S_{gi},\\
+ \bm\mu_{gm}
+ &=\Sigma_{gm}\sum_{i\in\mathcal O_{gm}}S_{gi}^\prime
+ \{\bm h_{gi}-\Omega_{gi}F_{gi}^{(h)}\bm\beta_g^{(h)}\}.
+\end{align}
+Thus the full covariance among the random intercept and every residual effect from the same mouse is retained without gradient optimization.
+
+For point-estimated fixed effects, define
+\begin{align}
+ R_\beta
+ &=\sum_i(F_{gi}^{(h)})^\prime\Omega_{gi}F_{gi}^{(h)},\\
+ \bm r_\beta
+ &=\sum_i(F_{gi}^{(h)})^\prime
+ \{\bm h_{gi}-\Omega_{gi}S_{gi}\bm\mu_{g,m(i)}\}.
+\end{align}
+The coordinate update is \(\bm\beta_g^{(h)}=R_\beta^+\bm r_\beta\in\mathbb R^{a_h}\), where \((\cdot)^+\) denotes the Moore--Penrose pseudoinverse. A Gaussian prior would add its precision and precision-weighted mean to \(R_\beta\) and \(\bm r_\beta\).
+
+Partition \(\bm\mu_{gm}\) and \(\Sigma_{gm}\) into the random-intercept block \(u\) and active pseudobulk-residual blocks \(e_i\). The empirical-Bayes variance updates are
+\begin{align}
+ \sigma_g^2
+ &=\frac1{M_gr_g}\sum_{m=1}^{M_g}
+ \{\|\bm\mu_{gm,u}\|^2+\operatorname{tr}(\Sigma_{gm,uu})\},\\
+ \tau_g^2
+ &=\frac1{I_gr_g}\sum_{i=1}^{I_g}
+ \{\|\bm\mu_{g,m(i),e_i}\|^2
+ +\operatorname{tr}(\Sigma_{g,m(i),e_ie_i})\}.
+\end{align}
+The second update is omitted from the random-intercept-only model. Because \(\bm\beta_g^{(h)}\), \(\sigma_g^2\), and \(\tau_g^2\) are point estimates, the implementation is formally coordinate-ascent variational EM. Gaussian and inverse-gamma priors would turn their updates into fully Bayesian CAVI updates.
+
+\section{Algorithm and objective}
+
+One sweep updates the coordinates in the following order: EC responsibilities \(\rho\); Bouchard parameters \((\alpha,\xi)\); mouse Gaussian factors \((\bm\mu,\Sigma)\); fixed effects \(\bm\beta\); and variance components \((\sigma^2,\tau^2)\). Every step maximizes the same Bouchard evidence lower bound conditional on the other coordinates. The implementation evaluates the multinomial constants, allocation entropies, complete Bouchard normalizer bound, and exact Gaussian KL divergence after every sweep. It stops when both the relative bound change and maximum packed-parameter change meet tolerance.
+
+The returned posterior uses the same packed parameter layout as the tilted full-covariance implementation. It can therefore initialize the existing tilted-bound L-BFGS fit without conversion. The hybrid procedure runs a chosen number of CAVI sweeps, then refines every fixed effect, Gaussian mean, Cholesky factor, and variance component against the tighter tilted objective.
+
+\section{Initial comparison}
+
+A comparison used six null and six effect simulations in each of two settings. Both had 10 mice, two pseudobulks per mouse, two primer maps, 180 molecules per primer, random-intercept standard deviation 0.35, and effect sizes 0 or 0.9. The random-intercept setting had two isoforms and three ECs per primer. The logistic-normal setting had three isoforms, five ECs per primer, and observation-noise standard deviation 0.6. Standalone CAVI used at most 300 sweeps; hybrid initialization used 25 sweeps before the same tilted L-BFGS fit used by the baseline.
+
+For the random-intercept setting, standalone CAVI converged in all six null simulations but in none of the six effect simulations. Its posterior evaluated on the tilted objective was much worse than the direct tilted fit, with median values (-553.8) versus (-271.8) under the null and (-827.8) versus (-271.0) under the effect. Its effect coefficient RMSE was 0.946, compared with 0.128 for tilted fitting. For the logistic-normal setting, standalone CAVI met its stopping rule in all 12 simulations, but its median tilted objectives remained roughly 450 units below the tilted optima and its effect RMSE was 0.462 versus 0.258.
+
+In the random-intercept setting, CAVI initialization reduced median tilted iteration counts from 39.5 to 37.0 under the null and from 45.5 to 43.5 under the effect, but it did not change convergence or the final objective and increased total time. In the logistic-normal setting, both direct and hybrid tilted fitting converged in four of six null simulations; under the effect, direct fitting converged in four of six and hybrid fitting in three of six. The hybrid's final objectives and coefficient errors matched the direct fits, but its median iteration count increased under the effect. Thus the quadratic method is a deterministic alternative and initialization path, but these simulations do not support using it as the default optimizer or as a convergence remedy.
+
+\section{Real-data convergence comparison}
+
+The exact 65-gene logistic-normal screens provide a harder comparison. The established Laplace-initialized tilted L-BFGS procedure converged under both nested condition models for 52 of 65 genes (80.0\%) and under both nested cell-type models for 56 of 65 genes (86.2\%). Replacing that initialization with 25 CAVI sweeps reduced joint convergence to 11 of 65 condition genes (16.9\%) and 10 of 65 cell-type genes (15.4\%). It rescued none of the 13 historical condition failures or nine historical cell-type failures. Standalone CAVI converged under both nested models for only five genes in each contrast by 200 sweeps.
+
+Among the small subsets where both initialization strategies converged, the median absolute differences between their tilted objectives were 0.045 for the condition null, 0.043 for the condition alternative, 0.006 for the cell-type null, and 0.075 for the cell-type alternative. CAVI initialization can therefore reach the same tilted optimum, but its loose quadratic solution is a poor starting point for these real logistic-normal fits. It is not a convergence improvement over the established initializer.
+
+\begin{thebibliography}{1}
+\bibitem{bouchard2007}
+G.~Bouchard.
+\newblock Efficient bounds for the softmax function and applications to approximate inference in hybrid models.
+\newblock NIPS 2007 Workshop on Approximate Bayesian Inference in Continuous/Hybrid Systems, 2007.
+\end{thebibliography}
+
+\end{document}

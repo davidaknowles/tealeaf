@@ -29,6 +29,10 @@ METHODS = (
     "laplace_multinomial",
     "laplace_dirichlet_multinomial",
     "laplace_multinomial_noise",
+    "cavi_multinomial_full",
+    "cavi_multinomial_noise_full",
+    "cavi_tilted_multinomial_full",
+    "cavi_tilted_multinomial_noise_full",
 )
 
 
@@ -75,6 +79,7 @@ def parse_args():
     parser.add_argument("--max-isoforms", type=int, default=10)
     parser.add_argument("--max-ecs", type=int, default=128)
     parser.add_argument("--max-iter", type=int, default=300)
+    parser.add_argument("--cavi-initializer-iterations", type=int, default=25)
     parser.add_argument("--retries", type=int, default=2)
     parser.add_argument("--null-replicate-retries", type=int)
     parser.add_argument("--vi-samples", type=int, default=16)
@@ -425,6 +430,22 @@ def fit_method(method, data, args, initial=None):
                 else "multinomial"
             ),
             observation_noise=method == "laplace_multinomial_noise",
+            initial=initial,
+            max_iter=args.max_iter,
+        )
+    if method.startswith("cavi_"):
+        observation_noise = "_noise_" in method
+        if method.startswith("cavi_tilted_"):
+            return ec_glmm_full.fit_cavi_then_tilted(
+                data,
+                observation_noise=observation_noise,
+                initial=initial,
+                cavi_max_iter=args.cavi_initializer_iterations,
+                max_iter=args.max_iter,
+            )
+        return ec_glmm_full.fit_bouchard_cavi(
+            data,
+            observation_noise=observation_noise,
             initial=initial,
             max_iter=args.max_iter,
         )
@@ -841,6 +862,10 @@ def main():
                     "alternative_concentration": alternative["concentration"],
                     "null_iterations": null["total_iterations"],
                     "alternative_iterations": alternative["total_iterations"],
+                    "null_cavi_iterations": null.get("cavi_iterations", np.nan),
+                    "alternative_cavi_iterations": alternative.get(
+                        "cavi_iterations", np.nan
+                    ),
                     "null_gradient_norm": null["gradient_norm"],
                     "alternative_gradient_norm": alternative["gradient_norm"],
                     "null_scaled_gradient_norm": null.get(
@@ -884,6 +909,8 @@ def main():
                         observation_noise=method in {
                             "multinomial_noise_full",
                             "laplace_multinomial_noise",
+                            "cavi_multinomial_noise_full",
+                            "cavi_tilted_multinomial_noise_full",
                         },
                     )
                     simulated_null_data = ec_glmm.ECGLMMData(

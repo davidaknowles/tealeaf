@@ -65,6 +65,41 @@ def test_full_tilted_bound_handles_correlated_logits():
     assert bound - expectation < 0.08
 
 
+def test_bouchard_bound_is_an_upper_bound_for_correlated_logits():
+    means = np.array([[0.2, -0.4, 0.0]])
+    covariance = np.array(
+        [[[0.3, -0.18, 0.0], [-0.18, 0.7, 0.0], [0.0, 0.0, 0.0]]]
+    )
+    variances = np.diagonal(covariance, axis1=1, axis2=2)
+    alpha, xi = ec_glmm_full._bouchard_parameters(means, variances)
+    bound = ec_glmm_full._bouchard_expected_logsumexp(
+        means, variances, alpha, xi
+    )[0]
+    rng = np.random.default_rng(2)
+    samples = rng.multivariate_normal(means[0], covariance[0], size=200_000)
+    expectation = np.mean(np.logaddexp.reduce(samples, axis=1))
+    assert bound >= expectation - 3e-3
+
+
+def test_bouchard_cavi_warm_starts_tilted_fit():
+    data = simulated_data()
+    cavi = ec_glmm_full.fit_bouchard_cavi(data, max_iter=25)
+    assert np.isfinite(cavi["objective"])
+    assert cavi["coefficients"].shape == (data.design.shape[1], 1)
+    warm_start = ec_glmm_full.warm_start(cavi, data.design.shape[1] + 1)
+    assert np.all(np.isfinite(warm_start))
+    assert np.all(np.diff(cavi["objective_history"]) >= -1e-7)
+    starting = ec_glmm_full.fit_variational(
+        data, initial=cavi["parameters"], max_iter=0
+    )
+    refined = ec_glmm_full.fit_variational(
+        data, initial=cavi["parameters"], max_iter=80
+    )
+    assert refined["converged"]
+    assert refined["objective"] >= starting["objective"]
+    assert refined["coefficients"][2, 0] == pytest.approx(0.9, abs=0.35)
+
+
 def test_multinomial_methods_recover_ambiguous_ec_effect():
     data = simulated_data()
     tilted = ec_glmm.fit_tilted_variational(data, max_iter=120)

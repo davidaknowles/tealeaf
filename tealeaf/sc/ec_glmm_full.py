@@ -75,6 +75,501 @@ def _tilted_logsumexp_bound(jnp, means, covariances, iterations=25):
     )
 
 
+def _bouchard_lambda(xi):
+    """Jaakkola--Jordan quadratic coefficient used by Bouchard's bound."""
+    xi = np.asarray(xi, dtype=float)
+    result = np.full_like(xi, 0.125)
+    regular = np.abs(xi) >= 1e-7
+    result[regular] = np.tanh(xi[regular] / 2.0) / (4.0 * xi[regular])
+    return result
+
+
+def _bouchard_parameters(means, variances, alpha=None, iterations=25):
+    """Optimize Bouchard local parameters for Gaussian softmax logits.
+
+    ``means`` and ``variances`` are observations by supported categories.
+    The returned ``alpha`` is one scalar per observation and ``xi`` has the
+    same shape as ``means``.
+    """
+    means = np.asarray(means, dtype=float)
+    variances = np.asarray(variances, dtype=float)
+    if means.ndim != 2 or variances.shape != means.shape:
+        raise ValueError("Bouchard moments must be aligned matrices")
+    categories = means.shape[1]
+    if categories < 2:
+        raise ValueError("Bouchard parameters require at least two categories")
+    if alpha is None:
+        alpha = scipy.special.logsumexp(means, axis=1)
+    else:
+        alpha = np.asarray(alpha, dtype=float)
+    for _ in range(int(iterations)):
+        xi = np.sqrt(
+            np.maximum(
+                variances + (means - alpha[:, None]) ** 2,
+                1e-16,
+            )
+        )
+        weights = 2.0 * _bouchard_lambda(xi)
+        alpha = (
+            categories / 2.0
+            - 1.0
+            + np.sum(weights * means, axis=1)
+        ) / np.sum(weights, axis=1)
+    xi = np.sqrt(
+        np.maximum(variances + (means - alpha[:, None]) ** 2, 1e-16)
+    )
+    return alpha, xi
+
+
+def _bouchard_expected_logsumexp(means, variances, alpha, xi):
+    """Evaluate Bouchard's upper bound on expected log-sum-exp."""
+    centered_mean = np.asarray(means, dtype=float) - np.asarray(alpha)[:, None]
+    xi = np.asarray(xi, dtype=float)
+    return np.asarray(alpha, dtype=float) + np.sum(
+        _bouchard_lambda(xi)
+        * (np.asarray(variances, dtype=float) + centered_mean**2 - xi**2)
+        + 0.5 * (centered_mean - xi)
+        + np.logaddexp(0.0, xi),
+        axis=1,
+    )
+
+
+def _fixed_effect_maps(data):
+    """Return observation-by-logit maps from coefficients to free logits."""
+    dimension = data.n_isoforms - 1
+    if data.fixed_effect_tensor is not None:
+        return np.asarray(data.fixed_effect_tensor, dtype=float)
+    design = np.asarray(data.design, dtype=float)
+    result = np.zeros(
+        (len(design), dimension, design.shape[1] * dimension), dtype=float
+    )
+    for column in range(design.shape[1]):
+        start = column * dimension
+        result[:, :, start : start + dimension] = (
+            design[:, column, None, None] * np.eye(dimension)[None, :, :]
+        )
+    return result
+
+
+def _unpack_full_initial(data, observation_noise, initial):
+    """Initialize or unpack parameters shared by CAVI and gradient VI."""
+    cluster_index, selection, _ = _latent_layout(data, observation_noise)
+    n_clusters = int(cluster_index.max()) + 1
+    latent_dimension = selection.shape[2]
+    fixed_maps = _fixed_effect_maps(data)
+    coefficient_count = fixed_maps.shape[2]
+    rows, columns = np.tril_indices(latent_dimension)
+    if initial is None:
+        coefficients = np.zeros(coefficient_count, dtype=float)
+        means = np.zeros((n_clusters, latent_dimension), dtype=float)
+        covariances = np.tile(
+            0.3**2 * np.eye(latent_dimension)[None, :, :],
+            (n_clusters, 1, 1),
+        )
+        mouse_sd = 0.5
+        noise_sd = 0.3 if observation_noise else 0.0
+    else:
+        initial = np.asarray(initial, dtype=float)
+        mean_count = n_clusters * latent_dimension
+        triangle_count = n_clusters * len(rows)
+        expected = coefficient_count + mean_count + triangle_count + 1
+        expected += int(observation_noise)
+        if len(initial) != expected:
+            raise ValueError("initial CAVI parameter vector has the wrong size")
+        cursor = 0
+        coefficients = initial[cursor : cursor + coefficient_count].copy()
+        cursor += coefficient_count
+        means = initial[cursor : cursor + mean_count].reshape(
+            n_clusters, latent_dimension
+        ).copy()
+        cursor += mean_count
+        packed = initial[cursor : cursor + triangle_count].reshape(
+            n_clusters, len(rows)
+        ).copy()
+        cursor += triangle_count
+        packed[:, rows == columns] = np.exp(packed[:, rows == columns])
+        cholesky = np.zeros(
+            (n_clusters, latent_dimension, latent_dimension), dtype=float
+        )
+        cholesky[:, rows, columns] = packed
+        covariances = cholesky @ np.swapaxes(cholesky, 1, 2)
+        mouse_sd = float(np.exp(initial[cursor]))
+        cursor += 1
+        noise_sd = float(np.exp(initial[cursor])) if observation_noise else 0.0
+    return (
+        cluster_index,
+        selection,
+        fixed_maps,
+        coefficients,
+        means,
+        covariances,
+        mouse_sd,
+        noise_sd,
+    )
+
+
+def _pack_full_parameters(
+    coefficients, means, covariances, mouse_sd, noise_sd, observation_noise
+):
+    values = np.r_[
+        np.asarray(coefficients, dtype=float).ravel(),
+        np.asarray(means, dtype=float).ravel(),
+        _pack_cholesky(np.asarray(covariances, dtype=float)),
+        np.log(float(mouse_sd)),
+    ]
+    if observation_noise:
+        values = np.r_[values, np.log(float(noise_sd))]
+    return values
+
+
+def fit_bouchard_cavi(
+    data,
+    *,
+    observation_noise=False,
+    initial=None,
+    max_iter=300,
+    local_steps=25,
+    tolerance=1e-5,
+):
+    """Fit the multinomial EC GLMM by Bouchard coordinate-ascent VI.
+
+    EC-to-isoform responsibilities lower-bound each EC numerator. Bouchard's
+    quadratic softmax bound lower-bounds the negative primer normalizer. The
+    resulting Gaussian factors, fixed effects, and variance components have
+    closed-form coordinate updates. Variance components are point estimates,
+    so this is coordinate-ascent variational EM rather than fully Bayesian
+    CAVI for every model parameter.
+    """
+    if int(max_iter) < 1:
+        raise ValueError("CAVI max_iter must be positive")
+    (
+        cluster_index,
+        selection,
+        fixed_maps,
+        coefficients,
+        means,
+        covariances,
+        mouse_sd,
+        noise_sd,
+    ) = _unpack_full_initial(data, observation_noise, initial)
+    counts = tuple(np.asarray(value, dtype=float) for value in data.counts)
+    mappings = tuple(np.asarray(value, dtype=float) for value in data.compatibility)
+    n_observations = len(cluster_index)
+    n_clusters, latent_dimension = means.shape
+    dimension = data.n_isoforms - 1
+    latent_blocks = latent_dimension // dimension
+    alpha = [None] * len(counts)
+    lower_sd = float(np.exp(-8.0))
+    upper_sd = float(np.exp(3.0))
+    objective_history = []
+    maximum_change = np.inf
+
+    def moments():
+        fixed = np.einsum("ndp,p->nd", fixed_maps, coefficients)
+        random = np.einsum(
+            "ndi,ni->nd", selection, means[cluster_index]
+        )
+        free_means = fixed + random
+        free_variances = np.einsum(
+            "nai,nij,naj->na",
+            selection,
+            covariances[cluster_index],
+            selection,
+        )
+        full_means = np.column_stack((free_means, np.zeros(n_observations)))
+        full_variances = np.column_stack(
+            (free_variances, np.zeros(n_observations))
+        )
+        return fixed, full_means, full_variances
+
+    def local_update(full_means, full_variances):
+        weights = np.zeros((n_observations, dimension), dtype=float)
+        natural = np.zeros((n_observations, dimension), dtype=float)
+        expected_likelihood = np.zeros(n_observations, dtype=float)
+        for primer, (observed, mapping) in enumerate(zip(counts, mappings)):
+            totals = observed.sum(axis=1)
+            expected_likelihood += scipy.special.gammaln(totals + 1.0)
+            expected_likelihood -= np.sum(
+                scipy.special.gammaln(observed + 1.0), axis=1
+            )
+            assigned = np.zeros((n_observations, data.n_isoforms), dtype=float)
+            allocation_constant = np.zeros(n_observations, dtype=float)
+            for ec, compatibility in enumerate(mapping):
+                support = compatibility > 0
+                if not np.any(support):
+                    continue
+                logits = (
+                    full_means[:, support]
+                    + np.log(compatibility[support])[None, :]
+                )
+                responsibilities = scipy.special.softmax(logits, axis=1)
+                assigned[:, support] += observed[:, ec, None] * responsibilities
+                allocation_constant += observed[:, ec] * np.sum(
+                    responsibilities
+                    * (
+                        np.log(compatibility[support])[None, :]
+                        - np.log(np.maximum(responsibilities, 1e-300))
+                    ),
+                    axis=1,
+                )
+            expected_likelihood += allocation_constant
+            expected_likelihood += np.sum(assigned * full_means, axis=1)
+            natural += assigned[:, :dimension]
+
+            lengths = mapping.sum(axis=0)
+            support = lengths > 0
+            supported_count = int(np.sum(support))
+            shifted_means = (
+                full_means[:, support] + np.log(lengths[support])[None, :]
+            )
+            shifted_variances = full_variances[:, support]
+            if supported_count == 0:
+                if np.any(totals > 0):
+                    raise ValueError("positive primer totals lack isoform support")
+                continue
+            if supported_count == 1:
+                expected_likelihood -= totals * shifted_means[:, 0]
+                only = int(np.flatnonzero(support)[0])
+                if only < dimension:
+                    natural[:, only] -= totals
+                continue
+            local_alpha, xi = _bouchard_parameters(
+                shifted_means,
+                shifted_variances,
+                alpha=alpha[primer],
+                iterations=local_steps,
+            )
+            alpha[primer] = local_alpha
+            lam = _bouchard_lambda(xi)
+            expected_likelihood -= totals * _bouchard_expected_logsumexp(
+                shifted_means, shifted_variances, local_alpha, xi
+            )
+            supported_indices = np.flatnonzero(support)
+            for local_column, isoform in enumerate(supported_indices):
+                if isoform >= dimension:
+                    continue
+                quadratic = 2.0 * totals * lam[:, local_column]
+                weights[:, isoform] += quadratic
+                natural[:, isoform] -= totals * (
+                    2.0
+                    * lam[:, local_column]
+                    * (np.log(lengths[isoform]) - local_alpha)
+                    + 0.5
+                )
+        return weights, natural, float(np.sum(expected_likelihood))
+
+    def kl_divergence():
+        prior_sds = np.full(latent_dimension, mouse_sd, dtype=float)
+        if observation_noise:
+            prior_sds[dimension:] = noise_sd
+        prior_variances = prior_sds**2
+        trace = np.sum(
+            np.diagonal(covariances, axis1=1, axis2=2)
+            / prior_variances[None, :]
+        )
+        quadratic = np.sum(means * means / prior_variances[None, :])
+        logdet_prior = n_clusters * np.sum(np.log(prior_variances))
+        signs, logdet_covariance = np.linalg.slogdet(covariances)
+        if not np.all(signs > 0):
+            return np.inf
+        return 0.5 * (
+            trace
+            + quadratic
+            - n_clusters * latent_dimension
+            + logdet_prior
+            - np.sum(logdet_covariance)
+        )
+
+    converged = False
+    iterations = 0
+    for iteration in range(int(max_iter)):
+        old_parameters = _pack_full_parameters(
+            coefficients,
+            means,
+            covariances,
+            mouse_sd,
+            noise_sd,
+            observation_noise,
+        )
+        fixed, full_means, full_variances = moments()
+        likelihood_weights, natural, _ = local_update(
+            full_means, full_variances
+        )
+
+        prior_precision = np.full(
+            latent_dimension, 1.0 / mouse_sd**2, dtype=float
+        )
+        if observation_noise:
+            prior_precision[dimension:] = 1.0 / noise_sd**2
+        for cluster in range(n_clusters):
+            rows = np.flatnonzero(cluster_index == cluster)
+            precision = np.diag(prior_precision)
+            right = np.zeros(latent_dimension, dtype=float)
+            for row in rows:
+                weighted_selection = (
+                    likelihood_weights[row, :, None] * selection[row]
+                )
+                precision += selection[row].T @ weighted_selection
+                right += selection[row].T @ (
+                    natural[row]
+                    - likelihood_weights[row] * fixed[row]
+                )
+            covariance = np.linalg.inv(precision)
+            covariance = 0.5 * (covariance + covariance.T)
+            covariances[cluster] = covariance
+            means[cluster] = np.linalg.solve(precision, right)
+
+        fixed_precision = np.zeros(
+            (len(coefficients), len(coefficients)), dtype=float
+        )
+        fixed_right = np.zeros(len(coefficients), dtype=float)
+        latent_means = np.einsum(
+            "ndi,ni->nd", selection, means[cluster_index]
+        )
+        for row in range(n_observations):
+            weighted_map = likelihood_weights[row, :, None] * fixed_maps[row]
+            fixed_precision += fixed_maps[row].T @ weighted_map
+            fixed_right += fixed_maps[row].T @ (
+                natural[row] - likelihood_weights[row] * latent_means[row]
+            )
+        coefficients = np.linalg.lstsq(
+            fixed_precision, fixed_right, rcond=1e-10
+        )[0]
+
+        mouse_second_moment = (
+            means[:, :dimension] ** 2
+            + np.diagonal(
+                covariances[:, :dimension, :dimension], axis1=1, axis2=2
+            )
+        )
+        mouse_sd = float(
+            np.clip(
+                np.sqrt(np.mean(mouse_second_moment)), lower_sd, upper_sd
+            )
+        )
+        if observation_noise:
+            noise_second_moment = (
+                means[:, dimension:] ** 2
+                + np.diagonal(
+                    covariances[:, dimension:, dimension:], axis1=1, axis2=2
+                )
+            )
+            active = np.zeros((n_clusters, latent_blocks - 1), dtype=bool)
+            cluster_sizes = np.bincount(cluster_index, minlength=n_clusters)
+            for cluster, size in enumerate(cluster_sizes):
+                active[cluster, :size] = True
+            active = np.repeat(active, dimension, axis=1)
+            noise_sd = float(
+                np.clip(
+                    np.sqrt(np.mean(noise_second_moment[active])),
+                    lower_sd,
+                    upper_sd,
+                )
+            )
+
+        _, updated_means, updated_variances = moments()
+        _, _, expected_likelihood = local_update(
+            updated_means, updated_variances
+        )
+        objective = expected_likelihood - kl_divergence()
+        objective_history.append(float(objective))
+        new_parameters = _pack_full_parameters(
+            coefficients,
+            means,
+            covariances,
+            mouse_sd,
+            noise_sd,
+            observation_noise,
+        )
+        maximum_change = float(np.max(np.abs(new_parameters - old_parameters)))
+        iterations = iteration + 1
+        if (
+            iteration > 0
+            and maximum_change <= np.sqrt(float(tolerance))
+            and abs(objective_history[-1] - objective_history[-2])
+            <= float(tolerance) * max(1.0, abs(objective_history[-2]))
+        ):
+            converged = True
+            break
+
+    parameters = _pack_full_parameters(
+        coefficients,
+        means,
+        covariances,
+        mouse_sd,
+        noise_sd,
+        observation_noise,
+    )
+    reported_coefficients = coefficients
+    if data.fixed_effect_tensor is None:
+        reported_coefficients = coefficients.reshape(
+            data.design.shape[1], dimension
+        )
+    return {
+        "method": "bouchard_cavi_full",
+        "family": "multinomial",
+        "alpha": 1.0,
+        "objective": float(objective_history[-1]),
+        "parameters": parameters,
+        "coefficients": reported_coefficients,
+        "fixed_effect_count": int(len(coefficients)),
+        "random_effect_sd": mouse_sd,
+        "random_effect_mean": means[:, :dimension],
+        "random_effect_variance": np.diagonal(
+            covariances[:, :dimension, :dimension], axis1=1, axis2=2
+        ),
+        "random_effect_covariance": covariances[:, :dimension, :dimension],
+        "latent_mean": means,
+        "latent_covariance": covariances,
+        "observation_noise": bool(observation_noise),
+        "observation_noise_sd": noise_sd if observation_noise else 0.0,
+        "concentration": np.inf,
+        "importance_ess": np.nan,
+        "minimum_importance_ess": np.nan,
+        "importance_samples": 0,
+        "converged": bool(converged),
+        "iterations": iterations,
+        "gradient_norm": maximum_change,
+        "coordinate_change": maximum_change,
+        "objective_history": np.asarray(objective_history),
+        "message": (
+            "coordinate tolerance reached"
+            if converged
+            else "coordinate iteration limit reached"
+        ),
+    }
+
+
+def fit_cavi_then_tilted(
+    data,
+    *,
+    observation_noise=False,
+    initial=None,
+    cavi_max_iter=25,
+    max_iter=300,
+):
+    """Initialize the tilted full-covariance fit with Bouchard CAVI."""
+    cavi = fit_bouchard_cavi(
+        data,
+        observation_noise=observation_noise,
+        initial=initial,
+        max_iter=cavi_max_iter,
+    )
+    refined = fit_variational(
+        data,
+        family="multinomial",
+        objective="tilted",
+        observation_noise=observation_noise,
+        initial=cavi["parameters"],
+        max_iter=max_iter,
+    )
+    refined["method"] = "bouchard_cavi_then_tilted_full"
+    refined["cavi_objective"] = cavi["objective"]
+    refined["cavi_iterations"] = cavi["iterations"]
+    refined["cavi_converged"] = cavi["converged"]
+    return refined
+
+
 def fit_variational(
     data,
     *,
