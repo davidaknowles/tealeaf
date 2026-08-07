@@ -3139,3 +3139,18 @@ permutation family has a BH discovery. Mapping observed MAJIQ p-values through
 this conservative empirical null raises its replicated count to 89, still
 well below Tealeaf's 490. Thus Tealeaf's advantage is not an artifact of the
 original small MAJIQ universe.
+
+## 2026-08-07: pseudobulk terminology and block contrasts
+
+The differential-splicing documentation now calls each biological observation
+a pseudobulk rather than a row. Matrix rows, design rows, and result-table rows
+retain their algebraic or tabular meaning. Primer-specific observations are
+described as EC count vectors within a pseudobulk, because the two primer
+protocols share one latent pseudobulk composition.
+
+The block-contrast description now separates the two components of the test.
+The Helmert-derived basis encodes independent local path log-ratios, while the
+tested design identifies the cell-type or condition differences applied to
+those directions. The null retains factor-associated isoform changes
+orthogonal to the local path balance; the alternative adds only the
+factor-by-path directions.
