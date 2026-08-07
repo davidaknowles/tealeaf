@@ -3160,3 +3160,46 @@ five genes in each contrast by 200 sweeps. On genes where both tilted fits
 converged, their final objectives were close, indicating that the CAVI start
 impedes reaching the same optimum rather than identifying a better one. CAVI
 therefore remains an opt-in reference method, not the default initializer.
+
+## 2026-08-07: tilted L-BFGS convergence and numerical precision
+
+I profiled the full-covariance logistic-normal optimizer on the two exact
+65-gene real-data screens. Eight fixed-point updates for the correlated
+tilted normalizer matched 25 updates, and differentiating through the local
+updates changed the gradient by less than \(10^{-8}\). The production path now
+uses eight updates and the envelope gradient.
+
+The main conditioning problem was a ridge between latent posterior moments
+and their estimated prior standard deviations. L-BFGS now optimizes each
+latent mean and Cholesky row after scaling by the corresponding prior standard
+deviation to the 0.75 power. This is an invertible optimizer
+reparameterization; returned parameters and the variational family are
+unchanged. A fit that exhausts the strict iteration limit receives at most 50
+continuation iterations with a relaxed relative-objective tolerance.
+
+In the contemporaneous full screens, the original 25-update differentiated
+schedule converged for both nested models in 40 of 65 genes in each contrast.
+The new schedule converged in 64 of 65 before a separate numerical edge-case
+fix. Median time per nested pair decreased from 6.47 to 5.86 seconds for cell
+type and from 6.76 to 5.97 seconds for condition. The new objectives were not
+traded for convergence, median changes were positive in all four nested-model
+comparisons, and the worst decrease was 0.33 objective units.
+
+The remaining gene had no ECs for one primer. The old JAX likelihood evaluated
+its zero primer total times a negative-infinite normalizer and returned NaN.
+Empty primer matrices now contribute zero in the shared likelihood and both
+tilted implementations. The previously failing gene then converged under both
+nested models in both contrasts, giving corrected joint convergence of 65 of
+65. A regression test exercises the empty-primer case.
+
+I also compared numerical precision on 24 difficult fits. fp32
+reduced median time from 11.38 to 8.58 seconds and reported convergence for
+all genes, but its null and alternative objectives were lower than fp64 by
+median 0.22 and 0.68, respectively. The nested gain changed by median absolute
+0.45 and by as much as 9.27. On one hard gene, bfloat16 produced coarse,
+wrong objectives, an abnormal null termination, and longer runtime. A
+25-iteration fp32 warm-up followed by fp64 refinement restored objective
+accuracy and found one alternative optimum 7.52 units above the direct fp64
+fit, but increased median time by 34%. This mixed path is a useful sensitivity
+restart, not a default initializer. Neither lower-precision format is suitable
+for final fitting.

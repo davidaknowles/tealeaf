@@ -227,15 +227,16 @@ The multinomial likelihood uses the analytic tilted log-sum-exp bound. For a Gau
  \{\bm m+\tfrac12\operatorname{diag}(V)-V\bm a\}.
 \end{align}
 
-The local coordinate is iterated for 25 fixed-point updates. The Gaussian KL term is exact,
-\[
+The local coordinate is iterated for eight fixed-point updates. At this accuracy, differentiating through the updates changes the objective gradient by less than \(10^{-8}\) in the benchmark fits, so the implementation stops the local-coordinate gradient and uses the envelope theorem. The Gaussian KL term is exact,\[
  \operatorname{KL}(Q_m\Vert P_m)=\frac12\left[
  \operatorname{tr}(P_m^{-1}\Sigma_m)
  +\bm\mu_m^\prime P_m^{-1}\bm\mu_m-L_{gm}
  +\log|P_m|-\log|\Sigma_m|\right].
 \]
 
-Summing bounded expected log likelihoods and subtracting these KL terms gives the optimized objective \(\mathcal L_b^{(h)}\in\mathbb R\). JAX supplies 64-bit gradients; bounded L-BFGS runs for at most 300 iterations per attempt. If the convergence criterion is not met, fitting resumes from the complete previous parameter vector for up to three retries. The alternative copies the fitted null fixed effects, variational means, Cholesky factors, and variance parameters, initializes only the new block coefficients to zero, and then optimizes. This warm start keeps the nested objective comparison on the same local branch.
+Summing bounded expected log likelihoods and subtracting these KL terms gives the optimized objective \(\mathcal L_b^{(h)}\in\mathbb R\). To improve conditioning, let \(s_{gmj}>0\) be the prior standard deviation of latent coordinate \(j\), let \(\widetilde\mu_{gmj}\in\mathbb R\) be its optimizer-scale mean, and let \(\widetilde L_{gmjk}\in\mathbb R\) be element \((j,k)\) of its optimizer-scale lower Cholesky factor. The physical variational parameters are obtained by the row scaling \(\mu_{gmj}=s_{gmj}^{3/4}\widetilde\mu_{gmj}\) and \(L_{gmjk}=s_{gmj}^{3/4}\widetilde L_{gmjk}\). This is an invertible reparameterization, not a change to the posterior family, and reduces the ridge between latent moments and their estimated prior scales.
+
+JAX supplies 64-bit objective values and gradients; bounded L-BFGS runs for at most 300 strict iterations. A fit that reaches this limit resumes from the complete previous parameter vector for at most 50 iterations with a relaxed relative-objective tolerance. The returned parameters are transformed back to the common physical representation. The alternative copies the fitted null fixed effects, variational means, Cholesky factors, and variance parameters, initializes only the new block coefficients to zero, and then optimizes. This warm start keeps the nested objective comparison on the same local branch.
 
 \subsection*{Bouchard coordinate-ascent alternative}
 
@@ -249,7 +250,11 @@ This restores closed-form coordinate updates for every full-covariance mouse fac
 
 The CAVI posterior uses the same packed representation as the tilted fit and can initialize tilted L-BFGS directly. In six null and six effect random-intercept simulations, 25 CAVI initialization sweeps reduced median tilted iterations from 39.5 to 37.0 under the null and from 45.5 to 43.5 under the effect, but did not change convergence or the final objective and increased total time. In the harder three-isoform logistic-normal simulations, direct and hybrid tilted fitting each converged in four of six null replicates, while direct fitting converged in four of six effect replicates and the hybrid in three of six. Standalone CAVI had a much looser bound and larger coefficient error. CAVI is therefore retained as an alternative and initialization experiment rather than the primary optimizer or a convergence remedy.
 
-The 65-gene real-data logistic-normal screens make the convergence result stronger. The established Laplace-initialized tilted fit converged under both nested models for 52 condition genes and 56 cell-type genes, or 80.0\% and 86.2\%. With 25 CAVI initialization sweeps, the same tilted optimizer converged under both models for only 11 condition genes and 10 cell-type genes, and rescued none of the historical failures. Where both initializations converged, their final tilted objectives agreed closely. The Bouchard solution can lead to the same optimum, but its loose separable bound places the optimizer too far from that optimum to improve convergence in these data.
+The 65-gene real-data logistic-normal screens make the CAVI result stronger. The established Laplace-initialized tilted fit converged under both nested models for 52 condition genes and 56 cell-type genes, or 80.0\% and 86.2\%. With 25 CAVI initialization sweeps, the same tilted optimizer converged under both models for only 11 condition genes and 10 cell-type genes, and rescued none of the historical failures. Where both initializations converged, their final tilted objectives agreed closely. The Bouchard solution can lead to the same optimum, but its loose separable bound places the optimizer too far from that optimum to improve convergence in these data.
+
+A contemporaneous rerun compared optimizer schedules on the same 65 genes per contrast. The original 25-update, fully differentiated schedule converged for both nested models in 40 genes for each contrast. Eight local updates, envelope gradients, three-quarter prior-scale reparameterization, and selective relaxed continuation increased joint convergence to 64 of 65 genes in each contrast. The remaining gene had an empty EC matrix for one primer; treating this likelihood contribution as its mathematical value of zero, rather than evaluating an indeterminate zero times negative infinity, made both nested fits converge in both contrasts and raised corrected joint convergence to 65 of 65. Median time per nested-model pair decreased from 6.47 to 5.86 seconds for cell type and from 6.76 to 5.97 seconds for condition. On matched genes, the reparameterized schedule had median objective improvements of 0.18--0.24 for three of the four contrast-by-model combinations and 0.015 for the fourth, with no objective more than 0.33 below the original fit. These results support optimizer conditioning rather than CAVI initialization as the convergence remedy.
+
+Lower objective precision was tested on 24 difficult gene--contrast fits. fp32 reduced median time per nested pair from 11.38 to 8.58 seconds and reported convergence for every fit, but its null and alternative objectives were lower than fp64 by medians of 0.22 and 0.68. The nested-model objective gain changed by a median absolute 0.45 and by as much as 9.27. On a representative hard gene, bfloat16 gave coarse objective values, failed the null fit, and was slower than fp64. A 25-iteration fp32 warm-up followed by fp64 refinement restored objective accuracy and found one alternative optimum 7.52 units above the direct fp64 fit, but increased median time by 34\%. It is useful as a sensitivity restart, not as the default initializer. Final fitting therefore remains fp64.
 
 \begin{algorithm}[H]
 \caption{Fit one multinomial or logistic-normal block EC GLMM test}
@@ -262,9 +267,9 @@ The 65-gene real-data logistic-normal screens make the convergence result strong
 \State Build \(Z_b,W_b,\mathcal X_b^{(0)},\mathcal X_b^{(1)}\) for the chosen cell-type or condition contrast.
 \State Initialize the null full-covariance posterior and variance parameters.
 \Repeat
-  \State Iterate every tilted local coordinate for 25 updates.
-  \State Evaluate the bounded ELBO and its 64-bit gradient.
-  \State Update fixed effects, posterior means and Cholesky factors, and \(\log\sigma_g\) plus optional \(\log\tau_g\) by bounded L-BFGS.
+  \State Iterate every tilted local coordinate for eight updates and apply the envelope theorem.
+  \State Evaluate the bounded ELBO and its 64-bit gradient in prior-scale optimizer coordinates.
+  \State Update fixed effects, scaled posterior means and Cholesky rows, and \(\log\sigma_g\) plus optional \(\log\tau_g\) by bounded L-BFGS.
 \Until{convergence or the retry budget is exhausted}
 \State Expand the null parameter vector with zero block coefficients and fit the alternative from this warm start.
 \State Set \(T_b\gets2(\mathcal L_b^{(1)}-\mathcal L_b^{(0)})\).
@@ -273,7 +278,7 @@ The 65-gene real-data logistic-normal screens make the convergence result strong
 
 \subsection*{Null simulation and resolved-tail calibration}
 
-The optimized bound gain is not assigned a chi-squared reference. For each block, the fitted null generates five parametric-bootstrap replicates. Each replicate draws mouse effects and, for the logistic-normal model, pseudobulk effects; forms primer-specific EC probabilities through \(A_{gp}\); preserves every observed \(n_{gip}\); draws multinomial EC counts; and refits both nested models with the same warm-start and stopping rules.
+For each block, the fitted null generates five parametric-bootstrap replicates. Each replicate draws mouse effects and, for the logistic-normal model, pseudobulk effects; forms primer-specific EC probabilities through \(A_{gp}\); preserves every observed \(n_{gip}\); draws multinomial EC counts; and refits both nested models with the same warm-start and stopping rules.
 
 Raw empirical ranks within tested-dimension strata are calibrated at ordinary levels but do not resolve genome-wide tails: after deduplication their minimum p-values are approximately \(4.5\times10^{-4}\), while BH requires values near \(10^{-5}\) at the first ranks. Tail calibration therefore proceeds as follows. Within each likelihood and tested-dimension stratum, let \(u_s\) be the 90th percentile of bootstrap statistics. Excesses \(T-u_s>0\) follow a fitted generalized Pareto distribution with shape \(\xi_s\in\mathbb R\) and scale \(\beta_s>0\). Entire block tests, including all their bootstrap replicates, are assigned to one of five folds. The tail model fitted on four folds maps statistics in the held-out fold to lower-tail scores \(\rho\in(0,1]\).
 

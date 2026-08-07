@@ -449,6 +449,13 @@ def fit_method(method, data, args, initial=None):
             initial=initial,
             max_iter=args.max_iter,
         )
+    if method == "multinomial_noise_full":
+        return ec_glmm_full.fit_tilted_variational_robust(
+            data,
+            observation_noise=True,
+            initial=initial,
+            max_iter=args.max_iter,
+        )
     return ec_glmm_full.fit_variational(
         data,
         family=(

@@ -124,6 +124,13 @@ def fit_one(method, data, args, initial=None):
             cavi_max_iter=args.cavi_initializer_iterations,
             max_iter=args.max_iter,
         )
+    if method == "tilted_elbo_full_noise":
+        return ec_glmm_full.fit_tilted_variational_robust(
+            data,
+            observation_noise=True,
+            initial=initial,
+            max_iter=args.max_iter,
+        )
     if method == "laplace_multinomial":
         return ec_glmm.fit_laplace(
             data, family="multinomial", initial=initial, max_iter=args.max_iter
@@ -156,7 +163,6 @@ def fit_one(method, data, args, initial=None):
         "renyi_multinomial_full",
         "elbo_dirichlet_multinomial_full",
         "renyi_dirichlet_multinomial_full",
-        "tilted_elbo_full_noise",
     ):
         tilted = method.startswith("tilted")
         return ec_glmm_full.fit_variational(

@@ -129,6 +129,8 @@ def _log_likelihood_rows(
     abundance = jnp.exp(logits - jnp.max(logits, axis=1, keepdims=True))
     result = jnp.zeros(len(logits), dtype=logits.dtype)
     for observed, mapping in zip(counts, mappings):
+        if observed.shape[1] == 0:
+            continue
         mass = abundance @ mapping.T
         probability = mass / jnp.sum(mass, axis=1, keepdims=True)
         probability = jnp.maximum(probability, 1e-300)
@@ -553,6 +555,8 @@ def fit_tilted_variational(
         )
         value_bound = jnp.asarray(0.0, dtype=means.dtype)
         for observed, mapping in zip(counts, mappings):
+            if observed.shape[1] == 0:
+                continue
             totals = jnp.sum(observed, axis=1)
             constants = jsp.special.gammaln(totals + 1.0) - jnp.sum(
                 jsp.special.gammaln(observed + 1.0), axis=1

@@ -55,7 +55,9 @@ def _pack_cholesky(covariance):
     return packed.ravel()
 
 
-def _tilted_logsumexp_bound(jnp, means, covariances, iterations=25):
+def _tilted_logsumexp_bound(
+    jnp, means, covariances, iterations=25, differentiate_local=True
+):
     """Upper-bound expected log-sum-exp for correlated Gaussian logits."""
     diagonal = jnp.diagonal(covariances, axis1=1, axis2=2)
     local = __import__("jax").nn.softmax(means + 0.5 * diagonal, axis=1)
@@ -67,6 +69,8 @@ def _tilted_logsumexp_bound(jnp, means, covariances, iterations=25):
         )
 
     local = __import__("jax").lax.fori_loop(0, int(iterations), update, local)
+    if not differentiate_local:
+        local = __import__("jax").lax.stop_gradient(local)
     covariance_times_local = jnp.einsum("nij,nj->ni", covariances, local)
     quadratic = 0.5 * jnp.sum(local * covariance_times_local, axis=1)
     adjusted = means + 0.5 * diagonal - covariance_times_local
@@ -581,6 +585,13 @@ def fit_variational(
     seed=0,
     initial=None,
     max_iter=300,
+    tilted_local_steps=25,
+    differentiate_tilted_local=True,
+    optimizer_maxcor=10,
+    optimizer_ftol=1e-8,
+    standardize_latent=False,
+    latent_standardization_power=1.0,
+    compute_dtype="float64",
 ):
     """Fit a cluster-factorized, full-covariance Gaussian posterior.
 
@@ -588,6 +599,8 @@ def fit_variational(
     lower bound or ``"monte_carlo"`` for an exact-likelihood ELBO/Renyi
     objective.  With observation noise, each cluster block jointly represents
     its shared random intercept and all observation-level residual effects.
+    ``compute_dtype`` controls JAX objective evaluation; SciPy retains its
+    L-BFGS state in double precision.
     """
     if objective not in ("tilted", "monte_carlo"):
         raise ValueError("objective must be 'tilted' or 'monte_carlo'")
@@ -609,17 +622,28 @@ def fit_variational(
         cluster_index,
         n_clusters,
     ) = ec_glmm._prepared_arrays(data)
+    dtype_by_name = {
+        "float64": jnp.float64,
+        "float32": jnp.float32,
+        "bfloat16": jnp.bfloat16,
+    }
+    if compute_dtype not in dtype_by_name:
+        raise ValueError("compute_dtype must be 'float64', 'float32', or 'bfloat16'")
+    compute_type = dtype_by_name[compute_dtype]
+    counts = tuple(jnp.asarray(value, dtype=compute_type) for value in counts)
+    mappings = tuple(jnp.asarray(value, dtype=compute_type) for value in mappings)
+    design = jnp.asarray(design, dtype=compute_type)
     cluster_index_np, selection_np, latent_blocks = _latent_layout(
         data, observation_noise
     )
     np.testing.assert_array_equal(cluster_index_np, np.asarray(cluster_index))
-    selection = jnp.asarray(selection_np)
+    selection = jnp.asarray(selection_np, dtype=compute_type)
     dimension = data.n_isoforms - 1
     latent_dimension = selection.shape[2]
     fixed_effect_tensor = (
         None
         if data.fixed_effect_tensor is None
-        else jnp.asarray(data.fixed_effect_tensor)
+        else jnp.asarray(data.fixed_effect_tensor, dtype=compute_type)
     )
     coefficient_count = (
         design.shape[1] * dimension
@@ -632,7 +656,7 @@ def fit_variational(
     triangle_columns = jnp.asarray(triangle_columns_np)
     triangle_diagonal = jnp.asarray(triangle_rows_np == triangle_columns_np)
     cholesky_count = n_clusters * len(triangle_rows_np)
-    membership = jax.nn.one_hot(cluster_index, n_clusters, dtype=jnp.float64)
+    membership = jax.nn.one_hot(cluster_index, n_clusters, dtype=compute_type)
 
     if initial is None:
         covariance = np.tile(
@@ -651,6 +675,38 @@ def fit_variational(
     else:
         parameters = np.asarray(initial, dtype=float)
 
+    def prior_log_sds(log_mouse_sd, log_noise_sd):
+        values = jnp.full((latent_blocks, dimension), log_mouse_sd)
+        if observation_noise:
+            values = values.at[1:].set(log_noise_sd)
+        return values.ravel()
+
+    if standardize_latent:
+        parameters = np.asarray(parameters, dtype=float).copy()
+        mean_start = coefficient_count
+        cholesky_start = mean_start + mean_count
+        scale_start = cholesky_start + cholesky_count
+        log_mouse_sd = parameters[scale_start]
+        log_noise_sd = (
+            parameters[scale_start + 1] if observation_noise else log_mouse_sd
+        )
+        log_prior_sds_np = np.full(latent_dimension, log_mouse_sd, dtype=float)
+        if observation_noise:
+            log_prior_sds_np[dimension:] = log_noise_sd
+        log_prior_sds_np *= float(latent_standardization_power)
+        means = parameters[mean_start:cholesky_start].reshape(
+            n_clusters, latent_dimension
+        )
+        means /= np.exp(log_prior_sds_np)[None, :]
+        packed = parameters[cholesky_start:scale_start].reshape(
+            n_clusters, len(triangle_rows_np)
+        )
+        diagonal = triangle_rows_np == triangle_columns_np
+        packed[:, diagonal] -= log_prior_sds_np[triangle_rows_np[diagonal]]
+        packed[:, ~diagonal] /= np.exp(
+            log_prior_sds_np[triangle_rows_np[~diagonal]]
+        )[None, :]
+
     def unpack(value):
         coefficients = value[:coefficient_count]
         if fixed_effect_tensor is None:
@@ -664,9 +720,6 @@ def fit_variational(
             n_clusters, len(triangle_rows_np)
         )
         cursor += cholesky_count
-        cholesky = _cholesky_from_packed(
-            jnp, packed, triangle_rows, triangle_columns, triangle_diagonal
-        )
         log_mouse_sd = value[cursor]
         cursor += 1
         log_noise_sd = value[cursor] if observation_noise else value[0] * 0.0
@@ -676,6 +729,16 @@ def fit_variational(
             if family == "dirichlet_multinomial"
             else value[0] * 0.0
         )
+        cholesky = _cholesky_from_packed(
+            jnp, packed, triangle_rows, triangle_columns, triangle_diagonal
+        )
+        if standardize_latent:
+            scales = jnp.exp(
+                float(latent_standardization_power)
+                * prior_log_sds(log_mouse_sd, log_noise_sd)
+            )
+            means = means * scales[None, :]
+            cholesky = cholesky * scales[None, :, None]
         return (
             coefficients,
             means,
@@ -689,12 +752,6 @@ def fit_variational(
         if fixed_effect_tensor is None:
             return design @ coefficients
         return jnp.einsum("ndp,p->nd", fixed_effect_tensor, coefficients)
-
-    def prior_log_sds(log_mouse_sd, log_noise_sd):
-        values = jnp.full((latent_blocks, dimension), log_mouse_sd)
-        if observation_noise:
-            values = values.at[1:].set(log_noise_sd)
-        return values.ravel()
 
     def moments(value):
         (
@@ -744,6 +801,8 @@ def fit_variational(
         ) = moments(value)
         result = jnp.asarray(0.0, dtype=means.dtype)
         for observed, mapping in zip(counts, mappings):
+            if observed.shape[1] == 0:
+                continue
             totals = jnp.sum(observed, axis=1)
             constants = jsp.special.gammaln(totals + 1.0) - jnp.sum(
                 jsp.special.gammaln(observed + 1.0), axis=1
@@ -755,7 +814,11 @@ def fit_variational(
             lengths = jnp.sum(mapping, axis=0)
             shifted_means = means + jnp.log(lengths)[None, :]
             denominator = _tilted_logsumexp_bound(
-                jnp, shifted_means, covariances
+                jnp,
+                shifted_means,
+                covariances,
+                iterations=tilted_local_steps,
+                differentiate_local=differentiate_tilted_local,
             )
             result += jnp.sum(
                 constants + jnp.sum(observed * numerator, axis=1) - totals * denominator
@@ -781,7 +844,7 @@ def fit_variational(
     standard_noise = np.concatenate((standard_noise, -standard_noise), axis=0)[
         : int(samples)
     ]
-    standard_noise = jnp.asarray(standard_noise)
+    standard_noise = jnp.asarray(standard_noise, dtype=compute_type)
 
     def log_weights(value):
         (
@@ -841,13 +904,15 @@ def fit_variational(
         )
 
         def scipy_objective(value):
-            result, gradient = value_and_gradient(jnp.asarray(value))
+            result, gradient = value_and_gradient(
+                jnp.asarray(value, dtype=compute_type)
+            )
             return float(result), np.asarray(gradient, dtype=float)
     else:
         value_only = jax.jit(lambda value: -bound(value))
 
         def scipy_objective(value):
-            result = value_only(jnp.asarray(value))
+            result = value_only(jnp.asarray(value, dtype=compute_type))
             return float(result), np.full_like(value, np.nan, dtype=float)
 
     non_cholesky_count = coefficient_count + mean_count
@@ -869,7 +934,12 @@ def fit_variational(
             method="L-BFGS-B",
             jac=True,
             bounds=bounds,
-            options={"maxiter": int(max_iter), "ftol": 1e-8, "gtol": 1e-4},
+            options={
+                "maxiter": int(max_iter),
+                "ftol": float(optimizer_ftol),
+                "gtol": 1e-4,
+                "maxcor": int(optimizer_maxcor),
+            },
         )
         optimized = np.asarray(result.x)
         success = bool(result.success)
@@ -894,11 +964,23 @@ def fit_variational(
         log_mouse_sd,
         log_noise_sd,
         log_kappa,
-    ) = unpack(jnp.asarray(optimized))
+    ) = unpack(jnp.asarray(optimized, dtype=compute_type))
     covariance = np.asarray(cholesky @ jnp.swapaxes(cholesky, 1, 2))
     final, gradient = scipy_objective(optimized)
+    external_parameters = _pack_full_parameters(
+        np.asarray(coefficients).ravel(),
+        np.asarray(means),
+        covariance,
+        float(np.exp(log_mouse_sd)),
+        float(np.exp(log_noise_sd)),
+        observation_noise,
+    )
+    if family == "dirichlet_multinomial":
+        external_parameters = np.r_[external_parameters, float(log_kappa)]
     if objective == "monte_carlo":
-        final_log_weights = np.asarray(log_weights(jnp.asarray(optimized)))
+        final_log_weights = np.asarray(
+            log_weights(jnp.asarray(optimized, dtype=compute_type))
+        )
         importance_scale = 1.0 if float(alpha) == 1.0 else 1.0 - float(alpha)
         normalized = scipy.special.softmax(importance_scale * final_log_weights, axis=0)
         cluster_ess = 1.0 / np.sum(normalized * normalized, axis=0)
@@ -913,7 +995,7 @@ def fit_variational(
         "family": family,
         "alpha": float(alpha),
         "objective": -final,
-        "parameters": optimized,
+        "parameters": external_parameters,
         "coefficients": np.asarray(coefficients),
         "fixed_effect_count": int(coefficient_count),
         "random_effect_sd": float(np.exp(log_mouse_sd)),
@@ -944,7 +1026,70 @@ def fit_variational(
         "iterations": iterations,
         "gradient_norm": float(np.linalg.norm(gradient, ord=np.inf)),
         "message": message,
+        "tilted_local_steps": int(tilted_local_steps),
+        "differentiate_tilted_local": bool(differentiate_tilted_local),
+        "optimizer_maxcor": int(optimizer_maxcor),
+        "optimizer_ftol": float(optimizer_ftol),
+        "standardize_latent": bool(standardize_latent),
+        "latent_standardization_power": float(latent_standardization_power),
+        "compute_dtype": str(compute_dtype),
     }
+
+
+def fit_tilted_variational_robust(
+    data,
+    *,
+    observation_noise=False,
+    initial=None,
+    max_iter=300,
+    fallback_iter=50,
+    compute_dtype="float64",
+):
+    """Fit tilted VI with envelope gradients and prior-scale preconditioning.
+
+    The latent means and Cholesky rows are optimized after scaling by the
+    corresponding prior standard deviation to the 0.75 power.  This removes
+    most of the variance-component ridge without changing the variational
+    family or returned parameter representation.  A relaxed continuation is
+    used only when the strict fit reaches its iteration limit.
+    """
+    common = {
+        "data": data,
+        "family": "multinomial",
+        "objective": "tilted",
+        "observation_noise": observation_noise,
+        "tilted_local_steps": 8,
+        "differentiate_tilted_local": False,
+        "standardize_latent": True,
+        "latent_standardization_power": 0.75,
+        "compute_dtype": compute_dtype,
+    }
+    strict = fit_variational(
+        initial=initial,
+        max_iter=max_iter,
+        **common,
+    )
+    strict_iterations = int(strict["iterations"])
+    if strict["converged"] or int(fallback_iter) <= 0:
+        strict["strict_iterations"] = strict_iterations
+        strict["fallback_iterations"] = 0
+        strict["used_relaxed_fallback"] = False
+        return strict
+    refined = fit_variational(
+        initial=strict["parameters"],
+        max_iter=fallback_iter,
+        optimizer_ftol=1e-7,
+        **common,
+    )
+    fallback_iterations = int(refined["iterations"])
+    refined["iterations"] = strict_iterations + fallback_iterations
+    refined["strict_iterations"] = strict_iterations
+    refined["fallback_iterations"] = fallback_iterations
+    refined["used_relaxed_fallback"] = True
+    refined["message"] = (
+        f"strict: {strict['message']}; relaxed continuation: {refined['message']}"
+    )
+    return refined
 
 
 def variational_warm_start(fit, n_design_columns):

@@ -63,6 +63,17 @@ def test_full_tilted_bound_handles_correlated_logits():
     expectation = float(np.mean(jax.scipy.special.logsumexp(samples, axis=1)))
     assert bound >= expectation - 3e-3
     assert bound - expectation < 0.08
+    differentiated = jax.grad(
+        lambda value: ec_glmm_full._tilted_logsumexp_bound(
+            jnp, value, covariance, iterations=8, differentiate_local=True
+        ).sum()
+    )(means)
+    envelope = jax.grad(
+        lambda value: ec_glmm_full._tilted_logsumexp_bound(
+            jnp, value, covariance, iterations=8, differentiate_local=False
+        ).sum()
+    )(means)
+    np.testing.assert_allclose(differentiated, envelope, atol=2e-8, rtol=2e-8)
 
 
 def test_bouchard_bound_is_an_upper_bound_for_correlated_logits():
@@ -207,6 +218,12 @@ def test_laplace_posterior_warm_starts_variational_fit():
 
 def test_full_covariance_and_observation_noise_fits():
     data = simulated_data()
+    data = ec_glmm.ECGLMMData(
+        (np.zeros((len(data.design), 0)),) + data.counts,
+        (np.zeros((0, data.n_isoforms)),) + data.compatibility,
+        data.design,
+        data.clusters,
+    )
     laplace = ec_glmm.fit_laplace(
         data, observation_noise=True, max_iter=30, mode_steps=12
     )
@@ -215,14 +232,20 @@ def test_full_covariance_and_observation_noise_fits():
     initial = ec_glmm_full.variational_warm_start(
         laplace, data.design.shape[1]
     )
-    fit = ec_glmm_full.fit_variational(
+    fit = ec_glmm_full.fit_tilted_variational_robust(
         data,
-        objective="tilted",
         observation_noise=True,
         initial=initial,
         max_iter=5,
+        fallback_iter=2,
     )
     assert np.isfinite(fit["objective"])
     assert fit["random_effect_covariance"].shape == (10, 1, 1)
+    assert fit["standardize_latent"]
+    assert fit["strict_iterations"] <= 5
+    assert fit["fallback_iterations"] <= 2
+    assert fit["iterations"] == (
+        fit["strict_iterations"] + fit["fallback_iterations"]
+    )
     scores = ec_glmm_full.evaluate_objectives(data, fit, samples=32)
     assert np.isfinite(list(scores.values())).all()
