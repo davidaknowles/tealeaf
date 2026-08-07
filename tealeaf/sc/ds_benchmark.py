@@ -34,6 +34,40 @@ def filter_grouped_subject_records(
     return result
 
 
+def compositional_pairwise_table(
+    table: pd.DataFrame,
+    *,
+    method: str,
+    min_paired_subjects: int = 0,
+) -> pd.DataFrame:
+    """Normalize paired compositional block tests for common-unit scoring."""
+    required = {
+        "contrast",
+        "gene_id",
+        "p_value",
+        "converged",
+        "n_mice",
+    }
+    if missing := required - set(table):
+        raise ValueError(f"compositional table is missing {sorted(missing)}")
+    eligible = table["converged"].astype(bool) & table["n_mice"].ge(
+        int(min_paired_subjects)
+    )
+    if "inference_eligible" in table:
+        eligible &= table["inference_eligible"].astype(bool)
+    result = table.loc[
+        eligible,
+        ["gene_id", "contrast", "p_value"],
+    ].copy()
+    levels = result["contrast"].str.split("_vs_", n=1, expand=True)
+    if levels.shape[1] != 2 or levels.isna().any(axis=None):
+        raise ValueError("pairwise contrasts must have LEVEL_A_vs_LEVEL_B form")
+    result["level_a"] = levels[0].to_numpy()
+    result["level_b"] = levels[1].to_numpy()
+    result.insert(0, "method", method)
+    return result.drop(columns="contrast")
+
+
 def simes_pvalue(pvalues) -> float:
     values = np.sort(np.asarray(pvalues, dtype=float))
     values = values[np.isfinite(values)]

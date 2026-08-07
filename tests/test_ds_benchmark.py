@@ -5,6 +5,7 @@ from tealeaf.sc.ds_benchmark import (
     aggregate_feature_pvalues,
     aggregate_gene_pvalues,
     aggregate_gene_pair_pvalues,
+    compositional_pairwise_table,
     filter_grouped_subject_records,
     shared_pair_gene_reproducibility,
     shared_gene_reproducibility,
@@ -19,6 +20,27 @@ def test_filter_grouped_subject_records_drops_other_subjects():
     }
     result = filter_grouped_subject_records(grouped, {"m2"})
     assert result == {"b1": [{"mouse": "m2", "x": 2}]}
+
+
+def test_compositional_pairwise_table_normalizes_and_filters():
+    table = pd.DataFrame({
+        "gene_id": ["g1.2", "g2"],
+        "contrast": ["a_vs_b", "a_vs_c"],
+        "p_value": [0.01, 0.02],
+        "converged": [True, True],
+        "inference_eligible": [True, False],
+        "n_mice": [8, 9],
+    })
+    result = compositional_pairwise_table(
+        table, method="Tealeaf DM2", min_paired_subjects=8
+    )
+    assert result.to_dict("records") == [{
+        "method": "Tealeaf DM2",
+        "gene_id": "g1.2",
+        "p_value": 0.01,
+        "level_a": "a",
+        "level_b": "b",
+    }]
 
 
 def test_simes_pvalue():

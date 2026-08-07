@@ -12,6 +12,7 @@ import pandas as pd
 from tealeaf.sc.ds_benchmark import (
     aggregate_feature_pvalues,
     aggregate_gene_pvalues,
+    compositional_pairwise_table,
     leafcutter_cluster_gene_map,
     shared_pair_gene_reproducibility,
     shared_gene_reproducibility,
@@ -27,6 +28,11 @@ def parse_args():
     parser.add_argument("--tealeaf-subdir", default="tealeaf")
     parser.add_argument("--tealeaf-label", default="Tealeaf EC GLMM")
     parser.add_argument("--tealeaf-fit-method", default="laplace_multinomial")
+    parser.add_argument(
+        "--tealeaf-format",
+        choices=("ec", "compositional"),
+        default="ec",
+    )
     parser.add_argument("--min-median-gene-umis", type=float, default=0.0)
     parser.add_argument("--min-paired-subjects", type=int, default=0)
     parser.add_argument("--match-pairs", action="store_true")
@@ -75,6 +81,7 @@ def load_pairwise_fold(
     tealeaf_fit_method: str,
     min_median_gene_umis: float,
     min_paired_subjects: int,
+    tealeaf_format: str = "ec",
 ) -> pd.DataFrame:
     external = pd.read_csv(
         path / "comparison/all_tests.tsv.gz", sep="\t", low_memory=False
@@ -83,18 +90,30 @@ def load_pairwise_fold(
     external.loc[external.method.eq("LeafCutter"), "gene_id"] = external.loc[
         external.method.eq("LeafCutter"), "feature_id"
     ].map(leaf_map.set_index("feature_id").gene_id)
-    tealeaf = pd.read_csv(
-        path / tealeaf_subdir / "ec_block_glmm.tsv", sep="\t"
-    )
-    tealeaf = tealeaf.loc[
-        tealeaf.method.eq(tealeaf_fit_method)
-        & tealeaf.median_gene_umis.ge(min_median_gene_umis)
-        & tealeaf.n_samples.ge(2 * int(min_paired_subjects))
-        & tealeaf.null_converged
-        & tealeaf.alternative_converged,
-        ["gene_id", "level_a", "level_b", "p_value"],
-    ].copy()
-    tealeaf.insert(0, "method", tealeaf_label)
+    if tealeaf_format == "compositional":
+        tealeaf = compositional_pairwise_table(
+            pd.read_csv(
+                path
+                / tealeaf_subdir
+                / "differential_cell_type_compositional.tsv",
+                sep="\t",
+            ),
+            method=tealeaf_label,
+            min_paired_subjects=min_paired_subjects,
+        )
+    else:
+        tealeaf = pd.read_csv(
+            path / tealeaf_subdir / "ec_block_glmm.tsv", sep="\t"
+        )
+        tealeaf = tealeaf.loc[
+            tealeaf.method.eq(tealeaf_fit_method)
+            & tealeaf.median_gene_umis.ge(min_median_gene_umis)
+            & tealeaf.n_samples.ge(2 * int(min_paired_subjects))
+            & tealeaf.null_converged
+            & tealeaf.alternative_converged,
+            ["gene_id", "level_a", "level_b", "p_value"],
+        ].copy()
+        tealeaf.insert(0, "method", tealeaf_label)
     return pd.concat(
         [
             external[["method", "gene_id", "level_a", "level_b", "p_value"]],
@@ -127,6 +146,7 @@ def main():
                 args.tealeaf_fit_method,
                 args.min_median_gene_umis,
                 args.min_paired_subjects,
+                args.tealeaf_format,
             )
             for path in args.fold_dir
         ]

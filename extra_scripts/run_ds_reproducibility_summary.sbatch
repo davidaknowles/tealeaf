@@ -33,6 +33,7 @@ fi
   --tealeaf-label "${TEALEAF_LABEL:-Tealeaf EC GLMM}" \
   --tealeaf-fit-method \
     "${TEALEAF_FIT_METHOD:-laplace_multinomial}" \
+  --tealeaf-format "${TEALEAF_FORMAT:-ec}" \
   --min-median-gene-umis "${MIN_MEDIAN_GENE_UMIS:-0}" \
   --min-paired-subjects "${MIN_PAIRED_SUBJECTS:-0}" \
   "${pair_args[@]}" \
