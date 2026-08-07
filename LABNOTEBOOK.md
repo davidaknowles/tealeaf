@@ -3114,3 +3114,10 @@ matrix, and applies the reference-logit map. Centering cancels under this map
 because reference logits are invariant to a common shift. The nuisance-space
 orthogonality is imposed in centered full-logit coordinates before both the
 tested and nuisance bases are converted to reference logits.
+
+## 2026-08-07: TeX source formatting
+
+Hard wrapping was removed from `docs/differential.tex`. Prose, captions, list
+items, algorithm statements, and table rows now occupy one logical source line;
+display equations retain their semantic multiline layout. A whitespace-free
+comparison confirmed that the document content did not change.
