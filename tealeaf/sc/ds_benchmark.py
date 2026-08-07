@@ -68,6 +68,38 @@ def compositional_pairwise_table(
     return result.drop(columns="contrast")
 
 
+def calibrate_pvalues_from_null(
+    table: pd.DataFrame,
+    null_table: pd.DataFrame,
+) -> pd.DataFrame:
+    """Map method-specific p-values through pooled empirical null CDFs."""
+    required = {"method", "p_value"}
+    if missing := required - set(table):
+        raise ValueError(f"test table is missing {sorted(missing)}")
+    if missing := required - set(null_table):
+        raise ValueError(f"null table is missing {sorted(missing)}")
+    result = table.copy()
+    result["raw_p_value"] = result["p_value"]
+    for method, indices in result.groupby("method").groups.items():
+        pool = np.sort(
+            pd.to_numeric(
+                null_table.loc[null_table.method.eq(method), "p_value"],
+                errors="coerce",
+            ).dropna().to_numpy(dtype=float)
+        )
+        if not len(pool):
+            continue
+        values = pd.to_numeric(
+            result.loc[indices, "p_value"], errors="coerce"
+        ).to_numpy(dtype=float)
+        finite = np.isfinite(values)
+        values[finite] = (
+            1 + np.searchsorted(pool, values[finite], side="right")
+        ) / (len(pool) + 1)
+        result.loc[indices, "p_value"] = values
+    return result
+
+
 def simes_pvalue(pvalues) -> float:
     values = np.sort(np.asarray(pvalues, dtype=float))
     values = values[np.isfinite(values)]

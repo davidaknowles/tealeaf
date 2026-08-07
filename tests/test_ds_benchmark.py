@@ -5,6 +5,7 @@ from tealeaf.sc.ds_benchmark import (
     aggregate_feature_pvalues,
     aggregate_gene_pvalues,
     aggregate_gene_pair_pvalues,
+    calibrate_pvalues_from_null,
     compositional_pairwise_table,
     filter_grouped_subject_records,
     shared_pair_gene_reproducibility,
@@ -41,6 +42,20 @@ def test_compositional_pairwise_table_normalizes_and_filters():
         "level_a": "a",
         "level_b": "b",
     }]
+
+
+def test_calibrate_pvalues_from_null_uses_method_specific_ecdf():
+    table = pd.DataFrame({
+        "method": ["a", "a", "b"],
+        "p_value": [0.01, 0.5, 0.01],
+    })
+    null = pd.DataFrame({
+        "method": ["a", "a", "a", "b"],
+        "p_value": [0.001, 0.02, 0.8, 0.5],
+    })
+    result = calibrate_pvalues_from_null(table, null)
+    np.testing.assert_allclose(result.p_value, [0.5, 0.75, 0.5])
+    np.testing.assert_allclose(result.raw_p_value, table.p_value)
 
 
 def test_simes_pvalue():

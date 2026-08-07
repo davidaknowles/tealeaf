@@ -19,6 +19,10 @@ pair_args=()
 if [[ "${MATCH_PAIRS:-0}" == "1" ]]; then
   pair_args+=(--match-pairs)
 fi
+null_args=()
+if [[ -n "${EXTERNAL_NULL_TABLE:-}" ]]; then
+  null_args+=(--external-null-table "${EXTERNAL_NULL_TABLE}")
+fi
 
 "${python_bin}" \
   "${REPO_ROOT}/extra_scripts/score_ds_reproducibility.py" \
@@ -37,5 +41,6 @@ fi
   --min-median-gene-umis "${MIN_MEDIAN_GENE_UMIS:-0}" \
   --min-paired-subjects "${MIN_PAIRED_SUBJECTS:-0}" \
   "${pair_args[@]}" \
+  "${null_args[@]}" \
   --output-dir \
     "${BENCHMARK_ROOT}/reproducibility/${COMPARISON_SUBDIR:-comparison}"

@@ -12,6 +12,7 @@ import pandas as pd
 from tealeaf.sc.ds_benchmark import (
     aggregate_feature_pvalues,
     aggregate_gene_pvalues,
+    calibrate_pvalues_from_null,
     compositional_pairwise_table,
     leafcutter_cluster_gene_map,
     shared_pair_gene_reproducibility,
@@ -36,6 +37,11 @@ def parse_args():
     parser.add_argument("--min-median-gene-umis", type=float, default=0.0)
     parser.add_argument("--min-paired-subjects", type=int, default=0)
     parser.add_argument("--match-pairs", action="store_true")
+    parser.add_argument(
+        "--external-null-table",
+        type=Path,
+        help="Empirically calibrate matching comparator methods before aggregation.",
+    )
     parser.add_argument("--output-dir", type=Path, required=True)
     return parser.parse_args()
 
@@ -150,10 +156,18 @@ def main():
             )
             for path in args.fold_dir
         ]
+        if args.external_null_table is not None:
+            null_table = pd.read_csv(args.external_null_table, sep="\t")
+            folds = [
+                calibrate_pvalues_from_null(table, null_table)
+                for table in folds
+            ]
         metrics, topk, genes = shared_pair_gene_reproducibility(
             folds, reference_method=args.tealeaf_label
         )
     else:
+        if args.external_null_table is not None:
+            raise ValueError("external null calibration requires --match-pairs")
         folds = [
             load_fold(
                 path,
