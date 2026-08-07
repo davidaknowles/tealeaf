@@ -15,6 +15,7 @@ from tealeaf.sc.ds_benchmark import (
     calibrate_pvalues_from_null,
     compositional_pairwise_table,
     leafcutter_cluster_gene_map,
+    normalized_junction_pairwise_table,
     shared_pair_gene_reproducibility,
     shared_gene_reproducibility,
 )
@@ -31,7 +32,7 @@ def parse_args():
     parser.add_argument("--tealeaf-fit-method", default="laplace_multinomial")
     parser.add_argument(
         "--tealeaf-format",
-        choices=("ec", "compositional"),
+        choices=("ec", "compositional", "junction"),
         default="ec",
     )
     parser.add_argument("--min-median-gene-umis", type=float, default=0.0)
@@ -96,7 +97,16 @@ def load_pairwise_fold(
     external.loc[external.method.eq("LeafCutter"), "gene_id"] = external.loc[
         external.method.eq("LeafCutter"), "feature_id"
     ].map(leaf_map.set_index("feature_id").gene_id)
-    if tealeaf_format == "compositional":
+    if tealeaf_format == "junction":
+        tealeaf = normalized_junction_pairwise_table(
+            pd.read_csv(
+                path / tealeaf_subdir / "all_tests.tsv.gz",
+                sep="\t",
+                low_memory=False,
+            ),
+            method=tealeaf_label,
+        )
+    elif tealeaf_format == "compositional":
         tealeaf = compositional_pairwise_table(
             pd.read_csv(
                 path

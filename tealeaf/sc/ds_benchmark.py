@@ -100,6 +100,32 @@ def calibrate_pvalues_from_null(
     return result
 
 
+def normalized_junction_pairwise_table(
+    table: pd.DataFrame,
+    *,
+    method: str,
+) -> pd.DataFrame:
+    """Normalize a common-schema junction table for pairwise scoring."""
+    required = {
+        "effect",
+        "gene_id",
+        "level_a",
+        "level_b",
+        "p_value",
+    }
+    if missing := required - set(table):
+        raise ValueError(f"junction table is missing {sorted(missing)}")
+    eligible = table.effect.eq("cell_type") & table.gene_id.notna()
+    if "converged" in table:
+        eligible &= table.converged.astype(bool)
+    result = table.loc[
+        eligible,
+        ["gene_id", "level_a", "level_b", "p_value"],
+    ].copy()
+    result.insert(0, "method", method)
+    return result
+
+
 def simes_pvalue(pvalues) -> float:
     values = np.sort(np.asarray(pvalues, dtype=float))
     values = values[np.isfinite(values)]

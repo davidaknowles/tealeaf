@@ -8,6 +8,7 @@ from tealeaf.sc.ds_benchmark import (
     calibrate_pvalues_from_null,
     compositional_pairwise_table,
     filter_grouped_subject_records,
+    normalized_junction_pairwise_table,
     shared_pair_gene_reproducibility,
     shared_gene_reproducibility,
     simes_pvalue,
@@ -56,6 +57,25 @@ def test_calibrate_pvalues_from_null_uses_method_specific_ecdf():
     result = calibrate_pvalues_from_null(table, null)
     np.testing.assert_allclose(result.p_value, [0.5, 0.75, 0.5])
     np.testing.assert_allclose(result.raw_p_value, table.p_value)
+
+
+def test_normalized_junction_pairwise_table_filters_failures():
+    table = pd.DataFrame({
+        "effect": ["cell_type", "cell_type", "condition"],
+        "gene_id": ["g1", "g2", "g3"],
+        "level_a": ["a", "a", "x"],
+        "level_b": ["b", "c", "y"],
+        "p_value": [0.01, 0.02, 0.03],
+        "converged": [True, False, True],
+    })
+    result = normalized_junction_pairwise_table(table, method="Tealeaf LR")
+    assert result.to_dict("records") == [{
+        "method": "Tealeaf LR",
+        "gene_id": "g1",
+        "level_a": "a",
+        "level_b": "b",
+        "p_value": 0.01,
+    }]
 
 
 def test_simes_pvalue():
