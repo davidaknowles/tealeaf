@@ -16,6 +16,7 @@ from extra_scripts.run_ec_block_glmm import (
     covered_celltype_pairwise_designs,
     covered_condition_designs,
     deduplicate_supported_partitions,
+    fit_method,
     modeled_gene_umis,
     joint_gene_candidates,
     partition_candidates,
@@ -24,6 +25,26 @@ from extra_scripts.run_ec_block_glmm import (
 )
 from extra_scripts.run_differential_splicing import block_mapping
 from tealeaf.sc import ec_block_glmm, ec_glmm, ec_glmm_full
+
+
+def test_laplace_dirichlet_multinomial_dispatches_family(monkeypatch):
+    captured = {}
+
+    def fake_fit(data, **kwargs):
+        captured.update(kwargs)
+        return {"data": data}
+
+    monkeypatch.setattr(ec_glmm, "fit_laplace", fake_fit)
+    result = fit_method(
+        "laplace_dirichlet_multinomial",
+        "sentinel",
+        SimpleNamespace(max_iter=17, vi_samples=3, seed=1),
+    )
+    assert result["data"] == "sentinel"
+    assert captured["family"] == "dirichlet_multinomial"
+    assert captured["observation_noise"] is False
+    assert captured["random_slopes"] is False
+    assert captured["max_iter"] == 17
 
 
 def test_block_mapping_ignores_ensembl_version_suffixes():

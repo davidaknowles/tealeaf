@@ -27,6 +27,7 @@ METHODS = (
     "multinomial_noise_full",
     "dirichlet_multinomial_full",
     "laplace_multinomial",
+    "laplace_dirichlet_multinomial",
     "laplace_multinomial_noise",
     "laplace_multinomial_slope",
     "laplace_multinomial_slope_collapsed",
@@ -408,7 +409,11 @@ def fit_method(method, data, args, initial=None):
     if method.startswith("laplace_"):
         return ec_glmm.fit_laplace(
             data,
-            family="multinomial",
+            family=(
+                "dirichlet_multinomial"
+                if method == "laplace_dirichlet_multinomial"
+                else "multinomial"
+            ),
             observation_noise=method == "laplace_multinomial_noise",
             random_slopes=method in {
                 "laplace_multinomial_slope",
@@ -950,7 +955,10 @@ def main():
                         bootstrap_rng,
                         family=(
                             "dirichlet_multinomial"
-                            if method == "dirichlet_multinomial_full"
+                            if method in {
+                                "dirichlet_multinomial_full",
+                                "laplace_dirichlet_multinomial",
+                            }
                             else "multinomial"
                         ),
                         observation_noise=method in {
