@@ -159,6 +159,123 @@ def command_scquint(args):
     output.to_csv(args.output, sep="\t", index=False)
 
 
+def command_tealeaf_gee(args):
+    """Fit mouse-clustered multinomial GEE tests to junction groups."""
+    if args.scquint_root is not None:
+        sys.path.insert(0, str(args.scquint_root))
+    import joblib
+    import scquint.data as scquint_data
+
+    from tealeaf.sc import differential
+
+    bundle = JunctionBundle.load(args.bundle)
+    contrast = load_contrast(args.contrasts, args.contrast_index)
+    adata = scquint_adata(bundle)
+    if "intron_group" not in adata.var:
+        raise ValueError("bundle has no scQuint intron-group annotation")
+    keep = adata.var.intron_group.notna() & (adata.var.intron_group_size >= 2)
+    adata = adata[:, keep].copy()
+    lookup = {sample: index for index, sample in enumerate(adata.obs_names)}
+    samples = contrast["samples_a"] + contrast["samples_b"]
+    positions = [lookup[sample] for sample in samples]
+    adata = adata[positions].copy()
+    n_first = len(contrast["samples_a"])
+    first = np.arange(n_first)
+    second = np.arange(n_first, len(samples))
+    adata = scquint_data.filter_min_cells_per_feature(
+        adata, args.min_samples
+    )
+    adata = scquint_data.filter_min_global_proportion(
+        adata, args.min_global_proportion
+    )
+    if adata.shape[1]:
+        adata = scquint_data.filter_min_cells_per_intron_group(
+            adata, args.min_samples, first
+        )
+    if adata.shape[1]:
+        adata = scquint_data.filter_min_cells_per_intron_group(
+            adata, args.min_samples, second
+        )
+    if not adata.shape[1]:
+        output = pd.DataFrame()
+    else:
+        labels = np.r_[np.zeros(len(first)), np.ones(len(second))]
+        design = np.column_stack((np.ones(len(labels)), labels))
+        clusters = adata.obs["subject"].astype(str).to_numpy()
+        dense = adata.X.toarray()
+        group_columns = {}
+        for column, group in enumerate(adata.var.intron_group.astype(str)):
+            group_columns.setdefault(group, []).append(column)
+        items = sorted(group_columns.items())
+        if args.max_groups is not None:
+            items = items[: int(args.max_groups)]
+
+        def fit_group(item):
+            group, columns = item
+            counts = dense[:, columns]
+            nonzero = counts.sum(axis=1) > 0
+            local_labels = labels[nonzero]
+            if len(np.unique(local_labels)) < 2:
+                return group, 1.0, 0, False, "one level after filtering"
+            try:
+                fit = differential.multinomial_gee_test(
+                    counts[nonzero],
+                    design[nonzero],
+                    [1],
+                    clusters[nonzero],
+                    max_iter=args.max_iter,
+                )
+                return (
+                    group,
+                    fit["p_value"],
+                    fit["degrees_of_freedom"],
+                    fit["converged"],
+                    "",
+                )
+            except Exception as error:
+                return group, 1.0, 0, False, str(error)
+
+        with joblib.parallel_backend("threading", n_jobs=args.jobs):
+            fitted = joblib.Parallel(n_jobs=args.jobs)(
+                joblib.delayed(fit_group)(item) for item in items
+            )
+        raw = pd.DataFrame(
+            fitted,
+            columns=(
+                "intron_group",
+                "p_value",
+                "degrees_of_freedom",
+                "converged",
+                "failure",
+            ),
+        )
+        output = normalize_pvalue_table(
+            raw,
+            method="Tealeaf junction GEE",
+            contrast=contrast,
+            feature_column="intron_group",
+            pvalue_column="p_value",
+        )
+        output["degrees_of_freedom"] = raw.degrees_of_freedom.to_numpy()
+        output["converged"] = raw.converged.to_numpy()
+        output["failure"] = raw.failure.to_numpy()
+        metadata = adata.var.reset_index().groupby(
+            adata.var.intron_group.astype(str).to_numpy(), sort=False
+        )
+        for column in ("gene_id", "gene_name"):
+            if column in adata.var:
+                values = metadata[column].agg(
+                    lambda value: (
+                        value.dropna().astype(str).iloc[0]
+                        if value.dropna().astype(str).nunique() == 1
+                        else np.nan
+                    )
+                )
+                output[column] = output.feature_id.map(values)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    output.to_csv(args.output, sep="\t", index=False)
+
+
 def command_leafcutter_metadata(args):
     bundle = JunctionBundle.load(args.bundle)
     contrast = load_contrast(args.contrasts, args.contrast_index)
@@ -373,6 +490,19 @@ def parser():
     scquint.add_argument("--jobs", type=int, default=1)
     scquint.add_argument("--output", type=Path, required=True)
     scquint.set_defaults(function=command_scquint)
+
+    gee = commands.add_parser("tealeaf-gee")
+    gee.add_argument("--bundle", type=Path, required=True)
+    gee.add_argument("--contrasts", type=Path, required=True)
+    gee.add_argument("--contrast-index", type=int, required=True)
+    gee.add_argument("--scquint-root", type=Path)
+    gee.add_argument("--min-samples", type=int, default=3)
+    gee.add_argument("--min-global-proportion", type=float, default=1e-3)
+    gee.add_argument("--jobs", type=int, default=1)
+    gee.add_argument("--max-iter", type=int, default=100)
+    gee.add_argument("--max-groups", type=int)
+    gee.add_argument("--output", type=Path, required=True)
+    gee.set_defaults(function=command_tealeaf_gee)
 
     metadata = commands.add_parser("leafcutter-metadata")
     metadata.add_argument("--bundle", type=Path, required=True)
