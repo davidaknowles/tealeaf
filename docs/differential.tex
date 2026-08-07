@@ -272,17 +272,36 @@ retain the models above.
 \subsection*{Block contrast and nested fixed-effect tensors}
 
 Let \(\pi_b(t)\in\{-1,1,\ldots,S_b\}\) be isoform \(t\)'s represented path,
-where \(-1\) marks an isoform retained only as a likelihood nuisance. Start
-from the Helmert basis \(Q_b\in\mathbb R^{S_b\times d_b}\), assign its path
-row to every mapped isoform and a zero row to every nuisance isoform, and
-center each column over the \(T_g\) isoforms. Converting from full logits to
-reference logits gives the tested basis,
+where \(-1\) marks an isoform retained only as a likelihood nuisance. Lift the
+Helmert basis \(Q_b\in\mathbb R^{S_b\times d_b}\) from paths to isoforms by
+defining \(\widetilde D_b\in\mathbb R^{T_g\times d_b}\) rowwise,
 \[
- H_b\in\mathbb R^{r_g\times d_b}.
+ (\widetilde D_b)_{t\mathbin\cdot}=
+ \begin{cases}
+  (Q_b)_{\pi_b(t)\mathbin\cdot}, & \pi_b(t)\geq1,\\
+  \bm0_{d_b}^\prime, & \pi_b(t)=-1.
+ \end{cases}
 \]
+Thus isoforms taking the same represented path receive the same row, whereas
+nuisance isoforms receive zero. Center each column over isoforms using
+\(C_g=I_{T_g}-\bm1_{T_g}\bm1_{T_g}^\prime/T_g\) and define
+\(D_b=C_g\widetilde D_b\in\mathbb R^{T_g\times d_b}\). Let
+\(R_g=[I_{r_g}\ -\bm1_{r_g}]\in\mathbb R^{r_g\times T_g}\) convert full
+logits to logits relative to isoform \(T_g\). The tested basis is
+\[
+ H_b=R_gD_b
+ =D_{b,1:r_g,:}-\bm1_{r_g}D_{b,T_g,:}
+ \in\mathbb R^{r_g\times d_b}.
+\]
+Because \(R_g\bm1_{T_g}=\bm0_{r_g}\), the column centering cancels from
+\(H_b\). It fixes a convenient sum-zero representative in full-logit space
+but does not change any reference-logit contrast.
 
-Let \(N_b\in\mathbb R^{r_g\times(T_g-S_b)}\) be a basis for the reference-
-logit subspace orthogonal to \(H_b\). The columns of
+Let \(N_b^{\rm full}\in\mathbb R^{T_g\times(T_g-S_b)}\) be an orthonormal
+basis for the full-logit subspace orthogonal to both \(D_b\) and
+\(\bm1_{T_g}\), and set
+\(N_b=R_gN_b^{\rm full}\in\mathbb R^{r_g\times(T_g-S_b)}\). Orthogonality is
+therefore imposed before reference conversion. The columns of
 \([N_b\ H_b]\in\mathbb R^{r_g\times r_g}\) span every free isoform-logit
 direction. Consequently, nuisance effects in \(N_b\) cannot express the
 tested local path contrast, while the alternative remains unrestricted after
@@ -291,14 +310,16 @@ the \(H_b\) columns are added.
 This construction separates the biological comparison from the local
 splicing choice. The columns of \(H_b\) encode the \(d_b\) independent
 between-path log-ratios, while the columns of \(W_b\) identify the cell-type
-or condition differences being tested. For a two-path block, \(H_b\) has one
-column that moves isoforms taking one path against isoforms taking the other;
-isoforms sharing a path receive the same tested direction. The orthogonal
-basis \(N_b\) still permits factor-associated changes within paths and in
-other gene-level isoform directions. Thus the null does not require equal
-isoform composition across groups. It excludes only group differences that
-project onto the block's local path balance, and the alternative restores
-those directions through \(H_b\bm\gamma_{bj}\).
+or condition differences being tested. For a two-path block,
+\(Q_b=(1,-1)^\prime/\sqrt2\). Before reference conversion, mapped isoforms on
+the first path receive \(+1/\sqrt2\), mapped isoforms on the second receive
+\(-1/\sqrt2\), and nuisance isoforms receive zero. The resulting single
+column of \(H_b\) is the same direction expressed relative to the chosen
+reference isoform. The nuisance basis \(N_b\) still permits factor-associated
+changes within paths and in other gene-level isoform directions. Thus the
+null does not require equal isoform composition across groups. It excludes
+only group differences that project onto the block's local path balance, and
+the alternative restores those directions through \(H_b\bm\gamma_{bj}\).
 
 Let \(Z_b\in\mathbb R^{I_b\times q_0}\) be the nuisance design and
 \(W_b\in\mathbb R^{I_b\times q_1}\) the treatment-coded tested design. The

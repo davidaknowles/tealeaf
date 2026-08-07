@@ -3154,3 +3154,10 @@ tested design identifies the cell-type or condition differences applied to
 those directions. The null retains factor-associated isoform changes
 orthogonal to the local path balance; the alternative adds only the
 factor-by-path directions.
+
+The primary-method text now gives the implemented construction explicitly.
+It lifts Helmert path rows to isoforms, centers the resulting full-logit
+matrix, and applies the reference-logit map. Centering cancels under this map
+because reference logits are invariant to a common shift. The nuisance-space
+orthogonality is imposed in centered full-logit coordinates before both the
+tested and nuisance bases are converted to reference logits.
