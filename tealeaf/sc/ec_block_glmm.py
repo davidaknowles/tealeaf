@@ -3,93 +3,9 @@
 from __future__ import annotations
 
 import numpy as np
-import scipy.optimize
 import scipy.stats
 
 from . import differential, ec_glmm
-
-
-def pooled_isoform_weights(counts, compatibility, max_iter=200):
-    """Estimate label-independent isoform weights from pooled EC counts."""
-    counts = tuple(np.asarray(value, dtype=float).sum(axis=0) for value in counts)
-    mappings = tuple(np.asarray(value, dtype=float) for value in compatibility)
-    n_isoforms = mappings[0].shape[1]
-    if n_isoforms < 2:
-        return np.ones(n_isoforms, dtype=float)
-
-    def objective(free_logits):
-        logits = np.r_[free_logits, 0.0]
-        abundance = np.exp(logits - np.max(logits))
-        value = 0.0
-        gradient = np.zeros(n_isoforms, dtype=float)
-        scale = 0.0
-        for observed, mapping in zip(counts, mappings):
-            total = float(observed.sum())
-            if total <= 0:
-                continue
-            mass = np.maximum(mapping @ abundance, 1e-300)
-            total_mass = float(mass.sum())
-            value += float(observed @ np.log(mass)) - total * np.log(total_mass)
-            gradient += abundance * (
-                mapping.T @ (observed / mass)
-                - total * mapping.sum(axis=0) / total_mass
-            )
-            scale += total
-        scale = max(scale, 1.0)
-        return -value / scale, -gradient[:-1] / scale
-
-    result = scipy.optimize.minimize(
-        objective,
-        np.zeros(n_isoforms - 1, dtype=float),
-        method="L-BFGS-B",
-        jac=True,
-        bounds=[(-20.0, 20.0)] * (n_isoforms - 1),
-        options={"maxiter": int(max_iter), "ftol": 1e-12, "gtol": 1e-7},
-    )
-    logits = np.r_[result.x, 0.0]
-    weights = np.exp(logits - np.max(logits))
-    return weights / weights.sum()
-
-
-def collapse_within_paths(compatibility, weights, path_index):
-    """Collapse represented isoforms within paths using fixed pooled weights.
-
-    Each isoform outside the represented block remains its own nuisance class.
-    This reduces within-path nuisance dimensions without merging unspliced or
-    otherwise unrepresented isoforms.
-    """
-    path_index = np.asarray(path_index, dtype=int)
-    weights = np.asarray(weights, dtype=float)
-    if len(path_index) != len(weights):
-        raise ValueError("path assignments and pooled weights do not align")
-    represented = [
-        ("path", int(path))
-        for path in sorted(set(path_index[path_index >= 0]))
-    ]
-    nuisance = [
-        ("nuisance", int(index)) for index in np.flatnonzero(path_index < 0)
-    ]
-    classes = represented + nuisance
-    projection = np.zeros((len(weights), len(classes)), dtype=float)
-    collapsed_paths = []
-    for column, (kind, value) in enumerate(classes):
-        members = (
-            np.flatnonzero(path_index == value)
-            if kind == "path"
-            else np.asarray([value], dtype=int)
-        )
-        local = weights[members]
-        local = (
-            local / local.sum()
-            if local.sum() > 0
-            else np.full(len(members), 1 / len(members))
-        )
-        projection[members, column] = local
-        collapsed_paths.append(value if kind == "path" else -1)
-    collapsed = tuple(
-        np.asarray(mapping, dtype=float) @ projection for mapping in compatibility
-    )
-    return collapsed, np.asarray(collapsed_paths, dtype=int), projection
 
 
 def block_effect_bases(path_index):
@@ -263,37 +179,22 @@ def nested_laplace_tests(
     }
 
 
-def simulate_null_counts(
-    data, fit, rng, *, family, observation_noise=False, random_slopes=False
-):
+def simulate_null_counts(data, fit, rng, *, family, observation_noise=False):
     """Simulate paired-primer EC counts from a fitted tensor-design null."""
     if data.fixed_effect_tensor is None:
         raise ValueError("null simulation requires a fixed-effect tensor")
     coefficients = np.asarray(fit["coefficients"], dtype=float).ravel()
     fixed = np.einsum("ndp,p->nd", data.fixed_effect_tensor, coefficients)
     _, cluster_index = np.unique(data.clusters, return_inverse=True)
-    random_design = (
-        np.asarray(data.random_effect_design, dtype=float)
-        if random_slopes
-        else np.ones((len(data.clusters), 1), dtype=float)
-    )
-    random_sds = np.asarray(
-        fit.get("random_effect_sds", [fit["random_effect_sd"]]), dtype=float
-    )
-    if len(random_sds) != random_design.shape[1]:
-        raise ValueError("fitted random terms do not match random-effect design")
     random_effect = rng.normal(
         0.0,
-        random_sds[None, :, None],
+        float(fit["random_effect_sd"]),
         (
             cluster_index.max() + 1,
-            random_design.shape[1],
             data.n_isoforms - 1,
         ),
     )
-    free_logits = fixed + np.einsum(
-        "nr,nrd->nd", random_design, random_effect[cluster_index]
-    )
+    free_logits = fixed + random_effect[cluster_index]
     if observation_noise:
         free_logits += rng.normal(
             0.0,

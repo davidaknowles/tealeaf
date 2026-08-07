@@ -2995,47 +2995,6 @@ rate, and has no BH null discoveries. It does not improve the 100-UMI split
 benchmark over the noise model, so it is retained as an ablation rather than
 the recommended test.
 
-## 2026-08-06: paired random-slope EC GLMM
-
-The independent observation-level logistic-normal effect improves the null
-tail but discards power because it gives every pseudobulk a separate latent
-isoform-logit perturbation. The paired cell-type design instead suggests a
-structured source of overdispersion: subjects can differ in their cell-type
-contrast. The Laplace EC GLMM now accepts an explicit random-effect design.
-For a pairwise test it uses an intercept and a centered cell-type indicator,
-so subject (i)'s free-isoform logits include
-
-```
-b_i + (z_ij - mean(z)) s_i,
-```
-
-where the intercept vector `b_i` and slope vector `s_i` have independent
-isotropic Gaussian priors with separately estimated standard deviations. The
-same random-effect design and variances are fit under the null and alternative;
-the LRT still tests only the population-average block-path contrast. Existing
-intercept-only and observation-noise fits retain their prior behavior.
-
-Null simulation was generalized to sample every configured random term, and
-the bootstrap LRT sign was corrected for Laplace objectives. A synthetic
-paired simulation recovers a nonzero slope variance, and the focused EC GLMM
-and block-runner suite passes 28 tests. A real fold-0 block smoke fit converged
-under both hypotheses with estimated null intercept and slope standard
-deviations 0.0058 and 0.182. Genome-wide observed fits for both subject folds
-and a 1,000-test fold-0 paired-label-swap calibration run were submitted. No
-power comparison should be made until the permutation tail and matched split
-results complete.
-
-The fold-0 label-swap run completed all 1,000 sampled tests. Of these, 961
-nested fits converged; 6.04% had asymptotic p-values at most 0.05, 0.104% had
-p-values at most 0.001, and none survived BH at 0.05. Restricting to the 275
-tests with at least eight paired subjects gives a 5.09% nominal rate, no
-p-values at most 0.001, and no BH calls. This subject-count threshold was
-selected from null behavior before inspecting the observed split benchmark.
-The reproducibility scorer now supports the corresponding independent filter,
-and both unfiltered and eight-subject comparisons are queued. A second
-1,000-test label-swap run in fold 1 will check that the calibration conclusion
-replicates independently.
-
 The observation-noise model was rescored on the independently selected
 high-confidence universe of at least eight paired subjects and at least 75
 median gene UMIs. It still trails LeafCutter (5 versus 11 replicated genes)
@@ -3043,17 +3002,11 @@ and scQuint (12 versus 20), although its held-out nominal replication against
 LeafCutter is higher (0.889 versus 0.780). Filtering alone therefore does not
 establish a power advantage.
 
-An experimental pooled path-collapse likelihood was implemented to reduce
-the fixed-effect nuisance dimension. For each gene and retained subject set,
-pooled paired-primer EC counts estimate label-independent isoform weights by
-multinomial maximum likelihood. Isoforms assigned to the same represented
-block path are then projected to one path column using their normalized pooled
-weights; every unrepresented or unspliced isoform remains a separate nuisance
-column. The resulting EC maps use the same random-slope GLMM and path LRT.
-This is not yet a recommended method. In a three-test real-data smoke run all
-fits converged, but the only test whose dimension changed became less
-significant (p-value 1.7e-5 to 4.1e-4). An observed/null subset screen is
-required before considering a genome-wide run.
+## 2026-08-07: retire unused paired EC extension
+
+The unused two-cell-type EC extension and its dedicated CLI methods were
+removed. No reported TeX result used this model. Pairwise cell-type contrasts,
+the random-intercept EC GLMM, and the observation-noise model remain available.
 
 ## 2026-08-06: calibrated paired junction benchmark
 
