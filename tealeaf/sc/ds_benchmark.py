@@ -104,6 +104,7 @@ def normalized_junction_pairwise_table(
     table: pd.DataFrame,
     *,
     method: str,
+    min_paired_subjects: int = 0,
 ) -> pd.DataFrame:
     """Normalize a common-schema junction table for pairwise scoring."""
     required = {
@@ -118,6 +119,8 @@ def normalized_junction_pairwise_table(
     eligible = table.effect.eq("cell_type") & table.gene_id.notna()
     if "converged" in table:
         eligible &= table.converged.astype(bool)
+    if "n_subjects" in table:
+        eligible &= table.n_subjects.ge(int(min_paired_subjects))
     result = table.loc[
         eligible,
         ["gene_id", "level_a", "level_b", "p_value"],

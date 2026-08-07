@@ -105,6 +105,7 @@ def load_pairwise_fold(
                 low_memory=False,
             ),
             method=tealeaf_label,
+            min_paired_subjects=min_paired_subjects,
         )
     elif tealeaf_format == "compositional":
         tealeaf = compositional_pairwise_table(

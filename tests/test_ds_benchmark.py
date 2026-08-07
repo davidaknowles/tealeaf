@@ -67,8 +67,11 @@ def test_normalized_junction_pairwise_table_filters_failures():
         "level_b": ["b", "c", "y"],
         "p_value": [0.01, 0.02, 0.03],
         "converged": [True, False, True],
+        "n_subjects": [8, 9, 10],
     })
-    result = normalized_junction_pairwise_table(table, method="Tealeaf LR")
+    result = normalized_junction_pairwise_table(
+        table, method="Tealeaf LR", min_paired_subjects=8
+    )
     assert result.to_dict("records") == [{
         "method": "Tealeaf LR",
         "gene_id": "g1",
