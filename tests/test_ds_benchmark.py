@@ -5,10 +5,20 @@ from tealeaf.sc.ds_benchmark import (
     aggregate_feature_pvalues,
     aggregate_gene_pvalues,
     aggregate_gene_pair_pvalues,
+    filter_grouped_subject_records,
     shared_pair_gene_reproducibility,
     shared_gene_reproducibility,
     simes_pvalue,
 )
+
+
+def test_filter_grouped_subject_records_drops_other_subjects():
+    grouped = {
+        "b1": [{"mouse": "m1", "x": 1}, {"mouse": "m2", "x": 2}],
+        "b2": [{"mouse": "m3", "x": 3}],
+    }
+    result = filter_grouped_subject_records(grouped, {"m2"})
+    assert result == {"b1": [{"mouse": "m2", "x": 2}]}
 
 
 def test_simes_pvalue():

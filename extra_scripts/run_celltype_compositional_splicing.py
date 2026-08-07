@@ -20,6 +20,7 @@ from extra_scripts.run_compositional_splicing import (
     effective_path_counts,
 )
 from tealeaf.sc import differential
+from tealeaf.sc.ds_benchmark import filter_grouped_subject_records
 
 
 def parse_args():
@@ -27,6 +28,8 @@ def parse_args():
     parser.add_argument("--estimates", required=True, type=Path)
     parser.add_argument("--block-cache", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
+    parser.add_argument("--subject-folds", type=Path)
+    parser.add_argument("--subject-fold", type=int)
     parser.add_argument("--min-celltype-mice", type=int, default=3)
     parser.add_argument("--min-path-proportion", type=float, default=0.0)
     parser.add_argument(
@@ -401,6 +404,19 @@ def main():
         args.max_logratio_variance,
         args.max_paths,
     )
+    selected_subjects = None
+    if args.subject_folds is not None:
+        if args.subject_fold is None:
+            raise ValueError("--subject-fold is required with --subject-folds")
+        folds = pd.read_csv(
+            args.subject_folds, sep="\t", dtype={"subject": str}
+        )
+        selected_subjects = set(
+            folds.loc[folds.fold.eq(args.subject_fold), "subject"]
+        )
+        grouped = filter_grouped_subject_records(grouped, selected_subjects)
+    elif args.subject_fold is not None:
+        raise ValueError("--subject-folds is required with --subject-fold")
     table, null_table = fit_tests(args, grouped, members)
     table.to_csv(
         args.output_dir / "differential_cell_type_compositional.tsv",
@@ -424,6 +440,10 @@ def main():
         "shard_index": args.shard_index,
         "shard_count": args.shard_count,
         "candidate_partitions": len(grouped),
+        "subject_fold": args.subject_fold,
+        "subjects": (
+            len(selected_subjects) if selected_subjects is not None else None
+        ),
         "tests": int(len(table)),
         "converged": int(table["converged"].sum()),
         "nominal_p_lt_0.05": int(

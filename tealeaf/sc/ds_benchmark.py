@@ -14,6 +14,26 @@ from scipy.stats import spearmanr
 from tealeaf.sc.junction_benchmark import benjamini_hochberg
 
 
+def filter_grouped_subject_records(
+    grouped: dict,
+    selected_subjects,
+    *,
+    subject_key: str = "mouse",
+) -> dict:
+    """Restrict grouped record dictionaries to a subject set."""
+    selected = {str(value) for value in selected_subjects}
+    result = {}
+    for feature, records in grouped.items():
+        retained = [
+            record
+            for record in records
+            if str(record[subject_key]) in selected
+        ]
+        if retained:
+            result[feature] = retained
+    return result
+
+
 def simes_pvalue(pvalues) -> float:
     values = np.sort(np.asarray(pvalues, dtype=float))
     values = values[np.isfinite(values)]

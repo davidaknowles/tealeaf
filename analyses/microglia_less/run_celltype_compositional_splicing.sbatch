@@ -27,6 +27,8 @@ LIKELIHOOD=${LIKELIHOOD:-dirichlet-multinomial}
 ALTERNATIVE_CONCENTRATION=${ALTERNATIVE_CONCENTRATION:-fixed}
 SHARD_COUNT=${SHARD_COUNT:-1}
 SHARD_INDEX=${SHARD_INDEX:-${SLURM_ARRAY_TASK_ID:-0}}
+SUBJECT_FOLDS=${SUBJECT_FOLDS:-}
+SUBJECT_FOLD=${SUBJECT_FOLD:-}
 
 if (( SHARD_COUNT > 1 )); then
   OUTPUT_TAG="${OUTPUT_TAG}_shard${SHARD_INDEX}"
@@ -48,6 +50,9 @@ ARGS=(
 )
 if (( MAX_PATHS > 0 )); then
   ARGS+=(--max-paths "${MAX_PATHS}")
+fi
+if [[ -n "${SUBJECT_FOLDS}" ]]; then
+  ARGS+=(--subject-folds "${SUBJECT_FOLDS}" --subject-fold "${SUBJECT_FOLD:?}")
 fi
 
 python "${REPO_ROOT}/extra_scripts/run_celltype_compositional_splicing.py" \
