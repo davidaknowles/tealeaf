@@ -77,14 +77,27 @@ def permute_paired_contrasts(
         pair_hash = zlib.crc32(
             f"{contrast['level_a']}\0{contrast['level_b']}".encode("utf-8")
         )
-        permuted_a, permuted_b = [], []
-        for subject in sorted(by_subject):
-            left, right = by_subject[subject]
+        subjects = sorted(by_subject)
+        swaps = []
+        for subject in subjects:
             subject_hash = zlib.crc32(subject.encode("utf-8"))
             rng = np.random.default_rng(
                 np.random.SeedSequence((int(seed), pair_hash, subject_hash))
             )
-            if rng.random() < 0.5:
+            swaps.append(bool(rng.random() < 0.5))
+        if len(swaps) < 2:
+            raise ValueError("paired permutation requires at least two subjects")
+        if all(swaps) or not any(swaps):
+            rng = np.random.default_rng(
+                np.random.SeedSequence((int(seed), pair_hash, 0x51A9))
+            )
+            position = int(rng.integers(len(swaps)))
+            swaps[position] = not swaps[position]
+
+        permuted_a, permuted_b = [], []
+        for subject, swap in zip(subjects, swaps):
+            left, right = by_subject[subject]
+            if swap:
                 left, right = right, left
             permuted_a.append(left)
             permuted_b.append(right)

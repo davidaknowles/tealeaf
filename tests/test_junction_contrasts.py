@@ -42,6 +42,10 @@ def test_paired_contrast_permutation_preserves_subject_pairs():
     assert [lookup[value] for value in first["samples_b"]] == ["m1", "m2", "m3"]
     assert set(first["samples_a"] + first["samples_b"]) == set(samples.sample_id)
     assert first["permutation_seed"] == 7
+    original_a = set(contrast["samples_a"])
+    swaps = [value not in original_a for value in first["samples_a"]]
+    assert any(swaps)
+    assert not all(swaps)
 
 
 def test_simes_omnibus_adjusts_features_within_method():

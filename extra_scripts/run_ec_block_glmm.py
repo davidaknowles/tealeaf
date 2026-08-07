@@ -238,7 +238,9 @@ def permute_paired_labels(metadata, labels, tested_levels, seed):
     """Swap paired labels within subjects using a reproducible null draw."""
     labels = np.asarray(labels, dtype=int).copy()
     pair_hash = zlib.crc32("||".join(map(str, tested_levels)).encode("utf-8"))
-    for subject, positions in metadata.groupby("mouse", sort=False).groups.items():
+    pairs = []
+    swaps = []
+    for subject, positions in metadata.groupby("mouse", sort=True).groups.items():
         positions = np.asarray(list(positions), dtype=int)
         if len(positions) != 2 or set(labels[positions]) != {0, 1}:
             raise ValueError("pairwise null permutation requires one row per level")
@@ -246,7 +248,18 @@ def permute_paired_labels(metadata, labels, tested_levels, seed):
         rng = np.random.default_rng(
             np.random.SeedSequence((int(seed), pair_hash, subject_hash))
         )
-        if rng.integers(2):
+        pairs.append(positions)
+        swaps.append(bool(rng.integers(2)))
+    if len(swaps) < 2:
+        raise ValueError("pairwise null permutation requires two subjects")
+    if all(swaps) or not any(swaps):
+        rng = np.random.default_rng(
+            np.random.SeedSequence((int(seed), pair_hash, 0x51A9))
+        )
+        position = int(rng.integers(len(swaps)))
+        swaps[position] = not swaps[position]
+    for positions, swap in zip(pairs, swaps):
+        if swap:
             labels[positions] = 1 - labels[positions]
     return labels
 

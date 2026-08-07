@@ -415,6 +415,7 @@ def test_pairwise_null_permutation_swaps_only_within_subject():
         permuted.reshape(-1, 2).sum(axis=1), np.ones(12, dtype=int)
     )
     assert np.any(permuted != labels)
+    assert np.any(permuted == labels)
     np.testing.assert_array_equal(
         permuted,
         permute_paired_labels(metadata, labels, ("a", "b"), 7),
