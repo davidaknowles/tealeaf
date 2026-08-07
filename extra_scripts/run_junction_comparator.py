@@ -159,14 +159,11 @@ def command_scquint(args):
     output.to_csv(args.output, sep="\t", index=False)
 
 
-def command_tealeaf_gee(args):
-    """Fit mouse-clustered multinomial GEE tests to junction groups."""
+def filtered_junction_group_data(args):
+    """Apply the shared scQuint junction filters for one contrast."""
     if args.scquint_root is not None:
         sys.path.insert(0, str(args.scquint_root))
-    import joblib
     import scquint.data as scquint_data
-
-    from tealeaf.sc import differential
 
     bundle = JunctionBundle.load(args.bundle)
     contrast = load_contrast(args.contrasts, args.contrast_index)
@@ -196,19 +193,55 @@ def command_tealeaf_gee(args):
         adata = scquint_data.filter_min_cells_per_intron_group(
             adata, args.min_samples, second
         )
-    if not adata.shape[1]:
-        output = pd.DataFrame()
-    else:
-        labels = np.r_[np.zeros(len(first)), np.ones(len(second))]
-        design = np.column_stack((np.ones(len(labels)), labels))
-        clusters = adata.obs["subject"].astype(str).to_numpy()
-        dense = adata.X.toarray()
-        group_columns = {}
+    labels = np.r_[np.zeros(len(first)), np.ones(len(second))]
+    design = np.column_stack((np.ones(len(labels)), labels))
+    clusters = adata.obs["subject"].astype(str).to_numpy()
+    dense = adata.X.toarray()
+    group_columns = {}
+    if adata.shape[1]:
         for column, group in enumerate(adata.var.intron_group.astype(str)):
             group_columns.setdefault(group, []).append(column)
-        items = sorted(group_columns.items())
-        if args.max_groups is not None:
-            items = items[: int(args.max_groups)]
+    items = sorted(group_columns.items())
+    if args.max_groups is not None:
+        items = items[: int(args.max_groups)]
+    return contrast, adata, labels, design, clusters, dense, items
+
+
+def attach_junction_group_metadata(output, adata):
+    metadata = adata.var.reset_index().groupby(
+        adata.var.intron_group.astype(str).to_numpy(), sort=False
+    )
+    for column in ("gene_id", "gene_name"):
+        if column in adata.var:
+            values = metadata[column].agg(
+                lambda value: (
+                    value.dropna().astype(str).iloc[0]
+                    if value.dropna().astype(str).nunique() == 1
+                    else np.nan
+                )
+            )
+            output[column] = output.feature_id.map(values)
+    return output
+
+
+def command_tealeaf_gee(args):
+    """Fit mouse-clustered multinomial GEE tests to junction groups."""
+    import joblib
+
+    from tealeaf.sc import differential
+
+    (
+        contrast,
+        adata,
+        labels,
+        design,
+        clusters,
+        dense,
+        items,
+    ) = filtered_junction_group_data(args)
+    if not items:
+        output = pd.DataFrame()
+    else:
 
         def fit_group(item):
             group, columns = item
@@ -259,19 +292,58 @@ def command_tealeaf_gee(args):
         output["degrees_of_freedom"] = raw.degrees_of_freedom.to_numpy()
         output["converged"] = raw.converged.to_numpy()
         output["failure"] = raw.failure.to_numpy()
-        metadata = adata.var.reset_index().groupby(
-            adata.var.intron_group.astype(str).to_numpy(), sort=False
+        output = attach_junction_group_metadata(output, adata)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    output.to_csv(args.output, sep="\t", index=False)
+
+
+def command_tealeaf_paired_logratio(args):
+    """Fit subject-level paired log-ratio tests to junction groups."""
+    import joblib
+
+    from tealeaf.sc import differential
+
+    contrast, adata, labels, _, clusters, dense, items = (
+        filtered_junction_group_data(args)
+    )
+
+    def fit_group(item):
+        group, columns = item
+        fit = differential.paired_logratio_test(
+            dense[:, columns], labels, clusters
         )
-        for column in ("gene_id", "gene_name"):
-            if column in adata.var:
-                values = metadata[column].agg(
-                    lambda value: (
-                        value.dropna().astype(str).iloc[0]
-                        if value.dropna().astype(str).nunique() == 1
-                        else np.nan
-                    )
-                )
-                output[column] = output.feature_id.map(values)
+        return (
+            group,
+            fit["p_value"],
+            fit["degrees_of_freedom"],
+            fit["n_subjects"],
+            fit["converged"],
+        )
+
+    with joblib.parallel_backend("threading", n_jobs=args.jobs):
+        fitted = joblib.Parallel(n_jobs=args.jobs)(
+            joblib.delayed(fit_group)(item) for item in items
+        )
+    raw = pd.DataFrame(
+        fitted,
+        columns=(
+            "intron_group",
+            "p_value",
+            "degrees_of_freedom",
+            "n_subjects",
+            "converged",
+        ),
+    )
+    output = normalize_pvalue_table(
+        raw,
+        method="Tealeaf paired junction log-ratio",
+        contrast=contrast,
+        feature_column="intron_group",
+        pvalue_column="p_value",
+    )
+    for column in ("degrees_of_freedom", "n_subjects", "converged"):
+        output[column] = raw[column].to_numpy()
+    output = attach_junction_group_metadata(output, adata)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     output.to_csv(args.output, sep="\t", index=False)
 
@@ -503,6 +575,20 @@ def parser():
     gee.add_argument("--max-groups", type=int)
     gee.add_argument("--output", type=Path, required=True)
     gee.set_defaults(function=command_tealeaf_gee)
+
+    paired_logratio = commands.add_parser("tealeaf-paired-logratio")
+    paired_logratio.add_argument("--bundle", type=Path, required=True)
+    paired_logratio.add_argument("--contrasts", type=Path, required=True)
+    paired_logratio.add_argument("--contrast-index", type=int, required=True)
+    paired_logratio.add_argument("--scquint-root", type=Path)
+    paired_logratio.add_argument("--min-samples", type=int, default=3)
+    paired_logratio.add_argument(
+        "--min-global-proportion", type=float, default=1e-3
+    )
+    paired_logratio.add_argument("--jobs", type=int, default=1)
+    paired_logratio.add_argument("--max-groups", type=int)
+    paired_logratio.add_argument("--output", type=Path, required=True)
+    paired_logratio.set_defaults(function=command_tealeaf_paired_logratio)
 
     metadata = commands.add_parser("leafcutter-metadata")
     metadata.add_argument("--bundle", type=Path, required=True)

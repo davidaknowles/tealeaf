@@ -16,11 +16,12 @@ module load "${PYTHON_MODULE:-Python/3.12.3-GCCcore-13.3.0}"
 source "${HOME}/venv/cpa_blackwell/bin/activate"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 mkdir -p "${OUTPUT_DIR}"
+COMMAND=${COMMAND:-tealeaf-gee}
 extra_args=()
 if [[ -n "${MAX_GROUPS:-}" ]]; then
   extra_args+=(--max-groups "${MAX_GROUPS}")
 fi
-python "${REPO_ROOT}/extra_scripts/run_junction_comparator.py" tealeaf-gee \
+python "${REPO_ROOT}/extra_scripts/run_junction_comparator.py" "${COMMAND}" \
   --bundle "${BUNDLE}" --contrasts "${CONTRASTS}" --contrast-index "${index}" \
   --scquint-root "${SCQUINT_ROOT}" --jobs "${SLURM_CPUS_PER_TASK:-4}" \
   "${extra_args[@]}" \

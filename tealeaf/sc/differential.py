@@ -1373,6 +1373,100 @@ def multinomial_gee_test(
     }
 
 
+def paired_logratio_test(
+    counts,
+    labels,
+    clusters,
+    *,
+    pseudocount=0.5,
+):
+    """Test a paired compositional shift across independent subjects."""
+    counts = np.asarray(counts, dtype=float)
+    labels = np.asarray(labels)
+    clusters = np.asarray(clusters)
+    if counts.ndim != 2 or counts.shape[1] < 2:
+        raise ValueError("counts must be samples by at least two categories")
+    if len(counts) != len(labels) or len(counts) != len(clusters):
+        raise ValueError("counts, labels, and clusters must align")
+    levels = np.unique(labels)
+    if len(levels) != 2:
+        raise ValueError("paired log-ratio test requires two levels")
+    differences = []
+    for cluster in np.unique(clusters):
+        rows = np.flatnonzero(clusters == cluster)
+        first = rows[labels[rows] == levels[0]]
+        second = rows[labels[rows] == levels[1]]
+        if len(first) != 1 or len(second) != 1:
+            continue
+        if counts[first[0]].sum() <= 0 or counts[second[0]].sum() <= 0:
+            continue
+        logged = np.log(
+            counts[[first[0], second[0]]] + float(pseudocount)
+        )
+        clr = logged - logged.mean(axis=1, keepdims=True)
+        differences.append(clr[1] - clr[0])
+    differences = np.asarray(differences)
+    n_subjects = len(differences)
+    dimension = counts.shape[1] - 1
+    if n_subjects < 3 or n_subjects <= dimension:
+        return {
+            "statistic": 0.0,
+            "degrees_of_freedom": dimension,
+            "p_value": 1.0,
+            "n_subjects": n_subjects,
+            "converged": False,
+        }
+    basis = scipy.linalg.helmert(counts.shape[1], full=False).T
+    coordinates = differences @ basis
+    mean = coordinates.mean(axis=0)
+    if dimension == 1:
+        standard_error = coordinates[:, 0].std(ddof=1) / np.sqrt(n_subjects)
+        statistic = (
+            float(mean[0] / standard_error)
+            if standard_error > 0
+            else 0.0
+        )
+        p_value = float(
+            2.0 * scipy.stats.t.sf(abs(statistic), n_subjects - 1)
+        )
+        reported = statistic * statistic
+    else:
+        covariance = np.cov(coordinates, rowvar=False, ddof=1)
+        if np.linalg.matrix_rank(covariance, tol=1e-10) < dimension:
+            return {
+                "statistic": 0.0,
+                "degrees_of_freedom": dimension,
+                "p_value": 1.0,
+                "n_subjects": n_subjects,
+                "converged": False,
+            }
+        t_squared = float(
+            n_subjects
+            * mean
+            @ scipy.linalg.solve(
+                covariance, mean, assume_a="sym", check_finite=False
+            )
+        )
+        statistic = (
+            (n_subjects - dimension)
+            * t_squared
+            / (dimension * (n_subjects - 1))
+        )
+        p_value = float(
+            scipy.stats.f.sf(
+                statistic, dimension, n_subjects - dimension
+            )
+        )
+        reported = t_squared
+    return {
+        "statistic": reported,
+        "degrees_of_freedom": dimension,
+        "p_value": p_value,
+        "n_subjects": n_subjects,
+        "converged": True,
+    }
+
+
 def _multinomial_glmm_cluster_mode(
     counts,
     fixed_logits,

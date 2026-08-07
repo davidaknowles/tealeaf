@@ -197,6 +197,24 @@ class ClusteredCompositionalTest(unittest.TestCase):
         )
         self.assertAlmostEqual(warm["statistic"], result["statistic"], places=5)
 
+    def test_paired_logratio_recovers_subject_level_shift(self):
+        rng = np.random.default_rng(41)
+        rows = []
+        labels = []
+        clusters = []
+        for subject in range(12):
+            baseline = rng.normal(0.0, 0.3)
+            for label, effect in ((0, 0.0), (1, 0.8)):
+                probability = scipy.special.expit(baseline + effect)
+                first = rng.binomial(100, probability)
+                rows.append([first, 100 - first])
+                labels.append(label)
+                clusters.append(subject)
+        result = differential.paired_logratio_test(rows, labels, clusters)
+        self.assertTrue(result["converged"])
+        self.assertEqual(result["n_subjects"], 12)
+        self.assertLess(result["p_value"], 0.01)
+
     def test_multinomial_glmm_recovers_clustered_effect(self):
         counts, null, alternative, clusters = self.simulated_counts(
             subjects=28,
