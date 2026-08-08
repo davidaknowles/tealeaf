@@ -80,6 +80,16 @@ def parse_args():
     parser.add_argument("--max-ecs", type=int, default=128)
     parser.add_argument("--max-iter", type=int, default=300)
     parser.add_argument("--laplace-mode-steps", type=int, default=12)
+    parser.add_argument(
+        "--laplace-mode-gradient",
+        choices=("implicit", "unrolled"),
+        default="implicit",
+    )
+    parser.add_argument(
+        "--laplace-cache-scope",
+        choices=("gene_shape", "test"),
+        default="gene_shape",
+    )
     parser.add_argument("--cavi-initializer-iterations", type=int, default=25)
     parser.add_argument("--retries", type=int, default=2)
     parser.add_argument("--null-replicate-retries", type=int)
@@ -457,6 +467,9 @@ def fit_method(
                 if laplace_mode_steps is None
                 else int(laplace_mode_steps)
             ),
+            mode_gradient=args.laplace_mode_gradient,
+            objective_cache=objective_cache,
+            objective_cache_key=objective_cache_key,
         )
     if method.startswith("cavi_"):
         observation_noise = "_noise_" in method
@@ -762,6 +775,7 @@ def main():
     null_cache = {}
     alternative_cache = {}
     objective_cache = {}
+    objective_cache_group = None
     started = time.perf_counter()
     for position, candidate in enumerate(candidates):
         (
@@ -777,6 +791,10 @@ def main():
             tested_levels,
         ) = candidate
         try:
+            candidate_cache_group = (gene, tuple(rows))
+            if candidate_cache_group != objective_cache_group:
+                objective_cache.clear()
+                objective_cache_group = candidate_cache_group
             local_metadata, nuisance, labels = local_test_design(
                 metadata, rows, tested_levels, args.test_effect
             )
@@ -834,7 +852,17 @@ def main():
                         args,
                         initial=null_initial,
                         objective_cache=objective_cache,
-                        objective_cache_key=("null", test_id, method),
+                        objective_cache_key=(
+                            (
+                                "null",
+                                gene,
+                                tuple(rows),
+                                method,
+                                null_tensor.shape[2],
+                            )
+                            if args.laplace_cache_scope == "gene_shape"
+                            else ("null", test_id, method)
+                        ),
                     )
                 null = null_cache[cache_key]
                 alternative_key = (gene, tuple(rows), method)
@@ -1005,7 +1033,17 @@ def main():
                         initial=null["parameters"],
                         retries=args.null_replicate_retries,
                         objective_cache=objective_cache,
-                        objective_cache_key=("null", test_id, method),
+                        objective_cache_key=(
+                            (
+                                "null",
+                                gene,
+                                tuple(rows),
+                                method,
+                                null_tensor.shape[2],
+                            )
+                            if args.laplace_cache_scope == "gene_shape"
+                            else ("null", test_id, method)
+                        ),
                     )
                     simulated_alternative_data = ec_glmm.ECGLMMData(
                         simulated_counts,

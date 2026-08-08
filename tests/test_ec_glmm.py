@@ -190,6 +190,89 @@ def test_tensor_laplace_nested_lrt_detects_effect():
     assert tests["bic_log_bayes_factor"] > 0
 
 
+def test_implicit_laplace_mode_gradient_matches_unrolled_fit():
+    data = simulated_data(seed=17, effect=1.0)
+    unrolled = ec_glmm.fit_laplace(
+        data,
+        max_iter=80,
+        mode_steps=12,
+        mode_gradient="unrolled",
+    )
+    implicit = ec_glmm.fit_laplace(
+        data,
+        max_iter=80,
+        mode_steps=12,
+        mode_gradient="implicit",
+    )
+    assert unrolled["converged"]
+    assert implicit["converged"]
+    assert implicit["objective"] == pytest.approx(
+        unrolled["objective"], abs=1e-9
+    )
+    np.testing.assert_allclose(
+        implicit["parameters"],
+        unrolled["parameters"],
+        atol=1e-8,
+        rtol=1e-8,
+    )
+    np.testing.assert_allclose(
+        implicit["outer_gradient"],
+        unrolled["outer_gradient"],
+        atol=1e-8,
+        rtol=1e-8,
+    )
+
+
+def test_laplace_objective_cache_accepts_dynamic_counts_and_tensor():
+    data = simulated_data(seed=23, effect=0.7)
+    tensor = ec_block_glmm.unrestricted_tensor(data.design[:, :2], 1)
+
+    def with_values(counts, fixed_tensor):
+        return ec_glmm.ECGLMMData(
+            counts,
+            data.compatibility,
+            data.design,
+            data.clusters,
+            fixed_effect_tensor=fixed_tensor,
+        )
+
+    objective_cache = {}
+    initial = ec_glmm.fit_laplace(
+        with_values(data.counts, tensor),
+        max_iter=20,
+        mode_steps=12,
+        mode_gradient="implicit",
+        objective_cache=objective_cache,
+        objective_cache_key="same_shape",
+    )
+    changed_counts = tuple(np.asarray(value).copy() for value in data.counts)
+    changed_counts[0][:, 0] += 1
+    changed_tensor = tensor.copy()
+    changed_tensor[:, 0, 1] += 0.1 * data.design[:, 0]
+    changed_data = with_values(changed_counts, changed_tensor)
+    cached = ec_glmm.fit_laplace(
+        changed_data,
+        initial=initial["parameters"],
+        max_iter=20,
+        mode_steps=12,
+        mode_gradient="implicit",
+        objective_cache=objective_cache,
+        objective_cache_key="same_shape",
+    )
+    uncached = ec_glmm.fit_laplace(
+        changed_data,
+        initial=initial["parameters"],
+        max_iter=20,
+        mode_steps=12,
+        mode_gradient="implicit",
+    )
+    assert len(objective_cache) == 1
+    assert cached["objective"] == pytest.approx(uncached["objective"], abs=1e-9)
+    np.testing.assert_allclose(
+        cached["parameters"], uncached["parameters"], atol=1e-8, rtol=1e-8
+    )
+
+
 def test_fixed_effect_design_separates_tested_contrast():
     groups = [
         "a__control__m1",

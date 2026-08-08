@@ -202,6 +202,9 @@ def fit_laplace(
     initial=None,
     max_iter=200,
     mode_steps=30,
+    mode_gradient="unrolled",
+    objective_cache=None,
+    objective_cache_key=None,
 ):
     """Fit an EC-count GLMM by Laplace approximation.
 
@@ -212,11 +215,19 @@ def fit_laplace(
     contains an independent isotropic logistic-normal effect for every
     observation in that cluster.  This supplies multinomial overdispersion on
     the isoform-logit scale while retaining the EC observation model.
+
+    ``mode_gradient="implicit"`` differentiates the converged mode equation
+    instead of backpropagating through the Newton iterations.  A shared
+    ``objective_cache_key`` may be used only when mappings, clusters, and
+    array shapes agree.  Counts and a tensor-valued fixed-effect design are
+    passed dynamically and may differ between calls sharing that key.
     """
     if observation_noise and family != "multinomial":
         raise ValueError(
             "observation noise is currently supported for multinomial fits"
         )
+    if mode_gradient not in ("unrolled", "implicit"):
+        raise ValueError("mode_gradient must be 'unrolled' or 'implicit'")
     (
         jax,
         jnp,
@@ -282,10 +293,14 @@ def fit_laplace(
         log_noise_sd = outer[cursor] if observation_noise else outer[0] * 0.0
         return coefficients, log_prior_sd, log_noise_sd, log_kappa
 
-    def fixed_logits(coefficients):
+    def fixed_logits(coefficients, active_fixed_effect_tensor):
         if fixed_effect_tensor is None:
             return design @ coefficients
-        return jnp.einsum("ndp,p->nd", fixed_effect_tensor, coefficients)
+        return jnp.einsum(
+            "ndp,p->nd",
+            active_fixed_effect_tensor,
+            coefficients,
+        )
 
     def prior_log_sds(outer):
         _, log_prior_sd, log_noise_sd, _ = unpack_outer(outer)
@@ -332,22 +347,27 @@ def fit_laplace(
         in_axes=(0,) + (0,) * len(counts) + (None,),
     )
 
-    def mode_derivatives(modes, outer):
+    def mode_derivatives(
+        modes,
+        outer,
+        active_fixed_effect_tensor,
+        active_counts,
+    ):
         coefficients, _, _, log_kappa = unpack_outer(outer)
-        fixed_values = fixed_logits(coefficients)
+        fixed_values = fixed_logits(coefficients, active_fixed_effect_tensor)
         random_logits = jnp.einsum(
             "ndi,ni->nd", selection, modes[cluster_index]
         )
         free_logits = fixed_values + random_logits
         score_rows = observation_gradient(
-            free_logits, *counts, log_kappa
+            free_logits, *active_counts, log_kappa
         )
         log_sds = prior_log_sds(outer)
         variances = jnp.exp(2.0 * log_sds)
         latent_score_rows = jnp.einsum("ndi,nd->ni", selection, score_rows)
         score = membership.T @ latent_score_rows - modes / variances
         curvature_rows = -observation_hessian(
-            free_logits, *counts, log_kappa
+            free_logits, *active_counts, log_kappa
         )
         latent_curvature_rows = jnp.einsum(
             "nai,nab,nbj->nij", selection, curvature_rows, selection
@@ -357,12 +377,22 @@ def fit_laplace(
         ) + jnp.diag(1.0 / variances)[None, :, :]
         return fixed_values, score, hessian, variances, log_kappa
 
-    def negative_joint(modes, outer):
-        fixed_logits, _, _, variances, log_kappa = mode_derivatives(modes, outer)
+    def negative_joint(
+        modes,
+        outer,
+        active_fixed_effect_tensor,
+        active_counts,
+    ):
+        fixed_values, _, _, variances, log_kappa = mode_derivatives(
+            modes,
+            outer,
+            active_fixed_effect_tensor,
+            active_counts,
+        )
         random_logits = jnp.einsum(
             "ndi,ni->nd", selection, modes[cluster_index]
         )
-        free_logits = fixed_logits + random_logits
+        free_logits = fixed_values + random_logits
         logits = jnp.concatenate(
             (free_logits, jnp.zeros((len(design), 1), dtype=free_logits.dtype)), axis=1
         )
@@ -372,15 +402,32 @@ def fit_laplace(
             jnp.sum(log_sds) + 0.5 * latent_dimension * jnp.log(2.0 * jnp.pi)
         )
         return -(
-            _log_likelihood(jnp, jsp, counts, mappings, logits, family, log_kappa)
+            _log_likelihood(
+                jnp,
+                jsp,
+                active_counts,
+                mappings,
+                logits,
+                family,
+                log_kappa,
+            )
             + log_prior
         )
 
-    def posterior_mode(outer):
+    def solve_posterior_mode(
+        outer,
+        active_fixed_effect_tensor,
+        active_counts,
+    ):
         current = jnp.zeros((n_clusters, latent_dimension), dtype=jnp.float64)
 
         def update(_, value):
-            _, score, hessian, _, _ = mode_derivatives(value, outer)
+            _, score, hessian, _, _ = mode_derivatives(
+                value,
+                outer,
+                active_fixed_effect_tensor,
+                active_counts,
+            )
             eigen_floor = jnp.maximum(
                 1e-6 - jnp.linalg.eigvalsh(hessian)[:, 0], 0.0
             )
@@ -392,20 +439,124 @@ def fit_laplace(
 
         return jax.lax.fori_loop(0, int(mode_steps), update, current)
 
-    def objective(outer):
-        modes = posterior_mode(outer)
-        _, _, hessian, _, _ = mode_derivatives(modes, outer)
+    if mode_gradient == "implicit":
+        @jax.custom_vjp
+        def posterior_mode(outer, active_fixed_effect_tensor, active_counts):
+            return solve_posterior_mode(
+                outer,
+                active_fixed_effect_tensor,
+                active_counts,
+            )
+
+        def posterior_mode_forward(
+            outer,
+            active_fixed_effect_tensor,
+            active_counts,
+        ):
+            modes = solve_posterior_mode(
+                outer,
+                active_fixed_effect_tensor,
+                active_counts,
+            )
+            return modes, (
+                modes,
+                outer,
+                active_fixed_effect_tensor,
+                active_counts,
+            )
+
+        def posterior_mode_backward(residuals, mode_cotangent):
+            modes, outer, active_fixed_effect_tensor, active_counts = residuals
+            _, _, hessian, _, _ = mode_derivatives(
+                modes,
+                outer,
+                active_fixed_effect_tensor,
+                active_counts,
+            )
+            solved = jnp.linalg.solve(
+                hessian,
+                mode_cotangent[..., None],
+            )[..., 0]
+            _, score_pullback = jax.vjp(
+                lambda value: mode_derivatives(
+                    modes,
+                    value,
+                    active_fixed_effect_tensor,
+                    active_counts,
+                )[1],
+                outer,
+            )
+            outer_cotangent = score_pullback(solved)[0]
+            return (
+                outer_cotangent,
+                jnp.zeros_like(active_fixed_effect_tensor),
+                tuple(jnp.zeros_like(value) for value in active_counts),
+            )
+
+        posterior_mode.defvjp(
+            posterior_mode_forward,
+            posterior_mode_backward,
+        )
+    else:
+        posterior_mode = solve_posterior_mode
+
+    def objective(outer, active_fixed_effect_tensor, active_counts):
+        modes = posterior_mode(
+            outer,
+            active_fixed_effect_tensor,
+            active_counts,
+        )
+        _, _, hessian, _, _ = mode_derivatives(
+            modes,
+            outer,
+            active_fixed_effect_tensor,
+            active_counts,
+        )
         sign, log_determinant = jnp.linalg.slogdet(hessian)
         correction = 0.5 * jnp.sum(log_determinant)
         correction -= 0.5 * modes.size * jnp.log(2.0 * jnp.pi)
         return jnp.where(
-            jnp.all(sign > 0), negative_joint(modes, outer) + correction, jnp.inf
+            jnp.all(sign > 0),
+            negative_joint(
+                modes,
+                outer,
+                active_fixed_effect_tensor,
+                active_counts,
+            ) + correction,
+            jnp.inf,
         )
 
-    value_and_gradient = jax.jit(jax.value_and_grad(objective))
+    cache_key = None
+    if objective_cache is not None and objective_cache_key is not None:
+        cache_key = (
+            objective_cache_key,
+            "laplace_value_and_gradient",
+            family,
+            bool(observation_noise),
+            int(mode_steps),
+            mode_gradient,
+        )
+    if cache_key is not None and cache_key in objective_cache:
+        value_and_gradient = objective_cache[cache_key]
+    else:
+        value_and_gradient = jax.jit(
+            jax.value_and_grad(objective, argnums=0)
+        )
+        if cache_key is not None:
+            objective_cache[cache_key] = value_and_gradient
+
+    active_fixed_effect_tensor = (
+        jnp.empty((0,), dtype=jnp.float64)
+        if fixed_effect_tensor is None
+        else fixed_effect_tensor
+    )
 
     def scipy_objective(parameters):
-        value, gradient = value_and_gradient(jnp.asarray(parameters))
+        value, gradient = value_and_gradient(
+            jnp.asarray(parameters),
+            active_fixed_effect_tensor,
+            counts,
+        )
         return float(value), np.asarray(gradient, dtype=float)
 
     initial_value, _ = scipy_objective(initial)
@@ -436,8 +587,13 @@ def fit_laplace(
     )
     parameters = np.asarray(result.x)
     outer = jnp.asarray(parameters)
-    modes = posterior_mode(outer)
-    _, mode_score, hessian, _, _ = mode_derivatives(modes, outer)
+    modes = posterior_mode(outer, active_fixed_effect_tensor, counts)
+    _, mode_score, hessian, _, _ = mode_derivatives(
+        modes,
+        outer,
+        active_fixed_effect_tensor,
+        counts,
+    )
     covariance = np.asarray(jnp.linalg.inv(hessian))
     marginal_variance = np.diagonal(covariance, axis1=1, axis2=2)
     final_value, final_gradient = scipy_objective(parameters)
@@ -477,6 +633,7 @@ def fit_laplace(
         "optimizer_scale": float(optimizer_scale),
         "fixed_effect_count": int(coefficient_count),
         "mode_steps": int(mode_steps),
+        "mode_gradient": mode_gradient,
         "mode_score_norm": mode_score_norm,
         "message": str(result.message),
     }

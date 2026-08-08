@@ -19,12 +19,10 @@ Fix a gene \(g\) with \(T_g\in\mathbb N\) supported isoforms and \(r_g=T_g-1\) f
 
 Here \(\bm1_k\in\mathbb R^k\) is the vector of ones, \(I_k\in\mathbb R^{k\times k}\) is the identity, and \(\mathbb S_{++}^k\) is the set of symmetric positive-definite \(k\times k\) matrices.
 
-Let \(\bm\eta_{gi}=(\bm\eta_{gi,-}^\prime,0)^\prime\in\mathbb R^{T_g}\), where \(\bm\eta_{gi,-}\in\mathbb R^{r_g}\). For nested hypothesis \(h\in\{0,1\}\), let \(F_{gi}^{(h)}\in\mathbb R^{r_g\times a_h}\) map the fixed coefficient vector \(\bm\beta_g^{(h)}\in\mathbb R^{a_h}\) to free logits. Let \(\bm z_{gm}\in\mathbb R^{L_{gm}}\) collect mouse \(m\)'s random intercept and, in the logistic-normal model, all pseudobulk residual effects belonging to that mouse. The selector \(S_{gi}\in\{0,1\}^{r_g\times L_{g,m(i)}}\) maps this latent block to pseudobulk \(i\), so the free logits are
-\[
+Let \(\bm\eta_{gi}=(\bm\eta_{gi,-}^\prime,0)^\prime\in\mathbb R^{T_g}\), where \(\bm\eta_{gi,-}\in\mathbb R^{r_g}\). For nested hypothesis \(h\in\{0,1\}\), let \(F_{gi}^{(h)}\in\mathbb R^{r_g\times a_h}\) map the fixed coefficient vector \(\bm\beta_g^{(h)}\in\mathbb R^{a_h}\) to free logits. Let \(\bm z_{gm}\in\mathbb R^{L_{gm}}\) collect mouse \(m\)'s random intercept and, in the logistic-normal model, all pseudobulk residual effects belonging to that mouse. The selector \(S_{gi}\in\{0,1\}^{r_g\times L_{g,m(i)}}\) maps this latent block to pseudobulk \(i\), so the free logits are \[
  \bm\eta_{gi,-}=F_{gi}^{(h)}\bm\beta_g^{(h)}+S_{gi}\bm z_{g,m(i)}.
 \]
-The random-intercept prior is \(N(\bm0_{r_g},\sigma_g^2I_{r_g})\). With observation noise, each residual block has prior \(N(\bm0_{r_g},\tau_g^2I_{r_g})\). Thus \(\bm z_{gm}\sim N(\bm0_{L_{gm}},P_{gm})\), where \(P_{gm}\in\mathbb S_{++}^{L_{gm}}\) is block diagonal. The variational approximation factorizes across mice but retains a full covariance within mouse,
-\[
+The random-intercept prior is \(N(\bm0_{r_g},\sigma_g^2I_{r_g})\). With observation noise, each residual block has prior \(N(\bm0_{r_g},\tau_g^2I_{r_g})\). Thus \(\bm z_{gm}\sim N(\bm0_{L_{gm}},P_{gm})\), where \(P_{gm}\in\mathbb S_{++}^{L_{gm}}\) is block diagonal. The variational approximation factorizes across mice but retains a full covariance within mouse, \[
  q(\bm z_g)=\prod_{m=1}^{M_g}N(\bm z_{gm};\bm\mu_{gm},\Sigma_{gm}),
  \qquad \bm\mu_{gm}\in\mathbb R^{L_{gm}},\quad
  \Sigma_{gm}\in\mathbb S_{++}^{L_{gm}}.
@@ -32,8 +30,7 @@ The random-intercept prior is \(N(\bm0_{r_g},\sigma_g^2I_{r_g})\). With observat
 
 \section{Paired-primer EC likelihood}
 
-Define the primer exposure of isoform \(t\) by \(\ell_{gpt}=\sum_{k=1}^{K_{gp}}A_{gpkt}\in\mathbb R_+\). Conditional on the primer total, the log likelihood for pseudobulk \(i\) and primer \(p\), including the count-only multinomial constant, is
-\begin{align}
+Define the primer exposure of isoform \(t\) by \(\ell_{gpt}=\sum_{k=1}^{K_{gp}}A_{gpkt}\in\mathbb R_+\). Conditional on the primer total, the log likelihood for pseudobulk \(i\) and primer \(p\), including the count-only multinomial constant, is \begin{align}
  \log p(\bm c_{gip}\mid\bm\eta_{gi})
  &=\log\frac{n_{gip}!}{\prod_kc_{gipk}!}
    +\sum_{k=1}^{K_{gp}}c_{gipk}
@@ -45,14 +42,12 @@ The first log-sum-exp is positive and must receive a lower bound; the final norm
 
 \section{EC allocation bound}
 
-For every observed EC \(k\), introduce \(\rho_{gipkt}\in[0,1]\), supported only where \(A_{gpkt}>0\), with \(\sum_t\rho_{gipkt}=1\). Jensen's inequality gives
-\[
+For every observed EC \(k\), introduce \(\rho_{gipkt}\in[0,1]\), supported only where \(A_{gpkt}>0\), with \(\sum_t\rho_{gipkt}=1\). Jensen's inequality gives \[
  \log\sum_tA_{gpkt}e^{\eta_{git}}
  \geq\sum_t\rho_{gipkt}
  \{\log A_{gpkt}+\eta_{git}-\log\rho_{gipkt}\}.
 \]
-For fixed Gaussian moments, the coordinate optimum is
-\[
+For fixed Gaussian moments, the coordinate optimum is \[
  \rho_{gipkt}
  =\frac{A_{gpkt}\exp\{E_q(\eta_{git})\}}
  {\sum_{u:A_{gpku}>0}A_{gpku}\exp\{E_q(\eta_{giu})\}}.
@@ -61,26 +56,22 @@ Define the expected allocation to isoform \(t\) by \(a_{git}=\sum_p\sum_kc_{gipk
 
 \section{Bouchard quadratic normalizer bound}
 
-For one pseudobulk and primer, let \(\mathcal T_{gp}=\{t:\ell_{gpt}>0\}\), \(J_{gp}=|\mathcal T_{gp}|\), and \(x_{gipt}=\eta_{git}+\log\ell_{gpt}\). Bouchard's first majorization introduces \(\alpha_{gip}\in\mathbb R\),
-\[
+For one pseudobulk and primer, let \(\mathcal T_{gp}=\{t:\ell_{gpt}>0\}\), \(J_{gp}=|\mathcal T_{gp}|\), and \(x_{gipt}=\eta_{git}+\log\ell_{gpt}\). Bouchard's first majorization introduces \(\alpha_{gip}\in\mathbb R\), \[
  \log\sum_{t\in\mathcal T_{gp}}e^{x_{gipt}}
  \leq \alpha_{gip}+\sum_{t\in\mathcal T_{gp}}
  \log\{1+e^{x_{gipt}-\alpha_{gip}}\}.
 \]
-For \(\xi>0\), define the Jaakkola--Jordan coefficient
-\[
+For \(\xi>0\), define the Jaakkola--Jordan coefficient \[
  \lambda(\xi)=\frac{\operatorname{logit}^{-1}(\xi)-1/2}{2\xi}
  =\frac{\tanh(\xi/2)}{4\xi},
  \qquad \lambda(0)=\frac18.
 \]
-The softplus term has the quadratic upper bound
-\[
+The softplus term has the quadratic upper bound \[
  \log(1+e^y)
  \leq\lambda(\xi)(y^2-\xi^2)
  +\frac{y-\xi}{2}+\log(1+e^\xi).
 \]
-Writing \(\bar x_{gipt}=E_q(x_{gipt})\) and \(v_{git}=\operatorname{Var}_q(\eta_{git})\), the coordinate updates are
-\begin{align}
+Writing \(\bar x_{gipt}=E_q(x_{gipt})\) and \(v_{git}=\operatorname{Var}_q(\eta_{git})\), the coordinate updates are \begin{align}
  \xi_{gipt}^2
  &=v_{git}+(\bar x_{gipt}-\alpha_{gip})^2,\\
  d_{gipt}&=2\lambda(\xi_{gipt}),\\
@@ -92,8 +83,7 @@ The implementation alternates these two local updates 25 times. When \(J_{gp}=1\
 
 \section{Quadratic pseudo-likelihood}
 
-For free isoform \(t\leq r_g\), collect the quadratic and linear coefficients
-\begin{align}
+For free isoform \(t\leq r_g\), collect the quadratic and linear coefficients \begin{align}
  w_{git}
  &=\sum_{p:t\in\mathcal T_{gp}}
  2n_{gip}\lambda(\xi_{gipt}),\\
@@ -102,8 +92,7 @@ For free isoform \(t\leq r_g\), collect the quadratic and linear coefficients
  \left[\frac12+2\lambda(\xi_{gipt})
  \{\log\ell_{gpt}-\alpha_{gip}\}\right].
 \end{align}
-Let \(\Omega_{gi}=\operatorname{diag}(\bm w_{gi})\in\mathbb S_+^{r_g}\) and \(\bm h_{gi}\in\mathbb R^{r_g}\). Up to terms independent of the free logits, the bounded expected log likelihood is
-\[
+Let \(\Omega_{gi}=\operatorname{diag}(\bm w_{gi})\in\mathbb S_+^{r_g}\) and \(\bm h_{gi}\in\mathbb R^{r_g}\). Up to terms independent of the free logits, the bounded expected log likelihood is \[
  -\frac12E_q(\bm\eta_{gi,-}^\prime\Omega_{gi}\bm\eta_{gi,-})
  +\bm h_{gi}^\prime E_q(\bm\eta_{gi,-}).
 \]
@@ -111,8 +100,7 @@ This quadratic form is the step that restores Gaussian conjugacy. Contributions 
 
 \section{Gaussian and model-parameter updates}
 
-Let \(\mathcal O_{gm}=\{i:m(i)=m\}\). Holding local parameters and model parameters fixed, the coordinate optimum for mouse \(m\)'s full Gaussian factor is
-\begin{align}
+Let \(\mathcal O_{gm}=\{i:m(i)=m\}\). Holding local parameters and model parameters fixed, the coordinate optimum for mouse \(m\)'s full Gaussian factor is \begin{align}
  \Sigma_{gm}^{-1}
  &=P_{gm}^{-1}
  +\sum_{i\in\mathcal O_{gm}}S_{gi}^\prime\Omega_{gi}S_{gi},\\
@@ -122,8 +110,7 @@ Let \(\mathcal O_{gm}=\{i:m(i)=m\}\). Holding local parameters and model paramet
 \end{align}
 Thus the full covariance among the random intercept and every residual effect from the same mouse is retained without gradient optimization.
 
-For point-estimated fixed effects, define
-\begin{align}
+For point-estimated fixed effects, define \begin{align}
  R_\beta
  &=\sum_i(F_{gi}^{(h)})^\prime\Omega_{gi}F_{gi}^{(h)},\\
  \bm r_\beta
@@ -132,8 +119,7 @@ For point-estimated fixed effects, define
 \end{align}
 The coordinate update is \(\bm\beta_g^{(h)}=R_\beta^+\bm r_\beta\in\mathbb R^{a_h}\), where \((\cdot)^+\) denotes the Moore--Penrose pseudoinverse. A Gaussian prior would add its precision and precision-weighted mean to \(R_\beta\) and \(\bm r_\beta\).
 
-Partition \(\bm\mu_{gm}\) and \(\Sigma_{gm}\) into the random-intercept block \(u\) and active pseudobulk-residual blocks \(e_i\). The empirical-Bayes variance updates are
-\begin{align}
+Partition \(\bm\mu_{gm}\) and \(\Sigma_{gm}\) into the random-intercept block \(u\) and active pseudobulk-residual blocks \(e_i\). The empirical-Bayes variance updates are \begin{align}
  \sigma_g^2
  &=\frac1{M_gr_g}\sum_{m=1}^{M_g}
  \{\|\bm\mu_{gm,u}\|^2+\operatorname{tr}(\Sigma_{gm,uu})\},\\

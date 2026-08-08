@@ -31,8 +31,7 @@ The primary analysis aggregates cells into \emph{mouse-by-condition-by-cell-type
 
 A splice block is a local region between constitutive exonic anchors. Transcripts that take the same path through that region are collapsed to one subisoform. This targets local splicing choices, which can be identifiable even when the corresponding full-length isoforms are not.
 
-For condition effects, each hypothesis is indexed by a splice block and a cell type. It is an omnibus test of
-\[
+For condition effects, each hypothesis is indexed by a splice block and a cell type. It is an omnibus test of \[
   H_0:\quad\text{mean path usage is equal across the included conditions}.
 \]
 Only conditions represented by at least three mouse pseudobulks are included. With two conditions and two paths, this is a precision-weighted differential-PSI test. With more conditions or paths, all condition coefficients and path log-ratios are tested jointly.
@@ -58,8 +57,7 @@ An \emph{equivalence class} (EC) is a set of isoforms compatible with one UMI. A
 
 Let \(g=g(b)\) denote the gene containing block \(b\), and let \(\mathcal I_g\) be the set of isoforms retained by the paired-primer model and assigned to gene \(g\) by the isoform-to-gene table. Define \(T_g=|\mathcal I_g|\in\mathbb N\). This is a gene-level set, not the set of isoforms whose exons overlap the block, and it is therefore shared by every block of the gene. Let \(\mathcal I_b^{\rm sp}\subseteq\mathcal I_g\) be the retained, annotated spliced isoforms represented in the block's GTF-derived path map. Isoforms in \(\mathcal I_g\setminus\mathcal I_b^{\rm sp}\), including modeled unspliced precursors, remain nuisance isoforms in the EC likelihood.
 
-Let \(I_b,S_b\in\mathbb N\) be the numbers of qualifying pseudobulks and represented spliced paths for block \(b\), with \(S_b\geq2\). Then \(d_b=S_b-1\in\mathbb N\) is its number of independent path contrasts. Define \(r_g=T_g-1\). There are \(P=2\) primer protocols, and primer \(p\) has \(K_{gp}\in\mathbb N\) ECs for gene \(g\). The principal symbols in the primary model are:
-\[
+Let \(I_b,S_b\in\mathbb N\) be the numbers of qualifying pseudobulks and represented spliced paths for block \(b\), with \(S_b\geq2\). Then \(d_b=S_b-1\in\mathbb N\) is its number of independent path contrasts. Define \(r_g=T_g-1\). There are \(P=2\) primer protocols, and primer \(p\) has \(K_{gp}\in\mathbb N\) ECs for gene \(g\). The principal symbols in the primary model are: \[
 \begin{array}{lll}
 \toprule
 \text{symbol} & \text{dimension or domain} & \text{meaning}\\
@@ -85,12 +83,10 @@ Here \(\mathcal B\in\mathbb N\) is the number of blocks, \(\mathbb N_0=\{0,1,\ld
 
 \subsection*{Helmert basis and ILR coordinates}
 
-The simplex has only \(d_b=S_b-1\) free directions because path proportions sum to one. The Helmert matrix \(Q_b\) is a fixed orthonormal basis for the sum-zero subspace:
-\[
+The simplex has only \(d_b=S_b-1\) free directions because path proportions sum to one. The Helmert matrix \(Q_b\) is a fixed orthonormal basis for the sum-zero subspace: \[
  Q_b^\prime Q_b=I_{d_b},\qquad Q_b^\prime\bm1_{S_b}=\bm0_{d_b}.
 \]
-Using one-based row \(r\in\{1,\ldots,S_b\}\) and column \(j\in\{1,\ldots,d_b\}\), its entries are
-\[
+Using one-based row \(r\in\{1,\ldots,S_b\}\) and column \(j\in\{1,\ldots,d_b\}\), its entries are \[
  (Q_b)_{rj}=
  \begin{cases}
   1/\sqrt{j(j+1)}, & r\leq j,\\
@@ -104,16 +100,14 @@ For any strictly positive \(\bm\psi_{bi}\in\Delta^{S_b-1}\), the ILR coordinate 
 
 \subsection*{Observed data and primer-specific EC probabilities}
 
-Fix a gene \(g\) and one of its splice blocks \(b\). Let \(T_g\in\mathbb N\) be the number of EC-supported isoforms and \(r_g=T_g-1\) the number of free reference-logit coordinates. There are \(I_b\in\mathbb N\) retained pseudobulks and \(M_b\in\mathbb N\) represented mice. For primer protocol \(p\in\{1,2\}\), let \(K_{gp}\in\mathbb N\) be the number of retained ECs,
-\[
+Fix a gene \(g\) and one of its splice blocks \(b\). Let \(T_g\in\mathbb N\) be the number of EC-supported isoforms and \(r_g=T_g-1\) the number of free reference-logit coordinates. There are \(I_b\in\mathbb N\) retained pseudobulks and \(M_b\in\mathbb N\) represented mice. For primer protocol \(p\in\{1,2\}\), let \(K_{gp}\in\mathbb N\) be the number of retained ECs, \[
  \bm c_{gip}\in\mathbb N_0^{K_{gp}},\qquad
  n_{gip}=\bm1_{K_{gp}}^\prime\bm c_{gip}\in\mathbb N_0,
  \qquad
  A_{gp}\in\mathbb R_+^{K_{gp}\times T_g}.
 \]
 
-Here \(A_{gpkt}\) is the fixed compatibility or conditional weight of EC \(k\) for isoform \(t\). Oligo(dT) and random-hexamer observations have separate count vectors and \(A_{gp}\) matrices, so primer-specific positional coverage enters the likelihood without changing the underlying isoform composition. Let \(\bm\eta_{gi}=(\bm\eta_{gi,-}^\prime,0)^\prime\in\mathbb R^{T_g}\) append a zero reference-isoform logit and define
-\[
+Here \(A_{gpkt}\) is the fixed compatibility or conditional weight of EC \(k\) for isoform \(t\). Oligo(dT) and random-hexamer observations have separate count vectors and \(A_{gp}\) matrices, so primer-specific positional coverage enters the likelihood without changing the underlying isoform composition. Let \(\bm\eta_{gi}=(\bm\eta_{gi,-}^\prime,0)^\prime\in\mathbb R^{T_g}\) append a zero reference-isoform logit and define \[
  q_{gipk}(\bm\eta_{gi})=
  \frac{\sum_{t=1}^{T_g}A_{gpkt}\exp(\eta_{git})}
  {\sum_{h=1}^{K_{gp}}\sum_{t=1}^{T_g}
@@ -126,8 +120,7 @@ Conditioning on each observed primer total removes library size from the composi
 
 \subsection*{Multinomial EC GLMM}
 
-Let \(m(i)\in\{1,\ldots,M_b\}\) denote the mouse for pseudobulk \(i\). The multinomial EC GLMM is,
-\begin{align}
+Let \(m(i)\in\{1,\ldots,M_b\}\) denote the mouse for pseudobulk \(i\). The multinomial EC GLMM is, \begin{align}
  \bm c_{gip}\mid\bm\eta_{gi}
  &\sim\operatorname{Multinomial}
    \{n_{gip},\bm q_{gip}(\bm\eta_{gi})\},\\
@@ -141,8 +134,7 @@ The same mouse effect enters both primer halves and every pseudobulk from that m
 
 \subsection*{Logistic-normal EC GLMM}
 
-The logistic-normal extension adds one isotropic residual composition effect per pseudobulk,
-\begin{align}
+The logistic-normal extension adds one isotropic residual composition effect per pseudobulk, \begin{align}
  \bm\eta_{gi,-}
  &=\mathcal F_{bi}(\bm\beta_b)+\bm u_{g,m(i)}+\bm e_{gi},\\
  \bm e_{gi}&\sim N(\bm0_{r_g},\tau_g^2I_{r_g}),
@@ -153,16 +145,14 @@ The multinomial observation model is otherwise unchanged. The same \(\bm e_{gi}\
 
 \subsection*{Block contrast and nested fixed-effect tensors}
 
-Let \(\pi_b(t)\in\{-1,1,\ldots,S_b\}\) be isoform \(t\)'s represented path, where \(-1\) marks an isoform retained only as a likelihood nuisance. Lift the Helmert basis \(Q_b\in\mathbb R^{S_b\times d_b}\) from paths to isoforms by defining \(\widetilde D_b\in\mathbb R^{T_g\times d_b}\) rowwise,
-\[
+Let \(\pi_b(t)\in\{-1,1,\ldots,S_b\}\) be isoform \(t\)'s represented path, where \(-1\) marks an isoform retained only as a likelihood nuisance. Lift the Helmert basis \(Q_b\in\mathbb R^{S_b\times d_b}\) from paths to isoforms by defining \(\widetilde D_b\in\mathbb R^{T_g\times d_b}\) rowwise, \[
  (\widetilde D_b)_{t\mathbin\cdot}=
  \begin{cases}
   (Q_b)_{\pi_b(t)\mathbin\cdot}, & \pi_b(t)\geq1,\\
   \bm0_{d_b}^\prime, & \pi_b(t)=-1.
  \end{cases}
 \]
-Thus isoforms taking the same represented path receive the same row, whereas nuisance isoforms receive zero. Center each column over isoforms using \(C_g=I_{T_g}-\bm1_{T_g}\bm1_{T_g}^\prime/T_g\) and define \(D_b=C_g\widetilde D_b\in\mathbb R^{T_g\times d_b}\). Let \(R_g=[I_{r_g}\ -\bm1_{r_g}]\in\mathbb R^{r_g\times T_g}\) convert full logits to logits relative to isoform \(T_g\). The tested basis is
-\[
+Thus isoforms taking the same represented path receive the same row, whereas nuisance isoforms receive zero. Center each column over isoforms using \(C_g=I_{T_g}-\bm1_{T_g}\bm1_{T_g}^\prime/T_g\) and define \(D_b=C_g\widetilde D_b\in\mathbb R^{T_g\times d_b}\). Let \(R_g=[I_{r_g}\ -\bm1_{r_g}]\in\mathbb R^{r_g\times T_g}\) convert full logits to logits relative to isoform \(T_g\). The tested basis is \[
  H_b=R_gD_b
  =D_{b,1:r_g,:}-\bm1_{r_g}D_{b,T_g,:}
  \in\mathbb R^{r_g\times d_b}.
@@ -173,8 +163,7 @@ Let \(N_b^{\rm full}\in\mathbb R^{T_g\times(T_g-S_b)}\) be an orthonormal basis 
 
 This construction separates the biological comparison from the local splicing choice. The columns of \(H_b\) encode the \(d_b\) independent between-path log-ratios, while the columns of \(W_b\) identify the cell-type or condition differences being tested. For a two-path block, \(Q_b=(1,-1)^\prime/\sqrt2\). Before reference conversion, mapped isoforms on the first path receive \(+1/\sqrt2\), mapped isoforms on the second receive \(-1/\sqrt2\), and nuisance isoforms receive zero. The resulting single column of \(H_b\) is the same direction expressed relative to the chosen reference isoform. The nuisance basis \(N_b\) still permits factor-associated changes within paths and in other gene-level isoform directions. Thus the null does not require equal isoform composition across groups. It excludes only group differences that project onto the block's local path balance, and the alternative restores those directions through \(H_b\bm\gamma_{bj}\).
 
-Let \(Z_b\in\mathbb R^{I_b\times q_0}\) be the nuisance design and \(W_b\in\mathbb R^{I_b\times q_1}\) the treatment-coded tested design. The nested predictors are
-\begin{align}
+Let \(Z_b\in\mathbb R^{I_b\times q_0}\) be the nuisance design and \(W_b\in\mathbb R^{I_b\times q_1}\) the treatment-coded tested design. The nested predictors are \begin{align}
  \mathcal F_{bi}^{(0)}
  &=B_0^\prime Z_{bi}^\prime
    +\sum_{j=1}^{q_1}W_{bij}N_b\bm\alpha_{bj},\\
@@ -195,22 +184,19 @@ Distinct annotated blocks can induce the same partition after unsupported isofor
 
 \subsection*{Full-covariance variational fitting}
 
-For mouse \(m\), let \(h_{gm}\in\mathbb N\) be its number of retained pseudobulks. In the multinomial model define \(\bm z_{gm}=\bm u_{gm}\in\mathbb R^{r_g}\). In the logistic-normal model,
-\[
+For mouse \(m\), let \(h_{gm}\in\mathbb N\) be its number of retained pseudobulks. In the multinomial model define \(\bm z_{gm}=\bm u_{gm}\in\mathbb R^{r_g}\). In the logistic-normal model, \[
  \bm z_{gm}=(\bm u_{gm}^\prime,
  \bm e_{gi_1}^\prime,\ldots,\bm e_{gi_{h_{gm}}}^\prime)^\prime
  \in\mathbb R^{L_{gm}},\qquad L_{gm}=(1+h_{gm})r_g.
 \]
 
-The prior covariance is,
-\[
+The prior covariance is, \[
  P_{gm}=\operatorname{diag}
  (\sigma_g^2I_{r_g},\tau_g^2I_{h_{gm}r_g})
  \in\mathbb S_{++}^{L_{gm}},
 \]
 
-with the residual block omitted for the multinomial model. The variational family factorizes across mice but has unrestricted covariance within mouse,
-\[
+with the residual block omitted for the multinomial model. The variational family factorizes across mice but has unrestricted covariance within mouse, \[
  Q(\bm z_g)=\prod_{m=1}^{M_b}
  N(\bm z_{gm};\bm\mu_{gm},\Sigma_{gm}),\qquad
  \Sigma_{gm}\in\mathbb S_{++}^{L_{gm}}.
@@ -218,8 +204,7 @@ with the residual block omitted for the multinomial model. The variational famil
 
 Every \(\Sigma_{gm}\) is parameterized by a lower Cholesky factor with an exponentiated diagonal. It captures posterior dependence among isoform logits and, in the logistic-normal model, between the shared mouse effect and all residuals from that mouse. It does not add an unstructured covariance parameter to the generative model.
 
-The multinomial likelihood uses the analytic tilted log-sum-exp bound. For a Gaussian logit vector with mean \(\bm m\in\mathbb R^{T_g}\), covariance \(V\in\mathbb S_+^{T_g}\), and local coordinate \(\bm a\in\Delta^{T_g-1}\),
-\begin{align}
+The multinomial likelihood uses the analytic tilted log-sum-exp bound. For a Gaussian logit vector with mean \(\bm m\in\mathbb R^{T_g}\), covariance \(V\in\mathbb S_+^{T_g}\), and local coordinate \(\bm a\in\Delta^{T_g-1}\), \begin{align}
  E\log\sum_t\exp(\eta_t)
  &\leq \frac12\bm a^\prime V\bm a
  +\log\sum_t\exp\{m_t+\tfrac12V_{tt}-(V\bm a)_t\},\\
@@ -240,8 +225,7 @@ JAX supplies 64-bit objective values and gradients; bounded L-BFGS runs for at m
 
 \subsection*{Bouchard coordinate-ascent alternative}
 
-A deterministic alternative uses Bouchard's quadratic softmax bound. EC-to-isoform responsibilities give a linear lower bound for each positive EC numerator, while the Bouchard--Jaakkola construction gives a quadratic upper bound for each subtracted primer normalizer. After collecting terms, pseudobulk \(i\)'s bounded log likelihood has the form
-\[
+A deterministic alternative uses Bouchard's quadratic softmax bound. EC-to-isoform responsibilities give a linear lower bound for each positive EC numerator, while the Bouchard--Jaakkola construction gives a quadratic upper bound for each subtracted primer normalizer. After collecting terms, pseudobulk \(i\)'s bounded log likelihood has the form \[
  -\tfrac12E_q(\bm\eta_{gi,-}^\prime\Omega_{gi}\bm\eta_{gi,-})
  +\bm h_{gi}^\prime E_q(\bm\eta_{gi,-})+C_{gi},
  \qquad \Omega_{gi}\in\mathbb S_+^{r_g},\quad\bm h_{gi}\in\mathbb R^{r_g}.
@@ -282,8 +266,7 @@ For each block, the fitted null generates five parametric-bootstrap replicates. 
 
 Raw empirical ranks within tested-dimension strata are calibrated at ordinary levels but do not resolve genome-wide tails: after deduplication their minimum p-values are approximately \(4.5\times10^{-4}\), while BH requires values near \(10^{-5}\) at the first ranks. Tail calibration therefore proceeds as follows. Within each likelihood and tested-dimension stratum, let \(u_s\) be the 90th percentile of bootstrap statistics. Excesses \(T-u_s>0\) follow a fitted generalized Pareto distribution with shape \(\xi_s\in\mathbb R\) and scale \(\beta_s>0\). Entire block tests, including all their bootstrap replicates, are assigned to one of five folds. The tail model fitted on four folds maps statistics in the held-out fold to lower-tail scores \(\rho\in(0,1]\).
 
-Residual GPD error is removed by a second empirical calibration. Let \(\mathcal R_{-b}\) contain all cross-fitted null scores except scores generated for block \(b\). The reported p-value is
-\[
+Residual GPD error is removed by a second empirical calibration. Let \(\mathcal R_{-b}\) contain all cross-fitted null scores except scores generated for block \(b\). The reported p-value is \[
  p_b=\frac{1+\sum_{\rho\in\mathcal R_{-b}}
                   \mathbf1\{\rho\leq\rho_b\}}
              {1+|\mathcal R_{-b}|}.
@@ -347,17 +330,17 @@ Table~\ref{tab:laplace-lrt-sensitivity} compares the analytic Laplace LRT and BI
 \toprule
 Likelihood & Tests & Laplace conv. & LRT nominal & LRT BH & BF & Bootstrap BH\\
 \midrule
-Multinomial & 4,825 & 0.948 & 704 & 309 & 155 & 272\\
+Multinomial & 4,825 & 0.942 & 708 & 323 & 160 & 272\\
 Logistic-normal & 4,825 & 0.936 & 646 & 271 & 128 & 252\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Restricting comparison to tests converged under both fitting strategies gives Laplace-versus-bootstrap statistic rank correlations 0.982 for multinomial and 0.964 for logistic-normal; p-value rank correlations are 0.950 and 0.922. The multinomial analyses share 243 BH calls, and the logistic-normal analyses share 204. Among these matched tests, the BF threshold selects 155 and 128 events, of which 140 and 116 are bootstrap BH calls. Applying the nominal chi-square reference to the existing variational-fit null simulations gives 0.05 rejection rates 0.0389 and 0.0374, indicating mild conservatism for that diagnostic rather than inflation.
+Restricting comparison to tests converged under both fitting strategies gives Laplace-versus-bootstrap statistic rank correlations 0.972 for multinomial and 0.964 for logistic-normal; p-value rank correlations are 0.937 and 0.922. The multinomial analyses share 247 BH calls, and the logistic-normal analyses share 204. Among these matched tests, the BF threshold selects 160 and 128 events, of which 142 and 116 are bootstrap BH calls. Applying the nominal chi-square reference to the existing variational-fit null simulations gives 0.05 rejection rates 0.0389 and 0.0374, indicating mild conservatism for that diagnostic rather than inflation.
 
 The logistic-normal alternative estimates its observation-noise standard deviation at the lower numerical bound in 758 of 4,438 jointly converged fits. Because this nuisance variance is then on a boundary, its Wilks reference is less regular. The multinomial LRT is the cleaner nonbootstrap sensitivity, while the BF threshold supplies a smaller high-evidence subset; neither supersedes the empirically calibrated primary result without the mouse comparison above.
 
-The independent human analysis gives the results in Table~\ref{tab:human-laplace-lrt}. The recommended multinomial likelihood was rerun with 12 posterior-mode Newton steps on the first attempt and 30 steps on continuation attempts; the logistic-normal row is the previous supporting sensitivity. The condition calls span 139 distinct blocks and 137 genes; 178 of 195 also exceed the BIC BF threshold. EX1, EX2, EX5, EX3, and EX4 contribute 64, 34, 21, 19, and 14 condition calls, respectively, with the remainder distributed across other neuronal and glial cell types.
+The independent human analysis gives the results in Table~\ref{tab:human-laplace-lrt}. The recommended multinomial likelihood was rerun with 12 posterior-mode Newton steps and implicit mode differentiation on the first attempt, with 30 steps on continuation attempts; the logistic-normal row is the previous supporting sensitivity. The condition calls span 137 distinct blocks and 135 genes; 176 of 193 also exceed the BIC BF threshold. EX1, EX2, EX5, EX3, and EX4 contribute 62, 34, 21, 19, and 14 condition calls, respectively, with the remainder distributed across other neuronal and glial cell types.
 
 \begin{table}[H]
 \centering
@@ -368,9 +351,9 @@ The independent human analysis gives the results in Table~\ref{tab:human-laplace
 \toprule
 Contrast & Likelihood & Tests & Conv. & Nominal & LRT BH & BF\\
 \midrule
-Cell type & Multinomial & 11,597 & 0.946 & 2,557 & 1,458 & 236\\
+Cell type & Multinomial & 11,597 & 0.947 & 2,557 & 1,459 & 237\\
 Cell type & Logistic-normal & 11,597 & 0.943 & 2,161 & 1,125 & 148\\
-Condition & Multinomial & 73,002 & 0.939 & 5,475 & 195 & 521\\
+Condition & Multinomial & 73,144 & 0.940 & 5,497 & 193 & 522\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -390,7 +373,7 @@ Tables~\ref{tab:mouse-method-comparison} and \ref{tab:human-method-comparison} r
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{Matched mouse differential-splicing results. Tealeaf uses the primary empirically calibrated logistic-normal EC GLMM; its cell-type count uses the 90\% GPD threshold and its condition count is the robust zero-call result. External-method cell-type entries are Simes omnibus tests over pairwise contrasts; their condition entries are pairwise feature-by-contrast tests. All discovery counts use BH FDR 0.05. Rate is discoveries divided by tests.}
+\caption{Matched mouse differential-splicing results. Tealeaf uses the ordinary multinomial EC GLMM with the same optimized Laplace LRT used for the human data; the separately reported calibrated logistic-normal analysis remains the primary mouse validation result. External-method cell-type entries are Simes omnibus tests over pairwise contrasts; their condition entries are pairwise feature-by-contrast tests. All discovery counts use BH FDR 0.05. Rate is discoveries divided by tests.}
 \label{tab:mouse-method-comparison}
 \begin{tabular}{llrrr@{\qquad}rrr}
 \toprule
@@ -398,7 +381,7 @@ Tables~\ref{tab:mouse-method-comparison} and \ref{tab:human-method-comparison} r
 \cmidrule(lr){3-5}\cmidrule(lr){6-8}
 Method & Test unit & Tests & BH & Rate & Tests & BH & Rate\\
 \midrule
-Tealeaf EC GLMM & EC block & 4,825 & 252 & 5.22\% & 14,833 & 0 & 0.00\%\\
+Tealeaf EC GLMM & EC block & 4,825 & 323 & 6.69\% & 14,833 & 3 & 0.02\%\\
 LeafCutter & Intron cluster & 1,020 & 229 & 22.45\% & 10,279 & 40 & 0.39\%\\
 MAJIQ Heterogen & LSV edge & 46 & 27 & 58.70\% & 3,836 & 34 & 0.89\%\\
 scQuint & Intron group & 16,081 & 828 & 5.15\% & 161,711 & 16 & 0.01\%\\
@@ -409,7 +392,7 @@ scQuint & Intron group & 16,081 & 828 & 5.15\% & 161,711 & 16 & 0.01\%\\
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{Matched human differential-splicing results. Tealeaf uses the recommended multinomial EC GLMM with a Laplace LRT; external-method summaries are constructed as in Table~\ref{tab:mouse-method-comparison}. All discovery counts use BH FDR 0.05. Rate is discoveries divided by tests.}
+\caption{Matched human differential-splicing results. Tealeaf uses the ordinary multinomial EC GLMM with the same optimized Laplace LRT used for the mouse data; external-method summaries are constructed as in Table~\ref{tab:mouse-method-comparison}. All discovery counts use BH FDR 0.05. Rate is discoveries divided by tests.}
 \label{tab:human-method-comparison}
 \begin{tabular}{llrrr@{\qquad}rrr}
 \toprule
@@ -417,7 +400,7 @@ scQuint & Intron group & 16,081 & 828 & 5.15\% & 161,711 & 16 & 0.01\%\\
 \cmidrule(lr){3-5}\cmidrule(lr){6-8}
 Method & Test unit & Tests & BH & Rate & Tests & BH & Rate\\
 \midrule
-Tealeaf EC GLMM & EC block & 11,597 & 1,458 & 12.57\% & 73,002 & 195 & 0.27\%\\
+Tealeaf EC GLMM & EC block & 11,597 & 1,459 & 12.58\% & 73,144 & 193 & 0.26\%\\
 LeafCutter & Intron cluster & 2,155 & 238 & 11.04\% & 5,238 & 475 & 9.07\%\\
 MAJIQ Heterogen & LSV edge & 582 & 342 & 58.76\% & 3,522 & 278 & 7.89\%\\
 scQuint & Intron group & 27,097 & 2,239 & 8.26\% & 85,852 & 36 & 0.04\%\\
@@ -425,7 +408,7 @@ scQuint & Intron group & 27,097 & 2,239 & 8.26\% & 85,852 & 36 & 0.04\%\\
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:method-resources} compares aggregate worker time and peak resident memory for the analyses that produced Tables~\ref{tab:mouse-method-comparison} and~\ref{tab:human-method-comparison}. Aggregate worker time is the sum of elapsed time over analysis tasks, so it is independent of queue delay and parallelism. Peak memory is the maximum for one worker. The accounting starts from each method's prepared analysis input and includes model fitting and method-specific result construction, but excludes shared read processing. Tealeaf totals include every original and retry task, including resource-limited attempts whose shards were subsequently completed, so they measure realized rather than idealized cost. The mouse Tealeaf rerun uses one compiled tilted objective for the observed fit, retries, and calibration replicates that share a test design. Passing counts as a dynamic argument preserves the objective while avoiding repeated compilation. This reduced its aggregate worker time from 185.5 to 36.1 hours, a 5.1-fold improvement. The resulting run is 2.4-fold slower than scQuint and 3.1-fold slower than LeafCutter, while fitting both nested models to the observed data and five null replicates per test. For the human analysis, 12 rather than 30 posterior-mode Newton steps reduced a 20-test benchmark by 2.7-fold with statistic rank correlation 1.0, but a complete 12-step run reduced convergence. The final adaptive runner uses 12 steps initially and 30 only for continuation fits. Together with fitting only the recommended multinomial likelihood, this reduced aggregate worker time from 1,446.5 to 463.5 hours, a 3.1-fold improvement. Human Tealeaf remains 4.9-fold slower than scQuint because it fits nested random-effect models for a comparable number of tests, while its peak worker memory fell from 14.14 to 10.63 GiB.
+Table~\ref{tab:method-resources} compares aggregate worker time and peak resident memory for the analyses that produced Tables~\ref{tab:mouse-method-comparison} and~\ref{tab:human-method-comparison}. Aggregate worker time is the sum of elapsed time over analysis tasks, so it is independent of queue delay and parallelism. Peak memory is the maximum for one worker. The accounting starts from each method's prepared analysis input and includes model fitting and method-specific result construction, but excludes shared read processing. Tealeaf uses the same ordinary multinomial EC GLMM and Laplace LRT in both datasets. Each first attempt uses 12 posterior-mode Newton updates and implicit differentiation, failed-convergence fits receive a 30-update continuation, and compiled objectives are reused within bounded gene-and-shape groups. On a complete 72-test human condition shard, implicit differentiation reduced elapsed time from 79.7 to 37.1 minutes and peak memory from 6.88 to 6.66 GiB relative to differentiating through the Newton updates, with the same 69 jointly converged tests and median absolute statistic difference below \(10^{-12}\). Gene-group compilation reuse reduced a second shard benchmark from 37.9 to 37.1 minutes. The complete common-procedure reruns used 118.8 mouse worker hours and 4.74 GiB peak worker memory, and 729.4 human worker hours and 6.83 GiB. Tealeaf was 7.8-fold slower than scQuint in each dataset despite the optimization. The human run has 4.3-fold more tests than mouse and its median test has five rather than three isoforms, 26 rather than nine ECs, and five rather than two block paths; these larger likelihoods account for most of the remaining dataset difference. Lower-precision and early-stopping experiments did not preserve accuracy or reduce real-data elapsed time, and CAVI initialization reduced convergence, so none was used for the reported fits.
 
 \begin{table}[H]
 \centering
@@ -438,7 +421,7 @@ Table~\ref{tab:method-resources} compares aggregate worker time and peak residen
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}
 Method & Time & Memory & Time & Memory\\
 \midrule
-Tealeaf EC GLMM & 36.1 & 1.77 & 463.5 & 10.63\\
+Tealeaf EC GLMM & 118.8 & 4.74 & 729.4 & 6.83\\
 LeafCutter & 11.7 & 1.28 & 38.6 & 3.26\\
 MAJIQ Heterogen & 6.6 & 1.38 & 9.5 & 1.92\\
 scQuint & 15.3 & 3.99 & 94.1 & 4.76\\
@@ -450,8 +433,7 @@ Raw yield still does not establish that one method is better. We therefore use a
 
 \subsection*{Paired junction log-ratio test}
 
-For one junction group, let \(K\geq2\) be its number of retained introns and let \(n\) be the number of subjects represented exactly once in each of two cell types. For subject \(i\in\{1,\ldots,n\}\), cell type \(c\in\{0,1\}\), and intron \(k\in\{1,\ldots,K\}\), let \(y_{ick}\in\mathbb N_0\) be the pseudobulk junction count. Define \(\bm y_{ic}=(y_{ic1},\ldots,y_{icK})^\prime\in\mathbb N_0^K\), the centered log-ratio
-\[
+For one junction group, let \(K\geq2\) be its number of retained introns and let \(n\) be the number of subjects represented exactly once in each of two cell types. For subject \(i\in\{1,\ldots,n\}\), cell type \(c\in\{0,1\}\), and intron \(k\in\{1,\ldots,K\}\), let \(y_{ick}\in\mathbb N_0\) be the pseudobulk junction count. Define \(\bm y_{ic}=(y_{ic1},\ldots,y_{icK})^\prime\in\mathbb N_0^K\), the centered log-ratio \[
  \operatorname{clr}(\bm y_{ic})
  =\log(\bm y_{ic}+1/2)
   -\frac{\bm1_K}{K}\bm1_K^\prime\log(\bm y_{ic}+1/2)
@@ -459,8 +441,7 @@ For one junction group, let \(K\geq2\) be its number of retained introns and let
 \]
 and the within-subject difference \(\bm d_i=H_K^\prime\{\operatorname{clr}(\bm y_{i1})- \operatorname{clr}(\bm y_{i0})\}\in\mathbb R^{K-1}\). Here \(H_K\in\mathbb R^{K\times(K-1)}\) is an orthonormal Helmert basis for the subspace orthogonal to \(\bm1_K\); the result is invariant to the particular orthonormal basis. Pairing removes every additive subject effect shared by the two cell types, while the log-ratio removes junction-group depth.
 
-The null is \(H_0:\mathbb E(\bm d_i)=\bm0_{K-1}\). For \(K=2\), Tealeaf uses the exact two-sided one-sample Student \(t\) test. For \(K>2\), with \(q=K-1\), sample mean \(\bar{\bm d}\in\mathbb R^q\), and sample covariance \(S_d\in\mathbb R^{q\times q}\), it computes
-\[
+The null is \(H_0:\mathbb E(\bm d_i)=\bm0_{K-1}\). For \(K=2\), Tealeaf uses the exact two-sided one-sample Student \(t\) test. For \(K>2\), with \(q=K-1\), sample mean \(\bar{\bm d}\in\mathbb R^q\), and sample covariance \(S_d\in\mathbb R^{q\times q}\), it computes \[
  T^2=n\bar{\bm d}^{\prime}S_d^{-1}\bar{\bm d},\qquad
  \frac{n-q}{q(n-1)}T^2\sim F_{q,n-q}\quad\text{under }H_0.
 \]
@@ -487,8 +468,7 @@ The test requires \(n\geq8\), \(n>q\), and full-rank \(S_d\). The eight-subject 
 
 \subsection*{Independent-subject power comparison}
 
-The benchmark divides biological subjects into two condition-balanced halves and reruns every cell-type analysis independently. Features are mapped to genes and feature p-values are combined within gene by Simes. Each Tealeaf--comparator evaluation is restricted to genes and cell-type pairs eligible for both methods in both halves. For method \(m\), gene \(g\), and fold \(h\in\{1,2\}\), let \(p_{mgh}\in[0,1]\) be the Simes gene p-value. The conjunction p-value
-\[
+The benchmark divides biological subjects into two condition-balanced halves and reruns every cell-type analysis independently. Features are mapped to genes and feature p-values are combined within gene by Simes. Each Tealeaf--comparator evaluation is restricted to genes and cell-type pairs eligible for both methods in both halves. For method \(m\), gene \(g\), and fold \(h\in\{1,2\}\), let \(p_{mgh}\in[0,1]\) be the Simes gene p-value. The conjunction p-value \[
  p_{mg}^{\rm rep}=\max(p_{mg1},p_{mg2})
 \]
 tests whether the gene has signal in both independent halves. BH at 0.05 is applied once to these conjunction p-values on the shared gene universe. Secondary endpoints are the fraction of nominal discoveries in one half with \(p\leq0.05\) in the other and Spearman correlation of \(-\log_{10}p\) across all shared gene--pair tests.
@@ -528,16 +508,14 @@ The main text defines the two primary EC-count GLMMs and their implemented test.
 
 \subsection*{Paired-primer EC likelihood}
 
-For block \(b\), pseudobulk \(i\), and primer \(p\), define \(N_{bip}=\bm1_{E_{bp}}^\prime\bm c_{bip}\in\mathbb N_0\), \(\bm q_{bip}=A_{bp}\bm\theta_{bi}\in\mathbb R_+^{E_{bp}}\), and \(Z_{bip}=\bm1_{E_{bp}}^\prime\bm q_{bip}\in\mathbb R_+\). Conditional on the primer-specific UMI total,
-\[
+For block \(b\), pseudobulk \(i\), and primer \(p\), define \(N_{bip}=\bm1_{E_{bp}}^\prime\bm c_{bip}\in\mathbb N_0\), \(\bm q_{bip}=A_{bp}\bm\theta_{bi}\in\mathbb R_+^{E_{bp}}\), and \(Z_{bip}=\bm1_{E_{bp}}^\prime\bm q_{bip}\in\mathbb R_+\). Conditional on the primer-specific UMI total, \[
  \bm c_{bip}\mid N_{bip},\bm\theta_{bi}
  \sim\operatorname{Multinomial}
  \left(N_{bip},\bm q_{bip}/Z_{bip}\right).
 \]
 The oligo(dT) and random-hexamer protocols use separate \(A_{bp}\) matrices and likelihood terms. Their different isoform exposures therefore model primer-specific positional coverage without forcing a common bias profile.
 
-The genome-wide hierarchical model supplies \(\bm\theta_{bi}^{(0)}\in\mathbb R_+^{T_g}\). Let \(s_b(t)\in\{1,\ldots,S_b\}\) map isoform \(t\in\mathcal I_b^{\rm sp}\) to its path. The baseline spliced-isoform mass is the scalar \(\omega_{bi}^{\rm sp}=\sum_{t\in\mathcal I_b^{\rm sp}} \theta_{bit}^{(0)}\in\mathbb R_+\). For \(t\in\mathcal I_b^{\rm sp}\), local refinement uses
-\[
+The genome-wide hierarchical model supplies \(\bm\theta_{bi}^{(0)}\in\mathbb R_+^{T_g}\). Let \(s_b(t)\in\{1,\ldots,S_b\}\) map isoform \(t\in\mathcal I_b^{\rm sp}\) to its path. The baseline spliced-isoform mass is the scalar \(\omega_{bi}^{\rm sp}=\sum_{t\in\mathcal I_b^{\rm sp}} \theta_{bit}^{(0)}\in\mathbb R_+\). For \(t\in\mathcal I_b^{\rm sp}\), local refinement uses \[
  \theta_{bit}(\bm\delta_{bi})
  =\omega_{bi}^{\rm sp}\frac{\theta_{bit}^{(0)}
  \exp\{(Q_b)_{s_b(t),\cdot}\bm\delta_{bi}\}}
@@ -548,8 +526,7 @@ where \((Q_b)_{s,\cdot}\in\mathbb R^{1\times d_b}\). Nuisance-isoform abundances
 
 \subsection*{Path response and inferential covariance}
 
-Each column of \(C_b\in\{0,1\}^{S_b\times T_g}\) corresponding to \(t\in\mathcal I_b^{\rm sp}\) contains one 1 in row \(s_b(t)\); nuisance isoform columns are zero. Define
-\[
+Each column of \(C_b\in\{0,1\}^{S_b\times T_g}\) corresponding to \(t\in\mathcal I_b^{\rm sp}\) contains one 1 in row \(s_b(t)\); nuisance isoform columns are zero. Define \[
  \bm a_{bi}=C_b\bm\theta_{bi}\in\mathbb R_+^{S_b},\qquad
  \bm\psi_{bi}=\frac{\bm a_{bi}}
  {\bm1_{S_b}^\prime\bm a_{bi}}\in\Delta^{S_b-1},\qquad
@@ -563,8 +540,7 @@ Let \(I_{\delta,bi}\in\mathbb S_+^{d_b}\) be the expected Fisher information of 
 
 The profile calculation is a covariance sensitivity analysis, not a second estimate of path usage. It retains the same \(\widehat{\bm\theta}_{bi}\in\mathbb R_+^{T_g}\) obtained from the constrained local fit, but asks how uncertain its path ILRs would be if all \(T_g\) isoform log-abundances were locally free. Equivalently, after a smooth reparameterization into path ILRs and \(T_g-d_b\) nuisance coordinates, it approximates the path-ILR block of the inverse Fisher information after profiling the nuisance coordinates. No unconstrained isoform likelihood is optimized, so \emph{profile} below means this local expected-Fisher approximation rather than an exact profile-likelihood fit.
 
-Set \(\bm\eta_{bi}=\log\widehat{\bm\theta}_{bi}\in\mathbb R^{T_g}\), \(D_{bi}=\operatorname{diag}(\widehat{\bm\theta}_{bi})\in \mathbb R^{T_g\times T_g}\), \(\bm d_{bp}=A_{bp}^\prime\bm1_{E_{bp}}\in\mathbb R^{T_g}\), and \(\widehat{\bm q}_{bip}=A_{bp}\widehat{\bm\theta}_{bi} \in\mathbb R_+^{E_{bp}}\), \(\widehat Z_{bip}=\bm1_{E_{bp}}^\prime\widehat{\bm q}_{bip} \in\mathbb R_+\), and \(\bm r_{0,bip}=(\bm d_{bp}\odot\widehat{\bm\theta}_{bi})/ \widehat Z_{bip} \in\mathbb R^{T_g}\). The primer-specific expected information is
-\[
+Set \(\bm\eta_{bi}=\log\widehat{\bm\theta}_{bi}\in\mathbb R^{T_g}\), \(D_{bi}=\operatorname{diag}(\widehat{\bm\theta}_{bi})\in \mathbb R^{T_g\times T_g}\), \(\bm d_{bp}=A_{bp}^\prime\bm1_{E_{bp}}\in\mathbb R^{T_g}\), and \(\widehat{\bm q}_{bip}=A_{bp}\widehat{\bm\theta}_{bi} \in\mathbb R_+^{E_{bp}}\), \(\widehat Z_{bip}=\bm1_{E_{bp}}^\prime\widehat{\bm q}_{bip} \in\mathbb R_+\), and \(\bm r_{0,bip}=(\bm d_{bp}\odot\widehat{\bm\theta}_{bi})/ \widehat Z_{bip} \in\mathbb R^{T_g}\). The primer-specific expected information is \[
  I_{\eta,bip}=N_{bip}\left[
  \frac{D_{bi}A_{bp}^\prime
  \operatorname{diag}(\widehat{\bm q}_{bip}^{-1})A_{bp}D_{bi}}
@@ -574,8 +550,7 @@ Set \(\bm\eta_{bi}=\log\widehat{\bm\theta}_{bi}\in\mathbb R^{T_g}\), \(D_{bi}=\o
 \]
 The paired-primer information is \(I_{\eta,bi}=\sum_{p=1}^P I_{\eta,bip}\in\mathbb S_+^{T_g}\).
 
-The covariance must be propagated through the isoform-to-path map. Let \(\omega_{bi}^{\rm sp}=\sum_{t\in\mathcal I_b^{\rm sp}} \widehat\theta_{bit}\in\mathbb R_+\) and \(a_{bis}=\sum_{t:s_b(t)=s}\widehat\theta_{bit}\in\mathbb R_+\). Define \(R_{bi}=\partial\log\bm\psi_{bi}/\partial\bm\eta_{bi}^\prime \in\mathbb R^{S_b\times T_g}\) entrywise by
-\[
+The covariance must be propagated through the isoform-to-path map. Let \(\omega_{bi}^{\rm sp}=\sum_{t\in\mathcal I_b^{\rm sp}} \widehat\theta_{bit}\in\mathbb R_+\) and \(a_{bis}=\sum_{t:s_b(t)=s}\widehat\theta_{bit}\in\mathbb R_+\). Define \(R_{bi}=\partial\log\bm\psi_{bi}/\partial\bm\eta_{bi}^\prime \in\mathbb R^{S_b\times T_g}\) entrywise by \[
  (R_{bi})_{st}=
  \begin{cases}
   \mathbb 1\{s_b(t)=s\}\widehat\theta_{bit}/a_{bis}
@@ -584,26 +559,22 @@ The covariance must be propagated through the isoform-to-path map. Let \(\omega_
   0,&t\notin\mathcal I_b^{\rm sp}.
  \end{cases}
 \]
-Thus
-\[
+Thus \[
  J_{bi}=\frac{\partial\bm y_{bi}}
  {\partial\bm\eta_{bi}^\prime}
  =Q_b^\prime R_{bi}\in\mathbb R^{d_b\times T_g}.
 \]
 
-The multinomial likelihood necessarily has a global-scale null direction, and EC ambiguity can create additional null directions. Write the symmetric eigendecomposition
-\[
+The multinomial likelihood necessarily has a global-scale null direction, and EC ambiguity can create additional null directions. Write the symmetric eigendecomposition \[
  I_{\eta,bi}=U_{bi}\operatorname{diag}(\bm\lambda_{bi})U_{bi}^\prime,
 \]
 where \(U_{bi}\in\mathbb R^{T_g\times T_g}\) is orthogonal and \(\bm\lambda_{bi}\in\mathbb R^{T_g}\). An eigenvalue is treated as positive when \(\lambda_{bit}>10^{-8}\max_u|\lambda_{biu}|\). Let \(\mathcal P_{bi}\subseteq\{1,\ldots,T_g\}\) index these positive eigenvalues, let \(\mathcal N_{bi}\) index the remainder, and let \(U_{bi,+}\in\mathbb R^{T_g\times|\mathcal P_{bi}|}\) and \(U_{bi,0}\in\mathbb R^{T_g\times|\mathcal N_{bi}|}\) contain the corresponding eigenvectors.
 
-The path response is identifiable only if its Jacobian annihilates every information-null direction. The implementation requires
-\[
+The path response is identifiable only if its Jacobian annihilates every information-null direction. The implementation requires \[
  \|J_{bi}U_{bi,0}\|_F
  \leq 10^{-9}\max\{\|J_{bi}\|_F,1\}.
 \]
-If this fails, \(V_{bi}^{\rm prof}\) is set to an infinite matrix and the estimate is excluded from profile testing. Otherwise,
-\[
+If this fails, \(V_{bi}^{\rm prof}\) is set to an infinite matrix and the estimate is excluded from profile testing. Otherwise, \[
  V_{bi}^{\rm prof}
  =J_{bi}U_{bi,+}
  \operatorname{diag}(\bm\lambda_{bi,\mathcal P}^{-1})
@@ -615,8 +586,7 @@ Unlike \(V_{bi}^{\rm cond}\), this covariance allows EC-supported changes in wit
 
 \subsection*{Cell-resolved likelihood}
 
-For cell \(h\) in pseudobulk \(i\), let \(\bm c_{bihp}\in\mathbb N_0^{E_{bp}}\), \(N_{bihp}=\bm1_{E_{bp}}^\prime\bm c_{bihp}\in\mathbb N_0\), and \(\bm\theta_{bih}^{(0)}\in\mathbb R_+^{T_g}\) be its EC counts, total, and baseline. Every cell shares the same pseudobulk perturbation \(\bm\delta_{bi}\in\mathbb R^{d_b}\), but its isoform vector \(\bm\theta_{bih}(\bm\delta_{bi})\in\mathbb R_+^{T_g}\) is normalized using its own baseline. The objective is the scalar
-\[
+For cell \(h\) in pseudobulk \(i\), let \(\bm c_{bihp}\in\mathbb N_0^{E_{bp}}\), \(N_{bihp}=\bm1_{E_{bp}}^\prime\bm c_{bihp}\in\mathbb N_0\), and \(\bm\theta_{bih}^{(0)}\in\mathbb R_+^{T_g}\) be its EC counts, total, and baseline. Every cell shares the same pseudobulk perturbation \(\bm\delta_{bi}\in\mathbb R^{d_b}\), but its isoform vector \(\bm\theta_{bih}(\bm\delta_{bi})\in\mathbb R_+^{T_g}\) is normalized using its own baseline. The objective is the scalar \[
  \ell_{bi}(\bm\delta_{bi})=
  \sum_{h=1}^{H_{bi}}\sum_{p=1}^P
  \log\operatorname{Multinomial}\left(
@@ -625,8 +595,7 @@ For cell \(h\) in pseudobulk \(i\), let \(\bm c_{bihp}\in\mathbb N_0^{E_{bp}}\),
  {\bm1_{E_{bp}}^\prime A_{bp}\bm\theta_{bih}(\bm\delta_{bi})}
  \right).
 \]
-Thus cells contribute assignment information but do not become biological replicates. Let \(U_{bih}\in\mathbb R_+\) be the cell's total UMI count and \(g_{bih}\in[0,1]\) its decoded proportion for the block's gene. The scalar weight is \(w_{bih}=U_{bih}g_{bih}\), and the reported pseudobulk composition is
-\[
+Thus cells contribute assignment information but do not become biological replicates. Let \(U_{bih}\in\mathbb R_+\) be the cell's total UMI count and \(g_{bih}\in[0,1]\) its decoded proportion for the block's gene. The scalar weight is \(w_{bih}=U_{bih}g_{bih}\), and the reported pseudobulk composition is \[
  \bm\psi_{bi}=
  \frac{\sum_{h=1}^{H_{bi}}w_{bih}\bm\psi_{bih}}
  {\sum_{h=1}^{H_{bi}}w_{bih}}\in\Delta^{S_b-1}.
@@ -635,13 +604,11 @@ Cell- and primer-specific Fisher information matrices in \(\mathbb S_+^{d_b}\) a
 
 \subsection*{Effective counts and compositional regression}
 
-Treating all gene UMIs as known path assignments is overconfident when ECs are ambiguous. For each fitted \(\bm\psi_{bi}\), define the unit-multinomial ILR covariance
-\[
+Treating all gene UMIs as known path assignments is overconfident when ECs are ambiguous. For each fitted \(\bm\psi_{bi}\), define the unit-multinomial ILR covariance \[
  G_{bi}=Q_b^\prime\operatorname{diag}(\bm\psi_{bi}^{-1})Q_b
  \in\mathbb S_+^{d_b}.
 \]
-The scalar effective count matches \(G_{bi}/n\) to the EC-derived \(V_{bi}^{\rm cond}\) in Frobenius inner product \(\langle U,W\rangle_F=\operatorname{tr}(U^\prime W)\), for \(U,W\in\mathbb R^{d_b\times d_b}\):
-\[
+The scalar effective count matches \(G_{bi}/n\) to the EC-derived \(V_{bi}^{\rm cond}\) in Frobenius inner product \(\langle U,W\rangle_F=\operatorname{tr}(U^\prime W)\), for \(U,W\in\mathbb R^{d_b\times d_b}\): \[
  n_{bi}^{\rm eff}=
  \min\left\{N_{bi}^{\rm gene},
  \frac{\langle G_{bi},G_{bi}\rangle_F}
@@ -649,21 +616,18 @@ The scalar effective count matches \(G_{bi}/n\) to the EC-derived \(V_{bi}^{\rm 
 \]
 where \(N_{bi}^{\rm gene}\in\mathbb N_0\) is the gene UMI count. Fractional path counts are \(\bm x_{bi}=n_{bi}^{\rm eff}\bm\psi_{bi}\in\mathbb R_+^{S_b}\), with \(\bm1_{S_b}^\prime\bm x_{bi}=n_{bi}^{\rm eff}\).
 
-For one block, stack \(n=n_b\in\mathbb N\) observations in a design \(X\in\mathbb R^{n\times k}\), where \(k\in\mathbb N\), and coefficient matrix \(\Beta_b\in\mathbb R^{k\times d_b}\). The mean composition \(\bm\mu_{bi}\in\Delta^{S_b-1}\) is defined by reference-path logits
-\[
+For one block, stack \(n=n_b\in\mathbb N\) observations in a design \(X\in\mathbb R^{n\times k}\), where \(k\in\mathbb N\), and coefficient matrix \(\Beta_b\in\mathbb R^{k\times d_b}\). The mean composition \(\bm\mu_{bi}\in\Delta^{S_b-1}\) is defined by reference-path logits \[
  \log\frac{\mu_{bis}}{\mu_{biS_b}}
  =(X\Beta_b)_{is},\qquad s=1,\ldots,d_b.
 \]
-The generalized Dirichlet--multinomial likelihood, extended to fractional counts through gamma functions, is
-\[
+The generalized Dirichlet--multinomial likelihood, extended to fractional counts through gamma functions, is \[
  \bm x_{bi}\mid n_{bi}^{\rm eff}
  \sim\operatorname{DirichletMultinomial}
  \left(n_{bi}^{\rm eff},\kappa_b\bm\mu_{bi}\right),
 \]
 where \(\kappa_b\in\mathbb R_+\cup\{\infty\}\) is a block-level concentration. Larger \(\kappa_b\) means less overdispersion; the endpoint \(\kappa_b=\infty\) is exactly multinomial.
 
-For nested designs \(X_0\in\mathbb R^{n\times k_0}\) and \(X_1\in\mathbb R^{n\times k_1}\), with \(k_1\geq k_0\) and the first \(k_0,k_1\in\mathbb N\), and the first \(k_0\) columns of \(X_1\) equal to \(X_0\), let \(\widehat\ell_0,\widehat\ell_1\in\mathbb R\) be maximized scalar log likelihoods. The statistic and nominal degrees of freedom are
-\[
+For nested designs \(X_0\in\mathbb R^{n\times k_0}\) and \(X_1\in\mathbb R^{n\times k_1}\), with \(k_1\geq k_0\) and the first \(k_0,k_1\in\mathbb N\), and the first \(k_0\) columns of \(X_1\) equal to \(X_0\), let \(\widehat\ell_0,\widehat\ell_1\in\mathbb R\) be maximized scalar log likelihoods. The statistic and nominal degrees of freedom are \[
  \Lambda_b=2(\widehat\ell_1-\widehat\ell_0)\in\mathbb R_+,
  \qquad \nu_b=(k_1-k_0)d_b\in\mathbb N_0.
 \]
@@ -671,16 +635,14 @@ The fixed-concentration analysis estimates \(\widehat\kappa_{0b}\in\mathbb R_+\c
 
 \subsection*{Gaussian mouse-replicate regression}
 
-For a condition test within one block and cell type, stack \(\widehat{\bm y}_{bi}\in\mathbb R^{d_b}\) over \(n\in\mathbb N\) mice. Let \(X_b\in\mathbb R^{n\times k}\), \(k\in\mathbb N\), contain an intercept and condition indicators, \(\Beta_b^{\rm GLS}\in\mathbb R^{k\times d_b}\) be regression coefficients, and \(\bm\epsilon_{bi}\in\mathbb R^{d_b}\) be residuals:
-\[
+For a condition test within one block and cell type, stack \(\widehat{\bm y}_{bi}\in\mathbb R^{d_b}\) over \(n\in\mathbb N\) mice. Let \(X_b\in\mathbb R^{n\times k}\), \(k\in\mathbb N\), contain an intercept and condition indicators, \(\Beta_b^{\rm GLS}\in\mathbb R^{k\times d_b}\) be regression coefficients, and \(\bm\epsilon_{bi}\in\mathbb R^{d_b}\) be residuals: \[
  \widehat{\bm y}_{bi}=(X_{b,i\cdot}\Beta_b^{\rm GLS})^\prime
  +\bm\epsilon_{bi},
  \qquad
  \operatorname{Var}(\bm\epsilon_{bi})=
  V_{bi}+\tau_b^2I_{d_b}\in\mathbb S_+^{d_b}.
 \]
-Here \(X_{b,i\cdot}\in\mathbb R^{1\times k}\), and \(\tau_b^2\in\mathbb R_+\) is residual between-mouse variance estimated by REML under the null. If \(r_b\in\mathbb N\) non-reference condition columns are tested, their coefficients form \(\bm\beta_b^{\rm test}\in\mathbb R^{r_bd_b}\) with covariance \(\Sigma_b^{\rm test}\in\mathbb S_+^{r_bd_b}\). The Wald statistic is
-\[
+Here \(X_{b,i\cdot}\in\mathbb R^{1\times k}\), and \(\tau_b^2\in\mathbb R_+\) is residual between-mouse variance estimated by REML under the null. If \(r_b\in\mathbb N\) non-reference condition columns are tested, their coefficients form \(\bm\beta_b^{\rm test}\in\mathbb R^{r_bd_b}\) with covariance \(\Sigma_b^{\rm test}\in\mathbb S_+^{r_bd_b}\). The Wald statistic is \[
  W_b=(\bm\beta_b^{\rm test})^\prime
  (\Sigma_b^{\rm test})^{-1}\bm\beta_b^{\rm test}\in\mathbb R_+,
  \qquad \nu_b^{\rm GLS}=r_bd_b.
@@ -688,16 +650,14 @@ Here \(X_{b,i\cdot}\in\mathbb R^{1\times k}\), and \(\tau_b^2\in\mathbb R_+\) is
 
 \subsection*{Paired cell-type test and permutations}
 
-For a cell-type test, let \(M_b,L_b\in\mathbb N\) be the numbers of represented biological mice and cell types, respectively. The null design \(X_{0b}\in\{0,1\}^{n_b\times M_b}\) contains an intercept-coded set of mouse fixed effects. The alternative \(X_{1b}\in\mathbb R^{n_b\times(M_b+L_b-1)}\) appends treatment-coded cell-type indicators. Consequently \(k_0=M_b\), \(k_1=M_b+L_b-1\), and \(\nu_b=(L_b-1)d_b\). The tested coefficient block is \(\Beta_b^{\rm cell}\in\mathbb R^{(L_b-1)\times d_b}\), and
-\[
+For a cell-type test, let \(M_b,L_b\in\mathbb N\) be the numbers of represented biological mice and cell types, respectively. The null design \(X_{0b}\in\{0,1\}^{n_b\times M_b}\) contains an intercept-coded set of mouse fixed effects. The alternative \(X_{1b}\in\mathbb R^{n_b\times(M_b+L_b-1)}\) appends treatment-coded cell-type indicators. Consequently \(k_0=M_b\), \(k_1=M_b+L_b-1\), and \(\nu_b=(L_b-1)d_b\). The tested coefficient block is \(\Beta_b^{\rm cell}\in\mathbb R^{(L_b-1)\times d_b}\), and \[
  H_{0b}:\Beta_b^{\rm cell}=0
  \quad\text{versus}\quad
  H_{1b}:\Beta_b^{\rm cell}\neq0.
 \]
 Mouse effects absorb condition and every shift shared by cell types from the same mouse.
 
-For \(R=500\in\mathbb N\) permutations and \(r\in\{1,\ldots,R\}\), cell-type labels are shuffled only among pseudobulks from the same mouse, producing \(X_{1b}^{(r)}\in\mathbb R^{n_b\times(M_b+L_b-1)}\) and statistic \(\Lambda_b^{(r)}\in\mathbb R_+\). Let \(\varepsilon_b=10^{-6}\max(1,|\Lambda_b|)\in\mathbb R_+\). The finite-permutation p-value is
-\[
+For \(R=500\in\mathbb N\) permutations and \(r\in\{1,\ldots,R\}\), cell-type labels are shuffled only among pseudobulks from the same mouse, producing \(X_{1b}^{(r)}\in\mathbb R^{n_b\times(M_b+L_b-1)}\) and statistic \(\Lambda_b^{(r)}\in\mathbb R_+\). Let \(\varepsilon_b=10^{-6}\max(1,|\Lambda_b|)\in\mathbb R_+\). The finite-permutation p-value is \[
  p_b=\frac{1+\sum_{r=1}^{R}
  \mathbb{1}\{\Lambda_b^{(r)}\geq\Lambda_b-\varepsilon_b\}}{R+1}\in(0,1],
  \qquad R=500.
@@ -706,19 +666,16 @@ The null coefficients and \(\widehat\kappa_{0b}\) are reused, but each permuted 
 
 \subsection*{Joint condition tests}
 
-ACAT combines \(J\in\mathbb N\) component p-values \(p_j\in(0,1)\), \(j=1,\ldots,J\), into the scalar
-\[
+ACAT combines \(J\in\mathbb N\) component p-values \(p_j\in(0,1)\), \(j=1,\ldots,J\), into the scalar \[
  p_{\rm ACAT}=\frac12-\frac1\pi\arctan\left[
  \frac1J\sum_{j=1}^J\tan\{\pi(1/2-p_j)\}\right]\in(0,1).
 \]
 One level combines cell-type-specific p-values for a path partition; a second combines distinct partitions within a gene.
 
-The shared-effect Gaussian model for block \(b\) uses \(M\in\mathbb N\) mice indexed by \(m\in\{1,\ldots,M\}\), and \(L_m\in\mathbb N\) cell types for mouse \(m\), indexed by \(c\in\{1,\ldots,L_m\}\). Its response is \(\bm y_{bmc}\in\mathbb R^{d_b}\), design row \(X_{bmc}\in\mathbb R^{1\times k}\), where \(k\in\mathbb N\), coefficient matrix \(\Beta_b\in\mathbb R^{k\times d_b}\), mouse random effect \(\bm u_{bm}\in\mathbb R^{d_b}\), and residual \(\bm e_{bmc}\in\mathbb R^{d_b}\):
-\[
+The shared-effect Gaussian model for block \(b\) uses \(M\in\mathbb N\) mice indexed by \(m\in\{1,\ldots,M\}\), and \(L_m\in\mathbb N\) cell types for mouse \(m\), indexed by \(c\in\{1,\ldots,L_m\}\). Its response is \(\bm y_{bmc}\in\mathbb R^{d_b}\), design row \(X_{bmc}\in\mathbb R^{1\times k}\), where \(k\in\mathbb N\), coefficient matrix \(\Beta_b\in\mathbb R^{k\times d_b}\), mouse random effect \(\bm u_{bm}\in\mathbb R^{d_b}\), and residual \(\bm e_{bmc}\in\mathbb R^{d_b}\): \[
  \bm y_{bmc}=(X_{bmc}\Beta_b)^\prime+\bm u_{bm}+\bm e_{bmc}.
 \]
-The random terms satisfy \(\operatorname E(\bm u_{bm})=\operatorname E(\bm e_{bmc}) =\bm0_{d_b}\), \(\operatorname{Var}(\bm u_{bm})=\tau_{\rm mouse}^2I_{d_b}\), and \(\operatorname{Var}(\bm e_{bmc})= V_{bmc}+\tau_{\rm resid}^2I_{d_b}\). They are independent across mice, and residuals are independent across cell types conditional on \(\bm u_{bm}\). Hence, for \(c\neq c'\),
-\[
+The random terms satisfy \(\operatorname E(\bm u_{bm})=\operatorname E(\bm e_{bmc}) =\bm0_{d_b}\), \(\operatorname{Var}(\bm u_{bm})=\tau_{\rm mouse}^2I_{d_b}\), and \(\operatorname{Var}(\bm e_{bmc})= V_{bmc}+\tau_{\rm resid}^2I_{d_b}\). They are independent across mice, and residuals are independent across cell types conditional on \(\bm u_{bm}\). Hence, for \(c\neq c'\), \[
  \operatorname{Cov}(\bm y_{bmc},\bm y_{bmc'})=
  \tau_{\rm mouse}^2I_{d_b},\qquad
  \operatorname{Var}(\bm y_{bmc})=
@@ -730,8 +687,7 @@ where \(V_{bmc}\in\mathbb S_+^{d_b}\), and \(\tau_{\rm mouse}^2,\tau_{\rm resid}
 
 The formal generalized linear mixed model uses the same shared-condition design as the joint Gaussian model but retains the multinomial response. Let \(\widetilde{\bm x}_{bmc}\in\mathbb N_0^{S_b}\) be integer path counts with \(\widetilde n_{bmc}=\bm1_{S_b}^\prime\widetilde{\bm x}_{bmc} \in\mathbb N\). They are obtained from the fractional effective counts \(\bm x_{bmc}\) by rounding \(n_{bmc}^{\rm eff}\) to the nearest positive integer and distributing the remaining molecules to paths by largest fractional remainder. This makes the conditional response a proper multinomial while changing each effective total by at most one.
 
-For design row \(X_{bmc}\in\mathbb R^{1\times k}\), fixed coefficients \(\Beta_b\in\mathbb R^{k\times d_b}\), and mouse random intercept \(\bm u_{bm}\in\mathbb R^{d_b}\), define
-\[
+For design row \(X_{bmc}\in\mathbb R^{1\times k}\), fixed coefficients \(\Beta_b\in\mathbb R^{k\times d_b}\), and mouse random intercept \(\bm u_{bm}\in\mathbb R^{d_b}\), define \[
  \bm\xi_{bmc}=X_{bmc}\Beta_b+\bm u_{bm}^\prime
  \in\mathbb R^{1\times d_b},
 \qquad
@@ -739,8 +695,7 @@ For design row \(X_{bmc}\in\mathbb R^{1\times k}\), fixed coefficients \(\Beta_b
  \operatorname{softmax}\{(\bm\xi_{bmc},0)\}
  \in\Delta^{S_b-1}.
 \]
-The final path is the reference category. The model is
-\[
+The final path is the reference category. The model is \[
  \widetilde{\bm x}_{bmc}\mid\bm u_{bm}
  \sim\operatorname{Multinomial}(\widetilde n_{bmc},\bm\mu_{bmc}),
  \qquad
@@ -748,8 +703,7 @@ The final path is the reference category. The model is
 \]
 where \(\sigma_b^2\in\mathbb R_+\) is re-estimated under both null and alternative. An isotropic random-effect covariance is used because some blocks have few mice; an unstructured \(d_b\times d_b\) covariance would introduce \(d_b(d_b+1)/2\) variance parameters per block.
 
-Let \(\ell_{bm}(\bm u;\Beta_b,\sigma_b)\in\mathbb R\) be mouse \(m\)'s conditional multinomial log likelihood plus its Gaussian log density, and let
-\[
+Let \(\ell_{bm}(\bm u;\Beta_b,\sigma_b)\in\mathbb R\) be mouse \(m\)'s conditional multinomial log likelihood plus its Gaussian log density, and let \[
  \widehat{\bm u}_{bm}
  =\arg\max_{\bm u\in\mathbb R^{d_b}}\ell_{bm}(\bm u;\Beta_b,\sigma_b),
  \qquad
@@ -757,8 +711,7 @@ Let \(\ell_{bm}(\bm u;\Beta_b,\sigma_b)\in\mathbb R\) be mouse \(m\)'s condition
  {\partial\bm u\,\partial\bm u^\prime}
  \bigg|_{\widehat{\bm u}_{bm}}\in\mathbb S_+^{d_b}.
 \]
-The Laplace log marginal likelihood, up to constants common to nested models, is
-\[
+The Laplace log marginal likelihood, up to constants common to nested models, is \[
  \ell_b^{\rm Lap}(\Beta_b,\sigma_b)
  =\sum_{m=1}^M\left[
    \ell_{bm}(\widehat{\bm u}_{bm};\Beta_b,\sigma_b)
@@ -771,15 +724,13 @@ The implementation differentiates this approximation through 30 damped Newton up
 
 The path-count GLMM above treats estimated effective path counts as its response. The following restatement of the observed-EC model supplies context for the additional Dirichlet--multinomial, Laplace, CAVI, Monte Carlo, and R\'enyi inference comparisons. For gene \(g\), let \(T_g\in\mathbb N\) be its number of supported isoforms, \(d_g=T_g-1\), \(I_g\in\mathbb N\) the number of retained pseudobulks, \(M_g\in\mathbb N\) the number of mice, and \(P=2\) the primer count. Primer \(p\) has \(K_{gp}\in\mathbb N\) gene-assigned ECs. Define the observed counts \(\bm c_{gip}\in\mathbb N_0^{K_{gp}}\), total \(n_{gip}=\bm1_{K_{gp}}^\prime\bm c_{gip}\in\mathbb N_0\), and fixed compatibility or conditional-weight matrix \(A_{gp}\in\mathbb R_+^{K_{gp}\times T_g}\). Unsupported annotated isoforms and ECs not uniquely assigned to \(g\) are excluded.
 
-Let \(X_g\in\mathbb R^{I_g\times q}\) be the fixed-effect design, \(B_g\in\mathbb R^{q\times d_g}\) its coefficient matrix, and \(u_{gm}\in\mathbb R^{d_g}\) mouse \(m\)'s random isoform-logit intercept. With mouse index \(m(i)\in\{1,\ldots,M_g\}\), the reference-isoform parameterization is
-\[
+Let \(X_g\in\mathbb R^{I_g\times q}\) be the fixed-effect design, \(B_g\in\mathbb R^{q\times d_g}\) its coefficient matrix, and \(u_{gm}\in\mathbb R^{d_g}\) mouse \(m\)'s random isoform-logit intercept. With mouse index \(m(i)\in\{1,\ldots,M_g\}\), the reference-isoform parameterization is \[
  \eta_{gi}=\{X_{gi}B_g+u_{g,m(i)}^\prime,0\}
  \in\mathbb R^{T_g},
  \qquad
  u_{gm}\sim N(0,\sigma_g^2I_{d_g}).
 \]
-The probability of EC \(k\) from primer \(p\) is
-\[
+The probability of EC \(k\) from primer \(p\) is \[
  q_{gipk}(\eta_{gi})=
  \frac{\sum_{t=1}^{T_g}A_{gpkt}\exp(\eta_{git})}
  {\sum_{h=1}^{K_{gp}}\sum_{t=1}^{T_g}
@@ -787,13 +738,11 @@ The probability of EC \(k\) from primer \(p\) is
  \qquad
  \bm q_{gip}\in\Delta^{K_{gp}-1}.
 \]
-Thus the two primers share \(B_g\) and \(u_{gm}\), but retain distinct EC maps and positional-coverage weights. The conditional model is either
-\[
+Thus the two primers share \(B_g\) and \(u_{gm}\), but retain distinct EC maps and positional-coverage weights. The conditional model is either \[
  \bm c_{gip}\mid u_{g,m(i)}
  \sim\operatorname{Multinomial}(n_{gip},\bm q_{gip})
 \]
-or
-\[
+or \[
  \bm c_{gip}\mid u_{g,m(i)}
  \sim\operatorname{DirichletMultinomial}
  (n_{gip},\kappa_g\bm q_{gip}),
@@ -801,8 +750,7 @@ or
 \]
 The latter adds pseudobulk-level EC overdispersion. It is a direct Dirichlet--multinomial over EC categories, not a Dirichlet model over latent isoform allocations.
 
-An alternative overdispersion model retains the multinomial observation but adds an isotropic observation-level logistic-normal effect. For pseudobulk $i$, let $e_{gi}\in\mathbb R^{d_g}$ and replace the linear predictor by
-\[
+An alternative overdispersion model retains the multinomial observation but adds an isotropic observation-level logistic-normal effect. For pseudobulk $i$, let $e_{gi}\in\mathbb R^{d_g}$ and replace the linear predictor by \[
  \eta_{gi}=\{X_{gi}B_g+u_{g,m(i)}^\prime+e_{gi}^\prime,0\},
  \qquad e_{gi}\sim N(0,\tau_g^2I_{d_g}),
  \quad \tau_g\in\mathbb R_+.
@@ -811,77 +759,68 @@ The same $e_{gi}$ enters both primer likelihoods, because it perturbs the underl
 
 Laplace inference maximizes the joint conditional density over \(u_g\in\mathbb R^{M_g\times d_g}\). Its negative Hessian satisfies \(H_g\in\mathbb S_+^{M_gd_g}\), and the marginal approximation adds the correction \(-\tfrac12\log|H_g|\). The outer fit optimizes \(B_g\), \(\sigma_g\), and, for the overdispersed model, \(\kappa_g\).
 
+For outer parameter vector \(\bm\theta_g\in\mathbb R^{p_g}\), cluster mode \(\widehat{\bm u}_{gm}\in\mathbb R^{d_g}\), mode score \(\bm s_{gm}=\partial\ell_{gm}/\partial\bm u_{gm}\in\mathbb R^{d_g}\), and positive mode Hessian \(H_{gm}=-\partial\bm s_{gm}/\partial\bm u_{gm}\in\mathbb S_{++}^{d_g}\), the fitted mode satisfies \(\bm s_{gm}(\widehat{\bm u}_{gm},\bm\theta_g)=\bm0_{d_g}\). Rather than retaining and differentiating through every Newton update, the optimized implementation differentiates this stationarity equation implicitly, \[\frac{\partial\widehat{\bm u}_{gm}}{\partial\bm\theta_g}=H_{gm}^{-1}\frac{\partial\bm s_{gm}}{\partial\bm\theta_g}\in\mathbb R^{d_g\times p_g}.\] For a reverse-mode cotangent \(\bm v_{gm}\in\mathbb R^{d_g}\), it solves one \(d_g\times d_g\) system with \(H_{gm}\) and applies the score vector--Jacobian product. This gives the derivative of the same Laplace objective at a converged mode without backpropagating through the 12 Newton updates. Fits that fail the joint outer-gradient and mode-score criteria receive a 30-update continuation. Compiled objectives are reused only among contiguous tests with the same gene, pseudobulk set, and tensor shape; counts and block-specific fixed-effect tensors are dynamic arguments, and the cache is released before the next group.
+
 \subsubsection*{Nonbootstrap Laplace inference}
 
-The block test uses the same fixed-effect tensors as the primary variational fit. Write the null tensor as \(Z_{0b}\in\mathbb R^{I_g\times d_g\times p_{0b}}\) and the alternative as \(Z_{1b}\in\mathbb R^{I_g\times d_g\times p_{1b}}\), where the first \(p_{0b}\) slices of \(Z_{1b}\) equal \(Z_{0b}\). The remaining \(q_b=p_{1b}-p_{0b}=r_bd_b^{\rm path}\) coefficients are exactly the tested block-path interactions. For coefficient vector \(\bm\beta_b\in\mathbb R^{p_{jb}}\), the fixed nonreference-isoform logits for pseudobulk \(i\) are
-\[
+The block test uses the same fixed-effect tensors as the primary variational fit. Write the null tensor as \(Z_{0b}\in\mathbb R^{I_g\times d_g\times p_{0b}}\) and the alternative as \(Z_{1b}\in\mathbb R^{I_g\times d_g\times p_{1b}}\), where the first \(p_{0b}\) slices of \(Z_{1b}\) equal \(Z_{0b}\). The remaining \(q_b=p_{1b}-p_{0b}=r_bd_b^{\rm path}\) coefficients are exactly the tested block-path interactions. For coefficient vector \(\bm\beta_b\in\mathbb R^{p_{jb}}\), the fixed nonreference-isoform logits for pseudobulk \(i\) are \[
  \bm\eta^{\rm fix}_{gbi}
  =Z_{jb,i,\cdot,\cdot}\bm\beta_b\in\mathbb R^{d_g},
  \qquad j\in\{0,1\}.
 \]
 Thus the likelihood still contains every supported gene isoform and EC; only the tested fixed-effect subspace is block specific.
 
-Let \(\widehat\ell^{\rm Lap}_{0b}\) and \(\widehat\ell^{\rm Lap}_{1b}\) be the maximized Laplace marginal log likelihoods, including re-estimation of all shared variance parameters. The nonbootstrap likelihood-ratio statistic and nominal reference distribution are
-\[
+Let \(\widehat\ell^{\rm Lap}_{0b}\) and \(\widehat\ell^{\rm Lap}_{1b}\) be the maximized Laplace marginal log likelihoods, including re-estimation of all shared variance parameters. The nonbootstrap likelihood-ratio statistic and nominal reference distribution are \[
  D_b=2\{\widehat\ell^{\rm Lap}_{1b}
           -\widehat\ell^{\rm Lap}_{0b}\},
  \qquad D_b\mathrel{\dot\sim}\chi^2_{q_b}.
 \]
-The alternative starts from the null estimate with its \(q_b\) added coefficients set to zero. A BIC approximation to the alternative-versus-null Bayes factor uses the number \(M_g\) of independent mice rather than the number of pseudobulks:
-\[
+The alternative starts from the null estimate with its \(q_b\) added coefficients set to zero. A BIC approximation to the alternative-versus-null Bayes factor uses the number \(M_g\) of independent mice rather than the number of pseudobulks: \[
  \log \widehat{\mathrm{BF}}_{10,b}^{\rm BIC}
  =\frac12\{D_b-q_b\log M_g\}\in\mathbb R.
 \]
 This is not a prior-integrated Bayes factor. Both calculations require only the null and alternative fits, compared with one null and one alternative fit for every parametric-bootstrap replicate. Their calibration can fail when the number of mice is small, a variance estimate lies on its boundary, or the Laplace outer optimizer is inaccurate. They are therefore compared with the completed mouse bootstrap analysis before being used as a replacement for empirical calibration.
 
-For variational inference, use the diagonal Gaussian family
-\[
+For variational inference, use the diagonal Gaussian family \[
  Q(u_g)=\prod_{m=1}^{M_g}\prod_{j=1}^{d_g}
  N(u_{gmj};\mu_{gmj},s_{gmj}^2),
  \quad \mu_g,s_g\in\mathbb R^{M_g\times d_g},\quad s_{gmj}>0.
 \]
-For the multinomial likelihood, latent EC-to-isoform responsibilities \(r_{gipkt}\in[0,1]\), with \(\sum_t r_{gipkt}=1\) on the support of \(A_{gpkt}\), give the optimized lower bound
-\[
+For the multinomial likelihood, latent EC-to-isoform responsibilities \(r_{gipkt}\in[0,1]\), with \(\sum_t r_{gipkt}=1\) on the support of \(A_{gpkt}\), give the optimized lower bound \[
  E_Q\!\left[\log\sum_t A_{gpkt}e^{\eta_{git}}\right]
  \geq
  \log\sum_t A_{gpkt}e^{E_Q\eta_{git}}.
 \]
-The normalizer needs an upper bound. For one observation and primer, let \(m_{gipt}=E_Q\eta_{git}+\log\sum_kA_{gpkt}\), \(v_{gipt}=\operatorname{Var}_Q(\eta_{git})\), and \(a_{gip}\in\Delta^{T_g-1}\). The tilted softmax bound of Knowles and Minka is
-\[
+The normalizer needs an upper bound. For one observation and primer, let \(m_{gipt}=E_Q\eta_{git}+\log\sum_kA_{gpkt}\), \(v_{gipt}=\operatorname{Var}_Q(\eta_{git})\), and \(a_{gip}\in\Delta^{T_g-1}\). The tilted softmax bound of Knowles and Minka is \[
  E_Q\log\sum_{t=1}^{T_g}e^{\eta_{git}+\log\sum_kA_{gpkt}}
  \leq \frac12\sum_ta_{gipt}^2v_{gipt}
  +\log\sum_t\exp\!\left\{
  m_{gipt}+\frac{1-2a_{gipt}}2v_{gipt}\right\},
 \]
-where the local coordinate satisfies
-\[
+where the local coordinate satisfies \[
  a_{gip}=\operatorname{softmax}\{m_{gip}
  +\tfrac12(1-2a_{gip})\mathbin\odot v_{gip}\}.
 \]
 Alternating the analytic responsibilities, this local fixed point, and the global Gaussian parameters maximizes a tractable lower bound on the multinomial evidence. The cited method is non-conjugate variational message passing rather than conjugate CAVI; here ``tilted CAVI'' refers only to this block-coordinate implementation.
 
-The full-covariance extension factorizes only across mice. If mouse $m$ has $q_{gm}\in\mathbb N$ observed pseudobulks, define its complete latent block
-\[
+The full-covariance extension factorizes only across mice. If mouse $m$ has $q_{gm}\in\mathbb N$ observed pseudobulks, define its complete latent block \[
  z_{gm}=(u_{gm}^\prime,e_{gi_1}^\prime,\ldots,e_{gi_{q_{gm}}}^\prime)^\prime
  \in\mathbb R^{L_{gm}},
  \qquad L_{gm}=(q_{gm}+1)d_g,
 \]
-where the $e$ components are omitted in the model without observation noise. Its prior covariance is diagonal,
-\[
+where the $e$ components are omitted in the model without observation noise. Its prior covariance is diagonal, \[
  P_{gm}=\operatorname{diag}
  (\sigma_g^2 I_{d_g},\tau_g^2 I_{q_{gm}d_g})
  \in\mathbb S_+^{L_{gm}},
 \]
-but its posterior approximation is unrestricted within mouse,
-\[
+but its posterior approximation is unrestricted within mouse, \[
  Q(z_g)=\prod_{m=1}^{M_g}N(z_{gm};\mu_{gm},\Sigma_{gm}),
  \quad \mu_{gm}\in\mathbb R^{L_{gm}},\quad
  \Sigma_{gm}\in\mathbb S_{++}^{L_{gm}}.
 \]
 Thus full covariance describes posterior dependence among isoform logits and between a shared mouse effect and its pseudobulk residuals; it does not add an unstructured covariance parameter to the generative model.
 
-For a block-specific cell-type test, the EC likelihood still contains all \(T_g\) supported isoforms of gene \(g\); the response is not reduced to path counts. Let \(J_b\in\mathbb N\) be the number of represented cell types, \(Z_b\in\mathbb R^{I_g\times q_0}\) the one-hot condition design, and \(W_b\in\mathbb R^{I_g\times(J_b-1)}\) the treatment-coded cell-type design. Define \(D_b\in\mathbb R^{T_g\times d_b}\) by assigning row \(t\) the corresponding row of \(Q_b\) when isoform \(t\) takes a represented path through block \(b\), and assigning it \(\bm0_{d_b}^\prime\) when the isoform is outside the block map. Center the columns of \(D_b\), and let \(N_b^{\rm full}\in\mathbb R^{T_g\times(T_g-S_b)}\) be an orthonormal basis for the subspace orthogonal to both its columns and \(\bm1_{T_g}\). In reference-isoform coordinates, define
-\[
+For a block-specific cell-type test, the EC likelihood still contains all \(T_g\) supported isoforms of gene \(g\); the response is not reduced to path counts. Let \(J_b\in\mathbb N\) be the number of represented cell types, \(Z_b\in\mathbb R^{I_g\times q_0}\) the one-hot condition design, and \(W_b\in\mathbb R^{I_g\times(J_b-1)}\) the treatment-coded cell-type design. Define \(D_b\in\mathbb R^{T_g\times d_b}\) by assigning row \(t\) the corresponding row of \(Q_b\) when isoform \(t\) takes a represented path through block \(b\), and assigning it \(\bm0_{d_b}^\prime\) when the isoform is outside the block map. Center the columns of \(D_b\), and let \(N_b^{\rm full}\in\mathbb R^{T_g\times(T_g-S_b)}\) be an orthonormal basis for the subspace orthogonal to both its columns and \(\bm1_{T_g}\). In reference-isoform coordinates, define \[
  H_b=D_{b,1:(T_g-1),:}
      -\bm1_{T_g-1}D_{b,T_g,:}
  \in\mathbb R^{d_g\times d_b},
@@ -890,8 +829,7 @@ For a block-specific cell-type test, the EC likelihood still contains all \(T_g\
      -\bm1_{T_g-1}N_{b,T_g,:}^{\rm full}
  \in\mathbb R^{d_g\times(T_g-S_b)}.
 \]
-The free-logit predictor is
-\[
+The free-logit predictor is \[
  \eta_{gi,-}=Z_{bi}B_{g0}
  +\sum_{j=1}^{J_b-1}W_{bij}
    (N_b\bm\alpha_{bj}+H_b\bm\gamma_{bj})
@@ -900,16 +838,14 @@ The free-logit predictor is
 \]
 where \(B_{g0}\in\mathbb R^{q_0\times d_g}\) contains unrestricted condition effects, \(\bm\alpha_{bj}\in\mathbb R^{T_g-S_b}\) contains cell-type nuisance effects orthogonal to the tested block directions, and \(\bm\gamma_{bj}\in\mathbb R^{d_b}\) is cell type \(j\)'s block-path contrast. The \(e_{gi}\) term is present only in the logistic-normal sensitivity model. The null estimates every \(\bm\alpha_{bj}\) but sets all \(\bm\gamma_{bj}=\bm0_{d_b}\); the alternative has \((J_b-1)d_b\) additional coefficients. The combined columns of \(N_b\) and \(H_b\) span all \(d_g\) isoform-logit directions, so the alternative permits unrestricted cell-type isoform composition while the null absorbs every direction orthogonal to the tested path contrast. This construction makes the EC GLMM a per-block test while preserving gene-wide ambiguity and nuisance mass.
 
-For pseudobulk \(i\), let \(R_{gi}\in\{0,1\}^{d_g\times L_{g,m(i)}}\) select and sum its mouse and pseudobulk effects. Its free-logit covariance is $R_{gi}\Sigma_{g,m(i)}R_{gi}^\prime\in\mathbb S_+^{d_g}$; append a zero row and column for the reference isoform to obtain $V_{gi}\in\mathbb S_+^{T_g}$. The correlated tilted bound replaces the variance vector in the diagonal expression. For $m\in\mathbb R^{T_g}$, $V\in\mathbb S_+^{T_g}$, and $a\in\Delta^{T_g-1}$,
-\[
+For pseudobulk \(i\), let \(R_{gi}\in\{0,1\}^{d_g\times L_{g,m(i)}}\) select and sum its mouse and pseudobulk effects. Its free-logit covariance is $R_{gi}\Sigma_{g,m(i)}R_{gi}^\prime\in\mathbb S_+^{d_g}$; append a zero row and column for the reference isoform to obtain $V_{gi}\in\mathbb S_+^{T_g}$. The correlated tilted bound replaces the variance vector in the diagonal expression. For $m\in\mathbb R^{T_g}$, $V\in\mathbb S_+^{T_g}$, and $a\in\Delta^{T_g-1}$, \[
  E\log\sum_t e^{\eta_t}
  \leq \frac12a^\prime Va
  +\log\sum_t\exp\{m_t+\tfrac12V_{tt}-(Va)_t\},
  \qquad
  a=\operatorname{softmax}\{m+\tfrac12\operatorname{diag}(V)-Va\}.
 \]
-The Gaussian KL term is analytic:
-\[
+The Gaussian KL term is analytic: \[
  \operatorname{KL}(Q_m\Vert P_m)=\frac12\left[
  \operatorname{tr}(P_m^{-1}\Sigma_m)
  +\mu_m^\prime P_m^{-1}\mu_m-L_{gm}
@@ -917,25 +853,21 @@ The Gaussian KL term is analytic:
 \]
 Each positive-definite $\Sigma_m$ is represented by an unconstrained lower Cholesky factor with exponentiated diagonal. The full fit warm-starts from a diagonal variational posterior by copying its means and marginal variances and setting new off-diagonal entries to zero.
 
-The direct EC Dirichlet--multinomial contains \(\log\Gamma\{\kappa_gq_{gipk}(u)+c_{gipk}\}\), so the tilted softmax bound does not yield coordinate updates for it. Both likelihood families are therefore also fit with reparameterized Monte Carlo VI. If \(w(u)=p(c,u)/Q(u)\), the optimized objective is the ELBO
-\[
+The direct EC Dirichlet--multinomial contains \(\log\Gamma\{\kappa_gq_{gipk}(u)+c_{gipk}\}\), so the tilted softmax bound does not yield coordinate updates for it. Both likelihood families are therefore also fit with reparameterized Monte Carlo VI. If \(w(u)=p(c,u)/Q(u)\), the optimized objective is the ELBO \[
  \mathcal L_1=E_Q\log w(u)
 \]
-or the variational R\'enyi bound of order \(\alpha\in(0,1)\),
-\[
+or the variational R\'enyi bound of order \(\alpha\in(0,1)\), \[
  \mathcal L_\alpha=
  \frac{1}{1-\alpha}\log E_Q\{w(u)^{1-\alpha}\}.
 \]
-The comparison uses \(\alpha=0.5\), antithetic Gaussian draws, and the same diagonal or full Gaussian family. Conditional on \(B_g,\sigma_g,\kappa_g\), both the likelihood and \(Q\) factor by mouse. Writing the corresponding ratio as \(w_m(u_{gm})\), the implementation evaluates the equivalent expression
-\[
+The comparison uses \(\alpha=0.5\), antithetic Gaussian draws, and the same diagonal or full Gaussian family. Conditional on \(B_g,\sigma_g,\kappa_g\), both the likelihood and \(Q\) factor by mouse. Writing the corresponding ratio as \(w_m(u_{gm})\), the implementation evaluates the equivalent expression \[
  \mathcal L_\alpha=
  \sum_{m=1}^{M_g}\frac{1}{1-\alpha}
  \log E_{Q_m}\{w_m(u_{gm})^{1-\alpha}\}.
 \]
 This avoids the exponential importance-weight degeneracy caused by forming one product weight over all mice. R\'enyi VI is not called CAVI because its importance-weighted objective has no coordinate update under this model. For the full posterior with observation-level noise, directly optimizing a fixed set of Monte Carlo draws is ill-conditioned: the Cholesky factor can overfit sample correlations when $L_{gm}$ is not small relative to the draw count. This variant is therefore fit with the analytic tilted objective; fresh antithetic draws evaluate its exact-likelihood ELBO and R\'enyi bound.
 
-The block statistic is twice the optimized alternative-minus-null variational objective. Its reference distribution is empirical rather than \(\chi^2\), because it compares optimized evidence bounds and can inherit approximation error. A synchronized label permutation is invalid here because the block null permits real cell-type nuisance effects in orthogonal isoform directions. Instead, a parametric bootstrap simulates mouse effects and optional pseudobulk effects from the fitted block null, generates paired-primer EC counts with the observed primer-specific pseudobulk totals, and refits both nested models. Each observed statistic is compared with a leave-block-out pool of bootstrap statistics matched by likelihood family and tested dimension \((J_b-1)d_b\). Tested dimensions represented by fewer than 20 blocks are combined into a rare-dimension stratum within the same likelihood. Matching gene-depth quartiles fragmented the empirical tail enough to limit BH resolution in the genome-wide analysis. Depth is therefore an independent calibration audit rather than a pooling variable. With null pool \(\mathcal N_{-b}\),
-\[
+The block statistic is twice the optimized alternative-minus-null variational objective. Its reference distribution is empirical rather than \(\chi^2\), because it compares optimized evidence bounds and can inherit approximation error. A synchronized label permutation is invalid here because the block null permits real cell-type nuisance effects in orthogonal isoform directions. Instead, a parametric bootstrap simulates mouse effects and optional pseudobulk effects from the fitted block null, generates paired-primer EC counts with the observed primer-specific pseudobulk totals, and refits both nested models. Each observed statistic is compared with a leave-block-out pool of bootstrap statistics matched by likelihood family and tested dimension \((J_b-1)d_b\). Tested dimensions represented by fewer than 20 blocks are combined into a rare-dimension stratum within the same likelihood. Matching gene-depth quartiles fragmented the empirical tail enough to limit BH resolution in the genome-wide analysis. Depth is therefore an independent calibration audit rather than a pooling variable. With null pool \(\mathcal N_{-b}\), \[
  p_b=\frac{1+\sum_{z\in\mathcal N_{-b}}
                    \mathbf1\{z\geq T_b\}}
               {1+|\mathcal N_{-b}|}.
@@ -944,35 +876,30 @@ Every bootstrap statistic is calibrated by the same leave-block-out rule. Benjam
 
 \subsection*{Liang--Zeger multinomial GEE}
 
-GEE specifies only the marginal mean and first two moments. It can therefore use the fractional effective counts directly. Define \(\bm p_{bmc}=\bm x_{bmc}/n_{bmc}^{\rm eff}\in\Delta^{S_b-1}\), and let \(\bm p_{bmc,-}\in\mathbb R^{d_b}\) omit the reference path. Its marginal mean uses the same reference-logit regression,
-\[
+GEE specifies only the marginal mean and first two moments. It can therefore use the fractional effective counts directly. Define \(\bm p_{bmc}=\bm x_{bmc}/n_{bmc}^{\rm eff}\in\Delta^{S_b-1}\), and let \(\bm p_{bmc,-}\in\mathbb R^{d_b}\) omit the reference path. Its marginal mean uses the same reference-logit regression, \[
  \bm\mu_{bmc}=\operatorname{softmax}\{(X_{bmc}\Beta_b,0)\},
  \qquad
  G_{bmc}=\operatorname{diag}(\bm\mu_{bmc,-})
  -\bm\mu_{bmc,-}\bm\mu_{bmc,-}^\prime
  \in\mathbb S_+^{d_b}.
 \]
-The working covariance of one proportion vector is \(A_{bmc}=G_{bmc}/n_{bmc}^{\rm eff}\in\mathbb S_+^{d_b}\). Let \(L_{bmc}\in\mathbb R^{d_b\times d_b}\) be its symmetric square root, and let
-\[
+The working covariance of one proportion vector is \(A_{bmc}=G_{bmc}/n_{bmc}^{\rm eff}\in\mathbb S_+^{d_b}\). Let \(L_{bmc}\in\mathbb R^{d_b\times d_b}\) be its symmetric square root, and let \[
  D_{bmc}=\frac{\partial\bm\mu_{bmc,-}}
  {\partial\operatorname{vec}(\Beta_b)^\prime}
  =[X_{bmc,1}G_{bmc}\ \cdots\ X_{bmc,k}G_{bmc}]
  \in\mathbb R^{d_b\times kd_b}.
 \]
 
-For mouse \(m\), stack its \(q_m\in\mathbb N\) observed cell types into \(\bm p_{bm,-}\in\mathbb R^{q_md_b}\), mean \(\bm\mu_{bm,-}\in\mathbb R^{q_md_b}\), and derivative \(D_{bm}\in\mathbb R^{q_md_b\times kd_b}\). With \(L_{bm}=\operatorname{blockdiag}_c(L_{bmc})\) and exchangeable \(R_m(\alpha_b)\in\mathbb R^{q_m\times q_m}\), the Liang--Zeger working covariance is
-\[
+For mouse \(m\), stack its \(q_m\in\mathbb N\) observed cell types into \(\bm p_{bm,-}\in\mathbb R^{q_md_b}\), mean \(\bm\mu_{bm,-}\in\mathbb R^{q_md_b}\), and derivative \(D_{bm}\in\mathbb R^{q_md_b\times kd_b}\). With \(L_{bm}=\operatorname{blockdiag}_c(L_{bmc})\) and exchangeable \(R_m(\alpha_b)\in\mathbb R^{q_m\times q_m}\), the Liang--Zeger working covariance is \[
  W_{bm}=\phi_bL_{bm}
  \{R_m(\alpha_b)\otimes I_{d_b}\}L_{bm}^\prime
  \in\mathbb S_+^{q_md_b}.
 \]
-The scale \(\phi_b\in\mathbb R_+\) and working correlation \(\alpha_b\in(-1/(q_{\max}-1),1)\) are updated from whitened Pearson residuals. Coefficients solve
-\[
+The scale \(\phi_b\in\mathbb R_+\) and working correlation \(\alpha_b\in(-1/(q_{\max}-1),1)\) are updated from whitened Pearson residuals. Coefficients solve \[
  \sum_{m=1}^M D_{bm}^\prime W_{bm}^{-1}
  (\bm p_{bm,-}-\bm\mu_{bm,-})=\bm0_{kd_b}.
 \]
-If \(\bm U_{bm}=D_{bm}^\prime W_{bm}^{-1} (\bm p_{bm,-}-\bm\mu_{bm,-})\in\mathbb R^{kd_b}\) and \(\mathcal H_b=\sum_mD_{bm}^\prime W_{bm}^{-1}D_{bm} \in\mathbb S_+^{kd_b}\), the canonical cluster-robust covariance is
-\[
+If \(\bm U_{bm}=D_{bm}^\prime W_{bm}^{-1} (\bm p_{bm,-}-\bm\mu_{bm,-})\in\mathbb R^{kd_b}\) and \(\mathcal H_b=\sum_mD_{bm}^\prime W_{bm}^{-1}D_{bm} \in\mathbb S_+^{kd_b}\), the canonical cluster-robust covariance is \[
  \widehat{\operatorname{Var}}\{\operatorname{vec}(\widehat\Beta_b)\}
  =\mathcal H_b^+
  \left(\sum_{m=1}^M\bm U_{bm}\bm U_{bm}^\prime\right)
@@ -983,8 +910,7 @@ The condition coefficients are tested by a robust Wald statistic. No small-sampl
 
 \subsection*{Matched power benchmark}
 
-Power is evaluated only for partitions represented by exactly two conditions. For replicate \(r\), condition labels are first permuted among mice. Let \(z_{bmc}^{(r)}\in\{0,1\}\) be the resulting non-reference condition indicator and let \(\bm v_b\in\mathbb R^{d_b}\) be a reproducible random unit vector. For ILR effect \(\gamma\in\{0.25,0.5\}\), define
-\[
+Power is evaluated only for partitions represented by exactly two conditions. For replicate \(r\), condition labels are first permuted among mice. Let \(z_{bmc}^{(r)}\in\{0,1\}\) be the resulting non-reference condition indicator and let \(\bm v_b\in\mathbb R^{d_b}\) be a reproducible random unit vector. For ILR effect \(\gamma\in\{0.25,0.5\}\), define \[
  \bm y_{bmc}^{(r,\gamma)}
  =\bm y_{bmc}+\gamma z_{bmc}^{(r)}\bm v_b,\qquad
  \bm\psi_{bmc}^{(r,\gamma)}
@@ -1314,8 +1240,7 @@ For the cell-resolved variant, sparse cell-by-EC matrices are retained and one l
 
 \subsection*{Identifiability and reliability}
 
-Finite Fisher covariance is not sufficient near a simplex boundary. Parametric bootstrap identified two reliability requirements:
-\[
+Finite Fisher covariance is not sufficient near a simplex boundary. Parametric bootstrap identified two reliability requirements: \[
   \lambda_{\max}(V_{bi})\leq 1/8
   \quad\text{and}\quad
   \min_s\widehat\psi_{bis}\geq 0.15.
@@ -1470,8 +1395,7 @@ Across the 25-UMI analysis, 2.7\% of permuted-label Wald p-values were below 0.0
 
 Numerical tests additionally verify skipped-exon block construction, identifiable covariance after collapsing indistinguishable isoforms, rejection of information-null path contrasts, the analytic binomial Fisher variance, and recovery of imposed GLS effects.
 
-\subsection*{Coverage-cutoff sensitivity}
-\[
+\subsection*{Coverage-cutoff sensitivity} \[
 \begin{array}{rrrrrr}
 \toprule
 \text{UMIs} & \text{blocks} & \text{tests} &
