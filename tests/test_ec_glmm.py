@@ -1,10 +1,12 @@
 """Tests for GLMMs that retain equivalence-class counts as observations."""
 
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 
 from tealeaf.sc import ec_block_glmm, ec_glmm, ec_glmm_full
-from extra_scripts import run_ec_glmm
+from extra_scripts import run_ec_block_glmm, run_ec_glmm
 
 
 def simulated_data(seed=4, effect=0.9, family="multinomial"):
@@ -232,12 +234,15 @@ def test_full_covariance_and_observation_noise_fits():
     initial = ec_glmm_full.variational_warm_start(
         laplace, data.design.shape[1]
     )
+    objective_cache = {}
     fit = ec_glmm_full.fit_tilted_variational_robust(
         data,
         observation_noise=True,
         initial=initial,
         max_iter=5,
         fallback_iter=2,
+        objective_cache=objective_cache,
+        objective_cache_key="test",
     )
     assert np.isfinite(fit["objective"])
     assert fit["random_effect_covariance"].shape == (10, 1, 1)
@@ -247,5 +252,66 @@ def test_full_covariance_and_observation_noise_fits():
     assert fit["iterations"] == (
         fit["strict_iterations"] + fit["fallback_iterations"]
     )
+    assert len(objective_cache) == 1
+    changed_counts = tuple(np.asarray(value).copy() for value in data.counts)
+    changed_counts[1][:, 0] += 1
+    changed = ec_glmm.ECGLMMData(
+        changed_counts,
+        data.compatibility,
+        data.design,
+        data.clusters,
+    )
+    cached = ec_glmm_full.fit_tilted_variational_robust(
+        changed,
+        observation_noise=True,
+        initial=fit["parameters"],
+        max_iter=1,
+        fallback_iter=0,
+        objective_cache=objective_cache,
+        objective_cache_key="test",
+    )
+    uncached = ec_glmm_full.fit_tilted_variational_robust(
+        changed,
+        observation_noise=True,
+        initial=fit["parameters"],
+        max_iter=1,
+        fallback_iter=0,
+    )
+    assert cached["objective"] == pytest.approx(uncached["objective"])
+    np.testing.assert_allclose(cached["parameters"], uncached["parameters"])
     scores = ec_glmm_full.evaluate_objectives(data, fit, samples=32)
     assert np.isfinite(list(scores.values())).all()
+
+
+def test_version_two_candidate_cache_settings_are_compatible():
+    settings = run_ec_block_glmm.normalize_cached_candidate_settings(
+        {"version": 2}
+    )
+    assert settings == {
+        "version": 3,
+        "subject_folds": None,
+        "subject_fold": None,
+        "joint_gene_test": False,
+    }
+
+
+def test_laplace_retry_uses_more_mode_steps(monkeypatch):
+    calls = []
+
+    def fake_fit(method, data, args, **kwargs):
+        calls.append(kwargs.get("laplace_mode_steps"))
+        return {
+            "converged": len(calls) > 1,
+            "iterations": 3,
+            "parameters": np.zeros(1),
+        }
+
+    monkeypatch.setattr(run_ec_block_glmm, "fit_method", fake_fit)
+    fit = run_ec_block_glmm.fit_with_retries(
+        "laplace_multinomial",
+        object(),
+        SimpleNamespace(retries=2, laplace_mode_steps=12),
+    )
+    assert calls == [None, 30]
+    assert fit["attempts"] == 2
+    assert fit["total_iterations"] == 6

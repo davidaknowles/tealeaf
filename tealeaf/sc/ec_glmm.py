@@ -476,6 +476,7 @@ def fit_laplace(
         "outer_gradient": np.asarray(final_gradient),
         "optimizer_scale": float(optimizer_scale),
         "fixed_effect_count": int(coefficient_count),
+        "mode_steps": int(mode_steps),
         "mode_score_norm": mode_score_norm,
         "message": str(result.message),
     }

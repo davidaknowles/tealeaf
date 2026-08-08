@@ -79,6 +79,7 @@ def parse_args():
     parser.add_argument("--max-isoforms", type=int, default=10)
     parser.add_argument("--max-ecs", type=int, default=128)
     parser.add_argument("--max-iter", type=int, default=300)
+    parser.add_argument("--laplace-mode-steps", type=int, default=12)
     parser.add_argument("--cavi-initializer-iterations", type=int, default=25)
     parser.add_argument("--retries", type=int, default=2)
     parser.add_argument("--null-replicate-retries", type=int)
@@ -306,6 +307,17 @@ def candidate_cache_settings(args):
     }
 
 
+def normalize_cached_candidate_settings(settings):
+    """Upgrade compatible candidate manifests created by older runners."""
+    settings = dict(settings)
+    if settings.get("version") == 2:
+        settings["version"] = 3
+        settings.setdefault("subject_folds", None)
+        settings.setdefault("subject_fold", None)
+    settings.setdefault("joint_gene_test", False)
+    return settings
+
+
 def supported_partition_key(candidate):
     """Identify tests made equivalent by the EC-supported isoform subset."""
     (
@@ -420,7 +432,15 @@ def tensor_data(base, tensor):
     )
 
 
-def fit_method(method, data, args, initial=None):
+def fit_method(
+    method,
+    data,
+    args,
+    initial=None,
+    objective_cache=None,
+    objective_cache_key=None,
+    laplace_mode_steps=None,
+):
     if method.startswith("laplace_"):
         return ec_glmm.fit_laplace(
             data,
@@ -432,6 +452,11 @@ def fit_method(method, data, args, initial=None):
             observation_noise=method == "laplace_multinomial_noise",
             initial=initial,
             max_iter=args.max_iter,
+            mode_steps=(
+                args.laplace_mode_steps
+                if laplace_mode_steps is None
+                else int(laplace_mode_steps)
+            ),
         )
     if method.startswith("cavi_"):
         observation_noise = "_noise_" in method
@@ -455,6 +480,8 @@ def fit_method(method, data, args, initial=None):
             observation_noise=True,
             initial=initial,
             max_iter=args.max_iter,
+            objective_cache=objective_cache,
+            objective_cache_key=objective_cache_key,
         )
     return ec_glmm_full.fit_variational(
         data,
@@ -476,14 +503,42 @@ def fit_method(method, data, args, initial=None):
     )
 
 
-def fit_with_retries(method, data, args, initial=None, retries=None):
+def fit_with_retries(
+    method,
+    data,
+    args,
+    initial=None,
+    retries=None,
+    objective_cache=None,
+    objective_cache_key=None,
+):
     """Continue fits that reach a stopping failure without changing tolerances."""
-    fit = fit_method(method, data, args, initial=initial)
+    fit = fit_method(
+        method,
+        data,
+        args,
+        initial=initial,
+        objective_cache=objective_cache,
+        objective_cache_key=objective_cache_key,
+    )
     total_iterations = int(fit["iterations"])
     attempts = 1
     retries = args.retries if retries is None else int(retries)
     while not fit["converged"] and attempts <= retries:
-        fit = fit_method(method, data, args, initial=fit["parameters"])
+        laplace_mode_steps = (
+            max(30, int(args.laplace_mode_steps))
+            if method.startswith("laplace_")
+            else None
+        )
+        fit = fit_method(
+            method,
+            data,
+            args,
+            initial=fit["parameters"],
+            objective_cache=objective_cache,
+            objective_cache_key=objective_cache_key,
+            laplace_mode_steps=laplace_mode_steps,
+        )
         total_iterations += int(fit["iterations"])
         attempts += 1
     fit["total_iterations"] = total_iterations
@@ -548,8 +603,9 @@ def main():
     if args.candidate_cache is not None and args.candidate_cache.exists():
         with args.candidate_cache.open("rb") as handle:
             cached = pickle.load(handle)
-        cached_settings = dict(cached.get("settings", {}))
-        cached_settings.setdefault("joint_gene_test", False)
+        cached_settings = normalize_cached_candidate_settings(
+            cached.get("settings", {})
+        )
         if cached_settings != cache_settings:
             raise ValueError("candidate cache does not match screening settings")
         candidates = cached["candidates"]
@@ -705,6 +761,7 @@ def main():
     failures = []
     null_cache = {}
     alternative_cache = {}
+    objective_cache = {}
     started = time.perf_counter()
     for position, candidate in enumerate(candidates):
         (
@@ -772,7 +829,12 @@ def main():
                             np.log(0.3),
                         ]
                     null_cache[cache_key] = fit_with_retries(
-                        method, null_data, args, initial=null_initial
+                        method,
+                        null_data,
+                        args,
+                        initial=null_initial,
+                        objective_cache=objective_cache,
+                        objective_cache_key=("null", test_id, method),
                     )
                 null = null_cache[cache_key]
                 alternative_key = (gene, tuple(rows), method)
@@ -799,6 +861,11 @@ def main():
                         full_alternative_data,
                         args,
                         initial=initial,
+                        objective_cache=objective_cache,
+                        objective_cache_key=(
+                            "observed_alternative",
+                            *alternative_key,
+                        ),
                     )
                 alternative = alternative_cache[alternative_key]
                 completed_methods[method] = {
@@ -889,6 +956,10 @@ def main():
                     "alternative_mode_score_norm": alternative.get(
                         "mode_score_norm", np.nan
                     ),
+                    "null_mode_steps": null.get("mode_steps", np.nan),
+                    "alternative_mode_steps": alternative.get(
+                        "mode_steps", np.nan
+                    ),
                     "null_attempts": null["attempts"],
                     "alternative_attempts": alternative["attempts"],
                     "alternative_reused": alternative_reused,
@@ -933,6 +1004,8 @@ def main():
                         args,
                         initial=null["parameters"],
                         retries=args.null_replicate_retries,
+                        objective_cache=objective_cache,
+                        objective_cache_key=("null", test_id, method),
                     )
                     simulated_alternative_data = ec_glmm.ECGLMMData(
                         simulated_counts,
@@ -950,6 +1023,12 @@ def main():
                         args,
                         initial=simulated_initial,
                         retries=args.null_replicate_retries,
+                        objective_cache=objective_cache,
+                        objective_cache_key=(
+                            "bootstrap_alternative",
+                            test_id,
+                            method,
+                        ),
                     )
                     null_rows.append({
                         "test_id": test_id,

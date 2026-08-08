@@ -41,10 +41,14 @@ ARGS=(
   --min-celltype-mice "${MIN_CELLTYPE_SUBJECTS:-4}"
   --min-condition-mice "${MIN_CONDITION_SUBJECTS:-4}"
   --max-iter "${MAX_ITER:-300}" --retries "${RETRIES:-2}"
+  --laplace-mode-steps "${LAPLACE_MODE_STEPS:-12}"
   --null-replicate-retries "${NULL_REPLICATE_RETRIES:-2}"
   --vi-samples "${VI_SAMPLES:-16}"
   --shard-index "${SHARD_INDEX}" --shard-count "${SHARD_COUNT}"
 )
+if [[ -n "${MAX_CANDIDATES:-}" ]]; then
+  ARGS+=(--max-candidates "${MAX_CANDIDATES}")
+fi
 if [[ -n "${SUBJECT_FOLDS:-}" ]]; then
   ARGS+=(--subject-folds "${SUBJECT_FOLDS}" --subject-fold "${SUBJECT_FOLD:?}")
 fi

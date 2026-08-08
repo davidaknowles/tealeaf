@@ -592,6 +592,8 @@ def fit_variational(
     standardize_latent=False,
     latent_standardization_power=1.0,
     compute_dtype="float64",
+    objective_cache=None,
+    objective_cache_key=None,
 ):
     """Fit a cluster-factorized, full-covariance Gaussian posterior.
 
@@ -788,7 +790,7 @@ def fit_variational(
             log_noise_sd,
         )
 
-    def tilted_bound(value):
+    def tilted_bound(value, active_counts=counts):
         (
             _,
             latent_means,
@@ -800,7 +802,7 @@ def fit_variational(
             log_noise_sd,
         ) = moments(value)
         result = jnp.asarray(0.0, dtype=means.dtype)
-        for observed, mapping in zip(counts, mappings):
+        for observed, mapping in zip(active_counts, mappings):
             if observed.shape[1] == 0:
                 continue
             totals = jnp.sum(observed, axis=1)
@@ -899,14 +901,40 @@ def fit_variational(
 
     bound = tilted_bound if objective == "tilted" else monte_carlo_bound
     if int(max_iter) > 0:
-        value_and_gradient = jax.jit(
-            jax.value_and_grad(lambda value: -bound(value))
-        )
+        cache_key = None
+        if objective == "tilted" and objective_cache_key is not None:
+            cache_key = (
+                objective_cache_key,
+                "value_and_gradient",
+                str(compute_dtype),
+                int(tilted_local_steps),
+                bool(differentiate_tilted_local),
+                bool(standardize_latent),
+                float(latent_standardization_power),
+            )
+        if objective_cache is not None and cache_key in objective_cache:
+            value_and_gradient = objective_cache[cache_key]
+        elif objective == "tilted" and cache_key is not None:
+            value_and_gradient = jax.jit(
+                jax.value_and_grad(
+                    lambda value, active_counts: -tilted_bound(
+                        value, active_counts
+                    ),
+                    argnums=0,
+                )
+            )
+            objective_cache[cache_key] = value_and_gradient
+        else:
+            value_and_gradient = jax.jit(
+                jax.value_and_grad(lambda value: -bound(value))
+            )
 
         def scipy_objective(value):
-            result, gradient = value_and_gradient(
-                jnp.asarray(value, dtype=compute_type)
-            )
+            packed = jnp.asarray(value, dtype=compute_type)
+            if cache_key is None:
+                result, gradient = value_and_gradient(packed)
+            else:
+                result, gradient = value_and_gradient(packed, counts)
             return float(result), np.asarray(gradient, dtype=float)
     else:
         value_only = jax.jit(lambda value: -bound(value))
@@ -1044,6 +1072,8 @@ def fit_tilted_variational_robust(
     max_iter=300,
     fallback_iter=50,
     compute_dtype="float64",
+    objective_cache=None,
+    objective_cache_key=None,
 ):
     """Fit tilted VI with envelope gradients and prior-scale preconditioning.
 
@@ -1063,6 +1093,8 @@ def fit_tilted_variational_robust(
         "standardize_latent": True,
         "latent_standardization_power": 0.75,
         "compute_dtype": compute_dtype,
+        "objective_cache": objective_cache,
+        "objective_cache_key": objective_cache_key,
     }
     strict = fit_variational(
         initial=initial,

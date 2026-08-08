@@ -324,15 +324,15 @@ At the 90\% tail threshold, the nonredundant logistic-normal analysis tests 4,82
 \toprule
 Contrast & Tests & Conv. & Nominal & FDR & Robust & Null $<.05$ & Null $<.01$ & Null $<.001$\\
 \midrule
-Cell type & 4,825 & 0.983 & 751 & 243 & 237 & 0.04994 & 0.00999 & 0.00098\\
-Condition & 14,833 & 1.000 & 1,415 & 0 & 0 & 0.04999 & 0.00999 & 0.00099\\
+Cell type & 4,825 & 0.999 & 771 & 252 & 238 & 0.04999 & 0.00999 & 0.00099\\
+Condition & 14,833 & 1.000 & 1,397 & 0 & 0 & 0.05001 & 0.00999 & 0.00100\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-For cell type, 80\%, 85\%, 90\%, and 95\% GPD thresholds produce 243, 242, 243, and 239 calls; 237 occur in all four sets. The multinomial EC GLMM identifies 272 partitions at the 90\% threshold and overlaps 229 of the 237 robust logistic-normal calls. The direct EC Dirichlet--multinomial appendix sensitivity identifies 59, with 44 partitions called by all three EC likelihoods. Thus the cell-type result is not specific to the logistic-normal variance model.
+For cell type, 80\%, 85\%, 90\%, and 95\% GPD thresholds produce 242, 240, 252, and 245 calls; 238 occur in all four sets. The multinomial EC GLMM identifies 272 partitions at the 90\% threshold and overlaps 231 of the 238 robust logistic-normal calls. The direct EC Dirichlet--multinomial appendix sensitivity identifies 59, with 45 partitions called by all three EC likelihoods. Thus the cell-type result is not specific to the logistic-normal variance model.
 
-For condition within cell type, the same thresholds produce 27, 27, zero, and zero calls, with an empty intersection. At the primary 90\% threshold the minimum FDR is 0.0637. The data therefore support strong cell-type DS but no condition DS event that is robust to the tail threshold.
+For condition within cell type, the same thresholds produce zero, 28, zero, and zero calls, with an empty intersection. At the primary 90\% threshold the minimum FDR is 0.0545. The data therefore support strong cell-type DS but no condition DS event that is robust to the tail threshold.
 
 \subsection*{Nonbootstrap Laplace sensitivity}
 
@@ -348,7 +348,7 @@ Table~\ref{tab:laplace-lrt-sensitivity} compares the analytic Laplace LRT and BI
 Likelihood & Tests & Laplace conv. & LRT nominal & LRT BH & BF & Bootstrap BH\\
 \midrule
 Multinomial & 4,825 & 0.948 & 704 & 309 & 155 & 272\\
-Logistic-normal & 4,825 & 0.936 & 646 & 271 & 128 & 243\\
+Logistic-normal & 4,825 & 0.936 & 646 & 271 & 128 & 252\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -357,7 +357,7 @@ Restricting comparison to tests converged under both fitting strategies gives La
 
 The logistic-normal alternative estimates its observation-noise standard deviation at the lower numerical bound in 758 of 4,438 jointly converged fits. Because this nuisance variance is then on a boundary, its Wilks reference is less regular. The multinomial LRT is the cleaner nonbootstrap sensitivity, while the BF threshold supplies a smaller high-evidence subset; neither supersedes the empirically calibrated primary result without the mouse comparison above.
 
-The independent human analysis gives the results in Table~\ref{tab:human-laplace-lrt}. Cell-type tests use both likelihoods; within-cell-type condition tests use the recommended multinomial model. The two cell-type analyses share 1,113 BH calls, comprising 98.9\% of the logistic-normal calls. The condition calls span 137 distinct blocks and 135 genes; 175 of 191 also exceed the BIC BF threshold. EX1, EX2, EX5, EX3, and EX4 contribute 63, 31, 21, 19, and 14 condition calls, respectively, with the remainder distributed across other neuronal and glial cell types.
+The independent human analysis gives the results in Table~\ref{tab:human-laplace-lrt}. The recommended multinomial likelihood was rerun with 12 posterior-mode Newton steps on the first attempt and 30 steps on continuation attempts; the logistic-normal row is the previous supporting sensitivity. The condition calls span 139 distinct blocks and 137 genes; 178 of 195 also exceed the BIC BF threshold. EX1, EX2, EX5, EX3, and EX4 contribute 64, 34, 21, 19, and 14 condition calls, respectively, with the remainder distributed across other neuronal and glial cell types.
 
 \begin{table}[H]
 \centering
@@ -368,14 +368,14 @@ The independent human analysis gives the results in Table~\ref{tab:human-laplace
 \toprule
 Contrast & Likelihood & Tests & Conv. & Nominal & LRT BH & BF\\
 \midrule
-Cell type & Multinomial & 11,597 & 0.949 & 2,580 & 1,487 & 237\\
+Cell type & Multinomial & 11,597 & 0.946 & 2,557 & 1,458 & 236\\
 Cell type & Logistic-normal & 11,597 & 0.943 & 2,161 & 1,125 & 148\\
-Condition & Multinomial & 73,144 & 0.941 & 5,503 & 191 & 521\\
+Condition & Multinomial & 73,002 & 0.939 & 5,475 & 195 & 521\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The condition nominal rate is 0.0799 among converged tests, whereas the cell-type multinomial rate is 0.2345, as expected for the stronger biological contrast. The BF and BH counts need not be ordered: \(\mathrm{BF}>10\) is an uncorrected evidence threshold whose BIC penalty depends on tested dimension and subject count, while BH controls a genome-wide frequentist error rate.
+The condition nominal rate is 0.0799 among converged tests, whereas the cell-type multinomial rate is 0.2331, as expected for the stronger biological contrast. The BF and BH counts need not be ordered: \(\mathrm{BF}>10\) is an uncorrected evidence threshold whose BIC penalty depends on tested dimension and subject count, while BH controls a genome-wide frequentist error rate.
 
 \subsection*{Matched external-method comparison}
 
@@ -398,7 +398,7 @@ Tables~\ref{tab:mouse-method-comparison} and \ref{tab:human-method-comparison} r
 \cmidrule(lr){3-5}\cmidrule(lr){6-8}
 Method & Test unit & Tests & BH & Rate & Tests & BH & Rate\\
 \midrule
-Tealeaf EC GLMM & EC block & 4,825 & 243 & 5.04\% & 14,833 & 0 & 0.00\%\\
+Tealeaf EC GLMM & EC block & 4,825 & 252 & 5.22\% & 14,833 & 0 & 0.00\%\\
 LeafCutter & Intron cluster & 1,020 & 229 & 22.45\% & 10,279 & 40 & 0.39\%\\
 MAJIQ Heterogen & LSV edge & 46 & 27 & 58.70\% & 3,836 & 34 & 0.89\%\\
 scQuint & Intron group & 16,081 & 828 & 5.15\% & 161,711 & 16 & 0.01\%\\
@@ -417,10 +417,31 @@ scQuint & Intron group & 16,081 & 828 & 5.15\% & 161,711 & 16 & 0.01\%\\
 \cmidrule(lr){3-5}\cmidrule(lr){6-8}
 Method & Test unit & Tests & BH & Rate & Tests & BH & Rate\\
 \midrule
-Tealeaf EC GLMM & EC block & 11,597 & 1,487 & 12.82\% & 73,144 & 191 & 0.26\%\\
+Tealeaf EC GLMM & EC block & 11,597 & 1,458 & 12.57\% & 73,002 & 195 & 0.27\%\\
 LeafCutter & Intron cluster & 2,155 & 238 & 11.04\% & 5,238 & 475 & 9.07\%\\
 MAJIQ Heterogen & LSV edge & 582 & 342 & 58.76\% & 3,522 & 278 & 7.89\%\\
 scQuint & Intron group & 27,097 & 2,239 & 8.26\% & 85,852 & 36 & 0.04\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:method-resources} compares aggregate worker time and peak resident memory for the analyses that produced Tables~\ref{tab:mouse-method-comparison} and~\ref{tab:human-method-comparison}. Aggregate worker time is the sum of elapsed time over analysis tasks, so it is independent of queue delay and parallelism. Peak memory is the maximum for one worker. The accounting starts from each method's prepared analysis input and includes model fitting and method-specific result construction, but excludes shared read processing. Tealeaf totals include every original and retry task, including resource-limited attempts whose shards were subsequently completed, so they measure realized rather than idealized cost. The mouse Tealeaf rerun uses one compiled tilted objective for the observed fit, retries, and calibration replicates that share a test design. Passing counts as a dynamic argument preserves the objective while avoiding repeated compilation. This reduced its aggregate worker time from 185.5 to 36.1 hours, a 5.1-fold improvement. The resulting run is 2.4-fold slower than scQuint and 3.1-fold slower than LeafCutter, while fitting both nested models to the observed data and five null replicates per test. For the human analysis, 12 rather than 30 posterior-mode Newton steps reduced a 20-test benchmark by 2.7-fold with statistic rank correlation 1.0, but a complete 12-step run reduced convergence. The final adaptive runner uses 12 steps initially and 30 only for continuation fits. Together with fitting only the recommended multinomial likelihood, this reduced aggregate worker time from 1,446.5 to 463.5 hours, a 3.1-fold improvement. Human Tealeaf remains 4.9-fold slower than scQuint because it fits nested random-effect models for a comparable number of tests, while its peak worker memory fell from 14.14 to 10.63 GiB.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Analysis resource use for the matched comparator results. Time is aggregate worker hours and memory is peak GiB for one worker. Tealeaf totals include calibration or continuation retries used by the reported analyses.}
+\label{tab:method-resources}
+\begin{tabular}{lrr@{\qquad}rr}
+\toprule
+& \multicolumn{2}{c}{Mouse} & \multicolumn{2}{c}{Human}\\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Method & Time & Memory & Time & Memory\\
+\midrule
+Tealeaf EC GLMM & 36.1 & 1.77 & 463.5 & 10.63\\
+LeafCutter & 11.7 & 1.28 & 38.6 & 3.26\\
+MAJIQ Heterogen & 6.6 & 1.38 & 9.5 & 1.92\\
+scQuint & 15.3 & 3.99 & 94.1 & 4.76\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1419,17 +1440,17 @@ The annotation-level block equivalence relation is insufficient after EC screeni
 \toprule
 Contrast & Tests & Conv. & Nominal & FDR & Robust & Null $<.05$ & Null $<.01$ & Null $<.001$\\
 \midrule
-Cell type & 4,825 & 0.983 & 751 & 243 & 237 & 0.04994 & 0.00999 & 0.00098\\
-Condition & 14,833 & 1.000 & 1,415 & 0 & 0 & 0.04999 & 0.00999 & 0.00099\\
+Cell type & 4,825 & 0.999 & 771 & 252 & 238 & 0.04999 & 0.00999 & 0.00099\\
+Condition & 14,833 & 1.000 & 1,397 & 0 & 0 & 0.05001 & 0.00999 & 0.00100\\
 \bottomrule
 \end{tabular}
 \end{table}
 
 The initial empirical calibration compared each test only with its degrees-of-freedom-specific bootstrap pool. After supported-partition deduplication, its minimum attainable p-values were approximately $4.5\times10^{-4}$, whereas BH requires resolution near $10^{-5}$ at the first ranks. Its zero logistic-normal calls were therefore a bootstrap-tail resolution artifact, not disappearance of the cell-type signal.
 
-The final calibration fits a generalized Pareto peaks-over-threshold model within each degrees-of-freedom stratum. Fits are cross-fitted by holding out whole block tests. The resulting observed and held-out-null tail scores are then recalibrated by a global leave-block-out empirical null CDF. This second stage corrects residual tail-model bias and gives sufficient pooled resolution for genome-wide BH. At a 90\% threshold, multinomial, logistic-normal multinomial, and Dirichlet--multinomial EC tests identify 272, 243, and 59 nonredundant cell-type partitions. Logistic-normal thresholds of 80\%, 85\%, 90\%, and 95\% give 243, 242, 243, and 239 calls; 237 occur in all four sets, 229 of those are multinomial calls, and 44 are called by all three likelihoods.
+The final calibration fits a generalized Pareto peaks-over-threshold model within each degrees-of-freedom stratum. Fits are cross-fitted by holding out whole block tests. The resulting observed and held-out-null tail scores are then recalibrated by a global leave-block-out empirical null CDF. This second stage corrects residual tail-model bias and gives sufficient pooled resolution for genome-wide BH. At a 90\% threshold, multinomial, logistic-normal multinomial, and Dirichlet--multinomial EC tests identify 272, 252, and 59 nonredundant cell-type partitions. Logistic-normal thresholds of 80\%, 85\%, 90\%, and 95\% give 242, 240, 252, and 245 calls; 238 occur in all four sets, 231 of those are multinomial calls, and 45 are called by all three likelihoods.
 
-Condition is less stable. The same four thresholds give 27, 27, zero, and zero calls, with no partition in all four sets; at the 90\% threshold the minimum FDR is 0.0637. The final conclusion is therefore strong calibrated cell-type DS, but no robust condition DS. The earlier 193 logistic-normal calls in Table~\ref{tab:ec-block-results} used annotation-level duplicates and under-resolved empirical tails and are superseded by the 237 robust set.
+Condition is less stable. The same four thresholds give zero, 28, zero, and zero calls, with no partition in all four sets; at the 90\% threshold the minimum FDR is 0.0545. The final conclusion is therefore strong calibrated cell-type DS, but no robust condition DS. The earlier 193 logistic-normal calls in Table~\ref{tab:ec-block-results} used annotation-level duplicates and under-resolved empirical tails and are superseded by the 238 robust set.
 
 \subsection*{Cell-type effects within mouse}
 
