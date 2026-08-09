@@ -1,0 +1,5 @@
+dataset	benchmark	fit_pair_key	tests	unique_alternatives	batched_seconds	scalar_seconds	speedup	batched_joint_convergence	scalar_joint_convergence	common_joint_convergence	common_median_absolute_statistic_difference	common_maximum_absolute_statistic_difference	median_batched_null_iterations	median_scalar_null_iterations	median_batched_alternative_iterations	median_scalar_alternative_iterations
+mouse	batched_lbfgs_largest8	3,17,22	8	8	24.20328047098883	132.62888139399	5.479789467091666	8	7	7	0.0019099758210359	0.0089783369485303	43.0	42.5	41.0	42.0
+mouse	batched_lbfgs_highcost4	7,76,84	4	1	27.041800294988207	41.45691134899971	1.5330677283599026	4	4	4	0.0	0.0	100.0	100.0	95.0	84.0
+human	batched_lbfgs_largest8	3,4,6	8	8	19.148074526994606	123.12992381800723	6.430407592388515	8	8	8	6.619895748372073e-05	0.0005837873669634	24.0	23.5	27.0	25.5
+human	batched_lbfgs_highcost4	10,18,252	4	4	268.6867045859981	165.35648000800575	0.6154248691344546	3	2	2	10.841778420843184	14.801531372824684	29.5	19.0	46.5	45.5

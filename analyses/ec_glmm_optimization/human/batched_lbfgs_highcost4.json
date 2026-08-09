@@ -1,0 +1,11 @@
+{
+  "fit_pair_key": "'10,18,252'",
+  "tests": 4,
+  "batched_seconds": 268.6867045859981,
+  "scalar_seconds": 165.35648000800575,
+  "speedup": 0.6154248691344546,
+  "batched_joint_convergence": 3,
+  "scalar_joint_convergence": 2,
+  "median_absolute_statistic_difference": 30.27326974584139,
+  "maximum_absolute_statistic_difference": 1370.0330141175073
+}
