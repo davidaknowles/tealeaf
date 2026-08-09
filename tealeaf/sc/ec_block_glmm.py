@@ -103,6 +103,141 @@ def collapse_isoforms_to_paths(data, path_index, weights=None):
     return collapsed, collapsed_path_index
 
 
+def estimate_path_logratios(
+    data,
+    path_index,
+    *,
+    baseline=None,
+    covariance="conditional",
+    max_iter=100,
+):
+    """Estimate each sample's path ILR vector and EC-derived covariance.
+
+    ``data`` contains ``n`` samples and ``T`` isoforms, while ``path_index``
+    has dimension ``T``. The returned values have shape ``n`` by ``S - 1``
+    and the returned covariances have shape ``n`` by ``S - 1`` by ``S - 1``,
+    where ``S`` is the number of represented paths. A single pooled,
+    label-independent isoform baseline is used unless ``baseline`` is supplied.
+    """
+    path_index = np.asarray(path_index, dtype=int)
+    if path_index.shape != (data.n_isoforms,):
+        raise ValueError("path_index must have one entry per isoform")
+    paths = np.unique(path_index[path_index >= 0])
+    if not np.array_equal(paths, np.arange(len(paths))) or len(paths) < 2:
+        raise ValueError("represented paths must be consecutive labels from zero")
+    if covariance not in {"conditional", "profile"}:
+        raise ValueError("covariance must be conditional or profile")
+    if baseline is None:
+        baseline = pooled_isoform_weights(data)
+    baseline = np.asarray(baseline, dtype=float)
+    if baseline.shape != (data.n_isoforms,) or np.any(baseline <= 0):
+        raise ValueError("baseline must be a positive vector of length T")
+
+    values = []
+    covariances = []
+    proportions = []
+    iterations = []
+    identifiable = []
+    converged = []
+    for sample in range(len(data.clusters)):
+        observed = tuple(
+            np.asarray(counts[sample]).ravel() for counts in data.counts
+        )
+        fit = differential.fit_path_perturbation(
+            observed,
+            data.compatibility,
+            baseline,
+            path_index,
+            max_iter=max_iter,
+        )
+        covariance_result = fit.covariance
+        if covariance == "profile":
+            covariance_result = differential.profiled_path_covariance(
+                fit.theta,
+                path_index,
+                data.compatibility,
+                tuple(float(counts.sum()) for counts in observed),
+            )
+        values.append(fit.path_logratios)
+        covariances.append(covariance_result.covariance)
+        proportions.append(fit.path_proportions)
+        iterations.append(fit.iterations)
+        identifiable.append(covariance_result.identifiable)
+        converged.append(fit.converged)
+    return {
+        "values": np.asarray(values),
+        "covariances": np.asarray(covariances),
+        "proportions": np.asarray(proportions),
+        "iterations": np.asarray(iterations, dtype=int),
+        "identifiable": np.asarray(identifiable, dtype=bool),
+        "converged": np.asarray(converged, dtype=bool),
+        "baseline": baseline,
+        "covariance_method": covariance,
+    }
+
+
+def path_wald_test(
+    data,
+    path_index,
+    nuisance_design,
+    tested_design,
+    *,
+    baseline=None,
+    covariance="conditional",
+    max_iter=100,
+):
+    """Estimate paths once and test fixed effects by a clustered Wald test.
+
+    The nuisance and tested designs have ``n`` rows. Mouse-level correlation is
+    represented by a sandwich covariance over the cluster labels in ``data``.
+    The tested coefficients receive one finite-cluster multivariate Wald test.
+    """
+    nuisance_design = np.asarray(nuisance_design, dtype=float)
+    tested_design = np.asarray(tested_design, dtype=float)
+    if (
+        nuisance_design.ndim != 2
+        or tested_design.ndim != 2
+        or len(nuisance_design) != len(data.clusters)
+        or len(tested_design) != len(data.clusters)
+    ):
+        raise ValueError("designs and EC samples must align")
+    if tested_design.shape[1] < 1:
+        raise ValueError("tested_design needs at least one column")
+    estimates = estimate_path_logratios(
+        data,
+        path_index,
+        baseline=baseline,
+        covariance=covariance,
+        max_iter=max_iter,
+    )
+    usable = (
+        estimates["converged"]
+        & estimates["identifiable"]
+        & np.isfinite(estimates["values"]).all(axis=1)
+        & np.isfinite(estimates["covariances"]).all(axis=(1, 2))
+    )
+    design = np.column_stack((nuisance_design, tested_design))
+    tested_columns = np.arange(nuisance_design.shape[1], design.shape[1])
+    if (
+        usable.sum() <= design.shape[1]
+        or np.linalg.matrix_rank(design[usable]) < design.shape[1]
+        or len(np.unique(data.clusters[usable])) <= design.shape[1]
+    ):
+        raise np.linalg.LinAlgError(
+            "usable path estimates do not identify the regression design"
+        )
+    result = differential.clustered_multivariate_wald_test(
+        estimates["values"][usable],
+        estimates["covariances"][usable],
+        design[usable],
+        tested_columns,
+        data.clusters[usable],
+    )
+    estimates["usable"] = usable
+    result["path_estimates"] = estimates
+    return result
+
+
 def block_effect_bases(path_index):
     """Return block-path and orthogonal nuisance bases in reference logits.
 

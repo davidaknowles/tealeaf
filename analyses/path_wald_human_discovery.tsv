@@ -1,0 +1,5 @@
+universe	method	tests	eligible_tests	convergence	nominal_0.05	bh_0.05	bh_rate	shared_bh_overlap	shared_bh_jaccard
+method-specific converged	Isoform-space EC GLMM	11597	11003	0.9487798568595326	2580	1487	0.13514496046532765
+method-specific converged	Estimate-once path Wald	11597	8062	0.6951797878761748	5943	5906	0.7325725626395435
+common converged tests	Isoform-space EC GLMM	7685	7685	1.0	1985	1170	0.15224463240078073	1170.0	1.0
+common converged tests	Estimate-once path Wald	7685	7685	1.0	5669	5633	0.7329863370201691	873.0	0.14721753794266443

@@ -1,0 +1,5 @@
+comparison	method	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	shared_block_tests
+Isoform-space EC GLMM vs Estimate-once path Wald	Isoform-space EC GLMM	724	86	56	35	0.668812292358804	0.4292827223475512	948
+Isoform-space EC GLMM vs Estimate-once path Wald	Estimate-once path Wald	724	470	366	276	0.751023136844553	0.42613748777596555	948
+Isoform-space EC GLMM vs Path-space EC GLMM	Isoform-space EC GLMM	724	86	56	35	0.668812292358804	0.4292827223475512	948
+Isoform-space EC GLMM vs Path-space EC GLMM	Path-space EC GLMM	724	92	58	40	0.6845952023988007	0.3933416187474809	948

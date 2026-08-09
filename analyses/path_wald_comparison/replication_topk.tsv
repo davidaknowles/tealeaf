@@ -1,0 +1,21 @@
+comparison	method	k	overlap	overlap_fraction	shared_block_tests
+Isoform-space EC GLMM vs Estimate-once path Wald	Isoform-space EC GLMM	25	13	0.52	948
+Isoform-space EC GLMM vs Estimate-once path Wald	Isoform-space EC GLMM	50	30	0.6	948
+Isoform-space EC GLMM vs Estimate-once path Wald	Isoform-space EC GLMM	100	50	0.5	948
+Isoform-space EC GLMM vs Estimate-once path Wald	Isoform-space EC GLMM	200	91	0.455	948
+Isoform-space EC GLMM vs Estimate-once path Wald	Isoform-space EC GLMM	500	388	0.776	948
+Isoform-space EC GLMM vs Estimate-once path Wald	Estimate-once path Wald	25	11	0.44	948
+Isoform-space EC GLMM vs Estimate-once path Wald	Estimate-once path Wald	50	13	0.26	948
+Isoform-space EC GLMM vs Estimate-once path Wald	Estimate-once path Wald	100	36	0.36	948
+Isoform-space EC GLMM vs Estimate-once path Wald	Estimate-once path Wald	200	109	0.545	948
+Isoform-space EC GLMM vs Estimate-once path Wald	Estimate-once path Wald	500	392	0.784	948
+Isoform-space EC GLMM vs Path-space EC GLMM	Isoform-space EC GLMM	25	13	0.52	948
+Isoform-space EC GLMM vs Path-space EC GLMM	Isoform-space EC GLMM	50	30	0.6	948
+Isoform-space EC GLMM vs Path-space EC GLMM	Isoform-space EC GLMM	100	50	0.5	948
+Isoform-space EC GLMM vs Path-space EC GLMM	Isoform-space EC GLMM	200	91	0.455	948
+Isoform-space EC GLMM vs Path-space EC GLMM	Isoform-space EC GLMM	500	388	0.776	948
+Isoform-space EC GLMM vs Path-space EC GLMM	Path-space EC GLMM	25	15	0.6	948
+Isoform-space EC GLMM vs Path-space EC GLMM	Path-space EC GLMM	50	31	0.62	948
+Isoform-space EC GLMM vs Path-space EC GLMM	Path-space EC GLMM	100	53	0.53	948
+Isoform-space EC GLMM vs Path-space EC GLMM	Path-space EC GLMM	200	93	0.465	948
+Isoform-space EC GLMM vs Path-space EC GLMM	Path-space EC GLMM	500	380	0.76	948

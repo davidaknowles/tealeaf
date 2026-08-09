@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
+import scipy.special
 
 from extra_scripts.merge_ec_block_glmm import (
     calibrate,
@@ -157,6 +158,36 @@ def test_pooled_isoform_weights_match_identity_ec_proportions():
     )
     weights = ec_block_glmm.pooled_isoform_weights(data)
     np.testing.assert_allclose(weights, [0.8, 0.2], atol=1e-5)
+
+
+def test_estimate_once_wald_detects_clustered_path_effect():
+    rng = np.random.default_rng(29)
+    subjects = 24
+    clusters = np.repeat(np.arange(subjects), 2)
+    cell_type = np.tile([0, 1], subjects)
+    condition = np.repeat(np.arange(subjects) >= subjects // 2, 2)
+    probabilities = scipy.special.expit(
+        -0.3 + 0.9 * cell_type + rng.normal(0, 0.25, subjects)[clusters]
+    )
+    counts = np.asarray([
+        rng.multinomial(300, [probability, 1 - probability])
+        for probability in probabilities
+    ])
+    data = ec_glmm.ECGLMMData(
+        (counts,),
+        (np.eye(2),),
+        np.ones((len(counts), 1)),
+        clusters,
+    )
+    result = ec_block_glmm.path_wald_test(
+        data,
+        np.array([0, 1]),
+        np.column_stack((1 - condition, condition)),
+        cell_type[:, None],
+    )
+    assert result["p_value"] < 0.01
+    assert result["degrees_of_freedom"] == 1
+    assert result["path_estimates"]["converged"].all()
 
 
 def test_block_tensors_are_nested_with_expected_df():

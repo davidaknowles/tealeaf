@@ -24,6 +24,8 @@ def parse_args():
     parser.add_argument("--path-discovery", required=True, type=Path)
     parser.add_argument("--isoform-folds", required=True, nargs=2, type=Path)
     parser.add_argument("--path-folds", required=True, nargs=2, type=Path)
+    parser.add_argument("--wald-discovery", type=Path)
+    parser.add_argument("--wald-folds", nargs=2, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     return parser.parse_args()
 
@@ -39,18 +41,25 @@ def read_results(path):
     return table
 
 
-def discovery_comparison(isoform, path):
+def discovery_comparison(tables, methods):
     rows = []
-    for method, table in zip(METHODS, (isoform, path)):
+    tested_universe = set.union(*(
+        set(table["test_id"]) for table in tables
+    ))
+    for method, table in zip(methods, tables):
         eligible = table.loc[table.joint_converged].copy()
         q_value = benjamini_hochberg(eligible.p_value.to_numpy())
         rows.append(
             {
                 "universe": "method-specific converged",
                 "method": method,
-                "tests": len(table),
+                "tests": len(tested_universe),
                 "eligible_tests": len(eligible),
-                "convergence": float(table.joint_converged.mean()),
+                "convergence": (
+                    len(eligible) / len(tested_universe)
+                    if tested_universe
+                    else np.nan
+                ),
                 "nominal_0.05": int(np.sum(eligible.p_value <= 0.05)),
                 "bh_0.05": int(np.sum(q_value <= 0.05)),
                 "bh_rate": (
@@ -61,11 +70,12 @@ def discovery_comparison(isoform, path):
             }
         )
 
-    shared = set(isoform.loc[isoform.joint_converged, "test_id"]) & set(
-        path.loc[path.joint_converged, "test_id"]
-    )
+    shared = set.intersection(*(
+        set(table.loc[table.joint_converged, "test_id"])
+        for table in tables
+    ))
     calls = []
-    for method, table in zip(METHODS, (isoform, path)):
+    for method, table in zip(methods, tables):
         eligible = table.loc[table.test_id.isin(shared)].copy()
         eligible = (
             eligible.drop_duplicates("test_id")
@@ -89,37 +99,35 @@ def discovery_comparison(isoform, path):
                 "shared_bh_jaccard": np.nan,
             }
         )
-    overlap = len(calls[0] & calls[1])
-    union = len(calls[0] | calls[1])
-    for row in rows[-2:]:
+    for row, selected in zip(rows[-len(tables):], calls):
+        overlap = len(calls[0] & selected)
+        union = len(calls[0] | selected)
         row["shared_bh_overlap"] = overlap
         row["shared_bh_jaccard"] = overlap / union if union else np.nan
     return pd.DataFrame(rows)
 
 
-def replication_comparison(isoform_folds, path_folds):
-    tables = [*isoform_folds, *path_folds]
+def replication_comparison(method_folds, methods):
+    tables = [table for folds in method_folds for table in folds]
     shared = set.intersection(
         *(set(table.loc[table.joint_converged, "test_id"]) for table in tables)
     )
     fold_tables = []
     for fold in range(2):
-        methods = []
-        for method, table in zip(
-            METHODS,
-            (isoform_folds[fold], path_folds[fold]),
-        ):
+        aggregated = []
+        for method, folds in zip(methods, method_folds):
+            table = folds[fold]
             local = table.loc[
                 table.test_id.isin(shared), ["gene_id", "p_value"]
             ].copy()
             local["method"] = method
-            methods.append(
+            aggregated.append(
                 aggregate_gene_pvalues(local[["method", "gene_id", "p_value"]])
             )
-        fold_tables.append(pd.concat(methods, ignore_index=True))
+        fold_tables.append(pd.concat(aggregated, ignore_index=True))
     metrics, topk, genes = shared_gene_reproducibility(
         fold_tables,
-        reference_method=METHODS[0],
+        reference_method=methods[0],
     )
     metrics["shared_block_tests"] = len(shared)
     topk["shared_block_tests"] = len(shared)
@@ -133,9 +141,18 @@ def main():
     path_discovery = read_results(args.path_discovery)
     isoform_folds = [read_results(path) for path in args.isoform_folds]
     path_folds = [read_results(path) for path in args.path_folds]
-    discovery = discovery_comparison(isoform_discovery, path_discovery)
+    methods = list(METHODS)
+    discovery_tables = [isoform_discovery, path_discovery]
+    method_folds = [isoform_folds, path_folds]
+    if (args.wald_discovery is None) != (args.wald_folds is None):
+        raise ValueError("Wald discovery and folds must be supplied together")
+    if args.wald_discovery is not None:
+        methods.append("Estimate-once path Wald")
+        discovery_tables.append(read_results(args.wald_discovery))
+        method_folds.append([read_results(path) for path in args.wald_folds])
+    discovery = discovery_comparison(discovery_tables, methods)
     replication, topk, genes = replication_comparison(
-        isoform_folds, path_folds
+        method_folds, methods
     )
     args.output_dir.mkdir(parents=True, exist_ok=True)
     discovery.to_csv(args.output_dir / "discovery.tsv", sep="\t", index=False)

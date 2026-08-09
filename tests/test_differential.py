@@ -255,6 +255,39 @@ class DifferentialTest(unittest.TestCase):
         self.assertEqual(result["degrees_of_freedom"], 2)
         self.assertLess(result["p_value"], 1e-6)
 
+    def test_clustered_multivariate_wald_detects_paired_effect(self):
+        rng = np.random.default_rng(31)
+        clusters = np.repeat(np.arange(30), 2)
+        tested = np.tile([0, 1], 30)
+        values = rng.normal(0, 0.15, (len(clusters), 2))
+        values += rng.normal(0, 0.3, (30, 2))[clusters]
+        values[tested == 1] += np.array([0.6, -0.4])
+        covariances = np.repeat(
+            (0.02 * np.eye(2))[None, :, :], len(clusters), axis=0
+        )
+        result = differential.clustered_multivariate_wald_test(
+            values,
+            covariances,
+            np.column_stack((np.ones(len(clusters)), tested)),
+            tested_columns=[1],
+            clusters=clusters,
+        )
+        self.assertEqual(result["degrees_of_freedom"], 2)
+        self.assertLess(result["p_value"], 1e-6)
+
+    def test_clustered_multivariate_wald_requires_residual_cluster_df(self):
+        values = np.arange(8, dtype=float).reshape(4, 2)
+        covariances = np.repeat(np.eye(2)[None, :, :], 4, axis=0)
+        design = np.column_stack((np.ones(4), [0, 0, 1, 1]))
+        with self.assertRaisesRegex(ValueError, "cluster count"):
+            differential.clustered_multivariate_wald_test(
+                values,
+                covariances,
+                design,
+                tested_columns=[1],
+                clusters=[0, 0, 1, 1],
+            )
+
     def test_effective_multinomial_size_recovers_known_size(self):
         proportions = np.array([0.2, 0.3, 0.5])
         basis = differential.helmert_basis(3)

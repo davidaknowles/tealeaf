@@ -1,0 +1,5 @@
+dataset	method	job_ids
+mouse discovery	estimate-once path Wald	19651291,19651532
+mouse replication fold 0	estimate-once path Wald	19651292,19651533
+mouse replication fold 1	estimate-once path Wald	19651293,19651534
+human discovery	estimate-once path Wald	19651294,19651580

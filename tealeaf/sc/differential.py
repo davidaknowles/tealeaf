@@ -909,6 +909,101 @@ def multivariate_gls_test(
     }
 
 
+def clustered_multivariate_wald_test(
+    values,
+    covariances,
+    design,
+    tested_columns,
+    clusters,
+):
+    """Precision-weighted multivariate regression with clustered covariance."""
+    values = np.asarray(values, dtype=float)
+    covariances = np.asarray(covariances, dtype=float)
+    design = np.asarray(design, dtype=float)
+    tested_columns = np.asarray(tested_columns, dtype=np.int64)
+    clusters = np.asarray(clusters)
+    if values.ndim != 2:
+        raise ValueError("values must be samples by log-ratio dimensions")
+    n_samples, dimension = values.shape
+    if covariances.shape != (n_samples, dimension, dimension):
+        raise ValueError("covariances have the wrong shape")
+    if design.shape[0] != n_samples or len(clusters) != n_samples:
+        raise ValueError("design, clusters, and values must align")
+    if np.linalg.matrix_rank(design) != design.shape[1]:
+        raise ValueError("the regression design is rank deficient")
+    parameter_count = design.shape[1] * dimension
+    precision = np.zeros((parameter_count, parameter_count), dtype=float)
+    score = np.zeros(parameter_count, dtype=float)
+    row_designs = []
+    weights = []
+    for sample in range(n_samples):
+        weight = scipy.linalg.inv(covariances[sample], check_finite=False)
+        row_design = np.kron(
+            design[sample : sample + 1], np.eye(dimension)
+        )
+        precision += row_design.T @ weight @ row_design
+        score += row_design.T @ weight @ values[sample]
+        row_designs.append(row_design)
+        weights.append(weight)
+    coefficient_covariance = scipy.linalg.pinvh(precision, rtol=1e-10)
+    coefficients = coefficient_covariance @ score
+    cluster_scores = []
+    for cluster in np.unique(clusters):
+        cluster_score = np.zeros(parameter_count, dtype=float)
+        for sample in np.flatnonzero(clusters == cluster):
+            residual = values[sample] - row_designs[sample] @ coefficients
+            cluster_score += (
+                row_designs[sample].T @ weights[sample] @ residual
+            )
+        cluster_scores.append(cluster_score)
+    meat = sum(
+        np.outer(cluster_score, cluster_score)
+        for cluster_score in cluster_scores
+    )
+    robust_covariance = coefficient_covariance @ meat @ coefficient_covariance
+    cluster_count = len(cluster_scores)
+    denominator_degrees = cluster_count - design.shape[1]
+    if denominator_degrees <= 0:
+        raise ValueError(
+            "cluster count must exceed the number of design columns"
+        )
+    residual_degrees = n_samples * dimension - parameter_count
+    if cluster_count > 1 and residual_degrees > 0:
+        robust_covariance *= (
+            cluster_count / (cluster_count - 1)
+            * (n_samples * dimension - 1) / residual_degrees
+        )
+    tested = np.concatenate([
+        np.arange(column * dimension, (column + 1) * dimension)
+        for column in tested_columns
+    ])
+    tested_values = coefficients[tested]
+    tested_covariance = robust_covariance[np.ix_(tested, tested)]
+    statistic = float(
+        tested_values
+        @ scipy.linalg.pinvh(tested_covariance, rtol=1e-10)
+        @ tested_values
+    )
+    degrees_of_freedom = int(np.linalg.matrix_rank(tested_covariance))
+    if degrees_of_freedom <= 0:
+        raise np.linalg.LinAlgError("tested covariance has zero rank")
+    p_value = float(scipy.stats.f.sf(
+        statistic / degrees_of_freedom,
+        degrees_of_freedom,
+        denominator_degrees,
+    ))
+    return {
+        "statistic": statistic,
+        "degrees_of_freedom": degrees_of_freedom,
+        "denominator_degrees_of_freedom": denominator_degrees,
+        "p_value": p_value,
+        "coefficients": coefficients.reshape(design.shape[1], dimension),
+        "coefficient_covariance": robust_covariance,
+        "working_coefficient_covariance": coefficient_covariance,
+        "clusters": cluster_count,
+    }
+
+
 def clustered_multivariate_gls_test(
     values,
     covariances,
