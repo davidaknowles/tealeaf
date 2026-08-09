@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import pickle
 import time
+import zlib
 
 import numpy as np
 import pandas as pd
@@ -19,7 +20,7 @@ from extra_scripts.run_ec_block_glmm import (
     treatment_design,
 )
 from extra_scripts.run_ec_glmm import local_gene_data
-from tealeaf.sc import ec_block_glmm
+from tealeaf.sc import differential, ec_block_glmm
 
 
 def parse_args():
@@ -33,10 +34,59 @@ def parse_args():
         default="conditional",
     )
     parser.add_argument("--fit-max-iter", type=int, default=100)
+    parser.add_argument("--label-permutations", type=int, default=0)
+    parser.add_argument("--wild-null-replicates", type=int, default=0)
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument(
+        "--cluster-adjustment", choices=("cr1", "cr2", "cr3"), default="cr1"
+    )
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--shard-count", type=int, default=1)
     parser.add_argument("--max-candidates", type=int)
     return parser.parse_args()
+
+
+def candidate_rng(seed, test_id, replicate, null_type):
+    """Construct a reproducible generator for one test and null draw."""
+    test_hash = zlib.crc32(str(test_id).encode("utf-8"))
+    type_hash = zlib.crc32(str(null_type).encode("utf-8"))
+    return np.random.default_rng(
+        np.random.SeedSequence((int(seed), test_hash, int(replicate), type_hash))
+    )
+
+
+def permute_labels_within_clusters(labels, clusters, rng):
+    """Shuffle observed multi-level labels independently within each cluster."""
+    labels = np.asarray(labels, dtype=int)
+    clusters = np.asarray(clusters)
+    if len(labels) != len(clusters):
+        raise ValueError("labels and clusters must align")
+    permuted = labels.copy()
+    for cluster in np.unique(clusters):
+        positions = np.flatnonzero(clusters == cluster)
+        permuted[positions] = rng.permutation(permuted[positions])
+    return permuted
+
+
+def effect_summary(result, nuisance_columns, n_paths):
+    """Return tested ILR and centered-log path effects with marginal SEs."""
+    coefficients = np.asarray(result["coefficients"], dtype=float)
+    tested = coefficients[nuisance_columns:]
+    dimension = n_paths - 1
+    tested_indices = np.concatenate([
+        np.arange(column * dimension, (column + 1) * dimension)
+        for column in range(nuisance_columns, len(coefficients))
+    ])
+    covariance = np.asarray(result["coefficient_covariance"], dtype=float)
+    tested_covariance = covariance[np.ix_(tested_indices, tested_indices)]
+    basis = differential.helmert_basis(n_paths)
+    transform = np.kron(np.eye(len(tested)), basis)
+    path_effects = tested @ basis.T
+    path_variances = np.diag(transform @ tested_covariance @ transform.T)
+    path_standard_errors = np.sqrt(np.maximum(path_variances, 0.0)).reshape(
+        path_effects.shape
+    )
+    return tested, path_effects, path_standard_errors
 
 
 def filtered_inputs(data_cache, settings):
@@ -88,6 +138,7 @@ def main():
     test_effect = settings["test_effect"]
     args.output_dir.mkdir(parents=True, exist_ok=True)
     observed_rows = []
+    null_rows = []
     failures = []
     pooled_cache = {}
     started = time.perf_counter()
@@ -133,8 +184,12 @@ def main():
                 baseline=pooled_cache[cache_key],
                 covariance=args.covariance,
                 max_iter=args.fit_max_iter,
+                cluster_adjustment=args.cluster_adjustment,
             )
             estimates = result.pop("path_estimates")
+            tested_coefficients, path_effects, path_standard_errors = (
+                effect_summary(result, nuisance.shape[1], len(signatures))
+            )
             observed_rows.append({
                 "test_id": test_id,
                 "block_id": block_id,
@@ -144,6 +199,7 @@ def main():
                 "method": "path_wald",
                 "latent_space": "estimated_path",
                 "covariance_method": args.covariance,
+                "cluster_adjustment": args.cluster_adjustment,
                 "n_paths": len(signatures),
                 "n_isoforms": base.n_isoforms,
                 "n_original_isoforms": base.n_isoforms,
@@ -167,7 +223,111 @@ def main():
                 "path_fit_iterations": int(estimates["iterations"].sum()),
                 "max_path_fit_iterations": int(estimates["iterations"].max()),
                 "min_path_proportion": float(estimates["proportions"].min()),
+                "tested_levels_json": json.dumps(list(map(str, tested_levels))),
+                "tested_coefficients_json": json.dumps(
+                    tested_coefficients.tolist()
+                ),
+                "path_effects_json": json.dumps(path_effects.tolist()),
+                "path_standard_errors_json": json.dumps(
+                    path_standard_errors.tolist()
+                ),
             })
+            for replicate in range(args.label_permutations):
+                try:
+                    rng = candidate_rng(
+                        args.seed, test_id, replicate, "label_permutation"
+                    )
+                    permuted_labels = permute_labels_within_clusters(
+                        labels, clusters, rng
+                    )
+                    permuted = ec_block_glmm.path_wald_from_estimates(
+                        estimates,
+                        nuisance,
+                        treatment_design(permuted_labels, len(tested_levels)),
+                        clusters,
+                        cluster_adjustment=args.cluster_adjustment,
+                    )
+                    _, permuted_path_effects, _ = effect_summary(
+                        permuted, nuisance.shape[1], len(signatures)
+                    )
+                    null_rows.append({
+                        "test_id": test_id,
+                        "null_type": "label_permutation",
+                        "cluster_adjustment": args.cluster_adjustment,
+                        "replicate": replicate,
+                        "statistic": permuted["statistic"],
+                        "p_value": permuted["p_value"],
+                        "degrees_of_freedom": permuted["degrees_of_freedom"],
+                        "denominator_degrees_of_freedom": permuted[
+                            "denominator_degrees_of_freedom"
+                        ],
+                        "tested_levels_json": json.dumps(
+                            list(map(str, tested_levels))
+                        ),
+                        "path_effects_json": json.dumps(
+                            permuted_path_effects.tolist()
+                        ),
+                    })
+                except Exception as exc:
+                    failures.append({
+                        "test_id": test_id,
+                        "block_id": block_id,
+                        "null_type": "label_permutation",
+                        "replicate": replicate,
+                        "error": repr(exc),
+                    })
+            usable = estimates["usable"]
+            design = np.column_stack((nuisance, tested))[usable]
+            tested_columns = np.arange(nuisance.shape[1], design.shape[1])
+            for replicate in range(args.wild_null_replicates):
+                try:
+                    rng = candidate_rng(
+                        args.seed, test_id, replicate, "wild_cluster"
+                    )
+                    null_values = differential.restricted_wild_cluster_null(
+                        estimates["values"][usable],
+                        estimates["covariances"][usable],
+                        nuisance[usable],
+                        clusters[usable],
+                        rng,
+                    )
+                    null_result = differential.clustered_multivariate_wald_test(
+                        null_values,
+                        estimates["covariances"][usable],
+                        design,
+                        tested_columns,
+                        clusters[usable],
+                        cluster_adjustment=args.cluster_adjustment,
+                    )
+                    _, null_path_effects, _ = effect_summary(
+                        null_result, nuisance.shape[1], len(signatures)
+                    )
+                    null_rows.append({
+                        "test_id": test_id,
+                        "null_type": "wild_cluster",
+                        "cluster_adjustment": args.cluster_adjustment,
+                        "replicate": replicate,
+                        "statistic": null_result["statistic"],
+                        "p_value": null_result["p_value"],
+                        "degrees_of_freedom": null_result["degrees_of_freedom"],
+                        "denominator_degrees_of_freedom": null_result[
+                            "denominator_degrees_of_freedom"
+                        ],
+                        "tested_levels_json": json.dumps(
+                            list(map(str, tested_levels))
+                        ),
+                        "path_effects_json": json.dumps(
+                            null_path_effects.tolist()
+                        ),
+                    })
+                except Exception as exc:
+                    failures.append({
+                        "test_id": test_id,
+                        "block_id": block_id,
+                        "null_type": "wild_cluster",
+                        "replicate": replicate,
+                        "error": repr(exc),
+                    })
         except Exception as exc:
             failures.append({
                 "test_id": test_id,
@@ -184,6 +344,9 @@ def main():
             }), flush=True)
     pd.DataFrame(observed_rows).to_csv(
         args.output_dir / "ec_block_glmm.tsv", sep="\t", index=False
+    )
+    pd.DataFrame(null_rows).to_csv(
+        args.output_dir / "null.tsv", sep="\t", index=False
     )
     (args.output_dir / "failures.json").write_text(
         json.dumps(failures, indent=2) + "\n"

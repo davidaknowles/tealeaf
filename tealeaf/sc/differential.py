@@ -915,6 +915,7 @@ def clustered_multivariate_wald_test(
     design,
     tested_columns,
     clusters,
+    cluster_adjustment="cr1",
 ):
     """Precision-weighted multivariate regression with clustered covariance."""
     values = np.asarray(values, dtype=float)
@@ -922,6 +923,8 @@ def clustered_multivariate_wald_test(
     design = np.asarray(design, dtype=float)
     tested_columns = np.asarray(tested_columns, dtype=np.int64)
     clusters = np.asarray(clusters)
+    if cluster_adjustment not in {"cr1", "cr2", "cr3"}:
+        raise ValueError("cluster_adjustment must be cr1, cr2, or cr3")
     if values.ndim != 2:
         raise ValueError("values must be samples by log-ratio dimensions")
     n_samples, dimension = values.shape
@@ -936,6 +939,7 @@ def clustered_multivariate_wald_test(
     score = np.zeros(parameter_count, dtype=float)
     row_designs = []
     weights = []
+    whitened_designs = []
     for sample in range(n_samples):
         weight = scipy.linalg.inv(covariances[sample], check_finite=False)
         row_design = np.kron(
@@ -945,16 +949,41 @@ def clustered_multivariate_wald_test(
         score += row_design.T @ weight @ values[sample]
         row_designs.append(row_design)
         weights.append(weight)
+        whitened_designs.append(
+            scipy.linalg.cholesky(weight, lower=False) @ row_design
+        )
     coefficient_covariance = scipy.linalg.pinvh(precision, rtol=1e-10)
     coefficients = coefficient_covariance @ score
     cluster_scores = []
     for cluster in np.unique(clusters):
-        cluster_score = np.zeros(parameter_count, dtype=float)
-        for sample in np.flatnonzero(clusters == cluster):
-            residual = values[sample] - row_designs[sample] @ coefficients
-            cluster_score += (
-                row_designs[sample].T @ weights[sample] @ residual
+        positions = np.flatnonzero(clusters == cluster)
+        if cluster_adjustment == "cr1":
+            cluster_score = np.zeros(parameter_count, dtype=float)
+            for sample in positions:
+                residual = values[sample] - row_designs[sample] @ coefficients
+                cluster_score += (
+                    row_designs[sample].T @ weights[sample] @ residual
+                )
+        else:
+            cluster_design = np.vstack([
+                whitened_designs[sample] for sample in positions
+            ])
+            cluster_residual = np.concatenate([
+                scipy.linalg.cholesky(weights[sample], lower=False)
+                @ (values[sample] - row_designs[sample] @ coefficients)
+                for sample in positions
+            ])
+            complement = (
+                np.eye(len(cluster_residual))
+                - cluster_design @ coefficient_covariance @ cluster_design.T
             )
+            eigenvalues, eigenvectors = scipy.linalg.eigh(complement)
+            inverse_power = -0.5 if cluster_adjustment == "cr2" else -1.0
+            adjustment = (
+                eigenvectors
+                * np.maximum(eigenvalues, 1e-10) ** inverse_power
+            ) @ eigenvectors.T
+            cluster_score = cluster_design.T @ adjustment @ cluster_residual
         cluster_scores.append(cluster_score)
     meat = sum(
         np.outer(cluster_score, cluster_score)
@@ -968,7 +997,11 @@ def clustered_multivariate_wald_test(
             "cluster count must exceed the number of design columns"
         )
     residual_degrees = n_samples * dimension - parameter_count
-    if cluster_count > 1 and residual_degrees > 0:
+    if (
+        cluster_adjustment == "cr1"
+        and cluster_count > 1
+        and residual_degrees > 0
+    ):
         robust_covariance *= (
             cluster_count / (cluster_count - 1)
             * (n_samples * dimension - 1) / residual_degrees
@@ -1001,7 +1034,58 @@ def clustered_multivariate_wald_test(
         "coefficient_covariance": robust_covariance,
         "working_coefficient_covariance": coefficient_covariance,
         "clusters": cluster_count,
+        "cluster_adjustment": cluster_adjustment,
     }
+
+
+def restricted_wild_cluster_null(
+    values,
+    covariances,
+    nuisance_design,
+    clusters,
+    rng,
+):
+    """Draw a restricted Rademacher wild-cluster null response.
+
+    ``values`` has shape ``n`` by ``d``, ``covariances`` has shape ``n`` by
+    ``d`` by ``d``, and ``nuisance_design`` has shape ``n`` by ``k``. The
+    restricted precision-weighted residual vector is multiplied by one random
+    sign per cluster, preserving all within-cluster and cross-coordinate
+    dependence in that residual.
+    """
+    values = np.asarray(values, dtype=float)
+    covariances = np.asarray(covariances, dtype=float)
+    nuisance_design = np.asarray(nuisance_design, dtype=float)
+    clusters = np.asarray(clusters)
+    if values.ndim != 2:
+        raise ValueError("values must be samples by log-ratio dimensions")
+    n_samples, dimension = values.shape
+    if covariances.shape != (n_samples, dimension, dimension):
+        raise ValueError("covariances have the wrong shape")
+    if nuisance_design.shape[0] != n_samples or len(clusters) != n_samples:
+        raise ValueError("design, clusters, and values must align")
+    if np.linalg.matrix_rank(nuisance_design) != nuisance_design.shape[1]:
+        raise ValueError("the nuisance design is rank deficient")
+    parameter_count = nuisance_design.shape[1] * dimension
+    precision = np.zeros((parameter_count, parameter_count), dtype=float)
+    score = np.zeros(parameter_count, dtype=float)
+    for sample in range(n_samples):
+        weight = scipy.linalg.inv(covariances[sample], check_finite=False)
+        row_design = np.kron(
+            nuisance_design[sample : sample + 1], np.eye(dimension)
+        )
+        precision += row_design.T @ weight @ row_design
+        score += row_design.T @ weight @ values[sample]
+    coefficients = scipy.linalg.pinvh(precision, rtol=1e-10) @ score
+    fitted = nuisance_design @ coefficients.reshape(
+        nuisance_design.shape[1], dimension
+    )
+    residual = values - fitted
+    unique_clusters = np.unique(clusters)
+    signs = np.asarray(rng.choice((-1.0, 1.0), size=len(unique_clusters)))
+    sign_by_cluster = dict(zip(unique_clusters, signs))
+    multipliers = np.asarray([sign_by_cluster[value] for value in clusters])
+    return fitted + multipliers[:, None] * residual
 
 
 def clustered_multivariate_gls_test(

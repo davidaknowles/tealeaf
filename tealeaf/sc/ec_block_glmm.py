@@ -185,12 +185,15 @@ def path_wald_test(
     baseline=None,
     covariance="conditional",
     max_iter=100,
+    cluster_adjustment="cr1",
 ):
     """Estimate paths once and test fixed effects by a clustered Wald test.
 
     The nuisance and tested designs have ``n`` rows. Mouse-level correlation is
     represented by a sandwich covariance over the cluster labels in ``data``.
     The tested coefficients receive one finite-cluster multivariate Wald test.
+    This is an ablation API: structured real-data nulls show that its analytic
+    p-values are anti-conservative for the fitted multi-level cell-type designs.
     """
     nuisance_design = np.asarray(nuisance_design, dtype=float)
     tested_design = np.asarray(tested_design, dtype=float)
@@ -210,31 +213,64 @@ def path_wald_test(
         covariance=covariance,
         max_iter=max_iter,
     )
+    result = path_wald_from_estimates(
+        estimates,
+        nuisance_design,
+        tested_design,
+        data.clusters,
+        cluster_adjustment=cluster_adjustment,
+    )
+    result["path_estimates"] = estimates
+    return result
+
+
+def path_wald_from_estimates(
+    estimates,
+    nuisance_design,
+    tested_design,
+    clusters,
+    *,
+    cluster_adjustment="cr1",
+):
+    """Test fixed effects from precomputed path ILRs and covariances."""
+    nuisance_design = np.asarray(nuisance_design, dtype=float)
+    tested_design = np.asarray(tested_design, dtype=float)
+    clusters = np.asarray(clusters)
+    values = np.asarray(estimates["values"], dtype=float)
+    covariances = np.asarray(estimates["covariances"], dtype=float)
+    if (
+        nuisance_design.ndim != 2
+        or tested_design.ndim != 2
+        or len(nuisance_design) != len(values)
+        or len(tested_design) != len(values)
+        or len(clusters) != len(values)
+    ):
+        raise ValueError("designs, clusters, and path estimates must align")
     usable = (
         estimates["converged"]
         & estimates["identifiable"]
-        & np.isfinite(estimates["values"]).all(axis=1)
-        & np.isfinite(estimates["covariances"]).all(axis=(1, 2))
+        & np.isfinite(values).all(axis=1)
+        & np.isfinite(covariances).all(axis=(1, 2))
     )
     design = np.column_stack((nuisance_design, tested_design))
     tested_columns = np.arange(nuisance_design.shape[1], design.shape[1])
     if (
         usable.sum() <= design.shape[1]
         or np.linalg.matrix_rank(design[usable]) < design.shape[1]
-        or len(np.unique(data.clusters[usable])) <= design.shape[1]
+        or len(np.unique(clusters[usable])) <= design.shape[1]
     ):
         raise np.linalg.LinAlgError(
             "usable path estimates do not identify the regression design"
         )
     result = differential.clustered_multivariate_wald_test(
-        estimates["values"][usable],
-        estimates["covariances"][usable],
+        values[usable],
+        covariances[usable],
         design[usable],
         tested_columns,
-        data.clusters[usable],
+        clusters[usable],
+        cluster_adjustment=cluster_adjustment,
     )
     estimates["usable"] = usable
-    result["path_estimates"] = estimates
     return result
 
 

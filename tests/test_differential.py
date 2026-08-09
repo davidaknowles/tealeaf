@@ -275,6 +275,25 @@ class DifferentialTest(unittest.TestCase):
         self.assertEqual(result["degrees_of_freedom"], 2)
         self.assertLess(result["p_value"], 1e-6)
 
+    def test_clustered_multivariate_wald_leverage_adjustments_run(self):
+        rng = np.random.default_rng(33)
+        clusters = np.repeat(np.arange(12), 2)
+        tested = np.tile([0, 1], 12)
+        values = rng.normal(size=(len(clusters), 2))
+        covariances = np.repeat(np.eye(2)[None, :, :], len(values), axis=0)
+        design = np.column_stack((np.ones(len(values)), tested))
+        for adjustment in ("cr2", "cr3"):
+            result = differential.clustered_multivariate_wald_test(
+                values,
+                covariances,
+                design,
+                tested_columns=[1],
+                clusters=clusters,
+                cluster_adjustment=adjustment,
+            )
+            self.assertEqual(result["cluster_adjustment"], adjustment)
+            self.assertTrue(np.isfinite(result["p_value"]))
+
     def test_clustered_multivariate_wald_requires_residual_cluster_df(self):
         values = np.arange(8, dtype=float).reshape(4, 2)
         covariances = np.repeat(np.eye(2)[None, :, :], 4, axis=0)
@@ -287,6 +306,23 @@ class DifferentialTest(unittest.TestCase):
                 tested_columns=[1],
                 clusters=[0, 0, 1, 1],
             )
+
+    def test_restricted_wild_cluster_null_preserves_cluster_residuals(self):
+        clusters = np.repeat(np.arange(6), 2)
+        nuisance = np.ones((len(clusters), 1))
+        values = np.column_stack((clusters, -clusters)).astype(float)
+        covariances = np.repeat(np.eye(2)[None, :, :], len(values), axis=0)
+        simulated = differential.restricted_wild_cluster_null(
+            values,
+            covariances,
+            nuisance,
+            clusters,
+            np.random.default_rng(2),
+        )
+        fitted = np.repeat(values.mean(axis=0)[None, :], len(values), axis=0)
+        np.testing.assert_allclose(
+            np.abs(simulated - fitted), np.abs(values - fitted)
+        )
 
     def test_effective_multinomial_size_recovers_known_size(self):
         proportions = np.array([0.2, 0.3, 0.5])

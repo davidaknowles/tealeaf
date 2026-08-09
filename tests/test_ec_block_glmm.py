@@ -28,7 +28,11 @@ from extra_scripts.run_celltype_compositional_splicing import (
     paired_celltype_design,
 )
 from extra_scripts.run_differential_splicing import block_mapping
-from tealeaf.sc import ec_block_glmm, ec_glmm, ec_glmm_full
+from extra_scripts.run_path_wald_ablation import (
+    effect_summary,
+    permute_labels_within_clusters,
+)
+from tealeaf.sc import differential, ec_block_glmm, ec_glmm, ec_glmm_full
 
 
 def test_laplace_dirichlet_multinomial_dispatches_family(monkeypatch):
@@ -188,6 +192,32 @@ def test_estimate_once_wald_detects_clustered_path_effect():
     assert result["p_value"] < 0.01
     assert result["degrees_of_freedom"] == 1
     assert result["path_estimates"]["converged"].all()
+
+
+def test_multilevel_label_permutation_preserves_cluster_counts():
+    labels = np.array([0, 1, 2, 0, 2, 1, 1])
+    clusters = np.array([0, 0, 0, 1, 1, 2, 2])
+    permuted = permute_labels_within_clusters(
+        labels, clusters, np.random.default_rng(8)
+    )
+    for cluster in np.unique(clusters):
+        positions = clusters == cluster
+        np.testing.assert_array_equal(
+            np.sort(permuted[positions]), np.sort(labels[positions])
+        )
+
+
+def test_effect_summary_maps_ilr_coefficients_to_centered_paths():
+    result = {
+        "coefficients": np.array([[0.0, 0.0], [0.4, -0.2]]),
+        "coefficient_covariance": np.eye(4),
+    }
+    tested, paths, standard_errors = effect_summary(result, 1, 3)
+    np.testing.assert_allclose(paths.sum(axis=1), 0.0, atol=1e-12)
+    np.testing.assert_allclose(
+        paths, tested @ differential.helmert_basis(3).T
+    )
+    assert standard_errors.shape == paths.shape
 
 
 def test_block_tensors_are_nested_with_expected_df():

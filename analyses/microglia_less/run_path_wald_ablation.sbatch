@@ -34,5 +34,9 @@ python "${REPO_ROOT}/extra_scripts/run_path_wald_ablation.py" \
   --output-dir "${RUN_ROOT}/differential/${OUTPUT_TAG}_shard${SHARD_INDEX}" \
   --covariance "${COVARIANCE:-conditional}" \
   --fit-max-iter "${FIT_MAX_ITER:-100}" \
+  --label-permutations "${LABEL_PERMUTATIONS:-0}" \
+  --wild-null-replicates "${WILD_NULL_REPLICATES:-0}" \
+  --seed "${SEED:-0}" \
+  --cluster-adjustment "${CLUSTER_ADJUSTMENT:-cr1}" \
   --shard-index "${SHARD_INDEX}" \
   --shard-count "${SHARD_COUNT}"

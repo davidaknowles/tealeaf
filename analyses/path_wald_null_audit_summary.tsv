@@ -1,0 +1,7 @@
+dataset	cluster_adjustment	null_type	null_tests	null_replicates	p_le_0.05	p_le_0.01	p_le_0.001	mean_null_bh_calls	observed_bh_calls	stratified_calibrated_bh_calls
+mouse	CR1	label permutation	143460	32	0.657828	0.583312	0.517134	2844.09375	3069	0
+mouse	CR1	restricted wild cluster	143904	32	0.602589	0.531653	0.467874	2581.46875	3069	0
+mouse	CR3	label permutation	71653	16	0.367312	0.305040	0.255844	1429.7500	1906	0
+mouse	CR3	restricted wild cluster	71872	16	0.337628	0.273124	0.223383	1276.6875	1906	0
+human 11-shard sensitivity	CR1	label permutation	14256	16	0.753086	0.722503	0.686799	665.6250	673	0
+human 11-shard sensitivity	CR1	restricted wild cluster	14592	16	0.722519	0.687774	0.651796	651.6875	673	0
