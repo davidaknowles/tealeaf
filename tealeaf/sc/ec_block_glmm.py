@@ -274,6 +274,98 @@ def path_wald_from_estimates(
     return result
 
 
+def path_gaussian_lrt_test(
+    data,
+    path_index,
+    nuisance_design,
+    tested_design,
+    *,
+    baseline=None,
+    covariance="conditional",
+    max_iter=100,
+    effect_prior_scales=(0.1, 0.25, 0.5, 1.0),
+    effect_prior_covariance=None,
+    null_variance_components=None,
+    random_intercept_solver="woodbury",
+):
+    """Estimate path ILRs once, then run a Gaussian mixed-model LRT and BFs."""
+    estimates = estimate_path_logratios(
+        data,
+        path_index,
+        baseline=baseline,
+        covariance=covariance,
+        max_iter=max_iter,
+    )
+    result = path_gaussian_lrt_from_estimates(
+        estimates,
+        nuisance_design,
+        tested_design,
+        data.clusters,
+        effect_prior_scales=effect_prior_scales,
+        effect_prior_covariance=effect_prior_covariance,
+        null_variance_components=null_variance_components,
+        random_intercept_solver=random_intercept_solver,
+    )
+    result["path_estimates"] = estimates
+    return result
+
+
+def path_gaussian_lrt_from_estimates(
+    estimates,
+    nuisance_design,
+    tested_design,
+    clusters,
+    *,
+    effect_prior_scales=(0.1, 0.25, 0.5, 1.0),
+    effect_prior_covariance=None,
+    null_variance_components=None,
+    random_intercept_solver="woodbury",
+):
+    """Run Gaussian mixed-model LRT and score BFs on estimated path ILRs."""
+    nuisance_design = np.asarray(nuisance_design, dtype=float)
+    tested_design = np.asarray(tested_design, dtype=float)
+    clusters = np.asarray(clusters)
+    values = np.asarray(estimates["values"], dtype=float)
+    covariances = np.asarray(estimates["covariances"], dtype=float)
+    if (
+        nuisance_design.ndim != 2
+        or tested_design.ndim != 2
+        or len(nuisance_design) != len(values)
+        or len(tested_design) != len(values)
+        or len(clusters) != len(values)
+    ):
+        raise ValueError("designs, clusters, and path estimates must align")
+    usable = (
+        estimates["converged"]
+        & estimates["identifiable"]
+        & np.isfinite(values).all(axis=1)
+        & np.isfinite(covariances).all(axis=(1, 2))
+    )
+    design = np.column_stack((nuisance_design, tested_design))
+    tested_columns = np.arange(nuisance_design.shape[1], design.shape[1])
+    if (
+        usable.sum() <= design.shape[1]
+        or np.linalg.matrix_rank(design[usable]) < design.shape[1]
+        or len(np.unique(clusters[usable])) <= design.shape[1]
+    ):
+        raise np.linalg.LinAlgError(
+            "usable path estimates do not identify the regression design"
+        )
+    result = differential.gaussian_mixed_model_lrt(
+        values[usable],
+        covariances[usable],
+        design[usable],
+        tested_columns,
+        clusters[usable],
+        effect_prior_scales=effect_prior_scales,
+        effect_prior_covariance=effect_prior_covariance,
+        null_variance_components=null_variance_components,
+        random_intercept_solver=random_intercept_solver,
+    )
+    estimates["usable"] = usable
+    return result
+
+
 def block_effect_bases(path_index):
     """Return block-path and orthogonal nuisance bases in reference logits.
 

@@ -1,0 +1,5 @@
+bayes_factor	null_type	tests	empirical_fdr_0.05_calls	minimum_selected_log_bayes_factor	minimum_empirical_q_value	null_replicates
+mixture_log_bayes_factor	label_permutation	4472	12	30.260066525093567	0.0	32
+mixture_log_bayes_factor	wild_cluster	4472	269	2.4188704276669637	0.0	32
+bic_log_bayes_factor	label_permutation	4472	27	11.385661344195851	0.0	32
+bic_log_bayes_factor	wild_cluster	4472	99	1.3088943336912882	0.0	32

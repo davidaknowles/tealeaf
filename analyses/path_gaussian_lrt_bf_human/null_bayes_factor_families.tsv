@@ -1,0 +1,17 @@
+bayes_factor	null_type	replicate	tests	bf_ge_1	bf_ge_10	bf_ge_100
+mixture_log_bayes_factor	label_permutation	0	913	81	25	13
+mixture_log_bayes_factor	label_permutation	1	912	82	30	16
+mixture_log_bayes_factor	label_permutation	2	912	72	28	18
+mixture_log_bayes_factor	label_permutation	3	908	83	30	15
+mixture_log_bayes_factor	label_permutation	4	913	78	27	16
+mixture_log_bayes_factor	label_permutation	5	908	83	24	19
+mixture_log_bayes_factor	label_permutation	6	904	74	26	19
+mixture_log_bayes_factor	label_permutation	7	905	77	24	15
+bic_log_bayes_factor	label_permutation	0	913	5	1	0
+bic_log_bayes_factor	label_permutation	1	912	5	1	0
+bic_log_bayes_factor	label_permutation	2	912	6	1	1
+bic_log_bayes_factor	label_permutation	3	908	5	1	0
+bic_log_bayes_factor	label_permutation	4	913	3	0	0
+bic_log_bayes_factor	label_permutation	5	908	1	0	0
+bic_log_bayes_factor	label_permutation	6	904	3	0	0
+bic_log_bayes_factor	label_permutation	7	905	4	1	1

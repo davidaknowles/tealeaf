@@ -1,0 +1,2 @@
+null_type	null_tests	replicates	pooled_p_le_0.05	pooled_p_le_0.01	pooled_p_le_0.001	median_p	uniform_ks_statistic	mean_family_bh_calls	median_family_bh_calls	max_family_bh_calls
+label_permutation	7275	8	0.06075601374570447	0.03367697594501718	0.020893470790378007	0.8321223625713285	0.33320274529911453	19.375	19.0	25

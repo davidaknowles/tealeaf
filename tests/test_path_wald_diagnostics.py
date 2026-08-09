@@ -6,8 +6,12 @@ import numpy as np
 import pandas as pd
 
 from extra_scripts.summarize_path_wald_diagnostics import (
+    bayes_factor_calibration,
+    bayes_factor_empirical_fdr,
     calibration_tables,
     null_split_sign_agreement,
+    stratified_null_calibration,
+    structured_null_pvalue_fdr,
     split_direction_tables,
 )
 
@@ -75,3 +79,69 @@ def test_split_direction_tables_and_null_baseline_track_path_signs():
     )
     assert replicate.loc[0, "sign_agreement"] == 1.0
     assert null_summary.loc[0, "mean_sign_agreement"] == 1.0
+
+
+def test_bayes_factor_calibration_counts_null_families():
+    observed = pd.DataFrame({
+        "test_id": ["x", "y"],
+        "mixture_log_bayes_factor": [np.log(20.0), 0.0],
+        "bic_log_bayes_factor": [np.log(5.0), -1.0],
+    })
+    null = pd.DataFrame({
+        "test_id": ["x", "y", "x", "y"],
+        "null_type": ["label_permutation"] * 4,
+        "replicate": [0, 0, 1, 1],
+        "mixture_log_bayes_factor": [np.log(11.0), 0.0, 0.0, 0.0],
+        "bic_log_bayes_factor": [0.0, 0.0, 0.0, 0.0],
+    })
+    families, summary = bayes_factor_calibration(observed, null)
+    mixture = summary.loc[
+        summary.bayes_factor.eq("mixture_log_bayes_factor")
+    ].iloc[0]
+    assert mixture.observed_bf_ge_10 == 1
+    assert mixture.mean_null_bf_ge_10 == 0.5
+    assert len(families) == 4
+
+
+def test_chi_square_calibration_uses_single_denominator_bin():
+    null = pd.DataFrame({
+        "null_type": ["label_permutation", "label_permutation"],
+        "degrees_of_freedom": [2, 2],
+        "denominator_degrees_of_freedom": [np.nan, np.nan],
+        "p_value": [0.01, 0.5],
+    })
+    result = stratified_null_calibration(null)
+    assert result.loc[0, "denominator_df_bin"] == "all"
+
+
+def test_bayes_factor_empirical_fdr_uses_null_tail_rates():
+    observed = pd.DataFrame({
+        "test_id": ["a", "b", "c"],
+        "mixture_log_bayes_factor": [8.0, 4.0, 0.0],
+    })
+    null = pd.DataFrame({
+        "null_type": ["label_permutation"] * 6,
+        "replicate": [0, 0, 0, 1, 1, 1],
+        "mixture_log_bayes_factor": [5.0, 1.0, 0.0, 2.0, 1.0, 0.0],
+    })
+    table, summary = bayes_factor_empirical_fdr(observed, null)
+    mixture = table.loc[
+        table.bayes_factor.eq("mixture_log_bayes_factor")
+    ].sort_values("rank")
+    assert mixture.empirical_q_value.iloc[0] == 0.0
+    assert summary.loc[0, "empirical_fdr_0.05_calls"] == 1
+
+
+def test_pvalue_empirical_fdr_uses_null_tail_rates():
+    observed = pd.DataFrame({
+        "test_id": ["a", "b", "c"],
+        "p_value": [1e-4, 0.01, 0.5],
+    })
+    null = pd.DataFrame({
+        "null_type": ["label_permutation"] * 6,
+        "replicate": [0, 0, 0, 1, 1, 1],
+        "p_value": [0.005, 0.2, 0.8, 0.02, 0.3, 0.9],
+    })
+    table, summary = structured_null_pvalue_fdr(observed, null)
+    assert table.empirical_q_value.iloc[0] == 0.0
+    assert summary.loc[0, "empirical_fdr_0.05_calls"] == 1

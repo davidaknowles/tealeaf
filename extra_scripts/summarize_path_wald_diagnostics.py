@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Summarize path-Wald structured nulls and split path-effect directions."""
+"""Summarize estimate-once path structured nulls and effect directions."""
 
 from __future__ import annotations
 
@@ -16,7 +16,9 @@ from extra_scripts.run_differential_splicing import benjamini_hochberg
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--discovery-observed", required=True, type=Path)
+    parser.add_argument(
+        "--discovery-observed", required=True, nargs="+", type=Path
+    )
     parser.add_argument(
         "--discovery-null-shards", required=True, nargs="+", type=Path
     )
@@ -46,8 +48,23 @@ def read_null_shards(shards):
     )
 
 
-def read_observed(path):
-    table = pd.read_csv(path, sep="\t")
+def read_observed(paths):
+    if isinstance(paths, Path):
+        paths = [paths]
+    tables = []
+    for path in paths:
+        if path.is_dir():
+            path = path / "ec_block_glmm.tsv"
+        if path.is_file() and path.stat().st_size:
+            try:
+                table = pd.read_csv(path, sep="\t")
+            except pd.errors.EmptyDataError:
+                continue
+            if not table.empty:
+                tables.append(table)
+    if not tables:
+        raise ValueError("no nonempty observed path-inference tables")
+    table = pd.concat(tables, ignore_index=True)
     table["joint_converged"] = (
         table["null_converged"].astype(bool)
         & table["alternative_converged"].astype(bool)
@@ -96,6 +113,10 @@ def calibration_tables(observed, null):
     summary = pd.DataFrame(summary_rows)
     empirical_rows = []
     observed_statistic = observed.set_index("test_id").statistic
+    observed_bf = (
+        observed.set_index("test_id").mixture_log_bayes_factor
+        if "mixture_log_bayes_factor" in observed else None
+    )
     for (test_id, null_type), table in null.groupby(["test_id", "null_type"]):
         if test_id not in observed_statistic:
             continue
@@ -108,19 +129,229 @@ def calibration_tables(observed, null):
             "empirical_p_value": (
                 1.0 + float(np.sum(table.statistic >= statistic))
             ) / (len(table) + 1.0),
+            "observed_mixture_log_bayes_factor": (
+                float(observed_bf[test_id]) if observed_bf is not None else np.nan
+            ),
+            "empirical_bf_p_value": (
+                (
+                    1.0
+                    + float(np.sum(
+                        table.mixture_log_bayes_factor
+                        >= observed_bf[test_id]
+                    ))
+                ) / (len(table) + 1.0)
+                if (
+                    observed_bf is not None
+                    and "mixture_log_bayes_factor" in table
+                ) else np.nan
+            ),
         })
     empirical = pd.DataFrame(empirical_rows)
     return null, families, summary, empirical
 
 
+def bayes_factor_calibration(observed, null):
+    """Count observed and structured-null evidence-threshold crossings."""
+    columns = ("mixture_log_bayes_factor", "bic_log_bayes_factor")
+    rows = []
+    summaries = []
+    for column in columns:
+        if column not in observed or column not in null:
+            continue
+        observed_values = observed[column].dropna().to_numpy()
+        if not len(observed_values):
+            continue
+        column_rows = []
+        for (null_type, replicate), table in null.groupby(
+            ["null_type", "replicate"]
+        ):
+            values = table[column].dropna().to_numpy()
+            if not len(values):
+                continue
+            row = {
+                "bayes_factor": column,
+                "null_type": null_type,
+                "replicate": replicate,
+                "tests": len(values),
+            }
+            for threshold in (1, 10, 100):
+                row[f"bf_ge_{threshold}"] = int(
+                    np.sum(values >= np.log(threshold))
+                )
+            column_rows.append(row)
+            rows.append(row)
+        if not column_rows:
+            continue
+        local_rows = pd.DataFrame(column_rows)
+        for null_type, table in local_rows.groupby("null_type"):
+            summary = {
+                "bayes_factor": column,
+                "null_type": null_type,
+                "observed_tests": len(observed_values),
+                "replicates": table.replicate.nunique(),
+                "mean_null_tests": float(table.tests.mean()),
+            }
+            for threshold in (1, 10, 100):
+                name = f"bf_ge_{threshold}"
+                summary[f"observed_{name}"] = int(
+                    np.sum(observed_values >= np.log(threshold))
+                )
+                summary[f"mean_null_{name}"] = float(table[name].mean())
+                summary[f"max_null_{name}"] = int(table[name].max())
+                null_rates = table[name] / table.tests
+                summary[f"mean_null_rate_{name}"] = float(null_rates.mean())
+                summary[f"expected_null_{name}_at_observed_size"] = float(
+                    null_rates.mean() * len(observed_values)
+                )
+            summaries.append(summary)
+    return pd.DataFrame(rows), pd.DataFrame(summaries)
+
+
+def observed_inference_summary(observed):
+    """Summarize analytic LRT and Bayes-factor discoveries."""
+    p_values = observed.p_value.to_numpy()
+    row = {
+        "tests": len(observed),
+        "nominal_p_le_0.05": int(np.sum(p_values <= 0.05)),
+        "bh_0.05": int(np.sum(benjamini_hochberg(p_values) <= 0.05)),
+    }
+    for column in ("mixture_log_bayes_factor", "bic_log_bayes_factor"):
+        if column not in observed:
+            continue
+        values = observed[column].dropna().to_numpy()
+        for threshold in (1, 10, 100):
+            row[f"{column}_ge_{threshold}"] = int(
+                np.sum(values >= np.log(threshold))
+            )
+    for model in ("null", "alternative"):
+        for component in ("cluster", "residual"):
+            column = f"{model}_{component}_variance"
+            if column in observed:
+                values = observed[column].dropna().to_numpy()
+                row[f"{column}_at_zero"] = int(np.sum(values <= 1e-12))
+    return pd.DataFrame([row])
+
+
+def bayes_factor_empirical_fdr(observed, null):
+    """Estimate BF-tail FDR from complete structured-null families."""
+    rows = []
+    summaries = []
+    for column in ("mixture_log_bayes_factor", "bic_log_bayes_factor"):
+        if column not in observed or column not in null:
+            continue
+        local_observed = observed.loc[
+            observed[column].notna(), ["test_id", column]
+        ].sort_values(column, ascending=False).reset_index(drop=True)
+        if local_observed.empty:
+            continue
+        observed_values = local_observed[column].to_numpy()
+        ranks = np.arange(1, len(local_observed) + 1)
+        for null_type, type_null in null.groupby("null_type"):
+            rates = []
+            for _, family in type_null.groupby("replicate"):
+                null_values = np.sort(family[column].dropna().to_numpy())
+                if len(null_values):
+                    rates.append(
+                        (len(null_values) - np.searchsorted(
+                            null_values, observed_values, side="left"
+                        )) / len(null_values)
+                    )
+            if not rates:
+                continue
+            mean_rate = np.mean(rates, axis=0)
+            expected_false = mean_rate * len(local_observed)
+            estimated_fdr = np.minimum(expected_false / ranks, 1.0)
+            q_value = np.minimum.accumulate(estimated_fdr[::-1])[::-1]
+            local = local_observed.copy()
+            local["bayes_factor"] = column
+            local["null_type"] = null_type
+            local["rank"] = ranks
+            local["expected_null_calls"] = expected_false
+            local["estimated_fdr"] = estimated_fdr
+            local["empirical_q_value"] = q_value
+            rows.append(local)
+            selected = local.loc[local.empirical_q_value <= 0.05]
+            summaries.append({
+                "bayes_factor": column,
+                "null_type": null_type,
+                "tests": len(local),
+                "empirical_fdr_0.05_calls": len(selected),
+                "minimum_selected_log_bayes_factor": (
+                    float(selected[column].min()) if len(selected) else np.nan
+                ),
+                "minimum_empirical_q_value": float(q_value.min()),
+                "null_replicates": type_null.replicate.nunique(),
+            })
+    return (
+        pd.concat(rows, ignore_index=True) if rows else pd.DataFrame(),
+        pd.DataFrame(summaries),
+    )
+
+
+def structured_null_pvalue_fdr(observed, null):
+    """Estimate p-value-tail FDR from complete structured-null families."""
+    local_observed = observed.loc[
+        observed.p_value.notna(), ["test_id", "p_value"]
+    ].sort_values("p_value").reset_index(drop=True)
+    observed_values = local_observed.p_value.to_numpy()
+    ranks = np.arange(1, len(local_observed) + 1)
+    rows = []
+    summaries = []
+    for null_type, type_null in null.groupby("null_type"):
+        rates = []
+        for _, family in type_null.groupby("replicate"):
+            null_values = np.sort(family.p_value.dropna().to_numpy())
+            if len(null_values):
+                rates.append(
+                    np.searchsorted(null_values, observed_values, side="right")
+                    / len(null_values)
+                )
+        if not rates:
+            continue
+        mean_rate = np.mean(rates, axis=0)
+        expected_false = mean_rate * len(local_observed)
+        estimated_fdr = np.minimum(expected_false / ranks, 1.0)
+        q_value = np.minimum.accumulate(estimated_fdr[::-1])[::-1]
+        local = local_observed.copy()
+        local["null_type"] = null_type
+        local["rank"] = ranks
+        local["expected_null_calls"] = expected_false
+        local["estimated_fdr"] = estimated_fdr
+        local["empirical_q_value"] = q_value
+        rows.append(local)
+        selected = local.loc[local.empirical_q_value <= 0.05]
+        summaries.append({
+            "null_type": null_type,
+            "tests": len(local),
+            "empirical_fdr_0.05_calls": len(selected),
+            "maximum_selected_p_value": (
+                float(selected.p_value.max()) if len(selected) else np.nan
+            ),
+            "minimum_empirical_q_value": float(q_value.min()),
+            "null_replicates": type_null.replicate.nunique(),
+        })
+    return (
+        pd.concat(rows, ignore_index=True) if rows else pd.DataFrame(),
+        pd.DataFrame(summaries),
+    )
+
+
+def denominator_df_bins(table):
+    """Bin finite denominator df, or use one bin for chi-square tests."""
+    values = table.denominator_degrees_of_freedom
+    if values.notna().any():
+        return pd.cut(
+            values,
+            bins=[-np.inf, 5, 10, 20, np.inf],
+            labels=["1-5", "6-10", "11-20", ">20"],
+        ).astype(str)
+    return pd.Series("all", index=table.index)
+
+
 def stratified_null_calibration(null):
     """Summarize analytic null rejection by numerator and cluster df."""
     local = null.copy()
-    local["denominator_df_bin"] = pd.cut(
-        local.denominator_degrees_of_freedom,
-        bins=[-np.inf, 5, 10, 20, np.inf],
-        labels=["1-5", "6-10", "11-20", ">20"],
-    ).astype(str)
+    local["denominator_df_bin"] = denominator_df_bins(local)
     rows = []
     for keys, table in local.groupby(
         ["null_type", "degrees_of_freedom", "denominator_df_bin"]
@@ -139,20 +370,10 @@ def stratified_null_calibration(null):
 
 def stratified_observed_calibration(observed, null):
     """Map analytic observed p-values through matched structured-null CDFs."""
-    denominator_bins = [-np.inf, 5, 10, 20, np.inf]
-    denominator_labels = ["1-5", "6-10", "11-20", ">20"]
     observed = observed.copy()
-    observed["denominator_df_bin"] = pd.cut(
-        observed.denominator_degrees_of_freedom,
-        bins=denominator_bins,
-        labels=denominator_labels,
-    ).astype(str)
+    observed["denominator_df_bin"] = denominator_df_bins(observed)
     local_null = null.copy()
-    local_null["denominator_df_bin"] = pd.cut(
-        local_null.denominator_degrees_of_freedom,
-        bins=denominator_bins,
-        labels=denominator_labels,
-    ).astype(str)
+    local_null["denominator_df_bin"] = denominator_df_bins(local_null)
     rows = []
     for null_type, type_null in local_null.groupby("null_type"):
         grouped = {
@@ -178,6 +399,8 @@ def stratified_observed_calibration(observed, null):
                 "denominator_df_bin": row.denominator_df_bin,
             })
     calibrated = pd.DataFrame(rows)
+    if calibrated.empty:
+        return calibrated, pd.DataFrame()
     summary_rows = []
     calibrated["fdr"] = np.nan
     for null_type, positions in calibrated.groupby("null_type").groups.items():
@@ -389,6 +612,7 @@ def save_plots(null, coordinates, output_dir):
         geom_abline,
         geom_histogram,
         geom_point,
+        geom_vline,
         ggplot,
         labs,
         theme_bw,
@@ -402,6 +626,21 @@ def save_plots(null, coordinates, output_dir):
         + labs(x="Analytic null p-value", y="Count")
     )
     histogram.save(output_dir / "null_pvalue_histogram.pdf", width=7, height=3.5)
+    if (
+        "mixture_log_bayes_factor" in null
+        and null.mixture_log_bayes_factor.notna().any()
+    ):
+        bf_histogram = (
+            ggplot(null, aes("mixture_log_bayes_factor"))
+            + geom_histogram(bins=60)
+            + geom_vline(xintercept=np.log(10.0), linetype="dashed")
+            + facet_wrap("null_type", scales="free_y")
+            + theme_bw()
+            + labs(x="Mixture log Bayes factor", y="Count")
+        )
+        bf_histogram.save(
+            output_dir / "null_bayes_factor_histogram.pdf", width=7, height=3.5
+        )
     if len(coordinates):
         sampled = coordinates.sample(min(len(coordinates), 30000), random_state=3)
         scatter = (
@@ -426,6 +665,16 @@ def main():
     filtered_null, families, calibration, empirical = calibration_tables(
         discovery, discovery_null
     )
+    bf_families, bf_calibration = bayes_factor_calibration(
+        discovery, filtered_null
+    )
+    observed_summary = observed_inference_summary(discovery)
+    bf_empirical, bf_empirical_summary = bayes_factor_empirical_fdr(
+        discovery, filtered_null
+    )
+    p_empirical, p_empirical_summary = structured_null_pvalue_fdr(
+        discovery, filtered_null
+    )
     calibration_by_df = stratified_null_calibration(filtered_null)
     calibrated_observed, calibrated_observed_summary = (
         stratified_observed_calibration(discovery, filtered_null)
@@ -443,12 +692,20 @@ def main():
             fold_null[0], fold_null[1], set(coordinates.test_id)
         )
     outputs = {
+        "observed.tsv.gz": discovery,
         "null_family_calibration.tsv": families,
         "null_calibration_summary.tsv": calibration,
         "observed_empirical_pvalues.tsv": empirical,
         "null_calibration_by_df.tsv": calibration_by_df,
         "observed_stratified_calibration.tsv": calibrated_observed,
         "observed_stratified_calibration_summary.tsv": calibrated_observed_summary,
+        "null_bayes_factor_families.tsv": bf_families,
+        "bayes_factor_calibration_summary.tsv": bf_calibration,
+        "observed_inference_summary.tsv": observed_summary,
+        "observed_bayes_factor_empirical_fdr.tsv.gz": bf_empirical,
+        "observed_bayes_factor_empirical_fdr_summary.tsv": bf_empirical_summary,
+        "observed_pvalue_empirical_fdr.tsv.gz": p_empirical,
+        "observed_pvalue_empirical_fdr_summary.tsv": p_empirical_summary,
     }
     if args.fold_observed is not None:
         outputs.update({

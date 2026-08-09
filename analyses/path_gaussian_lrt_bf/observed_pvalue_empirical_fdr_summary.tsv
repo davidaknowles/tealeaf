@@ -1,0 +1,3 @@
+null_type	tests	empirical_fdr_0.05_calls	maximum_selected_p_value	minimum_empirical_q_value	null_replicates
+label_permutation	4472	12	1.4230588632032694e-16	0.0	32
+wild_cluster	4472	194	0.0017542407364865	0.0	32

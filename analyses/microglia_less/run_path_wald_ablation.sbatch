@@ -37,6 +37,9 @@ python "${REPO_ROOT}/extra_scripts/run_path_wald_ablation.py" \
   --label-permutations "${LABEL_PERMUTATIONS:-0}" \
   --wild-null-replicates "${WILD_NULL_REPLICATES:-0}" \
   --seed "${SEED:-0}" \
+  --inference "${INFERENCE:-wald}" \
+  --effect-prior-scales "${EFFECT_PRIOR_SCALES:-0.1;0.25;0.5;1.0}" \
+  --gaussian-solver "${GAUSSIAN_SOLVER:-woodbury}" \
   --cluster-adjustment "${CLUSTER_ADJUSTMENT:-cr1}" \
   --shard-index "${SHARD_INDEX}" \
   --shard-count "${SHARD_COUNT}"

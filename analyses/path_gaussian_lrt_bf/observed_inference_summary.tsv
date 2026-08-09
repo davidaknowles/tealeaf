@@ -1,0 +1,2 @@
+tests	nominal_p_le_0.05	bh_0.05	mixture_log_bayes_factor_ge_1	mixture_log_bayes_factor_ge_10	mixture_log_bayes_factor_ge_100	bic_log_bayes_factor_ge_1	bic_log_bayes_factor_ge_10	bic_log_bayes_factor_ge_100	null_cluster_variance_at_zero	null_residual_variance_at_zero	alternative_cluster_variance_at_zero	alternative_residual_variance_at_zero
+4472	462	200	913	277	163	153	83	51	3770	3677	3680	3964

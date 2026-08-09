@@ -497,6 +497,145 @@ class DifferentialTest(unittest.TestCase):
         )
         self.assertAlmostEqual(fixed["statistic"], result["statistic"])
 
+    def test_gaussian_mixed_model_lrt_and_score_bf_detect_effect(self):
+        rng = np.random.default_rng(41)
+        subjects = 24
+        clusters = np.repeat(np.arange(subjects), 2)
+        treatment = np.tile([0.0, 1.0], subjects)
+        subject_effect = np.repeat(rng.normal(0, 0.25, subjects), 2)
+        values = (
+            0.8 * treatment
+            + subject_effect
+            + rng.normal(0, 0.08, len(treatment))
+        )[:, None]
+        covariances = np.repeat(
+            np.array([[[0.01]]]), len(values), axis=0
+        )
+        result = differential.gaussian_mixed_model_lrt(
+            values,
+            covariances,
+            np.column_stack((np.ones(len(values)), treatment)),
+            tested_columns=[1],
+            clusters=clusters,
+            effect_prior_scales=(0.25, 0.5, 1.0),
+        )
+        self.assertLess(result["p_value"], 0.01)
+        self.assertGreater(result["mixture_log_bayes_factor"], np.log(10.0))
+        self.assertEqual(result["degrees_of_freedom"], 1)
+        self.assertEqual(result["efficient_score"].shape, (1,))
+        self.assertEqual(result["efficient_information"].shape, (1, 1))
+        self.assertGreater(result["alternative_cluster_variance"], 0.01)
+
+        def dense_profile_objective(model_design, cluster_variance, residual_variance):
+            precision = np.zeros((model_design.shape[1], model_design.shape[1]))
+            score = np.zeros(model_design.shape[1])
+            quadratic = 0.0
+            log_determinant = 0.0
+            for cluster in np.unique(clusters):
+                rows = np.flatnonzero(clusters == cluster)
+                variance = np.diag(
+                    covariances[rows, 0, 0] + residual_variance
+                ) + cluster_variance * np.ones((len(rows), len(rows)))
+                weight = np.linalg.inv(variance)
+                local_values = values[rows, 0]
+                precision += model_design[rows].T @ weight @ model_design[rows]
+                score += model_design[rows].T @ weight @ local_values
+                quadratic += local_values @ weight @ local_values
+                log_determinant += np.linalg.slogdet(variance)[1]
+            coefficient = np.linalg.solve(precision, score)
+            return log_determinant + quadratic - score @ coefficient
+
+        self.assertAlmostEqual(
+            result["null_objective"],
+            dense_profile_objective(
+                np.ones((len(values), 1)),
+                result["null_cluster_variance"],
+                result["null_residual_variance"],
+            ),
+            places=8,
+        )
+        self.assertAlmostEqual(
+            result["alternative_objective"],
+            dense_profile_objective(
+                np.column_stack((np.ones(len(values)), treatment)),
+                result["alternative_cluster_variance"],
+                result["alternative_residual_variance"],
+            ),
+            places=8,
+        )
+        dense = differential.gaussian_mixed_model_lrt(
+            values,
+            covariances,
+            np.column_stack((np.ones(len(values)), treatment)),
+            tested_columns=[1],
+            clusters=clusters,
+            effect_prior_scales=(0.25, 0.5, 1.0),
+            random_intercept_solver="dense",
+        )
+        for key in (
+            "null_objective",
+            "alternative_objective",
+            "statistic",
+            "mixture_log_bayes_factor",
+        ):
+            self.assertAlmostEqual(result[key], dense[key], places=8)
+
+    def test_gaussian_score_bf_penalizes_zero_effect(self):
+        subjects = 12
+        clusters = np.repeat(np.arange(subjects), 2)
+        treatment = np.tile([0.0, 1.0], subjects)
+        values = np.zeros((len(treatment), 2))
+        covariances = np.repeat(
+            np.eye(2)[None, :, :] * 0.1, len(values), axis=0
+        )
+        result = differential.gaussian_mixed_model_lrt(
+            values,
+            covariances,
+            np.column_stack((np.ones(len(values)), treatment)),
+            tested_columns=[1],
+            clusters=clusters,
+            effect_prior_scales=(0.25,),
+        )
+        self.assertAlmostEqual(result["statistic"], 0.0)
+        self.assertLess(result["mixture_log_bayes_factor"], 0.0)
+        self.assertEqual(result["log_bayes_factors"].shape, (1,))
+
+    def test_gaussian_score_bf_is_invariant_to_reference_level(self):
+        clusters = np.repeat(np.arange(12), 3)
+        levels = np.tile(np.arange(3), 12)
+        values = np.tile(np.array([0.0, 0.3, -0.2]), 12)[:, None]
+        covariances = np.repeat(
+            np.array([[[0.1]]]), len(values), axis=0
+        )
+        prior_covariance = np.eye(2) + np.ones((2, 2))
+        first = differential.gaussian_mixed_model_lrt(
+            values,
+            covariances,
+            np.column_stack((
+                np.ones(len(values)), levels == 1, levels == 2
+            )),
+            tested_columns=[1, 2],
+            clusters=clusters,
+            effect_prior_scales=(0.25,),
+            effect_prior_covariance=prior_covariance,
+        )
+        second = differential.gaussian_mixed_model_lrt(
+            values,
+            covariances,
+            np.column_stack((
+                np.ones(len(values)), levels == 0, levels == 2
+            )),
+            tested_columns=[1, 2],
+            clusters=clusters,
+            effect_prior_scales=(0.25,),
+            effect_prior_covariance=prior_covariance,
+        )
+        self.assertAlmostEqual(
+            first["mixture_log_bayes_factor"],
+            second["mixture_log_bayes_factor"],
+            places=8,
+        )
+
     def test_paired_cell_type_test_detects_effect(self):
         rng = np.random.default_rng(9)
         records = []
