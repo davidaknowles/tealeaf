@@ -8,6 +8,8 @@ of first converting EC counts to estimated isoform or splice-path counts.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import time
+
 import numpy as np
 import scipy.optimize
 import scipy.special
@@ -194,6 +196,79 @@ def _initial_outer(data, family):
     return values
 
 
+def _projected_adam(
+    objective,
+    initial,
+    bounds,
+    *,
+    max_iter,
+    learning_rate=0.03,
+    beta1=0.9,
+    beta2=0.999,
+    epsilon=1e-8,
+    gradient_tolerance=1e-5,
+):
+    """Minimize a differentiable objective with projected Adam.
+
+    This small optimizer is intended for controlled comparisons with the
+    existing bounded L-BFGS fit. It retains the best finite iterate because a
+    fixed first-order schedule need not decrease the objective at every step.
+    """
+    parameters = np.asarray(initial, dtype=float).copy()
+    lower = np.asarray([
+        -np.inf if bound[0] is None else bound[0] for bound in bounds
+    ])
+    upper = np.asarray([
+        np.inf if bound[1] is None else bound[1] for bound in bounds
+    ])
+    first_moment = np.zeros_like(parameters)
+    second_moment = np.zeros_like(parameters)
+    best_parameters = parameters.copy()
+    best_value = np.inf
+    best_gradient = np.full_like(parameters, np.nan)
+    evaluations = 0
+    converged = False
+    message = "Adam reached the iteration limit"
+    iteration = 0
+    for iteration in range(1, int(max_iter) + 1):
+        value, gradient = objective(parameters)
+        evaluations += 1
+        if not np.isfinite(value) or not np.isfinite(gradient).all():
+            message = "Adam encountered a non-finite objective or gradient"
+            break
+        if value < best_value:
+            best_value = float(value)
+            best_parameters = parameters.copy()
+            best_gradient = np.asarray(gradient, dtype=float).copy()
+        if np.linalg.norm(gradient, ord=np.inf) <= float(gradient_tolerance):
+            converged = True
+            message = "Adam gradient tolerance reached"
+            break
+        first_moment = beta1 * first_moment + (1.0 - beta1) * gradient
+        second_moment = beta2 * second_moment + (1.0 - beta2) * gradient**2
+        corrected_first = first_moment / (1.0 - beta1**iteration)
+        corrected_second = second_moment / (1.0 - beta2**iteration)
+        progress = (iteration - 1.0) / max(float(max_iter), 1.0)
+        rate = float(learning_rate) * 0.5 * (1.0 + np.cos(np.pi * progress))
+        parameters -= rate * corrected_first / (
+            np.sqrt(corrected_second) + float(epsilon)
+        )
+        parameters = np.clip(parameters, lower, upper)
+    if not np.isfinite(best_value):
+        best_value, best_gradient = objective(initial)
+        evaluations += 1
+        best_parameters = np.asarray(initial, dtype=float).copy()
+    return {
+        "x": best_parameters,
+        "fun": float(best_value),
+        "jac": np.asarray(best_gradient, dtype=float),
+        "nit": int(iteration),
+        "nfev": int(evaluations),
+        "success": bool(converged),
+        "message": message,
+    }
+
+
 def fit_laplace(
     data,
     *,
@@ -203,6 +278,9 @@ def fit_laplace(
     max_iter=200,
     mode_steps=30,
     mode_gradient="unrolled",
+    optimizer="lbfgs",
+    adam_learning_rate=0.03,
+    adam_steps=100,
     objective_cache=None,
     objective_cache_key=None,
 ):
@@ -228,6 +306,12 @@ def fit_laplace(
         )
     if mode_gradient not in ("unrolled", "implicit"):
         raise ValueError("mode_gradient must be 'unrolled' or 'implicit'")
+    if optimizer not in ("lbfgs", "adam", "adam_lbfgs"):
+        raise ValueError("optimizer must be 'lbfgs', 'adam', or 'adam_lbfgs'")
+    if float(adam_learning_rate) <= 0:
+        raise ValueError("adam_learning_rate must be positive")
+    if int(adam_steps) < 0:
+        raise ValueError("adam_steps must be nonnegative")
     (
         jax,
         jnp,
@@ -559,11 +643,23 @@ def fit_laplace(
         )
         return float(value), np.asarray(gradient, dtype=float)
 
-    initial_value, _ = scipy_objective(initial)
+    evaluation_count = 0
+    evaluation_seconds = 0.0
+
+    def timed_scipy_objective(parameters):
+        nonlocal evaluation_count, evaluation_seconds
+        started = time.perf_counter()
+        result = scipy_objective(parameters)
+        evaluation_seconds += time.perf_counter() - started
+        evaluation_count += 1
+        return result
+
+    initial_value, _ = timed_scipy_objective(initial)
+    initial_objective_seconds = evaluation_seconds
     optimizer_scale = max(1.0, abs(initial_value))
 
     def scaled_scipy_objective(parameters):
-        value, gradient = scipy_objective(parameters)
+        value, gradient = timed_scipy_objective(parameters)
         return value / optimizer_scale, gradient / optimizer_scale
 
     bounds = [(-20.0, 20.0)] * coefficient_count
@@ -572,20 +668,50 @@ def fit_laplace(
         bounds.append((-6.0, np.log(1e7)))
     if observation_noise:
         bounds.append((-8.0, 3.0))
-    result = scipy.optimize.minimize(
-        scaled_scipy_objective,
-        initial,
-        method="L-BFGS-B",
-        jac=True,
-        bounds=bounds,
-        options={
-            "maxiter": int(max_iter),
-            "ftol": 1e-12,
-            "gtol": 1e-5,
-            "maxls": 100,
-        },
-    )
-    parameters = np.asarray(result.x)
+    optimizer_started = time.perf_counter()
+    adam_result = None
+    lbfgs_result = None
+    if optimizer in ("adam", "adam_lbfgs"):
+        steps = int(max_iter) if optimizer == "adam" else int(adam_steps)
+        adam_result = _projected_adam(
+            scaled_scipy_objective,
+            initial,
+            bounds,
+            max_iter=steps,
+            learning_rate=adam_learning_rate,
+            gradient_tolerance=1e-5,
+        )
+    if optimizer in ("lbfgs", "adam_lbfgs"):
+        lbfgs_initial = (
+            np.asarray(initial, dtype=float)
+            if adam_result is None else np.asarray(adam_result["x"], dtype=float)
+        )
+        lbfgs_result = scipy.optimize.minimize(
+            scaled_scipy_objective,
+            lbfgs_initial,
+            method="L-BFGS-B",
+            jac=True,
+            bounds=bounds,
+            options={
+                "maxiter": int(max_iter),
+                "ftol": 1e-12,
+                "gtol": 1e-5,
+                "maxls": 100,
+            },
+        )
+    optimizer_seconds = time.perf_counter() - optimizer_started
+    if lbfgs_result is not None:
+        parameters = np.asarray(lbfgs_result.x)
+        optimizer_success = bool(lbfgs_result.success)
+        optimizer_iterations = int(lbfgs_result.nit) + (
+            0 if adam_result is None else int(adam_result["nit"])
+        )
+        optimizer_message = str(lbfgs_result.message)
+    else:
+        parameters = np.asarray(adam_result["x"])
+        optimizer_success = bool(adam_result["success"])
+        optimizer_iterations = int(adam_result["nit"])
+        optimizer_message = str(adam_result["message"])
     outer = jnp.asarray(parameters)
     modes = posterior_mode(outer, active_fixed_effect_tensor, counts)
     _, mode_score, hessian, _, _ = mode_derivatives(
@@ -596,7 +722,7 @@ def fit_laplace(
     )
     covariance = np.asarray(jnp.linalg.inv(hessian))
     marginal_variance = np.diagonal(covariance, axis1=1, axis2=2)
-    final_value, final_gradient = scipy_objective(parameters)
+    final_value, final_gradient = timed_scipy_objective(parameters)
     mode_score = np.asarray(mode_score)
     gradient_norm = float(np.linalg.norm(final_gradient, ord=np.inf))
     scaled_gradient_norm = gradient_norm / optimizer_scale
@@ -626,7 +752,19 @@ def fit_laplace(
             and scaled_gradient_norm <= 1e-4
             and mode_score_norm <= 1e-4
         ),
-        "iterations": int(result.nit),
+        "optimizer": optimizer,
+        "optimizer_success": optimizer_success,
+        "iterations": optimizer_iterations,
+        "adam_iterations": (
+            0 if adam_result is None else int(adam_result["nit"])
+        ),
+        "lbfgs_iterations": (
+            0 if lbfgs_result is None else int(lbfgs_result.nit)
+        ),
+        "objective_evaluations": int(evaluation_count),
+        "objective_evaluation_seconds": float(evaluation_seconds),
+        "initial_objective_seconds": float(initial_objective_seconds),
+        "optimizer_seconds": float(optimizer_seconds),
         "gradient_norm": gradient_norm,
         "scaled_gradient_norm": scaled_gradient_norm,
         "outer_gradient": np.asarray(final_gradient),
@@ -635,7 +773,7 @@ def fit_laplace(
         "mode_steps": int(mode_steps),
         "mode_gradient": mode_gradient,
         "mode_score_norm": mode_score_norm,
-        "message": str(result.message),
+        "message": optimizer_message,
     }
 
 

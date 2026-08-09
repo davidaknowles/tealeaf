@@ -223,6 +223,48 @@ def test_implicit_laplace_mode_gradient_matches_unrolled_fit():
     )
 
 
+def test_projected_adam_respects_bounds_and_improves_quadratic():
+    def objective(value):
+        residual = value - np.asarray([2.0, -3.0])
+        return 0.5 * residual @ residual, residual
+
+    result = ec_glmm._projected_adam(
+        objective,
+        np.zeros(2),
+        [(-1.0, 1.0), (-2.0, 2.0)],
+        max_iter=400,
+        learning_rate=0.1,
+        gradient_tolerance=1e-8,
+    )
+    np.testing.assert_allclose(result["x"], [1.0, -2.0], atol=2e-3)
+    assert result["fun"] < objective(np.zeros(2))[0]
+    assert result["nfev"] <= 401
+
+
+def test_adam_lbfgs_laplace_matches_direct_laplace():
+    data = simulated_data(seed=29, effect=0.8)
+    direct = ec_glmm.fit_laplace(
+        data,
+        max_iter=80,
+        mode_steps=12,
+        mode_gradient="implicit",
+    )
+    hybrid = ec_glmm.fit_laplace(
+        data,
+        max_iter=80,
+        mode_steps=12,
+        mode_gradient="implicit",
+        optimizer="adam_lbfgs",
+        adam_steps=20,
+        adam_learning_rate=0.02,
+    )
+    assert direct["converged"]
+    assert hybrid["converged"]
+    assert hybrid["optimizer"] == "adam_lbfgs"
+    assert hybrid["adam_iterations"] == 20
+    assert hybrid["objective"] == pytest.approx(direct["objective"], abs=1e-7)
+
+
 def test_laplace_objective_cache_accepts_dynamic_counts_and_tensor():
     data = simulated_data(seed=23, effect=0.7)
     tensor = ec_block_glmm.unrestricted_tensor(data.design[:, :2], 1)

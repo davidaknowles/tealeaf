@@ -90,6 +90,22 @@ def parse_args():
         choices=("gene_shape", "test"),
         default="gene_shape",
     )
+    parser.add_argument(
+        "--laplace-optimizer",
+        choices=("lbfgs", "adam", "adam_lbfgs"),
+        default="lbfgs",
+    )
+    parser.add_argument("--adam-learning-rate", type=float, default=0.03)
+    parser.add_argument("--adam-steps", type=int, default=100)
+    parser.add_argument(
+        "--null-warm-start",
+        choices=("default", "shared_alternative", "previous_null"),
+        default="default",
+        help=(
+            "Initialize later block nulls by projecting the already fitted "
+            "gene-level unrestricted alternative or preceding block null"
+        ),
+    )
     parser.add_argument("--cavi-initializer-iterations", type=int, default=25)
     parser.add_argument("--retries", type=int, default=2)
     parser.add_argument("--null-replicate-retries", type=int)
@@ -474,6 +490,9 @@ def fit_method(
                 else int(laplace_mode_steps)
             ),
             mode_gradient=getattr(args, "laplace_mode_gradient", "implicit"),
+            optimizer=getattr(args, "laplace_optimizer", "lbfgs"),
+            adam_learning_rate=getattr(args, "adam_learning_rate", 0.03),
+            adam_steps=getattr(args, "adam_steps", 100),
             objective_cache=objective_cache,
             objective_cache_key=objective_cache_key,
         )
@@ -783,6 +802,7 @@ def main():
     objective_cache = {}
     objective_cache_group = None
     pooled_weight_cache = {}
+    previous_null_cache = {}
     started = time.perf_counter()
     for position, candidate in enumerate(candidates):
         (
@@ -858,9 +878,41 @@ def main():
             completed_methods = {}
             for method in args.methods:
                 cache_key = (test_id, method)
+                alternative_key = (
+                    (gene, tuple(rows), method, args.latent_space)
+                    if args.latent_space == "isoform"
+                    else (test_id, method, args.latent_space)
+                )
                 if cache_key not in null_cache:
                     null_initial = None
+                    null_warm_start_used = "default"
+                    previous_null_key = (
+                        gene, tuple(rows), method, args.latent_space
+                    )
                     if (
+                        args.null_warm_start == "shared_alternative"
+                        and alternative_key in alternative_cache
+                    ):
+                        null_initial = reparameterize_fixed_effects(
+                            alternative_cache[alternative_key],
+                            full_alternative_tensor,
+                            null_tensor,
+                        )
+                        null_warm_start_used = "shared_alternative"
+                    elif (
+                        args.null_warm_start == "previous_null"
+                        and previous_null_key in previous_null_cache
+                    ):
+                        previous_fit, previous_tensor = previous_null_cache[
+                            previous_null_key
+                        ]
+                        null_initial = reparameterize_fixed_effects(
+                            previous_fit,
+                            previous_tensor,
+                            null_tensor,
+                        )
+                        null_warm_start_used = "previous_null"
+                    elif (
                         method == "laplace_multinomial_noise"
                         and "laplace_multinomial" in completed_methods
                     ):
@@ -888,12 +940,12 @@ def main():
                             else ("null", test_id, method)
                         ),
                     )
+                else:
+                    null_warm_start_used = "cached"
                 null = null_cache[cache_key]
-                alternative_key = (
+                previous_null_cache[
                     (gene, tuple(rows), method, args.latent_space)
-                    if args.latent_space == "isoform"
-                    else (test_id, method, args.latent_space)
-                )
+                ] = (null, null_tensor)
                 alternative_reused = alternative_key in alternative_cache
                 if not alternative_reused:
                     if (
@@ -1020,6 +1072,27 @@ def main():
                     "null_attempts": null["attempts"],
                     "alternative_attempts": alternative["attempts"],
                     "alternative_reused": alternative_reused,
+                    "null_warm_start": null_warm_start_used,
+                    "null_optimizer": null.get("optimizer", ""),
+                    "alternative_optimizer": alternative.get("optimizer", ""),
+                    "null_objective_evaluations": null.get(
+                        "objective_evaluations", np.nan
+                    ),
+                    "alternative_objective_evaluations": alternative.get(
+                        "objective_evaluations", np.nan
+                    ),
+                    "null_objective_evaluation_seconds": null.get(
+                        "objective_evaluation_seconds", np.nan
+                    ),
+                    "alternative_objective_evaluation_seconds": alternative.get(
+                        "objective_evaluation_seconds", np.nan
+                    ),
+                    "null_optimizer_seconds": null.get(
+                        "optimizer_seconds", np.nan
+                    ),
+                    "alternative_optimizer_seconds": alternative.get(
+                        "optimizer_seconds", np.nan
+                    ),
                 })
                 if args.calibration != "bootstrap":
                     continue

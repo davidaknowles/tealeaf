@@ -1,0 +1,16 @@
+{
+  "candidates": 4825,
+  "gene_row_groups": 3508,
+  "groups_with_multiple_blocks": 853,
+  "candidates_in_exact_batches_of_at_least_2": 813,
+  "candidates_in_exact_batches_of_at_least_4": 30,
+  "maximum_exact_batch_size": 5,
+  "candidates_in_ragged_dot_batches_of_at_least_2": 3726,
+  "candidates_in_ragged_dot_batches_of_at_least_8": 1929,
+  "maximum_ragged_dot_batch_size": 249,
+  "candidates_in_ragged_optimizer_batches_of_at_least_2": 4777,
+  "candidates_in_ragged_optimizer_batches_of_at_least_16": 4383,
+  "maximum_ragged_optimizer_batch_size": 973,
+  "benchmark_groups": 5,
+  "benchmark_candidates": 12
+}

@@ -1,0 +1,15 @@
+dataset	strategy	job_seconds	total_cpu_seconds	peak_rss_kib	candidate_tests
+mouse	lbfgs	220	397.366	2236420	12
+mouse	shared_alternative_lbfgs	183	310.518	2091468	12
+mouse	previous_null_lbfgs	195	340.690	2314900	12
+mouse	adam_lr_0.01	260	433.357	2151116	12
+mouse	adam_lr_0.03	254	423.073	2211644	12
+mouse	adam_then_lbfgs	138	250.202	2030604	12
+mouse	two_concurrent_lbfgs	137	349.684	2808800	12
+human	lbfgs	303	654.397	4857916	11
+human	shared_alternative_lbfgs	216	424.479	4831008	11
+human	previous_null_lbfgs	282	585.550	5035704	10
+human	adam_lr_0.01	235	395.703	4538396	11
+human	adam_lr_0.03	248	405.154	4742572	11
+human	adam_then_lbfgs	249	531.901	4844284	11
+human	two_concurrent_lbfgs	230	644.221	7308268	11
