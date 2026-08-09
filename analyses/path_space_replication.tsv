@@ -1,0 +1,3 @@
+comparison	method	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	shared_block_tests
+Isoform-space EC GLMM vs Path-space EC GLMM	Isoform-space EC GLMM	744	92	58	37	0.6759745127436282	0.4331864799100667	1009
+Isoform-space EC GLMM vs Path-space EC GLMM	Path-space EC GLMM	744	94	57	39	0.6819708846584547	0.39504390092727093	1009

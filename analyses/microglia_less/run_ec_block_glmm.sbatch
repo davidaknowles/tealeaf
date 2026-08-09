@@ -72,6 +72,7 @@ ARGS=(
   --laplace-mode-steps "${LAPLACE_MODE_STEPS}"
   --laplace-mode-gradient "${LAPLACE_MODE_GRADIENT:-implicit}"
   --laplace-cache-scope "${LAPLACE_CACHE_SCOPE:-gene_shape}"
+  --latent-space "${LATENT_SPACE:-isoform}"
   --retries "${RETRIES}"
   --null-replicate-retries "${NULL_REPLICATE_RETRIES}"
   --vi-samples "${VI_SAMPLES}"

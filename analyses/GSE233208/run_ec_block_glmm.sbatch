@@ -44,6 +44,7 @@ ARGS=(
   --laplace-mode-steps "${LAPLACE_MODE_STEPS:-12}"
   --laplace-mode-gradient "${LAPLACE_MODE_GRADIENT:-implicit}"
   --laplace-cache-scope "${LAPLACE_CACHE_SCOPE:-gene_shape}"
+  --latent-space "${LATENT_SPACE:-isoform}"
   --null-replicate-retries "${NULL_REPLICATE_RETRIES:-2}"
   --vi-samples "${VI_SAMPLES:-16}"
   --shard-index "${SHARD_INDEX}" --shard-count "${SHARD_COUNT}"

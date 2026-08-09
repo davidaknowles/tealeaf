@@ -515,6 +515,48 @@ For block \(b\), pseudobulk \(i\), and primer \(p\), define \(N_{bip}=\bm1_{E_{b
 \]
 The oligo(dT) and random-hexamer protocols use separate \(A_{bp}\) matrices and likelihood terms. Their different isoform exposures therefore model primer-specific positional coverage without forcing a common bias profile.
 
+\subsection*{Pre-collapsed local-path comparator}
+
+The path-space comparator reduces the latent dimension before fitting but retains the raw EC count vectors. Let \(T_g\in\mathbb N\) be the supported isoform count, \(S_b\in\mathbb N\) the represented local-path count, and \(U_b\in\mathbb N_0\) the number of isoforms retained only as normalization nuisances. It first estimates one label-independent pooled isoform mixture \(\widehat{\bm w}_g\in\Delta^{T_g-1}\) by maximizing the conditional EC log likelihood, \[\widehat{\bm w}_g=\arg\max_{\bm w\in\Delta^{T_g-1}}\sum_p\left\{\sum_{e=1}^{E_{gp}}\bar c_{gpe}\log(A_{gp}\bm w)_e-\bar N_{gp}\log(\bm1_{E_{gp}}^\prime A_{gp}\bm w)\right\},\] where \(\bar{\bm c}_{gp}=\sum_i\bm c_{gip}\in\mathbb N_0^{E_{gp}}\) and \(\bar N_{gp}=\bm1_{E_{gp}}^\prime\bar{\bm c}_{gp}\in\mathbb N_0\). This pooling uses no cell-type or condition labels.
+
+For represented path \(s\in\{1,\ldots,S_b\}\), let \(\mathcal I_{bs}\subseteq\{1,\ldots,T_g\}\) be its isoforms and define the fixed conditional mixture \(\widehat\rho_{bst}=\widehat w_{gt}/\sum_{u\in\mathcal I_{bs}}\widehat w_{gu}\) for \(t\in\mathcal I_{bs}\). The collapsed primer map \(B_{bp}\in\mathbb R_+^{E_{gp}\times(S_b+U_b)}\) has represented-path columns \[(B_{bp})_{\mathbin\cdot s}=\sum_{t\in\mathcal I_{bs}}\widehat\rho_{bst}(A_{gp})_{\mathbin\cdot t}\in\mathbb R_+^{E_{gp}},\] while every nuisance isoform retains its original column separately. If \(\bm\phi_{bi}\in\mathbb R_+^{S_b+U_b}\) is the reduced latent abundance, the comparator replaces \(A_{gp}\bm\theta_{gi}\) by \(B_{bp}\bm\phi_{bi}\) and otherwise uses the same multinomial EC likelihood, subject random intercept, fixed-effect construction, Laplace fitting procedure, likelihood-ratio reference distribution, and BH correction as the isoform-space model.
+
+Because counts are not assigned to paths before fitting, this construction retains the multinomial EC covariance \(N_{bip}\{\operatorname{diag}(\bm\pi_{bip})-\bm\pi_{bip}\bm\pi_{bip}^\prime\}\in\mathbb S_+^{E_{gp}}\) and propagates EC ambiguity through \(B_{bp}\). It does not retain isoform-specific information within a path. The reduction is exact only when the conditional isoform mixture is constant across pseudobulks and the fixed mixture is correct; otherwise it is a lower-dimensional working model. Nuisance isoforms remain separate specifically to avoid imposing one mixture on heterogeneous gene-level isoforms outside the tested block.
+
+This reduction is small in the fitted universes. Only 29.7\% of mouse block tests and 12.8\% of human block tests contain two represented isoforms that can be collapsed to the same path. The mean fractional latent-dimension reductions are 10.6\% and 4.4\%, respectively. Among multi-isoform mouse path-by-primer groups in the two subject folds, only 0.22\% and 0.24\% have identical compatibility columns, confirming that the reduction is generally a working-model approximation rather than an exact reparameterization.
+
+Table~\ref{tab:path-space-comparator} compares the two latent spaces using the same current Laplace implementation. Discovery is reported both on each method's converged tests and on the common-converged universe. Independent-subject replication requires a block test to converge for both methods in both folds, combines block p-values to genes by Simes, and applies BH to the two-fold conjunction p-value. The human sensitivity analysis uses 359 matched completed shards containing 4,282 tests and is not a genome-wide human analysis. Path space produces more discovery calls in both datasets but only two more replicated mouse genes, slightly higher held-half replication, and lower fold rank correlation. It is also slower and uses slightly more peak memory. Thus pre-collapse does not provide a clear power or computational advantage.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Isoform-space and pre-collapsed path-space EC GLMM comparison. Discovery rates use BH calls divided by eligible tests. Rep. is the gene count passing BH on the two-fold conjunction p-value, held is held-half nominal replication, and \(\rho\) is fold Spearman correlation. Time is aggregate worker hours and memory is peak GiB.}
+\label{tab:path-space-comparator}
+\begin{tabular}{lrr}
+\toprule
+Endpoint & Isoform space & Path space\\
+\midrule
+Mouse convergence & 0.942 & 0.949\\
+Mouse BH calls, method-specific & 323 & 354\\
+Mouse discovery rate, method-specific & 0.0711 & 0.0773\\
+Mouse BH calls, common converged & 319 & 348\\
+Mouse discovery rate, common converged & 0.0710 & 0.0774\\
+Replicated genes & 37 & 39\\
+Held-half replication & 0.676 & 0.682\\
+Fold rank correlation \(\rho\) & 0.433 & 0.395\\
+Mouse discovery worker hours & 31.18 & 33.23\\
+Mouse discovery peak GiB & 3.97 & 4.04\\
+Human subset convergence & 0.949 & 0.949\\
+Human subset BH calls & 477 & 506\\
+Human subset discovery rate & 0.1174 & 0.1246\\
+Human subset worker hours & 33.69 & 36.55\\
+Human subset peak GiB & 6.39 & 6.65\\
+Fold 0 worker hours & 8.17 & 8.40\\
+Fold 1 worker hours & 7.60 & 8.26\\
+\bottomrule
+\end{tabular}
+\end{table}
+
 The genome-wide hierarchical model supplies \(\bm\theta_{bi}^{(0)}\in\mathbb R_+^{T_g}\). Let \(s_b(t)\in\{1,\ldots,S_b\}\) map isoform \(t\in\mathcal I_b^{\rm sp}\) to its path. The baseline spliced-isoform mass is the scalar \(\omega_{bi}^{\rm sp}=\sum_{t\in\mathcal I_b^{\rm sp}} \theta_{bit}^{(0)}\in\mathbb R_+\). For \(t\in\mathcal I_b^{\rm sp}\), local refinement uses \[
  \theta_{bit}(\bm\delta_{bi})
  =\omega_{bi}^{\rm sp}\frac{\theta_{bit}^{(0)}

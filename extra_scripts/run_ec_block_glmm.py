@@ -102,6 +102,12 @@ def parse_args():
     parser.add_argument("--pairwise-null-seed", type=int)
     parser.add_argument("--max-candidates", type=int)
     parser.add_argument("--joint-gene-test", action="store_true")
+    parser.add_argument(
+        "--latent-space",
+        choices=("isoform", "path_uniform", "path_pooled"),
+        default="isoform",
+        help="Fit the original isoform space or a fixed-mixture path space.",
+    )
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
 
@@ -463,11 +469,11 @@ def fit_method(
             initial=initial,
             max_iter=args.max_iter,
             mode_steps=(
-                args.laplace_mode_steps
+                getattr(args, "laplace_mode_steps", 30)
                 if laplace_mode_steps is None
                 else int(laplace_mode_steps)
             ),
-            mode_gradient=args.laplace_mode_gradient,
+            mode_gradient=getattr(args, "laplace_mode_gradient", "implicit"),
             objective_cache=objective_cache,
             objective_cache_key=objective_cache_key,
         )
@@ -776,6 +782,7 @@ def main():
     alternative_cache = {}
     objective_cache = {}
     objective_cache_group = None
+    pooled_weight_cache = {}
     started = time.perf_counter()
     for position, candidate in enumerate(candidates):
         (
@@ -820,10 +827,27 @@ def main():
                 clusters,
                 drop_zero=False,
             )
+            original_isoforms = base.n_isoforms
+            modeled_path_index = np.asarray(path_index, dtype=int)
+            if args.latent_space != "isoform":
+                weight_key = (gene, tuple(rows), tuple(transcripts))
+                weights = None
+                if args.latent_space == "path_pooled":
+                    if weight_key not in pooled_weight_cache:
+                        pooled_weight_cache[weight_key] = (
+                            ec_block_glmm.pooled_isoform_weights(base)
+                        )
+                    weights = pooled_weight_cache[weight_key]
+                base, modeled_path_index = (
+                    ec_block_glmm.collapse_isoforms_to_paths(
+                        base, path_index, weights=weights
+                    )
+                )
+                objective_cache.clear()
             tested = treatment_design(labels, len(tested_levels))
             null_tensor, alternative_tensor, degrees = (
                 ec_block_glmm.block_fixed_effect_tensors(
-                    nuisance, tested, path_index
+                    nuisance, tested, modeled_path_index
                 )
             )
             null_data = tensor_data(base, null_tensor)
@@ -865,7 +889,11 @@ def main():
                         ),
                     )
                 null = null_cache[cache_key]
-                alternative_key = (gene, tuple(rows), method)
+                alternative_key = (
+                    (gene, tuple(rows), method, args.latent_space)
+                    if args.latent_space == "isoform"
+                    else (test_id, method, args.latent_space)
+                )
                 alternative_reused = alternative_key in alternative_cache
                 if not alternative_reused:
                     if (
@@ -938,10 +966,11 @@ def main():
                         else None
                     ),
                     "method": method,
+                    "latent_space": args.latent_space,
                     "pairwise_null_seed": args.pairwise_null_seed,
                     "n_paths": len(signatures),
                     "n_isoforms": base.n_isoforms,
-                    "n_original_isoforms": len(transcripts),
+                    "n_original_isoforms": original_isoforms,
                     "n_ecs": len(gene_ecs[gene]),
                     "n_samples": len(local_metadata),
                     "n_test_levels": len(tested_levels),
@@ -1154,6 +1183,7 @@ def main():
         "pairwise_null_seed": args.pairwise_null_seed,
         "max_candidates": args.max_candidates,
         "joint_gene_test": args.joint_gene_test,
+        "latent_space": args.latent_space,
         "seconds": time.perf_counter() - started,
     }, indent=2) + "\n")
 

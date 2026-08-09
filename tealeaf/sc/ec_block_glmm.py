@@ -3,9 +3,104 @@
 from __future__ import annotations
 
 import numpy as np
+import scipy.optimize
 import scipy.stats
 
 from . import differential, ec_glmm
+
+
+def pooled_isoform_weights(data, max_iter=100):
+    """Estimate one label-independent isoform mixture from pooled EC counts.
+
+    The returned vector has dimension ``T``, where ``T`` is the number of
+    isoforms. Primer totals remain conditioned upon, as in the fitted EC
+    likelihood. The estimate is intended only to define fixed within-path
+    mixtures before reducing the latent space.
+    """
+    totals = tuple(
+        np.asarray(counts, dtype=float).sum(axis=0)
+        for counts in data.counts
+    )
+    dimension = data.n_isoforms - 1
+
+    def objective(free_logits):
+        logits = np.r_[np.asarray(free_logits, dtype=float), 0.0]
+        abundance = np.exp(logits - logits.max())
+        value = 0.0
+        for counts, mapping in zip(totals, data.compatibility):
+            mass = np.asarray(mapping, dtype=float) @ abundance
+            if counts.sum() > 0:
+                value -= float(
+                    counts @ np.log(np.maximum(mass, 1e-300))
+                )
+                value += float(
+                    counts.sum()
+                    * np.log(np.maximum(mass.sum(), 1e-300))
+                )
+        return value
+
+    result = scipy.optimize.minimize(
+        objective,
+        np.zeros(dimension, dtype=float),
+        method="L-BFGS-B",
+        options={"maxiter": int(max_iter)},
+    )
+    logits = np.r_[np.asarray(result.x, dtype=float), 0.0]
+    weights = np.exp(logits - logits.max())
+    return weights / weights.sum()
+
+
+def collapse_isoforms_to_paths(data, path_index, weights=None):
+    """Collapse represented isoforms to paths while retaining nuisance isoforms.
+
+    ``path_index`` has dimension ``T`` and maps represented isoforms to
+    nonnegative path labels. Isoforms labeled -1 remain separate normalization
+    nuisances. Each collapsed compatibility column is the fixed within-path
+    weighted mean of its original columns. Counts are not collapsed, so the
+    primer-specific multinomial likelihood retains covariance among ECs.
+    """
+    path_index = np.asarray(path_index, dtype=int)
+    if path_index.shape != (data.n_isoforms,):
+        raise ValueError("path_index must have one entry per isoform")
+    paths = np.unique(path_index[path_index >= 0])
+    if len(paths) < 2:
+        raise ValueError(
+            "a path collapse needs at least two represented paths"
+        )
+    if weights is None:
+        weights = np.ones(data.n_isoforms, dtype=float)
+    weights = np.asarray(weights, dtype=float)
+    if weights.shape != (data.n_isoforms,) or np.any(weights < 0):
+        raise ValueError(
+            "weights must be a nonnegative vector of length T"
+        )
+
+    groups = [np.flatnonzero(path_index == path) for path in paths]
+    groups.extend([
+        np.asarray([index]) for index in np.flatnonzero(path_index < 0)
+    ])
+    collapsed_mappings = []
+    for mapping in data.compatibility:
+        mapping = np.asarray(mapping, dtype=float)
+        columns = []
+        for group in groups:
+            local_weights = weights[group]
+            if local_weights.sum() <= 0:
+                local_weights = np.ones(len(group), dtype=float)
+            local_weights = local_weights / local_weights.sum()
+            columns.append(mapping[:, group] @ local_weights)
+        collapsed_mappings.append(np.column_stack(columns))
+    collapsed_path_index = np.r_[
+        np.arange(len(paths), dtype=int),
+        -np.ones(np.sum(path_index < 0), dtype=int),
+    ]
+    collapsed = ec_glmm.ECGLMMData(
+        data.counts,
+        tuple(collapsed_mappings),
+        data.design,
+        data.clusters,
+    )
+    return collapsed, collapsed_path_index
 
 
 def block_effect_bases(path_index):

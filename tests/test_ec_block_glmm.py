@@ -96,6 +96,69 @@ def test_path_and_nuisance_bases_span_centered_isoform_logits():
     )
 
 
+def test_path_collapse_uses_weighted_columns_and_keeps_nuisance_isoforms():
+    counts = (np.array([[4, 6]], dtype=float),)
+    compatibility = (
+        np.array([[1, 3, 0, 2], [2, 0, 4, 1]], dtype=float),
+    )
+    data = ec_glmm.ECGLMMData(
+        counts,
+        compatibility,
+        np.ones((1, 1)),
+        np.array([0]),
+    )
+    collapsed, path_index = ec_block_glmm.collapse_isoforms_to_paths(
+        data,
+        [0, 0, 1, -1],
+        weights=[1, 3, 2, 1],
+    )
+    np.testing.assert_allclose(
+        collapsed.compatibility[0],
+        np.column_stack((
+            compatibility[0][:, :2] @ np.array([0.25, 0.75]),
+            compatibility[0][:, 2],
+            compatibility[0][:, 3],
+        )),
+    )
+    np.testing.assert_array_equal(path_index, [0, 1, -1])
+    np.testing.assert_array_equal(collapsed.counts[0], counts[0])
+
+
+def test_path_collapse_preserves_ec_probabilities_for_fixed_mixtures():
+    counts = (np.array([[5, 5]], dtype=float),)
+    mapping = np.array([[1, 0, 1], [0, 2, 1]], dtype=float)
+    data = ec_glmm.ECGLMMData(
+        counts,
+        (mapping,),
+        np.ones((1, 1)),
+        np.array([0]),
+    )
+    weights = np.array([0.2, 0.8, 1.0])
+    collapsed, _ = ec_block_glmm.collapse_isoforms_to_paths(
+        data,
+        [0, 0, 1],
+        weights=weights,
+    )
+    original_abundance = np.array([0.3 * 0.2, 0.3 * 0.8, 0.7])
+    original_mass = mapping @ original_abundance
+    collapsed_mass = collapsed.compatibility[0] @ np.array([0.3, 0.7])
+    np.testing.assert_allclose(
+        original_mass / original_mass.sum(),
+        collapsed_mass / collapsed_mass.sum(),
+    )
+
+
+def test_pooled_isoform_weights_match_identity_ec_proportions():
+    data = ec_glmm.ECGLMMData(
+        (np.array([[7, 3], [9, 1]], dtype=float),),
+        (np.eye(2),),
+        np.ones((2, 1)),
+        np.array([0, 1]),
+    )
+    weights = ec_block_glmm.pooled_isoform_weights(data)
+    np.testing.assert_allclose(weights, [0.8, 0.2], atol=1e-5)
+
+
 def test_block_tensors_are_nested_with_expected_df():
     nuisance = np.array([[1, 0], [0, 1], [1, 0]], dtype=float)
     tested = np.array([[0, 0], [1, 0], [0, 1]], dtype=float)

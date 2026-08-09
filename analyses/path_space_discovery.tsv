@@ -1,0 +1,9 @@
+dataset	universe	method	tests	eligible_tests	convergence	nominal_0.05	bh_0.05	bh_rate	shared_bh_overlap	shared_bh_jaccard
+mouse	method-specific converged	isoform-space EC GLMM	4825	4546	0.9421761658031088	708	323	0.07105147382314123	NA	NA
+mouse	method-specific converged	path-space EC GLMM	4825	4579	0.9490155440414508	763	354	0.07730945621314697	NA	NA
+mouse	common converged tests	isoform-space EC GLMM	4496	4496	1.0	699	319	0.07095195729537367	299	0.8125
+mouse	common converged tests	path-space EC GLMM	4496	4496	1.0	753	348	0.07740213523131673	299	0.8125
+human matched shard subset	method-specific converged	isoform-space EC GLMM	4282	4063	0.9488556749182625	891	477	0.11740093526950529	NA	NA
+human matched shard subset	method-specific converged	path-space EC GLMM	4282	4062	0.9486221391872957	932	506	0.12456917774495323	NA	NA
+human matched shard subset	common converged tests	isoform-space EC GLMM	3968	3968	1.0	879	472	0.1189516129032258	457	0.8943248532289628
+human matched shard subset	common converged tests	path-space EC GLMM	3968	3968	1.0	918	496	0.125	457	0.8943248532289628

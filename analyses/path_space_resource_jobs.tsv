@@ -1,0 +1,7 @@
+dataset	method	job_ids
+mouse discovery	isoform-space EC GLMM	19644784
+mouse discovery	path-space EC GLMM	19648869
+mouse replication fold 0	isoform-space EC GLMM	19649992
+mouse replication fold 0	path-space EC GLMM	19648871
+mouse replication fold 1	isoform-space EC GLMM	19649993
+mouse replication fold 1	path-space EC GLMM	19648872
