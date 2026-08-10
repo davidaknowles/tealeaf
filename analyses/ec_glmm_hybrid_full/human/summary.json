@@ -1,0 +1,31 @@
+{
+  "tests": 11597,
+  "hybrid_joint_convergence": 10889,
+  "scalar_joint_convergence": 10981,
+  "common_joint_convergence": 10846,
+  "common_median_absolute_statistic_difference": 0.03807694920214999,
+  "common_maximum_absolute_statistic_difference": 674.9399727151613,
+  "common_statistic_spearman": 0.9968862730779611,
+  "common_statistic_difference_above_0_1": 4217,
+  "common_statistic_difference_above_1": 1485,
+  "common_statistic_difference_above_5": 363,
+  "hybrid_bh_discoveries": 1490,
+  "scalar_bh_discoveries": 1459,
+  "shared_bh_discoveries": 1441,
+  "hybrid_only_bh_discoveries": 49,
+  "scalar_only_bh_discoveries": 18,
+  "bh_discovery_jaccard": 0.9555702917771883,
+  "null_worker_hours": 65.32826393253458,
+  "alternative_worker_hours": 58.35593533052992,
+  "total_worker_hours": 123.6841992630645,
+  "null_routes": {
+    "scalar": 9450,
+    "batched": 2036,
+    "batched_scalar_continuation": 111
+  },
+  "alternative_routes": {
+    "batched": 5468,
+    "scalar": 4467,
+    "batched_scalar_continuation": 240
+  }
+}

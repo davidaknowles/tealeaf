@@ -41,6 +41,16 @@ def read_shards(pattern):
     return pd.concat(tables, ignore_index=True), summaries
 
 
+def bh_over_converged(p_values, converged):
+    p_values = np.asarray(p_values, dtype=float)
+    converged = np.asarray(converged, dtype=bool)
+    adjusted = np.ones(p_values.shape, dtype=float)
+    adjusted[converged] = benjamini_hochberg(
+        np.nan_to_num(p_values[converged], nan=1.0)
+    )
+    return adjusted
+
+
 def main():
     args = parse_args()
     null, null_summaries = read_shards(args.null_shards)
@@ -92,7 +102,9 @@ def main():
         result.statistic, result.degrees_of_freedom
     )
     result.loc[~result.converged, "lrt_p_value"] = 1.0
-    result["bh_q_value"] = benjamini_hochberg(result.lrt_p_value.to_numpy())
+    result["bh_q_value"] = bh_over_converged(
+        result.lrt_p_value.to_numpy(), result.converged.to_numpy()
+    )
     scalar = pd.read_csv(args.scalar_results, sep="\t").drop_duplicates("test_id")
     comparison = result.merge(
         scalar[
@@ -108,11 +120,12 @@ def main():
         suffixes=("_hybrid", "_scalar"),
         validate="one_to_one",
     )
-    scalar_p = comparison.lrt_p_value_scalar.where(
-        comparison.null_converged_scalar & comparison.alternative_converged_scalar,
-        1.0,
-    ).fillna(1.0)
-    comparison["scalar_bh_q_value"] = benjamini_hochberg(scalar_p.to_numpy())
+    scalar_converged = (
+        comparison.null_converged_scalar & comparison.alternative_converged_scalar
+    )
+    comparison["scalar_bh_q_value"] = bh_over_converged(
+        comparison.lrt_p_value_scalar.to_numpy(), scalar_converged.to_numpy()
+    )
     common = (
         comparison.converged
         & comparison.null_converged_scalar
@@ -122,8 +135,12 @@ def main():
         comparison.loc[common, "statistic_hybrid"]
         - comparison.loc[common, "statistic_scalar"]
     )
+    common_statistics = comparison.loc[
+        common, ["statistic_hybrid", "statistic_scalar"]
+    ]
     hybrid_calls = set(comparison.loc[comparison.bh_q_value <= 0.05, "test_id"])
     scalar_calls = set(comparison.loc[comparison.scalar_bh_q_value <= 0.05, "test_id"])
+    call_union = hybrid_calls | scalar_calls
     summary = {
         "tests": len(comparison),
         "hybrid_joint_convergence": int(comparison.converged.sum()),
@@ -136,11 +153,22 @@ def main():
         "common_joint_convergence": int(common.sum()),
         "common_median_absolute_statistic_difference": float(difference.median()),
         "common_maximum_absolute_statistic_difference": float(difference.max()),
+        "common_statistic_spearman": float(
+            common_statistics.statistic_hybrid.corr(
+                common_statistics.statistic_scalar, method="spearman"
+            )
+        ),
+        "common_statistic_difference_above_0_1": int((difference > 0.1).sum()),
+        "common_statistic_difference_above_1": int((difference > 1.0).sum()),
+        "common_statistic_difference_above_5": int((difference > 5.0).sum()),
         "hybrid_bh_discoveries": len(hybrid_calls),
         "scalar_bh_discoveries": len(scalar_calls),
         "shared_bh_discoveries": len(hybrid_calls & scalar_calls),
         "hybrid_only_bh_discoveries": len(hybrid_calls - scalar_calls),
         "scalar_only_bh_discoveries": len(scalar_calls - hybrid_calls),
+        "bh_discovery_jaccard": (
+            len(hybrid_calls & scalar_calls) / len(call_union) if call_union else 1.0
+        ),
         "null_worker_hours": sum(item["seconds"] for item in null_summaries) / 3600.0,
         "alternative_worker_hours": sum(
             item["seconds"] for item in alternative_summaries

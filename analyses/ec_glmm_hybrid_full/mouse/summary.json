@@ -1,0 +1,31 @@
+{
+  "tests": 4825,
+  "hybrid_joint_convergence": 4540,
+  "scalar_joint_convergence": 4546,
+  "common_joint_convergence": 4483,
+  "common_median_absolute_statistic_difference": 0.007504753371449624,
+  "common_maximum_absolute_statistic_difference": 54.026610453411195,
+  "common_statistic_spearman": 0.9534110430760795,
+  "common_statistic_difference_above_0_1": 1106,
+  "common_statistic_difference_above_1": 484,
+  "common_statistic_difference_above_5": 98,
+  "hybrid_bh_discoveries": 338,
+  "scalar_bh_discoveries": 323,
+  "shared_bh_discoveries": 313,
+  "hybrid_only_bh_discoveries": 25,
+  "scalar_only_bh_discoveries": 10,
+  "bh_discovery_jaccard": 0.8994252873563219,
+  "null_worker_hours": 17.7269616074626,
+  "alternative_worker_hours": 11.722033018351778,
+  "total_worker_hours": 29.448994625814375,
+  "null_routes": {
+    "scalar": 2476,
+    "batched": 2245,
+    "batched_scalar_continuation": 104
+  },
+  "alternative_routes": {
+    "batched": 1893,
+    "scalar": 1552,
+    "batched_scalar_continuation": 63
+  }
+}

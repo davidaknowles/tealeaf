@@ -2,6 +2,9 @@
 
 from types import SimpleNamespace
 
+import numpy as np
+
+from analyses.merge_hybrid_batched_ec_glmm import bh_over_converged
 from analyses.run_hybrid_batched_ec_glmm import (
     build_work_units,
     partition_work,
@@ -58,3 +61,11 @@ def test_work_partition_preserves_every_unit():
     shards, loads = partition_work(work, 2)
     assert sum(len(shard) for shard in shards) == len(work)
     assert (loads > 0).all()
+
+
+def test_bh_over_converged_excludes_failed_fits():
+    adjusted = bh_over_converged(
+        [0.01, 0.02, 0.03, np.nan],
+        [True, True, False, False],
+    )
+    np.testing.assert_allclose(adjusted, [0.02, 0.02, 1.0, 1.0])
