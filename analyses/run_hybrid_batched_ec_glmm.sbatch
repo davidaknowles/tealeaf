@@ -50,4 +50,7 @@ command=(
 if [[ -n "${NULL_FIT_SHARDS:-}" ]]; then
   command+=(--null-fit-shards "${NULL_FIT_SHARDS}")
 fi
+if [[ -n "${LABEL_PERMUTATION_SEED:-}" ]]; then
+  command+=(--label-permutation-seed "${LABEL_PERMUTATION_SEED}")
+fi
 "${command[@]}"

@@ -14,6 +14,7 @@ from analyses.run_hybrid_batched_ec_glmm import (
     build_work_units,
     load_null_initializations,
     partition_work,
+    permute_labels_within_clusters,
 )
 
 
@@ -67,6 +68,24 @@ def test_work_partition_preserves_every_unit():
     shards, loads = partition_work(work, 2)
     assert sum(len(shard) for shard in shards) == len(work)
     assert (loads > 0).all()
+
+
+def test_multilevel_permutation_preserves_cluster_label_counts():
+    metadata = pd.DataFrame(
+        {
+            "mouse": np.repeat(["a", "b", "c"], 4),
+        }
+    )
+    labels = np.tile([0, 1, 1, 2], 3)
+    first = permute_labels_within_clusters(metadata, labels, 7, "gene|rows")
+    second = permute_labels_within_clusters(metadata, labels, 7, "gene|rows")
+    np.testing.assert_array_equal(first, second)
+    for positions in metadata.groupby("mouse").groups.values():
+        positions = np.asarray(list(positions), dtype=int)
+        np.testing.assert_array_equal(
+            np.sort(first[positions]),
+            np.sort(labels[positions]),
+        )
 
 
 def test_bh_over_converged_excludes_failed_fits():

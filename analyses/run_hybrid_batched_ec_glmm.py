@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 import pickle
 import time
+import zlib
 
 import numpy as np
 import pandas as pd
@@ -49,6 +50,7 @@ def parse_args():
     parser.add_argument("--continuation-mode-steps", type=int, default=30)
     parser.add_argument("--retries", type=int, default=2)
     parser.add_argument("--laplace-cache-size", type=int, default=16)
+    parser.add_argument("--label-permutation-seed", type=int)
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--shard-count", type=int, default=1)
     parser.add_argument("--dry-run", action="store_true")
@@ -169,7 +171,30 @@ def partition_work(work, shard_count):
     return shards, loads
 
 
-def prepare_data(record, metadata, counts, gene_ecs, designs, settings, model):
+def permute_labels_within_clusters(metadata, labels, seed, permutation_key):
+    """Shuffle a complete multilevel response design within each cluster."""
+    labels = np.asarray(labels, dtype=int).copy()
+    key_hash = zlib.crc32(str(permutation_key).encode("utf-8"))
+    for subject, positions in metadata.groupby("mouse", sort=True).groups.items():
+        positions = np.asarray(list(positions), dtype=int)
+        subject_hash = zlib.crc32(str(subject).encode("utf-8"))
+        rng = np.random.default_rng(
+            np.random.SeedSequence((int(seed), key_hash, subject_hash))
+        )
+        labels[positions] = rng.permutation(labels[positions])
+    return labels
+
+
+def prepare_data(
+    record,
+    metadata,
+    counts,
+    gene_ecs,
+    designs,
+    settings,
+    model,
+    label_permutation_seed=None,
+):
     candidate = record["candidate"]
     _, _, _, gene, transcripts, path_index, _, rows, _, tested_levels = candidate
     local_metadata, nuisance, labels = local_test_design(
@@ -178,6 +203,13 @@ def prepare_data(record, metadata, counts, gene_ecs, designs, settings, model):
         tested_levels,
         settings.get("test_effect", "cell_type"),
     )
+    if label_permutation_seed is not None:
+        labels = permute_labels_within_clusters(
+            local_metadata,
+            labels,
+            label_permutation_seed,
+            alternative_fit_id(candidate),
+        )
     local_counts = tuple(matrix[rows] for matrix in counts)
     base, _, _ = local_gene_data(
         local_counts,
@@ -305,6 +337,7 @@ def run_unit(
             designs,
             settings,
             args.model,
+            args.label_permutation_seed,
         )
         for record in records
     ]
@@ -320,6 +353,7 @@ def run_unit(
                 designs,
                 settings,
                 "null",
+                args.label_permutation_seed,
             )
             if record["test_id"] not in null_initializations:
                 raise ValueError(
@@ -496,6 +530,7 @@ def main():
         "routes": pd.Series([result["route"] for result in results])
         .value_counts()
         .to_dict(),
+        "label_permutation_seed": args.label_permutation_seed,
     }
     (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps(summary, indent=2))
