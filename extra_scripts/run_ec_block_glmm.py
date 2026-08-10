@@ -80,6 +80,8 @@ def parse_args():
     parser.add_argument("--max-ecs", type=int, default=128)
     parser.add_argument("--max-iter", type=int, default=300)
     parser.add_argument("--laplace-mode-steps", type=int, default=12)
+    parser.add_argument("--laplace-mode-warm-start", action="store_true")
+    parser.add_argument("--laplace-mode-tolerance", type=float, default=0.0)
     parser.add_argument(
         "--laplace-mode-gradient",
         choices=("implicit", "unrolled"),
@@ -87,9 +89,10 @@ def parse_args():
     )
     parser.add_argument(
         "--laplace-cache-scope",
-        choices=("gene_shape", "test"),
+        choices=("global_shape", "gene_shape", "test"),
         default="gene_shape",
     )
+    parser.add_argument("--laplace-cache-size", type=int, default=16)
     parser.add_argument(
         "--laplace-optimizer",
         choices=("lbfgs", "adam", "adam_lbfgs"),
@@ -464,6 +467,28 @@ def tensor_data(base, tensor):
     )
 
 
+def laplace_objective_cache_key(args, method, data, fallback):
+    """Choose the requested compilation-cache identity for one fit."""
+    if getattr(args, "laplace_cache_scope", "gene_shape") != "global_shape":
+        return fallback
+    return (
+        "global_shape",
+        ec_glmm.laplace_objective_shape_key(
+            data,
+            observation_noise=method == "laplace_multinomial_noise",
+        ),
+    )
+
+
+def trim_objective_cache(cache, maximum_size):
+    """Bound retained compiled objectives using insertion-order eviction."""
+    maximum_size = int(maximum_size)
+    if maximum_size < 1:
+        raise ValueError("laplace cache size must be positive")
+    while len(cache) > maximum_size:
+        cache.pop(next(iter(cache)))
+
+
 def fit_method(
     method,
     data,
@@ -495,6 +520,8 @@ def fit_method(
             adam_steps=getattr(args, "adam_steps", 100),
             objective_cache=objective_cache,
             objective_cache_key=objective_cache_key,
+            mode_warm_start=getattr(args, "laplace_mode_warm_start", False),
+            mode_tolerance=getattr(args, "laplace_mode_tolerance", 0.0),
         )
     if method.startswith("cavi_"):
         observation_noise = "_noise_" in method
@@ -819,7 +846,10 @@ def main():
         ) = candidate
         try:
             candidate_cache_group = (gene, tuple(rows))
-            if candidate_cache_group != objective_cache_group:
+            if (
+                args.laplace_cache_scope == "gene_shape"
+                and candidate_cache_group != objective_cache_group
+            ):
                 objective_cache.clear()
                 objective_cache_group = candidate_cache_group
             local_metadata, nuisance, labels = local_test_design(
@@ -863,7 +893,8 @@ def main():
                         base, path_index, weights=weights
                     )
                 )
-                objective_cache.clear()
+                if args.laplace_cache_scope != "global_shape":
+                    objective_cache.clear()
             tested = treatment_design(labels, len(tested_levels))
             null_tensor, alternative_tensor, degrees = (
                 ec_block_glmm.block_fixed_effect_tensors(
@@ -928,7 +959,10 @@ def main():
                         args,
                         initial=null_initial,
                         objective_cache=objective_cache,
-                        objective_cache_key=(
+                        objective_cache_key=laplace_objective_cache_key(
+                            args,
+                            method,
+                            null_data,
                             (
                                 "null",
                                 gene,
@@ -937,8 +971,11 @@ def main():
                                 null_tensor.shape[2],
                             )
                             if args.laplace_cache_scope == "gene_shape"
-                            else ("null", test_id, method)
+                            else ("null", test_id, method),
                         ),
+                    )
+                    trim_objective_cache(
+                        objective_cache, args.laplace_cache_size
                     )
                 else:
                     null_warm_start_used = "cached"
@@ -970,10 +1007,15 @@ def main():
                         args,
                         initial=initial,
                         objective_cache=objective_cache,
-                        objective_cache_key=(
-                            "observed_alternative",
-                            *alternative_key,
+                        objective_cache_key=laplace_objective_cache_key(
+                            args,
+                            method,
+                            full_alternative_data,
+                            ("observed_alternative", *alternative_key),
                         ),
+                    )
+                    trim_objective_cache(
+                        objective_cache, args.laplace_cache_size
                     )
                 alternative = alternative_cache[alternative_key]
                 completed_methods[method] = {
@@ -1135,7 +1177,10 @@ def main():
                         initial=null["parameters"],
                         retries=args.null_replicate_retries,
                         objective_cache=objective_cache,
-                        objective_cache_key=(
+                        objective_cache_key=laplace_objective_cache_key(
+                            args,
+                            method,
+                            simulated_null_data,
                             (
                                 "null",
                                 gene,
@@ -1144,8 +1189,11 @@ def main():
                                 null_tensor.shape[2],
                             )
                             if args.laplace_cache_scope == "gene_shape"
-                            else ("null", test_id, method)
+                            else ("null", test_id, method),
                         ),
+                    )
+                    trim_objective_cache(
+                        objective_cache, args.laplace_cache_size
                     )
                     simulated_alternative_data = ec_glmm.ECGLMMData(
                         simulated_counts,
@@ -1164,11 +1212,15 @@ def main():
                         initial=simulated_initial,
                         retries=args.null_replicate_retries,
                         objective_cache=objective_cache,
-                        objective_cache_key=(
-                            "bootstrap_alternative",
-                            test_id,
+                        objective_cache_key=laplace_objective_cache_key(
+                            args,
                             method,
+                            simulated_alternative_data,
+                            ("bootstrap_alternative", test_id, method),
                         ),
+                    )
+                    trim_objective_cache(
+                        objective_cache, args.laplace_cache_size
                     )
                     null_rows.append({
                         "test_id": test_id,

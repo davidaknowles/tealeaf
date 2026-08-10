@@ -1,0 +1,17 @@
+{
+  "jax_backend": "cpu",
+  "jax_devices": [
+    "cpu:0"
+  ],
+  "fit_pair_key": "'3,17,22'",
+  "tests": 8,
+  "unique_alternatives": 8,
+  "alternative_initialization": "fitted_null_projection",
+  "batched_seconds": 11.336964721791446,
+  "scalar_seconds": 72.34905926603824,
+  "speedup": 6.381695722045589,
+  "batched_joint_convergence": 8,
+  "scalar_joint_convergence": 7,
+  "median_absolute_statistic_difference": 0.001195604055737931,
+  "maximum_absolute_statistic_difference": 137.14207919307773
+}

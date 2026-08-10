@@ -1,0 +1,18 @@
+{
+  "tests": 20,
+  "elapsed_seconds": 903.3631750466302,
+  "score_null_convergence": 19,
+  "spearman_score_vs_lrt": 0.9101166495445288,
+  "nominal_score_calls": 5,
+  "nominal_lrt_calls": 3,
+  "shared_nominal_calls": 3,
+  "top_5_lrt_recovery": 0.6,
+  "top_10_lrt_recovery": 0.8,
+  "nonpositive_fixed_hessians": 7,
+  "maximum_fixed_hessian_condition": 17109922794480.678,
+  "maximum_score_statistic": 2911.2243753318835,
+  "lrt_statistic_at_maximum_score": 9.884765864717338,
+  "lrt_p_value_at_maximum_score": 0.8725763951694387,
+  "minimum_hessian_eigenvalue_at_maximum_score": -0.0131981790319844,
+  "hessian_condition_at_maximum_score": 74749533.64196058
+}

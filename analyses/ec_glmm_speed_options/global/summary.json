@@ -1,0 +1,26 @@
+{
+  "candidate_tests": 20,
+  "candidate_blocks": 20,
+  "observed_fits": 20,
+  "null_fits": 0,
+  "failures": 0,
+  "methods": [
+    "laplace_multinomial"
+  ],
+  "calibration": "lrt_bic",
+  "null_replicates": 20,
+  "min_gene_umis": 10.0,
+  "min_gene_samples": 0,
+  "min_cell_types": 2,
+  "min_celltype_mice": 3,
+  "min_conditions": 2,
+  "min_condition_mice": 3,
+  "test_effect": "cell_type",
+  "subject_folds": null,
+  "subject_fold": null,
+  "pairwise_null_seed": null,
+  "max_candidates": 20,
+  "joint_gene_test": false,
+  "latent_space": "isoform",
+  "seconds": 553.4074965519831
+}

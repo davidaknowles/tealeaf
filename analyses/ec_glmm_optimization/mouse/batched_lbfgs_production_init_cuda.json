@@ -1,0 +1,17 @@
+{
+  "jax_backend": "gpu",
+  "jax_devices": [
+    "cuda:0"
+  ],
+  "fit_pair_key": "'3,17,22'",
+  "tests": 8,
+  "unique_alternatives": 8,
+  "alternative_initialization": "fitted_null_projection",
+  "batched_seconds": 16.88851218484342,
+  "scalar_seconds": 131.32129900809377,
+  "speedup": 7.775776668234159,
+  "batched_joint_convergence": 8,
+  "scalar_joint_convergence": 7,
+  "median_absolute_statistic_difference": 0.0011956022592585214,
+  "maximum_absolute_statistic_difference": 137.14207919320506
+}

@@ -123,7 +123,7 @@ def prepare_batch(args):
     return key, prepared
 
 
-def pad_batch(data):
+def pad_batch(data, initial=None):
     fit_count = len(data)
     isoforms = data[0].n_isoforms
     dimension = isoforms - 1
@@ -149,17 +149,25 @@ def pad_batch(data):
             ecs = item.counts[primer].shape[1]
             counts[primer][fit, :samples, :ecs] = item.counts[primer]
             mappings[primer][fit, :ecs] = item.compatibility[primer]
-    initial = np.stack([ec_glmm._initial_outer(item, "multinomial") for item in data])
+    if initial is None:
+        initial = np.stack(
+            [ec_glmm._initial_outer(item, "multinomial") for item in data]
+        )
+    else:
+        initial = np.asarray(initial, dtype=float)
+        expected = (fit_count, coefficient_count + 1)
+        if initial.shape != expected:
+            raise ValueError(f"initial has shape {initial.shape}, expected {expected}")
     return tensors, tuple(counts), tuple(mappings), memberships, initial
 
 
-def batched_laplace_functions(data, mode_steps):
+def batched_laplace_functions(data, mode_steps, initial=None):
     import jax
     import jax.numpy as jnp
     import jax.scipy as jsp
 
     jax.config.update("jax_enable_x64", True)
-    tensors, counts, mappings, memberships, initial = pad_batch(data)
+    tensors, counts, mappings, memberships, initial = pad_batch(data, initial)
     tensors = jnp.asarray(tensors)
     counts = tuple(jnp.asarray(value) for value in counts)
     mappings = tuple(jnp.asarray(value) for value in mappings)
@@ -426,8 +434,10 @@ def batched_laplace_functions(data, mode_steps):
     return initial, evaluate, evaluate_score
 
 
-def fit_batched(data, max_iter, mode_steps):
-    initial, evaluate, evaluate_score = batched_laplace_functions(data, mode_steps)
+def fit_batched(data, max_iter, mode_steps, initial=None):
+    initial, evaluate, evaluate_score = batched_laplace_functions(
+        data, mode_steps, initial
+    )
     coefficient_count = data[0].fixed_effect_tensor.shape[2]
     bounds = [(-20.0, 20.0)] * coefficient_count + [(-8.0, 3.0)]
     started = time.perf_counter()
@@ -445,13 +455,16 @@ def fit_batched(data, max_iter, mode_steps):
     return result, elapsed, gradient_norm, score, converged
 
 
-def fit_scalar(data, max_iter, mode_steps):
+def fit_scalar(data, max_iter, mode_steps, initial=None):
     fits = []
     started = time.perf_counter()
-    for item in data:
+    if initial is None:
+        initial = [None] * len(data)
+    for item, starting in zip(data, initial):
         fits.append(
             ec_glmm.fit_laplace(
                 item,
+                initial=starting,
                 max_iter=max_iter,
                 mode_steps=mode_steps,
                 mode_gradient="implicit",
@@ -460,8 +473,22 @@ def fit_scalar(data, max_iter, mode_steps):
     return fits, time.perf_counter() - started
 
 
+def reparameterize_parameters(parameters, source_tensor, target_tensor):
+    """Project fitted logits into a target fixed-effect basis."""
+    source_count = source_tensor.shape[2]
+    fitted_logits = source_tensor.reshape(-1, source_count) @ parameters[:source_count]
+    target_coefficients = np.linalg.lstsq(
+        target_tensor.reshape(-1, target_tensor.shape[2]),
+        fitted_logits,
+        rcond=None,
+    )[0]
+    return np.r_[target_coefficients, parameters[source_count:]]
+
+
 def main():
     args = parse_args()
+    import jax
+
     key, prepared = prepare_batch(args)
     test_ids = [item[0] for item in prepared]
     null_data = [item[2] for item in prepared]
@@ -473,21 +500,51 @@ def main():
             alternative_index_by_key[alternative_key] = len(alternative_data)
             alternative_data.append(alternative)
         alternative_indices.append(alternative_index_by_key[alternative_key])
-    batched_null, batched_null_seconds, null_gradient, null_score, null_converged = (
-        fit_batched(null_data, args.max_iter, args.mode_steps)
+    batched_null, batched_null_seconds, null_gradient, null_score, null_converged = fit_batched(
+        null_data, args.max_iter, args.mode_steps
     )
+    scalar_null, scalar_null_seconds = fit_scalar(
+        null_data, args.max_iter, args.mode_steps
+    )
+    first_test_by_alternative = {}
+    for test_index, alternative_index in enumerate(alternative_indices):
+        first_test_by_alternative.setdefault(alternative_index, test_index)
+    batched_alternative_initial = []
+    scalar_alternative_initial = []
+    for alternative_index, alternative in enumerate(alternative_data):
+        test_index = first_test_by_alternative[alternative_index]
+        source = null_data[test_index].fixed_effect_tensor
+        batched_alternative_initial.append(
+            reparameterize_parameters(
+                batched_null.parameters[test_index],
+                source,
+                alternative.fixed_effect_tensor,
+            )
+        )
+        scalar_alternative_initial.append(
+            reparameterize_parameters(
+                scalar_null[test_index]["parameters"],
+                source,
+                alternative.fixed_effect_tensor,
+            )
+        )
     (
         batched_alternative,
         batched_alternative_seconds,
         alternative_gradient,
         alternative_score,
         alternative_converged,
-    ) = fit_batched(alternative_data, args.max_iter, args.mode_steps)
-    scalar_null, scalar_null_seconds = fit_scalar(
-        null_data, args.max_iter, args.mode_steps
+    ) = fit_batched(
+        alternative_data,
+        args.max_iter,
+        args.mode_steps,
+        batched_alternative_initial,
     )
     scalar_alternative, scalar_alternative_seconds = fit_scalar(
-        alternative_data, args.max_iter, args.mode_steps
+        alternative_data,
+        args.max_iter,
+        args.mode_steps,
+        scalar_alternative_initial,
     )
     rows = []
     for index, test_id in enumerate(test_ids):
@@ -560,9 +617,12 @@ def main():
     args.output.parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(args.output, sep="\t", index=False)
     summary = {
+        "jax_backend": jax.default_backend(),
+        "jax_devices": [str(device) for device in jax.devices()],
         "fit_pair_key": repr(key),
         "tests": len(result),
         "unique_alternatives": len(alternative_data),
+        "alternative_initialization": "fitted_null_projection",
         "batched_seconds": batched_null_seconds + batched_alternative_seconds,
         "scalar_seconds": scalar_null_seconds + scalar_alternative_seconds,
         "speedup": (scalar_null_seconds + scalar_alternative_seconds)

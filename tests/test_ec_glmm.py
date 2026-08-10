@@ -315,6 +315,137 @@ def test_laplace_objective_cache_accepts_dynamic_counts_and_tensor():
     )
 
 
+def test_laplace_objective_cache_accepts_dynamic_mapping_and_clusters():
+    data = simulated_data(seed=41, effect=0.6)
+    tensor = ec_block_glmm.unrestricted_tensor(data.design[:, :2], 1)
+    initial_data = ec_glmm.ECGLMMData(
+        data.counts,
+        data.compatibility,
+        data.design,
+        data.clusters,
+        fixed_effect_tensor=tensor,
+    )
+    objective_cache = {}
+    initial = ec_glmm.fit_laplace(
+        initial_data,
+        max_iter=20,
+        mode_steps=12,
+        mode_gradient="implicit",
+        objective_cache=objective_cache,
+        objective_cache_key="same_shape",
+    )
+    changed_mapping = tuple(value.copy() for value in data.compatibility)
+    changed_mapping[0][1] = [0.55, 0.45]
+    changed_clusters = np.roll(data.clusters, 2)
+    changed_data = ec_glmm.ECGLMMData(
+        data.counts,
+        changed_mapping,
+        data.design,
+        changed_clusters,
+        fixed_effect_tensor=tensor,
+    )
+    cached = ec_glmm.fit_laplace(
+        changed_data,
+        initial=initial["parameters"],
+        max_iter=20,
+        mode_steps=12,
+        mode_gradient="implicit",
+        objective_cache=objective_cache,
+        objective_cache_key="same_shape",
+    )
+    uncached = ec_glmm.fit_laplace(
+        changed_data,
+        initial=initial["parameters"],
+        max_iter=20,
+        mode_steps=12,
+        mode_gradient="implicit",
+    )
+    assert len(objective_cache) == 1
+    assert cached["objective"] == pytest.approx(uncached["objective"], abs=1e-9)
+    np.testing.assert_allclose(
+        cached["parameters"], uncached["parameters"], atol=1e-8, rtol=1e-8
+    )
+
+
+def test_laplace_shape_key_tracks_only_static_dimensions():
+    data = simulated_data(seed=52)
+    changed = ec_glmm.ECGLMMData(
+        tuple(value[::-1].copy() for value in data.counts),
+        tuple(value.copy() for value in data.compatibility),
+        data.design.copy(),
+        np.roll(data.clusters, 1),
+        fixed_effect_tensor=data.fixed_effect_tensor,
+    )
+    assert ec_glmm.laplace_objective_shape_key(data) == (
+        ec_glmm.laplace_objective_shape_key(changed)
+    )
+    assert ec_glmm.laplace_objective_shape_key(
+        data, observation_noise=True
+    ) == ec_glmm.laplace_objective_shape_key(
+        changed, observation_noise=True
+    )
+
+
+def test_raw_ec_efficient_score_is_finite_at_nested_null():
+    data = simulated_data(seed=54, effect=0.8)
+    tested = data.design[:, 2:3]
+    nuisance = np.ones((len(tested), 1), dtype=float)
+    null_tensor, alternative_tensor, degrees = (
+        ec_block_glmm.block_fixed_effect_tensors(
+            nuisance, tested, np.array([0, 1])
+        )
+    )
+    null = ec_glmm.fit_laplace(
+        run_ec_block_glmm.tensor_data(data, null_tensor),
+        max_iter=60,
+        mode_steps=12,
+        mode_gradient="implicit",
+    )
+    initial = run_ec_block_glmm.reparameterize_fixed_effects(
+        null, null_tensor, alternative_tensor
+    )
+    evaluated = ec_glmm.fit_laplace(
+        run_ec_block_glmm.tensor_data(data, alternative_tensor),
+        initial=initial,
+        max_iter=0,
+        mode_steps=12,
+        mode_gradient="implicit",
+        return_outer_hessian=True,
+    )
+    assert evaluated["iterations"] == 0
+    np.testing.assert_array_equal(evaluated["parameters"], initial)
+    tested_indices = np.arange(
+        null_tensor.shape[2], alternative_tensor.shape[2]
+    )
+    statistic = ec_glmm.efficient_score_statistic(evaluated, tested_indices)
+    assert degrees == len(tested_indices)
+    assert np.isfinite(statistic)
+    assert statistic > 0
+
+
+def test_accepted_mode_warm_start_preserves_laplace_solution():
+    data = simulated_data(seed=61, effect=0.7)
+    baseline = ec_glmm.fit_laplace(
+        data,
+        max_iter=40,
+        mode_steps=12,
+        mode_gradient="implicit",
+    )
+    warmed = ec_glmm.fit_laplace(
+        data,
+        max_iter=40,
+        mode_steps=12,
+        mode_gradient="implicit",
+        mode_warm_start=True,
+        mode_tolerance=1e-5,
+    )
+    assert baseline["converged"]
+    assert warmed["converged"]
+    assert warmed["objective"] == pytest.approx(
+        baseline["objective"], abs=1e-8
+    )
+
+
 def test_fixed_effect_design_separates_tested_contrast():
     groups = [
         "a__control__m1",
