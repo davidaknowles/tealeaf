@@ -14,8 +14,8 @@ from analyses.run_hybrid_batched_ec_glmm import (
     build_work_units,
     load_null_initializations,
     partition_work,
-    permute_labels_within_clusters,
 )
+from extra_scripts.run_ec_block_glmm import permute_multilevel_labels
 
 
 def record(index, *, samples=20, ecs=10, coefficients=12, pair_coefficients=20):
@@ -77,8 +77,8 @@ def test_multilevel_permutation_preserves_cluster_label_counts():
         }
     )
     labels = np.tile([0, 1, 1, 2], 3)
-    first = permute_labels_within_clusters(metadata, labels, 7, "gene|rows")
-    second = permute_labels_within_clusters(metadata, labels, 7, "gene|rows")
+    first = permute_multilevel_labels(metadata, labels, 7, "gene|rows")
+    second = permute_multilevel_labels(metadata, labels, 7, "gene|rows")
     np.testing.assert_array_equal(first, second)
     for positions in metadata.groupby("mouse").groups.values():
         positions = np.asarray(list(positions), dtype=int)

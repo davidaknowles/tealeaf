@@ -49,6 +49,7 @@ NULL_REPLICATE_RETRIES=${NULL_REPLICATE_RETRIES:-${RETRIES}}
 VI_SAMPLES=${VI_SAMPLES:-16}
 CANDIDATE_CACHE=${CANDIDATE_CACHE:-}
 PAIRWISE_NULL_SEED=${PAIRWISE_NULL_SEED:-}
+MULTILEVEL_NULL_SEED=${MULTILEVEL_NULL_SEED:-}
 MAX_CANDIDATES=${MAX_CANDIDATES:-}
 JOINT_GENE_TEST=${JOINT_GENE_TEST:-0}
 IFS=';' read -r -a method_args <<< "${METHODS}"
@@ -94,6 +95,9 @@ if [[ -n "${SUBJECT_FOLDS:-}" ]]; then
 fi
 if [[ -n "${PAIRWISE_NULL_SEED}" ]]; then
   ARGS+=(--pairwise-null-seed "${PAIRWISE_NULL_SEED}")
+fi
+if [[ -n "${MULTILEVEL_NULL_SEED}" ]]; then
+  ARGS+=(--multilevel-null-seed "${MULTILEVEL_NULL_SEED}")
 fi
 if [[ -n "${MAX_CANDIDATES}" ]]; then
   ARGS+=(--max-candidates "${MAX_CANDIDATES}")

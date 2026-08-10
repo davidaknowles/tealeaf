@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 from collections import defaultdict
+import hashlib
 import heapq
 import json
 from pathlib import Path
@@ -119,6 +120,7 @@ def parse_args():
     parser.add_argument("--subject-folds", type=Path)
     parser.add_argument("--subject-fold", type=int)
     parser.add_argument("--pairwise-null-seed", type=int)
+    parser.add_argument("--multilevel-null-seed", type=int)
     parser.add_argument("--max-candidates", type=int)
     parser.add_argument("--joint-gene-test", action="store_true")
     parser.add_argument(
@@ -300,6 +302,20 @@ def permute_paired_labels(metadata, labels, tested_levels, seed):
     for positions, swap in zip(pairs, swaps):
         if swap:
             labels[positions] = 1 - labels[positions]
+    return labels
+
+
+def permute_multilevel_labels(metadata, labels, seed, permutation_key):
+    """Shuffle a complete multilevel response design within each cluster."""
+    labels = np.asarray(labels, dtype=int).copy()
+    key_hash = zlib.crc32(str(permutation_key).encode("utf-8"))
+    for subject, positions in metadata.groupby("mouse", sort=True).groups.items():
+        positions = np.asarray(list(positions), dtype=int)
+        subject_hash = zlib.crc32(str(subject).encode("utf-8"))
+        rng = np.random.default_rng(
+            np.random.SeedSequence((int(seed), key_hash, subject_hash))
+        )
+        labels[positions] = rng.permutation(labels[positions])
     return labels
 
 
@@ -855,6 +871,20 @@ def main():
             local_metadata, nuisance, labels = local_test_design(
                 metadata, rows, tested_levels, args.test_effect
             )
+            if args.multilevel_null_seed is not None:
+                if args.test_effect != "cell_type":
+                    raise ValueError(
+                        "--multilevel-null-seed requires cell_type"
+                    )
+                row_digest = hashlib.sha1(
+                    np.asarray(rows, dtype=np.int64).tobytes()
+                ).hexdigest()[:16]
+                labels = permute_multilevel_labels(
+                    local_metadata,
+                    labels,
+                    args.multilevel_null_seed,
+                    f"{gene}|{row_digest}",
+                )
             if args.pairwise_null_seed is not None:
                 if args.test_effect != "cell_type_pairwise":
                     raise ValueError(
@@ -1062,6 +1092,7 @@ def main():
                     "method": method,
                     "latent_space": args.latent_space,
                     "pairwise_null_seed": args.pairwise_null_seed,
+                    "multilevel_null_seed": args.multilevel_null_seed,
                     "n_paths": len(signatures),
                     "n_isoforms": base.n_isoforms,
                     "n_original_isoforms": original_isoforms,
@@ -1306,6 +1337,7 @@ def main():
         ),
         "subject_fold": args.subject_fold,
         "pairwise_null_seed": args.pairwise_null_seed,
+        "multilevel_null_seed": args.multilevel_null_seed,
         "max_candidates": args.max_candidates,
         "joint_gene_test": args.joint_gene_test,
         "latent_space": args.latent_space,

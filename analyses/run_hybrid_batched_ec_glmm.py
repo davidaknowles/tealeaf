@@ -10,7 +10,6 @@ import json
 from pathlib import Path
 import pickle
 import time
-import zlib
 
 import numpy as np
 import pandas as pd
@@ -22,6 +21,7 @@ from analyses.benchmark_batched_laplace_lbfgs import (
 )
 from extra_scripts.run_ec_block_glmm import (
     local_test_design,
+    permute_multilevel_labels,
     tensor_data,
     treatment_design,
 )
@@ -171,20 +171,6 @@ def partition_work(work, shard_count):
     return shards, loads
 
 
-def permute_labels_within_clusters(metadata, labels, seed, permutation_key):
-    """Shuffle a complete multilevel response design within each cluster."""
-    labels = np.asarray(labels, dtype=int).copy()
-    key_hash = zlib.crc32(str(permutation_key).encode("utf-8"))
-    for subject, positions in metadata.groupby("mouse", sort=True).groups.items():
-        positions = np.asarray(list(positions), dtype=int)
-        subject_hash = zlib.crc32(str(subject).encode("utf-8"))
-        rng = np.random.default_rng(
-            np.random.SeedSequence((int(seed), key_hash, subject_hash))
-        )
-        labels[positions] = rng.permutation(labels[positions])
-    return labels
-
-
 def prepare_data(
     record,
     metadata,
@@ -204,7 +190,7 @@ def prepare_data(
         settings.get("test_effect", "cell_type"),
     )
     if label_permutation_seed is not None:
-        labels = permute_labels_within_clusters(
+        labels = permute_multilevel_labels(
             local_metadata,
             labels,
             label_permutation_seed,
