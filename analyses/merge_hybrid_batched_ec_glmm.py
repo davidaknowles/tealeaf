@@ -51,6 +51,14 @@ def bh_over_converged(p_values, converged):
     return adjusted
 
 
+def worker_hours_by_route(summaries):
+    result = {}
+    for item in summaries:
+        route = item["route"]
+        result[route] = result.get(route, 0.0) + float(item["seconds"]) / 3600.0
+    return result
+
+
 def main():
     args = parse_args()
     null, null_summaries = read_shards(args.null_shards)
@@ -105,7 +113,10 @@ def main():
     result["bh_q_value"] = bh_over_converged(
         result.lrt_p_value.to_numpy(), result.converged.to_numpy()
     )
-    scalar = pd.read_csv(args.scalar_results, sep="\t").drop_duplicates("test_id")
+    scalar = pd.read_csv(args.scalar_results, sep="\t")
+    if "method" in scalar:
+        scalar = scalar.loc[scalar.method == "laplace_multinomial"]
+    scalar = scalar.drop_duplicates("test_id")
     comparison = result.merge(
         scalar[
             [
@@ -179,8 +190,16 @@ def main():
             + sum(item["seconds"] for item in alternative_summaries)
         )
         / 3600.0,
+        "null_worker_hours_by_route": worker_hours_by_route(null_summaries),
+        "alternative_worker_hours_by_route": worker_hours_by_route(
+            alternative_summaries
+        ),
         "null_routes": null.null_route.value_counts().to_dict(),
         "alternative_routes": alternative.alternative_route.value_counts().to_dict(),
+        "null_initializations": null.null_initialization.value_counts().to_dict(),
+        "alternative_initializations": (
+            alternative.alternative_initialization.value_counts().to_dict()
+        ),
     }
     args.output_dir.mkdir(parents=True, exist_ok=True)
     result.to_csv(args.output_dir / "hybrid_results.tsv.gz", sep="\t", index=False)

@@ -6,7 +6,10 @@ import json
 import numpy as np
 import pandas as pd
 
-from analyses.merge_hybrid_batched_ec_glmm import bh_over_converged
+from analyses.merge_hybrid_batched_ec_glmm import (
+    bh_over_converged,
+    worker_hours_by_route,
+)
 from analyses.run_hybrid_batched_ec_glmm import (
     build_work_units,
     load_null_initializations,
@@ -72,6 +75,18 @@ def test_bh_over_converged_excludes_failed_fits():
         [True, True, False, False],
     )
     np.testing.assert_allclose(adjusted, [0.02, 0.02, 1.0, 1.0])
+
+
+def test_worker_hours_are_summarized_by_scheduler_route():
+    summaries = [
+        {"route": "batched", "seconds": 1800},
+        {"route": "scalar", "seconds": 3600},
+        {"route": "batched", "seconds": 900},
+    ]
+    assert worker_hours_by_route(summaries) == {
+        "batched": 0.75,
+        "scalar": 1.0,
+    }
 
 
 def test_load_null_initializations_reads_parameter_vectors(tmp_path):
