@@ -1,12 +1,15 @@
 """Tests for the selective full-data batching schedule."""
 
 from types import SimpleNamespace
+import json
 
 import numpy as np
+import pandas as pd
 
 from analyses.merge_hybrid_batched_ec_glmm import bh_over_converged
 from analyses.run_hybrid_batched_ec_glmm import (
     build_work_units,
+    load_null_initializations,
     partition_work,
 )
 
@@ -69,3 +72,19 @@ def test_bh_over_converged_excludes_failed_fits():
         [True, True, False, False],
     )
     np.testing.assert_allclose(adjusted, [0.02, 0.02, 1.0, 1.0])
+
+
+def test_load_null_initializations_reads_parameter_vectors(tmp_path):
+    first = tmp_path / "null_scalar_shard0"
+    second = tmp_path / "null_batched_shard0"
+    first.mkdir()
+    second.mkdir()
+    pd.DataFrame(
+        {"fit_id": ["a"], "parameters": [json.dumps([1.0, 2.0])]}
+    ).to_csv(first / "fits.tsv", sep="\t", index=False)
+    pd.DataFrame(
+        {"fit_id": ["b"], "parameters": [json.dumps([3.0, 4.0])]}
+    ).to_csv(second / "fits.tsv", sep="\t", index=False)
+    loaded = load_null_initializations(str(tmp_path / "null_*_shard*"))
+    np.testing.assert_array_equal(loaded["a"], [1.0, 2.0])
+    np.testing.assert_array_equal(loaded["b"], [3.0, 4.0])

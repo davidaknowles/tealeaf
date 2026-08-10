@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import glob
 import hashlib
 import json
 from pathlib import Path
@@ -16,6 +17,7 @@ import pandas as pd
 from analyses.benchmark_batched_laplace_lbfgs import (
     filter_metadata_and_counts,
     fit_batched,
+    reparameterize_parameters,
 )
 from extra_scripts.run_ec_block_glmm import (
     local_test_design,
@@ -33,6 +35,11 @@ def parse_args():
     parser.add_argument("--batchability", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--model", choices=("null", "alternative"), required=True)
+    parser.add_argument("--route", choices=("all", "batched", "scalar"), default="all")
+    parser.add_argument(
+        "--null-fit-shards",
+        help="Glob for completed null-fit directories used to initialize alternatives",
+    )
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--minimum-batch-size", type=int, default=4)
     parser.add_argument("--maximum-padding-ratio", type=float, default=2.0)
@@ -41,6 +48,7 @@ def parse_args():
     parser.add_argument("--mode-steps", type=int, default=12)
     parser.add_argument("--continuation-mode-steps", type=int, default=30)
     parser.add_argument("--retries", type=int, default=2)
+    parser.add_argument("--laplace-cache-size", type=int, default=16)
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--shard-count", type=int, default=1)
     parser.add_argument("--dry-run", action="store_true")
@@ -192,7 +200,30 @@ def prepare_data(record, metadata, counts, gene_ecs, designs, settings, model):
     return tensor_data(base, tensor)
 
 
-def scalar_fit(data, args, initial=None, continuation=False):
+def load_null_initializations(pattern):
+    """Load fitted null parameters keyed by the representative test identifier."""
+    if pattern is None:
+        raise ValueError("alternative fitting requires --null-fit-shards")
+    paths = sorted(glob.glob(pattern))
+    if not paths:
+        raise ValueError(f"no null-fit shards matched {pattern}")
+    tables = [pd.read_csv(Path(path) / "fits.tsv", sep="\t") for path in paths]
+    table = pd.concat(tables, ignore_index=True)
+    if table.fit_id.duplicated().any():
+        raise ValueError("null-fit shards contain duplicate fit identifiers")
+    return {
+        str(row.fit_id): np.asarray(json.loads(row.parameters), dtype=float)
+        for row in table.itertuples()
+    }
+
+
+def scalar_fit(
+    data,
+    args,
+    initial=None,
+    continuation=False,
+    objective_cache=None,
+):
     mode_steps = (
         int(args.continuation_mode_steps) if continuation else int(args.mode_steps)
     )
@@ -202,6 +233,11 @@ def scalar_fit(data, args, initial=None, continuation=False):
         max_iter=int(args.max_iter),
         mode_steps=mode_steps,
         mode_gradient="implicit",
+        objective_cache=objective_cache,
+        objective_cache_key=(
+            "global_shape",
+            ec_glmm.laplace_objective_shape_key(data),
+        ),
     )
     attempts = 1
     while not fit["converged"] and attempts <= int(args.retries):
@@ -211,12 +247,25 @@ def scalar_fit(data, args, initial=None, continuation=False):
             max_iter=int(args.max_iter),
             mode_steps=int(args.continuation_mode_steps),
             mode_gradient="implicit",
+            objective_cache=objective_cache,
+            objective_cache_key=(
+                "global_shape",
+                ec_glmm.laplace_objective_shape_key(data),
+            ),
         )
         attempts += 1
     return fit, attempts
 
 
-def fit_record(record, fit, attempts, route, unit_seconds, padding):
+def fit_record(
+    record,
+    fit,
+    attempts,
+    route,
+    unit_seconds,
+    padding,
+    initialization,
+):
     return {
         "fit_id": record["fit_id"],
         "test_id": record["test_id"],
@@ -230,10 +279,22 @@ def fit_record(record, fit, attempts, route, unit_seconds, padding):
         "mode_score_norm": float(fit["mode_score_norm"]),
         "attempts": int(attempts),
         "unit_seconds": float(unit_seconds),
+        "parameters": json.dumps(np.asarray(fit["parameters"], dtype=float).tolist()),
+        "initialization": initialization,
     }
 
 
-def run_unit(unit, metadata, counts, gene_ecs, designs, settings, args):
+def run_unit(
+    unit,
+    metadata,
+    counts,
+    gene_ecs,
+    designs,
+    settings,
+    args,
+    null_initializations,
+    objective_cache,
+):
     records = unit["records"]
     data = [
         prepare_data(
@@ -247,15 +308,58 @@ def run_unit(unit, metadata, counts, gene_ecs, designs, settings, args):
         )
         for record in records
     ]
+    initial = None
+    if args.model == "alternative":
+        initial = []
+        for record, alternative_data in zip(records, data):
+            null_data = prepare_data(
+                record,
+                metadata,
+                counts,
+                gene_ecs,
+                designs,
+                settings,
+                "null",
+            )
+            if record["test_id"] not in null_initializations:
+                raise ValueError(
+                    f"missing fitted null for alternative {record['fit_id']}"
+                )
+            initial.append(
+                reparameterize_parameters(
+                    null_initializations[record["test_id"]],
+                    null_data.fixed_effect_tensor,
+                    alternative_data.fixed_effect_tensor,
+                )
+            )
     started = time.perf_counter()
+    initialization = (
+        "fitted_null_projection" if initial is not None else "default"
+    )
     if unit["route"] == "scalar":
-        fit, attempts = scalar_fit(data[0], args)
+        fit, attempts = scalar_fit(
+            data[0],
+            args,
+            initial=None if initial is None else initial[0],
+            objective_cache=objective_cache,
+        )
         elapsed = time.perf_counter() - started
-        return [fit_record(records[0], fit, attempts, "scalar", elapsed, 1.0)]
+        return [
+            fit_record(
+                records[0],
+                fit,
+                attempts,
+                "scalar",
+                elapsed,
+                1.0,
+                initialization,
+            )
+        ]
     result, _, gradient_norm, mode_score, converged = fit_batched(
         data,
         int(args.max_iter),
         int(args.mode_steps),
+        initial=initial,
     )
     elapsed = time.perf_counter() - started
     rows = []
@@ -275,6 +379,10 @@ def run_unit(unit, metadata, counts, gene_ecs, designs, settings, args):
                     "mode_score_norm": float(mode_score[index]),
                     "attempts": 1,
                     "unit_seconds": elapsed,
+                    "parameters": json.dumps(
+                        np.asarray(result.parameters[index], dtype=float).tolist()
+                    ),
+                    "initialization": initialization,
                 }
             )
             continue
@@ -283,6 +391,7 @@ def run_unit(unit, metadata, counts, gene_ecs, designs, settings, args):
             args,
             initial=result.parameters[index],
             continuation=True,
+            objective_cache=objective_cache,
         )
         rows.append(
             fit_record(
@@ -292,6 +401,7 @@ def run_unit(unit, metadata, counts, gene_ecs, designs, settings, args):
                 "batched_scalar_continuation",
                 elapsed,
                 unit["padding_ratio"],
+                initialization,
             )
         )
     return rows
@@ -308,6 +418,8 @@ def main():
     dimensions = pd.read_csv(args.batchability, sep="\t")
     records = make_records(cached["candidates"], dimensions, args.model)
     work = build_work_units(records, args)
+    if args.route != "all":
+        work = [unit for unit in work if unit["route"] == args.route]
     shards, loads = partition_work(work, args.shard_count)
     assigned = shards[int(args.shard_index)]
     if args.dry_run:
@@ -327,21 +439,41 @@ def main():
         print(json.dumps(summary, indent=2))
         return
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    null_initializations = (
+        load_null_initializations(args.null_fit_shards)
+        if args.model == "alternative"
+        else None
+    )
     started = time.perf_counter()
     results = []
+    objective_cache = {}
     for unit in assigned:
         results.extend(
-            run_unit(unit, metadata, counts, gene_ecs, designs, settings, args)
+            run_unit(
+                unit,
+                metadata,
+                counts,
+                gene_ecs,
+                designs,
+                settings,
+                args,
+                null_initializations,
+                objective_cache,
+            )
         )
-        try:
-            import jax
+        if unit["route"] == "batched":
+            try:
+                import jax
 
-            jax.clear_caches()
-        except ImportError:
-            pass
+                jax.clear_caches()
+            except ImportError:
+                pass
+        while len(objective_cache) > int(args.laplace_cache_size):
+            objective_cache.pop(next(iter(objective_cache)))
     pd.DataFrame(results).to_csv(args.output_dir / "fits.tsv", sep="\t", index=False)
     summary = {
         "model": args.model,
+        "route": args.route,
         "shard_index": int(args.shard_index),
         "shard_count": int(args.shard_count),
         "work_units": len(assigned),
