@@ -393,15 +393,29 @@ def run_unit(
             continuation=True,
             objective_cache=objective_cache,
         )
+        route = "batched_scalar_continuation"
+        record_initialization = initialization
+        if not fit["converged"]:
+            rescue, rescue_attempts = scalar_fit(
+                data[index],
+                args,
+                initial=None if initial is None else initial[index],
+                objective_cache=objective_cache,
+            )
+            attempts += rescue_attempts
+            route = "batched_scalar_rescue"
+            record_initialization = f"{initialization}_rescue"
+            if rescue["converged"] or rescue["objective"] < fit["objective"]:
+                fit = rescue
         rows.append(
             fit_record(
                 record,
                 fit,
                 attempts,
-                "batched_scalar_continuation",
+                route,
                 elapsed,
                 unit["padding_ratio"],
-                initialization,
+                record_initialization,
             )
         )
     return rows
