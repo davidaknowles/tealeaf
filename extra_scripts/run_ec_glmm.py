@@ -31,8 +31,6 @@ METHODS = (
     "renyi_multinomial_full",
     "laplace_multinomial_noise",
     "tilted_elbo_full_noise",
-    "cavi_multinomial_full_noise",
-    "cavi_tilted_elbo_full_noise",
     "laplace_dirichlet_multinomial",
     "elbo_dirichlet_multinomial",
     "renyi_dirichlet_multinomial",
@@ -62,7 +60,6 @@ def parse_args():
     parser.add_argument("--max-iter", type=int, default=200)
     parser.add_argument("--vi-samples", type=int, default=128)
     parser.add_argument("--evaluation-samples", type=int, default=2048)
-    parser.add_argument("--cavi-initializer-iterations", type=int, default=25)
     parser.add_argument("--renyi-alpha", type=float, default=0.5)
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--shard-count", type=int, default=1)
@@ -109,21 +106,6 @@ def local_gene_data(
 
 
 def fit_one(method, data, args, initial=None):
-    if method == "cavi_multinomial_full_noise":
-        return ec_glmm_full.fit_bouchard_cavi(
-            data,
-            observation_noise=True,
-            initial=initial,
-            max_iter=args.max_iter,
-        )
-    if method == "cavi_tilted_elbo_full_noise":
-        return ec_glmm_full.fit_cavi_then_tilted(
-            data,
-            observation_noise=True,
-            initial=initial,
-            cavi_max_iter=args.cavi_initializer_iterations,
-            max_iter=args.max_iter,
-        )
     if method == "tilted_elbo_full_noise":
         return ec_glmm_full.fit_tilted_variational_robust(
             data,
@@ -415,8 +397,6 @@ def main():
                     "elbo_dirichlet_multinomial_full",
                     "renyi_dirichlet_multinomial_full",
                     "tilted_elbo_full_noise",
-                    "cavi_multinomial_full_noise",
-                    "cavi_tilted_elbo_full_noise",
                 ):
                     evaluator = (
                         ec_glmm_full.evaluate_objectives
@@ -450,10 +430,6 @@ def main():
                         )
                 row["null_iterations"] = null["iterations"]
                 row["alternative_iterations"] = alternative["iterations"]
-                row["null_cavi_iterations"] = null.get("cavi_iterations", np.nan)
-                row["alternative_cavi_iterations"] = alternative.get(
-                    "cavi_iterations", np.nan
-                )
                 rows.append(row)
         except Exception as exc:
             failures.append({"gene": str(genes[gene_index]), "error": repr(exc)})

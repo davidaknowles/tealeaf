@@ -150,6 +150,8 @@ The exact 65-gene logistic-normal screens provide a harder comparison. The estab
 
 Among the small subsets where both initialization strategies converged, the median absolute differences between their tilted objectives were 0.045 for the condition null, 0.043 for the condition alternative, 0.006 for the cell-type null, and 0.075 for the cell-type alternative. CAVI initialization can therefore reach the same tilted optimum, but its loose quadratic solution is a poor starting point for these real logistic-normal fits. It is not a convergence improvement over the established initializer.
 
+The package implementation and command-line options were retired after this comparison. This document preserves the derivation, variable dimensions, and negative benchmark result; the supported fitter is the analytic-derivative Laplace objective optimized with bounded L-BFGS.
+
 \begin{thebibliography}{1}
 \bibitem{bouchard2007}
 G.~Bouchard.

@@ -4,7 +4,6 @@ from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
-import scipy.special
 
 from extra_scripts.merge_ec_block_glmm import (
     calibrate,
@@ -28,13 +27,7 @@ from extra_scripts.run_celltype_compositional_splicing import (
     paired_celltype_design,
 )
 from extra_scripts.run_differential_splicing import block_mapping
-from extra_scripts.run_path_wald_ablation import (
-    effect_summary,
-    parse_prior_scales,
-    permute_labels_within_clusters,
-    reference_contrast_prior_covariance,
-)
-from tealeaf.sc import differential, ec_block_glmm, ec_glmm, ec_glmm_full
+from tealeaf.sc import ec_block_glmm, ec_glmm, ec_glmm_full
 
 
 def test_laplace_dirichlet_multinomial_dispatches_family(monkeypatch):
@@ -164,101 +157,6 @@ def test_pooled_isoform_weights_match_identity_ec_proportions():
     )
     weights = ec_block_glmm.pooled_isoform_weights(data)
     np.testing.assert_allclose(weights, [0.8, 0.2], atol=1e-5)
-
-
-def test_estimate_once_wald_detects_clustered_path_effect():
-    rng = np.random.default_rng(29)
-    subjects = 24
-    clusters = np.repeat(np.arange(subjects), 2)
-    cell_type = np.tile([0, 1], subjects)
-    condition = np.repeat(np.arange(subjects) >= subjects // 2, 2)
-    probabilities = scipy.special.expit(
-        -0.3 + 0.9 * cell_type + rng.normal(0, 0.25, subjects)[clusters]
-    )
-    counts = np.asarray([
-        rng.multinomial(300, [probability, 1 - probability])
-        for probability in probabilities
-    ])
-    data = ec_glmm.ECGLMMData(
-        (counts,),
-        (np.eye(2),),
-        np.ones((len(counts), 1)),
-        clusters,
-    )
-    result = ec_block_glmm.path_wald_test(
-        data,
-        np.array([0, 1]),
-        np.column_stack((1 - condition, condition)),
-        cell_type[:, None],
-    )
-    assert result["p_value"] < 0.01
-    assert result["degrees_of_freedom"] == 1
-    assert result["path_estimates"]["converged"].all()
-
-
-def test_estimate_once_gaussian_lrt_and_bf_detect_path_effect():
-    rng = np.random.default_rng(31)
-    subjects = 20
-    clusters = np.repeat(np.arange(subjects), 2)
-    cell_type = np.tile([0, 1], subjects)
-    condition = np.repeat(np.arange(subjects) >= subjects // 2, 2)
-    probabilities = scipy.special.expit(
-        -0.2 + 0.8 * cell_type + rng.normal(0, 0.2, subjects)[clusters]
-    )
-    counts = np.asarray([
-        rng.multinomial(400, [probability, 1 - probability])
-        for probability in probabilities
-    ])
-    data = ec_glmm.ECGLMMData(
-        (counts,),
-        (np.eye(2),),
-        np.ones((len(counts), 1)),
-        clusters,
-    )
-    result = ec_block_glmm.path_gaussian_lrt_test(
-        data,
-        np.array([0, 1]),
-        np.column_stack((1 - condition, condition)),
-        cell_type[:, None],
-        effect_prior_scales=(0.25, 0.5, 1.0),
-    )
-    assert result["p_value"] < 0.01
-    assert result["mixture_log_bayes_factor"] > np.log(10.0)
-    assert result["path_estimates"]["usable"].all()
-
-
-def test_multilevel_label_permutation_preserves_cluster_counts():
-    labels = np.array([0, 1, 2, 0, 2, 1, 1])
-    clusters = np.array([0, 0, 0, 1, 1, 2, 2])
-    permuted = permute_labels_within_clusters(
-        labels, clusters, np.random.default_rng(8)
-    )
-    for cluster in np.unique(clusters):
-        positions = clusters == cluster
-        np.testing.assert_array_equal(
-            np.sort(permuted[positions]), np.sort(labels[positions])
-        )
-
-
-def test_prior_scales_accept_slurm_safe_separator():
-    assert parse_prior_scales("0.1;0.25;1") == (0.1, 0.25, 1.0)
-    np.testing.assert_array_equal(
-        reference_contrast_prior_covariance(2, 1),
-        np.array([[2.0, 1.0], [1.0, 2.0]]),
-    )
-
-
-def test_effect_summary_maps_ilr_coefficients_to_centered_paths():
-    result = {
-        "coefficients": np.array([[0.0, 0.0], [0.4, -0.2]]),
-        "coefficient_covariance": np.eye(4),
-    }
-    tested, paths, standard_errors = effect_summary(result, 1, 3)
-    np.testing.assert_allclose(paths.sum(axis=1), 0.0, atol=1e-12)
-    np.testing.assert_allclose(
-        paths, tested @ differential.helmert_basis(3).T
-    )
-    assert standard_errors.shape == paths.shape
 
 
 def test_block_tensors_are_nested_with_expected_df():

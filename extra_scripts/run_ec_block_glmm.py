@@ -30,10 +30,6 @@ METHODS = (
     "laplace_multinomial",
     "laplace_dirichlet_multinomial",
     "laplace_multinomial_noise",
-    "cavi_multinomial_full",
-    "cavi_multinomial_noise_full",
-    "cavi_tilted_multinomial_full",
-    "cavi_tilted_multinomial_noise_full",
 )
 
 
@@ -81,8 +77,6 @@ def parse_args():
     parser.add_argument("--max-ecs", type=int, default=128)
     parser.add_argument("--max-iter", type=int, default=300)
     parser.add_argument("--laplace-mode-steps", type=int, default=12)
-    parser.add_argument("--laplace-mode-warm-start", action="store_true")
-    parser.add_argument("--laplace-mode-tolerance", type=float, default=0.0)
     parser.add_argument(
         "--laplace-mode-gradient",
         choices=("implicit", "unrolled"),
@@ -95,27 +89,10 @@ def parse_args():
     )
     parser.add_argument("--laplace-cache-size", type=int, default=16)
     parser.add_argument(
-        "--laplace-optimizer",
-        choices=("lbfgs", "adam", "adam_lbfgs", "trust_ncg"),
-        default="lbfgs",
-    )
-    parser.add_argument(
         "--laplace-multinomial-derivatives",
         choices=("analytic", "autodiff"),
         default="analytic",
     )
-    parser.add_argument("--adam-learning-rate", type=float, default=0.03)
-    parser.add_argument("--adam-steps", type=int, default=100)
-    parser.add_argument(
-        "--null-warm-start",
-        choices=("default", "shared_alternative", "previous_null"),
-        default="default",
-        help=(
-            "Initialize later block nulls by projecting the already fitted "
-            "gene-level unrestricted alternative or preceding block null"
-        ),
-    )
-    parser.add_argument("--cavi-initializer-iterations", type=int, default=25)
     parser.add_argument("--retries", type=int, default=2)
     parser.add_argument("--null-replicate-retries", type=int)
     parser.add_argument("--vi-samples", type=int, default=16)
@@ -536,32 +513,11 @@ def fit_method(
                 else int(laplace_mode_steps)
             ),
             mode_gradient=getattr(args, "laplace_mode_gradient", "implicit"),
-            optimizer=getattr(args, "laplace_optimizer", "lbfgs"),
-            adam_learning_rate=getattr(args, "adam_learning_rate", 0.03),
-            adam_steps=getattr(args, "adam_steps", 100),
             objective_cache=objective_cache,
             objective_cache_key=objective_cache_key,
-            mode_warm_start=getattr(args, "laplace_mode_warm_start", False),
-            mode_tolerance=getattr(args, "laplace_mode_tolerance", 0.0),
             multinomial_derivatives=getattr(
                 args, "laplace_multinomial_derivatives", "analytic"
             ),
-        )
-    if method.startswith("cavi_"):
-        observation_noise = "_noise_" in method
-        if method.startswith("cavi_tilted_"):
-            return ec_glmm_full.fit_cavi_then_tilted(
-                data,
-                observation_noise=observation_noise,
-                initial=initial,
-                cavi_max_iter=args.cavi_initializer_iterations,
-                max_iter=args.max_iter,
-            )
-        return ec_glmm_full.fit_bouchard_cavi(
-            data,
-            observation_noise=observation_noise,
-            initial=initial,
-            max_iter=args.max_iter,
         )
     if method == "multinomial_noise_full":
         return ec_glmm_full.fit_tilted_variational_robust(
@@ -853,7 +809,6 @@ def main():
     objective_cache = {}
     objective_cache_group = None
     pooled_weight_cache = {}
-    previous_null_cache = {}
     started = time.perf_counter()
     for position, candidate in enumerate(candidates):
         (
@@ -954,34 +909,7 @@ def main():
                 )
                 if cache_key not in null_cache:
                     null_initial = None
-                    null_warm_start_used = "default"
-                    previous_null_key = (
-                        gene, tuple(rows), method, args.latent_space
-                    )
                     if (
-                        args.null_warm_start == "shared_alternative"
-                        and alternative_key in alternative_cache
-                    ):
-                        null_initial = reparameterize_fixed_effects(
-                            alternative_cache[alternative_key],
-                            full_alternative_tensor,
-                            null_tensor,
-                        )
-                        null_warm_start_used = "shared_alternative"
-                    elif (
-                        args.null_warm_start == "previous_null"
-                        and previous_null_key in previous_null_cache
-                    ):
-                        previous_fit, previous_tensor = previous_null_cache[
-                            previous_null_key
-                        ]
-                        null_initial = reparameterize_fixed_effects(
-                            previous_fit,
-                            previous_tensor,
-                            null_tensor,
-                        )
-                        null_warm_start_used = "previous_null"
-                    elif (
                         method == "laplace_multinomial_noise"
                         and "laplace_multinomial" in completed_methods
                     ):
@@ -1015,12 +943,7 @@ def main():
                     trim_objective_cache(
                         objective_cache, args.laplace_cache_size
                     )
-                else:
-                    null_warm_start_used = "cached"
                 null = null_cache[cache_key]
-                previous_null_cache[
-                    (gene, tuple(rows), method, args.latent_space)
-                ] = (null, null_tensor)
                 alternative_reused = alternative_key in alternative_cache
                 if not alternative_reused:
                     if (
@@ -1126,10 +1049,6 @@ def main():
                     "alternative_concentration": alternative["concentration"],
                     "null_iterations": null["total_iterations"],
                     "alternative_iterations": alternative["total_iterations"],
-                    "null_cavi_iterations": null.get("cavi_iterations", np.nan),
-                    "alternative_cavi_iterations": alternative.get(
-                        "cavi_iterations", np.nan
-                    ),
                     "null_gradient_norm": null["gradient_norm"],
                     "alternative_gradient_norm": alternative["gradient_norm"],
                     "null_scaled_gradient_norm": null.get(
@@ -1153,9 +1072,6 @@ def main():
                     "null_attempts": null["attempts"],
                     "alternative_attempts": alternative["attempts"],
                     "alternative_reused": alternative_reused,
-                    "null_warm_start": null_warm_start_used,
-                    "null_optimizer": null.get("optimizer", ""),
-                    "alternative_optimizer": alternative.get("optimizer", ""),
                     "null_objective_evaluations": null.get(
                         "objective_evaluations", np.nan
                     ),
@@ -1210,8 +1126,6 @@ def main():
                         observation_noise=method in {
                             "multinomial_noise_full",
                             "laplace_multinomial_noise",
-                            "cavi_multinomial_noise_full",
-                            "cavi_tilted_multinomial_noise_full",
                         },
                     )
                     simulated_null_data = ec_glmm.ECGLMMData(

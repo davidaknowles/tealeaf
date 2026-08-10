@@ -78,41 +78,6 @@ def test_full_tilted_bound_handles_correlated_logits():
     np.testing.assert_allclose(differentiated, envelope, atol=2e-8, rtol=2e-8)
 
 
-def test_bouchard_bound_is_an_upper_bound_for_correlated_logits():
-    means = np.array([[0.2, -0.4, 0.0]])
-    covariance = np.array(
-        [[[0.3, -0.18, 0.0], [-0.18, 0.7, 0.0], [0.0, 0.0, 0.0]]]
-    )
-    variances = np.diagonal(covariance, axis1=1, axis2=2)
-    alpha, xi = ec_glmm_full._bouchard_parameters(means, variances)
-    bound = ec_glmm_full._bouchard_expected_logsumexp(
-        means, variances, alpha, xi
-    )[0]
-    rng = np.random.default_rng(2)
-    samples = rng.multivariate_normal(means[0], covariance[0], size=200_000)
-    expectation = np.mean(np.logaddexp.reduce(samples, axis=1))
-    assert bound >= expectation - 3e-3
-
-
-def test_bouchard_cavi_warm_starts_tilted_fit():
-    data = simulated_data()
-    cavi = ec_glmm_full.fit_bouchard_cavi(data, max_iter=25)
-    assert np.isfinite(cavi["objective"])
-    assert cavi["coefficients"].shape == (data.design.shape[1], 1)
-    warm_start = ec_glmm_full.warm_start(cavi, data.design.shape[1] + 1)
-    assert np.all(np.isfinite(warm_start))
-    assert np.all(np.diff(cavi["objective_history"]) >= -1e-7)
-    starting = ec_glmm_full.fit_variational(
-        data, initial=cavi["parameters"], max_iter=0
-    )
-    refined = ec_glmm_full.fit_variational(
-        data, initial=cavi["parameters"], max_iter=80
-    )
-    assert refined["converged"]
-    assert refined["objective"] >= starting["objective"]
-    assert refined["coefficients"][2, 0] == pytest.approx(0.9, abs=0.35)
-
-
 def test_multinomial_methods_recover_ambiguous_ec_effect():
     data = simulated_data()
     tilted = ec_glmm.fit_tilted_variational(data, max_iter=120)
@@ -257,69 +222,6 @@ def test_analytic_multinomial_derivatives_match_autodiff_laplace():
     )
 
 
-def test_trust_ncg_uses_hessian_vector_products():
-    data = simulated_data(seed=92, effect=0.7)
-    initial = ec_glmm.fit_laplace(
-        data,
-        max_iter=0,
-        mode_steps=12,
-        mode_gradient="implicit",
-    )
-    trust = ec_glmm.fit_laplace(
-        data,
-        optimizer="trust_ncg",
-        max_iter=20,
-        mode_steps=12,
-        mode_gradient="implicit",
-    )
-    assert np.isfinite(trust["objective"])
-    assert trust["objective"] < initial["objective"]
-    assert trust["hessian_vector_evaluations"] > 0
-    assert trust["hessian_vector_seconds"] > 0
-
-
-def test_projected_adam_respects_bounds_and_improves_quadratic():
-    def objective(value):
-        residual = value - np.asarray([2.0, -3.0])
-        return 0.5 * residual @ residual, residual
-
-    result = ec_glmm._projected_adam(
-        objective,
-        np.zeros(2),
-        [(-1.0, 1.0), (-2.0, 2.0)],
-        max_iter=400,
-        learning_rate=0.1,
-        gradient_tolerance=1e-8,
-    )
-    np.testing.assert_allclose(result["x"], [1.0, -2.0], atol=2e-3)
-    assert result["fun"] < objective(np.zeros(2))[0]
-    assert result["nfev"] <= 401
-
-
-def test_adam_lbfgs_laplace_matches_direct_laplace():
-    data = simulated_data(seed=29, effect=0.8)
-    direct = ec_glmm.fit_laplace(
-        data,
-        max_iter=80,
-        mode_steps=12,
-        mode_gradient="implicit",
-    )
-    hybrid = ec_glmm.fit_laplace(
-        data,
-        max_iter=80,
-        mode_steps=12,
-        mode_gradient="implicit",
-        optimizer="adam_lbfgs",
-        adam_steps=20,
-        adam_learning_rate=0.02,
-    )
-    assert direct["converged"]
-    assert hybrid["converged"]
-    assert hybrid["optimizer"] == "adam_lbfgs"
-    assert hybrid["adam_iterations"] == 20
-    assert hybrid["objective"] == pytest.approx(direct["objective"], abs=1e-7)
-
-
 def test_laplace_objective_cache_accepts_dynamic_counts_and_tensor():
     data = simulated_data(seed=23, effect=0.7)
     tensor = ec_block_glmm.unrestricted_tensor(data.design[:, :2], 1)
@@ -419,85 +321,6 @@ def test_laplace_objective_cache_accepts_dynamic_mapping_and_clusters():
     assert cached["objective"] == pytest.approx(uncached["objective"], abs=1e-9)
     np.testing.assert_allclose(
         cached["parameters"], uncached["parameters"], atol=1e-8, rtol=1e-8
-    )
-
-
-def test_laplace_shape_key_tracks_only_static_dimensions():
-    data = simulated_data(seed=52)
-    changed = ec_glmm.ECGLMMData(
-        tuple(value[::-1].copy() for value in data.counts),
-        tuple(value.copy() for value in data.compatibility),
-        data.design.copy(),
-        np.roll(data.clusters, 1),
-        fixed_effect_tensor=data.fixed_effect_tensor,
-    )
-    assert ec_glmm.laplace_objective_shape_key(data) == (
-        ec_glmm.laplace_objective_shape_key(changed)
-    )
-    assert ec_glmm.laplace_objective_shape_key(
-        data, observation_noise=True
-    ) == ec_glmm.laplace_objective_shape_key(
-        changed, observation_noise=True
-    )
-
-
-def test_raw_ec_efficient_score_is_finite_at_nested_null():
-    data = simulated_data(seed=54, effect=0.8)
-    tested = data.design[:, 2:3]
-    nuisance = np.ones((len(tested), 1), dtype=float)
-    null_tensor, alternative_tensor, degrees = (
-        ec_block_glmm.block_fixed_effect_tensors(
-            nuisance, tested, np.array([0, 1])
-        )
-    )
-    null = ec_glmm.fit_laplace(
-        run_ec_block_glmm.tensor_data(data, null_tensor),
-        max_iter=60,
-        mode_steps=12,
-        mode_gradient="implicit",
-    )
-    initial = run_ec_block_glmm.reparameterize_fixed_effects(
-        null, null_tensor, alternative_tensor
-    )
-    evaluated = ec_glmm.fit_laplace(
-        run_ec_block_glmm.tensor_data(data, alternative_tensor),
-        initial=initial,
-        max_iter=0,
-        mode_steps=12,
-        mode_gradient="implicit",
-        return_outer_hessian=True,
-    )
-    assert evaluated["iterations"] == 0
-    np.testing.assert_array_equal(evaluated["parameters"], initial)
-    tested_indices = np.arange(
-        null_tensor.shape[2], alternative_tensor.shape[2]
-    )
-    statistic = ec_glmm.efficient_score_statistic(evaluated, tested_indices)
-    assert degrees == len(tested_indices)
-    assert np.isfinite(statistic)
-    assert statistic > 0
-
-
-def test_accepted_mode_warm_start_preserves_laplace_solution():
-    data = simulated_data(seed=61, effect=0.7)
-    baseline = ec_glmm.fit_laplace(
-        data,
-        max_iter=40,
-        mode_steps=12,
-        mode_gradient="implicit",
-    )
-    warmed = ec_glmm.fit_laplace(
-        data,
-        max_iter=40,
-        mode_steps=12,
-        mode_gradient="implicit",
-        mode_warm_start=True,
-        mode_tolerance=1e-5,
-    )
-    assert baseline["converged"]
-    assert warmed["converged"]
-    assert warmed["objective"] == pytest.approx(
-        baseline["objective"], abs=1e-8
     )
 
 

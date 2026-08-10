@@ -108,16 +108,8 @@ class ECGLMMData:
 
 
 def laplace_objective_shape_key(data, *, observation_noise=False):
-    """Return the static array-shape signature of a Laplace objective.
-
-    Counts, compatibility values, designs, and cluster assignments are dynamic
-    JAX arguments.  Two fits can therefore share a compiled objective when
-    these arrays have the same shapes and both use either a matrix design or a
-    fixed-effect tensor.  Observation-noise fits additionally depend on the
-    largest cluster size because that determines their latent dimension.
-    """
+    """Return the static array-shape signature of a Laplace objective."""
     _, cluster_sizes = np.unique(data.clusters, return_counts=True)
-    maximum_cluster_size = int(cluster_sizes.max())
     tensor_shape = (
         None
         if data.fixed_effect_tensor is None
@@ -129,7 +121,7 @@ def laplace_objective_shape_key(data, *, observation_noise=False):
         tuple(data.design.shape),
         tensor_shape,
         int(len(cluster_sizes)),
-        maximum_cluster_size if observation_noise else 0,
+        int(cluster_sizes.max()) if observation_noise else 0,
     )
 
 
@@ -222,79 +214,6 @@ def _initial_outer(data, family):
     return values
 
 
-def _projected_adam(
-    objective,
-    initial,
-    bounds,
-    *,
-    max_iter,
-    learning_rate=0.03,
-    beta1=0.9,
-    beta2=0.999,
-    epsilon=1e-8,
-    gradient_tolerance=1e-5,
-):
-    """Minimize a differentiable objective with projected Adam.
-
-    This small optimizer is intended for controlled comparisons with the
-    existing bounded L-BFGS fit. It retains the best finite iterate because a
-    fixed first-order schedule need not decrease the objective at every step.
-    """
-    parameters = np.asarray(initial, dtype=float).copy()
-    lower = np.asarray([
-        -np.inf if bound[0] is None else bound[0] for bound in bounds
-    ])
-    upper = np.asarray([
-        np.inf if bound[1] is None else bound[1] for bound in bounds
-    ])
-    first_moment = np.zeros_like(parameters)
-    second_moment = np.zeros_like(parameters)
-    best_parameters = parameters.copy()
-    best_value = np.inf
-    best_gradient = np.full_like(parameters, np.nan)
-    evaluations = 0
-    converged = False
-    message = "Adam reached the iteration limit"
-    iteration = 0
-    for iteration in range(1, int(max_iter) + 1):
-        value, gradient = objective(parameters)
-        evaluations += 1
-        if not np.isfinite(value) or not np.isfinite(gradient).all():
-            message = "Adam encountered a non-finite objective or gradient"
-            break
-        if value < best_value:
-            best_value = float(value)
-            best_parameters = parameters.copy()
-            best_gradient = np.asarray(gradient, dtype=float).copy()
-        if np.linalg.norm(gradient, ord=np.inf) <= float(gradient_tolerance):
-            converged = True
-            message = "Adam gradient tolerance reached"
-            break
-        first_moment = beta1 * first_moment + (1.0 - beta1) * gradient
-        second_moment = beta2 * second_moment + (1.0 - beta2) * gradient**2
-        corrected_first = first_moment / (1.0 - beta1**iteration)
-        corrected_second = second_moment / (1.0 - beta2**iteration)
-        progress = (iteration - 1.0) / max(float(max_iter), 1.0)
-        rate = float(learning_rate) * 0.5 * (1.0 + np.cos(np.pi * progress))
-        parameters -= rate * corrected_first / (
-            np.sqrt(corrected_second) + float(epsilon)
-        )
-        parameters = np.clip(parameters, lower, upper)
-    if not np.isfinite(best_value):
-        best_value, best_gradient = objective(initial)
-        evaluations += 1
-        best_parameters = np.asarray(initial, dtype=float).copy()
-    return {
-        "x": best_parameters,
-        "fun": float(best_value),
-        "jac": np.asarray(best_gradient, dtype=float),
-        "nit": int(iteration),
-        "nfev": int(evaluations),
-        "success": bool(converged),
-        "message": message,
-    }
-
-
 def fit_laplace(
     data,
     *,
@@ -304,14 +223,8 @@ def fit_laplace(
     max_iter=200,
     mode_steps=30,
     mode_gradient="unrolled",
-    optimizer="lbfgs",
-    adam_learning_rate=0.03,
-    adam_steps=100,
     objective_cache=None,
     objective_cache_key=None,
-    mode_warm_start=False,
-    mode_tolerance=0.0,
-    return_outer_hessian=False,
     multinomial_derivatives="analytic",
 ):
     """Fit an EC-count GLMM by Laplace approximation.
@@ -326,10 +239,9 @@ def fit_laplace(
 
     ``mode_gradient="implicit"`` differentiates the converged mode equation
     instead of backpropagating through the Newton iterations.  A shared
-    ``objective_cache_key`` may be shared when array shapes agree.  Counts,
+    ``objective_cache_key`` may be shared when array shapes agree. Counts,
     mappings, designs, fixed-effect tensors, and cluster layouts are passed
-    dynamically and may differ between calls sharing that key.  Use
-    :func:`laplace_objective_shape_key` to construct a safe global key.
+    dynamically and may differ between calls sharing that key.
 
     ``multinomial_derivatives="analytic"`` evaluates the EC multinomial score
     and curvature in closed form.  The reference ``"autodiff"`` path obtains
@@ -341,18 +253,6 @@ def fit_laplace(
         )
     if mode_gradient not in ("unrolled", "implicit"):
         raise ValueError("mode_gradient must be 'unrolled' or 'implicit'")
-    if optimizer not in ("lbfgs", "adam", "adam_lbfgs", "trust_ncg"):
-        raise ValueError(
-            "optimizer must be 'lbfgs', 'adam', 'adam_lbfgs', or 'trust_ncg'"
-        )
-    if float(adam_learning_rate) <= 0:
-        raise ValueError("adam_learning_rate must be positive")
-    if int(adam_steps) < 0:
-        raise ValueError("adam_steps must be nonnegative")
-    if float(mode_tolerance) < 0:
-        raise ValueError("mode_tolerance must be nonnegative")
-    if float(mode_tolerance) > 0 and mode_gradient != "implicit":
-        raise ValueError("adaptive mode termination requires implicit gradients")
     if multinomial_derivatives not in ("analytic", "autodiff"):
         raise ValueError(
             "multinomial_derivatives must be 'analytic' or 'autodiff'"
@@ -662,37 +562,7 @@ def fit_laplace(
             scale = jnp.minimum(1.0, 2.0 / (maximum + 1e-12))
             return value + scale * step
 
-        if float(mode_tolerance) <= 0:
-            return jax.lax.fori_loop(0, int(mode_steps), update, current)
-
-        def condition(state):
-            iteration, _, maximum_score = state
-            return jnp.logical_and(
-                iteration < int(mode_steps),
-                maximum_score > float(mode_tolerance),
-            )
-
-        def adaptive_update(state):
-            iteration, value, _ = state
-            updated = update(iteration, value)
-            _, score, _, _, _ = mode_derivatives(
-                updated,
-                outer,
-                active_design,
-                active_fixed_effect_tensor,
-                active_counts,
-                active_mappings,
-                active_membership,
-                active_selection,
-                active_cluster_index,
-            )
-            return iteration + 1, updated, jnp.max(jnp.abs(score))
-
-        return jax.lax.while_loop(
-            condition,
-            adaptive_update,
-            (0, current, jnp.asarray(jnp.inf, dtype=current.dtype)),
-        )[1]
+        return jax.lax.fori_loop(0, int(mode_steps), update, current)
 
     if mode_gradient == "implicit":
         @jax.custom_vjp
@@ -878,7 +748,6 @@ def fit_laplace(
             bool(observation_noise),
             int(mode_steps),
             mode_gradient,
-            float(mode_tolerance),
             multinomial_derivatives,
         )
     if cache_key is not None and cache_key in objective_cache:
@@ -889,61 +758,6 @@ def fit_laplace(
         )
         if cache_key is not None:
             objective_cache[cache_key] = value_and_gradient
-    hessian_vector_product = None
-    if optimizer == "trust_ncg":
-        def outer_hessian_vector_product(
-            outer,
-            vector,
-            initial_modes,
-            active_design,
-            active_fixed_effect_tensor,
-            active_counts,
-            active_mappings,
-            active_membership,
-            active_selection,
-            active_cluster_index,
-        ):
-            def scalar_objective(value):
-                return objective(
-                    value,
-                    initial_modes,
-                    active_design,
-                    active_fixed_effect_tensor,
-                    active_counts,
-                    active_mappings,
-                    active_membership,
-                    active_selection,
-                    active_cluster_index,
-                )[0]
-
-            return jax.grad(
-                lambda value: jnp.vdot(jax.grad(scalar_objective)(value), vector)
-            )(outer)
-
-        hessian_vector_product = jax.jit(outer_hessian_vector_product)
-    hessian_function = None
-    if return_outer_hessian:
-        hessian_cache_key = None
-        if objective_cache is not None and objective_cache_key is not None:
-            hessian_cache_key = (
-                objective_cache_key,
-                "laplace_hessian",
-                family,
-                bool(observation_noise),
-                int(mode_steps),
-                mode_gradient,
-                float(mode_tolerance),
-                multinomial_derivatives,
-            )
-        if hessian_cache_key is not None and hessian_cache_key in objective_cache:
-            hessian_function = objective_cache[hessian_cache_key]
-        else:
-            hessian_function = jax.jit(
-                jax.hessian(lambda *arguments: objective(*arguments)[0], argnums=0)
-            )
-            if hessian_cache_key is not None:
-                objective_cache[hessian_cache_key] = hessian_function
-
     active_fixed_effect_tensor = (
         jnp.empty((0,), dtype=jnp.float64)
         if fixed_effect_tensor is None
@@ -958,13 +772,10 @@ def fit_laplace(
         (active_membership.shape[1], active_selection.shape[2]),
         dtype=jnp.float64,
     )
-    accepted_modes = zero_modes
-    evaluated_modes = {}
-
     def scipy_objective(parameters):
-        (value, modes), gradient = value_and_gradient(
+        (value, _), gradient = value_and_gradient(
             jnp.asarray(parameters),
-            accepted_modes if mode_warm_start else zero_modes,
+            zero_modes,
             active_design,
             active_fixed_effect_tensor,
             counts,
@@ -973,8 +784,6 @@ def fit_laplace(
             active_selection,
             active_cluster_index,
         )
-        if mode_warm_start:
-            evaluated_modes[np.asarray(parameters, dtype=float).tobytes()] = modes
         return float(value), np.asarray(gradient, dtype=float)
 
     evaluation_count = 0
@@ -1003,41 +812,13 @@ def fit_laplace(
     if observation_noise:
         bounds.append((-8.0, 3.0))
     optimizer_started = time.perf_counter()
-    adam_result = None
-    lbfgs_result = None
-    trust_result = None
-
-    def accept_iterate(parameters, *_):
-        nonlocal accepted_modes
-        if not mode_warm_start:
-            return
-        key = np.asarray(parameters, dtype=float).tobytes()
-        if key in evaluated_modes:
-            accepted_modes = evaluated_modes[key]
-        evaluated_modes.clear()
-
-    if optimizer in ("adam", "adam_lbfgs"):
-        steps = int(max_iter) if optimizer == "adam" else int(adam_steps)
-        adam_result = _projected_adam(
+    if int(max_iter) > 0:
+        result = scipy.optimize.minimize(
             scaled_scipy_objective,
-            initial,
-            bounds,
-            max_iter=steps,
-            learning_rate=adam_learning_rate,
-            gradient_tolerance=1e-5,
-        )
-    if optimizer in ("lbfgs", "adam_lbfgs") and int(max_iter) > 0:
-        lbfgs_initial = (
-            np.asarray(initial, dtype=float)
-            if adam_result is None else np.asarray(adam_result["x"], dtype=float)
-        )
-        lbfgs_result = scipy.optimize.minimize(
-            scaled_scipy_objective,
-            lbfgs_initial,
+            np.asarray(initial, dtype=float),
             method="L-BFGS-B",
             jac=True,
             bounds=bounds,
-            callback=accept_iterate,
             options={
                 "maxiter": int(max_iter),
                 "ftol": 1e-12,
@@ -1045,66 +826,14 @@ def fit_laplace(
                 "maxls": 100,
             },
         )
-    hessian_vector_evaluations = 0
-    hessian_vector_seconds = 0.0
-    if optimizer == "trust_ncg" and int(max_iter) > 0:
-        def scaled_hessian_vector(parameters, vector):
-            nonlocal hessian_vector_evaluations, hessian_vector_seconds
-            started = time.perf_counter()
-            result = hessian_vector_product(
-                jnp.asarray(parameters),
-                jnp.asarray(vector),
-                accepted_modes if mode_warm_start else zero_modes,
-                active_design,
-                active_fixed_effect_tensor,
-                counts,
-                active_mappings,
-                active_membership,
-                active_selection,
-                active_cluster_index,
-            )
-            result = np.asarray(result, dtype=float) / optimizer_scale
-            hessian_vector_seconds += time.perf_counter() - started
-            hessian_vector_evaluations += 1
-            return result
-
-        trust_result = scipy.optimize.minimize(
-            scaled_scipy_objective,
-            np.asarray(initial, dtype=float),
-            method="trust-constr",
-            jac=True,
-            hessp=scaled_hessian_vector,
-            bounds=scipy.optimize.Bounds(
-                [bound[0] for bound in bounds],
-                [bound[1] for bound in bounds],
-            ),
-            callback=accept_iterate,
-            options={
-                "maxiter": int(max_iter),
-                "gtol": 1e-5,
-                "xtol": 1e-10,
-                "barrier_tol": 1e-10,
-                "verbose": 0,
-            },
-        )
+    else:
+        result = None
     optimizer_seconds = time.perf_counter() - optimizer_started
-    if trust_result is not None:
-        parameters = np.asarray(trust_result.x)
-        optimizer_success = bool(trust_result.success)
-        optimizer_iterations = int(trust_result.nit)
-        optimizer_message = str(trust_result.message)
-    elif lbfgs_result is not None:
-        parameters = np.asarray(lbfgs_result.x)
-        optimizer_success = bool(lbfgs_result.success)
-        optimizer_iterations = int(lbfgs_result.nit) + (
-            0 if adam_result is None else int(adam_result["nit"])
-        )
-        optimizer_message = str(lbfgs_result.message)
-    elif adam_result is not None:
-        parameters = np.asarray(adam_result["x"])
-        optimizer_success = bool(adam_result["success"])
-        optimizer_iterations = int(adam_result["nit"])
-        optimizer_message = str(adam_result["message"])
+    if result is not None:
+        parameters = np.asarray(result.x)
+        optimizer_success = bool(result.success)
+        optimizer_iterations = int(result.nit)
+        optimizer_message = str(result.message)
     else:
         parameters = np.asarray(initial, dtype=float)
         optimizer_success = False
@@ -1113,7 +842,7 @@ def fit_laplace(
     outer = jnp.asarray(parameters)
     modes = posterior_mode(
         outer,
-        accepted_modes if mode_warm_start else zero_modes,
+        zero_modes,
         active_design,
         active_fixed_effect_tensor,
         counts,
@@ -1136,21 +865,6 @@ def fit_laplace(
     covariance = np.asarray(jnp.linalg.inv(hessian))
     marginal_variance = np.diagonal(covariance, axis1=1, axis2=2)
     final_value, final_gradient = timed_scipy_objective(parameters)
-    outer_hessian = None
-    if hessian_function is not None:
-        outer_hessian = np.asarray(
-            hessian_function(
-                outer,
-                accepted_modes if mode_warm_start else zero_modes,
-                active_design,
-                active_fixed_effect_tensor,
-                counts,
-                active_mappings,
-                active_membership,
-                active_selection,
-                active_cluster_index,
-            )
-        )
     mode_score = np.asarray(mode_score)
     gradient_norm = float(np.linalg.norm(final_gradient, ord=np.inf))
     scaled_gradient_norm = gradient_norm / optimizer_scale
@@ -1180,20 +894,10 @@ def fit_laplace(
             and scaled_gradient_norm <= 1e-4
             and mode_score_norm <= 1e-4
         ),
-        "optimizer": optimizer,
+        "optimizer": "lbfgs",
         "optimizer_success": optimizer_success,
         "iterations": optimizer_iterations,
-        "adam_iterations": (
-            0 if adam_result is None else int(adam_result["nit"])
-        ),
-        "lbfgs_iterations": (
-            0 if lbfgs_result is None else int(lbfgs_result.nit)
-        ),
-        "trust_iterations": (
-            0 if trust_result is None else int(trust_result.nit)
-        ),
-        "hessian_vector_evaluations": int(hessian_vector_evaluations),
-        "hessian_vector_seconds": float(hessian_vector_seconds),
+        "lbfgs_iterations": optimizer_iterations,
         "objective_evaluations": int(evaluation_count),
         "objective_evaluation_seconds": float(evaluation_seconds),
         "initial_objective_seconds": float(initial_objective_seconds),
@@ -1201,48 +905,14 @@ def fit_laplace(
         "gradient_norm": gradient_norm,
         "scaled_gradient_norm": scaled_gradient_norm,
         "outer_gradient": np.asarray(final_gradient),
-        "outer_hessian": outer_hessian,
         "optimizer_scale": float(optimizer_scale),
         "fixed_effect_count": int(coefficient_count),
         "mode_steps": int(mode_steps),
         "mode_gradient": mode_gradient,
-        "mode_warm_start": bool(mode_warm_start),
-        "mode_tolerance": float(mode_tolerance),
         "mode_score_norm": mode_score_norm,
         "multinomial_derivatives": multinomial_derivatives,
         "message": optimizer_message,
     }
-
-
-def efficient_score_statistic(fit, tested_indices):
-    """Return a fixed-effect-nuisance-adjusted score statistic.
-
-    ``fit`` is an evaluation of the alternative objective at its constrained
-    null point and ``tested_indices`` selects tested fixed effects.  Variance
-    components remain fixed at their null estimates.  If the fixed-effect
-    Hessian is :math:`H` and the tested gradient is :math:`g`, the statistic
-    is :math:`g^T (H^{-1})_{tt} g`, the fixed-effect Schur-complement score
-    quadratic.  Holding variance components fixed avoids unstable observed
-    cross-curvature while retaining adjustment for all nuisance fixed effects.
-    """
-    hessian = fit.get("outer_hessian")
-    if hessian is None:
-        raise ValueError("fit does not contain an outer Hessian")
-    gradient = np.asarray(fit["outer_gradient"], dtype=float)
-    tested_indices = np.asarray(tested_indices, dtype=int)
-    if tested_indices.ndim != 1 or not len(tested_indices):
-        raise ValueError("tested_indices must be a nonempty vector")
-    fixed_effect_count = int(fit["fixed_effect_count"])
-    if np.any(tested_indices < 0) or np.any(tested_indices >= fixed_effect_count):
-        raise ValueError("tested indices must select fixed effects")
-    fixed_hessian = np.asarray(hessian, dtype=float)[
-        :fixed_effect_count, :fixed_effect_count
-    ]
-    covariance = np.linalg.pinv(fixed_hessian, hermitian=True)
-    tested_gradient = gradient[tested_indices]
-    tested_covariance = covariance[np.ix_(tested_indices, tested_indices)]
-    statistic = float(tested_gradient @ tested_covariance @ tested_gradient)
-    return max(0.0, statistic)
 
 
 def _tilted_logsumexp_bound(jnp, means, variances, iterations=25):
