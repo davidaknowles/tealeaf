@@ -23,7 +23,7 @@ def parse_args():
     parser.add_argument("--alternative-shards", required=True)
     parser.add_argument("--candidate-cache", required=True, type=Path)
     parser.add_argument("--batchability", required=True, type=Path)
-    parser.add_argument("--scalar-results", required=True, type=Path)
+    parser.add_argument("--scalar-results", type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     return parser.parse_args()
 
@@ -113,73 +113,10 @@ def main():
     result["bh_q_value"] = bh_over_converged(
         result.lrt_p_value.to_numpy(), result.converged.to_numpy()
     )
-    scalar = pd.read_csv(args.scalar_results, sep="\t")
-    if "method" in scalar:
-        scalar = scalar.loc[scalar.method == "laplace_multinomial"]
-    scalar = scalar.drop_duplicates("test_id")
-    comparison = result.merge(
-        scalar[
-            [
-                "test_id",
-                "null_converged",
-                "alternative_converged",
-                "statistic",
-                "lrt_p_value",
-            ]
-        ],
-        on="test_id",
-        suffixes=("_hybrid", "_scalar"),
-        validate="one_to_one",
-    )
-    scalar_converged = (
-        comparison.null_converged_scalar & comparison.alternative_converged_scalar
-    )
-    comparison["scalar_bh_q_value"] = bh_over_converged(
-        comparison.lrt_p_value_scalar.to_numpy(), scalar_converged.to_numpy()
-    )
-    common = (
-        comparison.converged
-        & comparison.null_converged_scalar
-        & comparison.alternative_converged_scalar
-    )
-    difference = np.abs(
-        comparison.loc[common, "statistic_hybrid"]
-        - comparison.loc[common, "statistic_scalar"]
-    )
-    common_statistics = comparison.loc[
-        common, ["statistic_hybrid", "statistic_scalar"]
-    ]
-    hybrid_calls = set(comparison.loc[comparison.bh_q_value <= 0.05, "test_id"])
-    scalar_calls = set(comparison.loc[comparison.scalar_bh_q_value <= 0.05, "test_id"])
-    call_union = hybrid_calls | scalar_calls
     summary = {
-        "tests": len(comparison),
-        "hybrid_joint_convergence": int(comparison.converged.sum()),
-        "scalar_joint_convergence": int(
-            (
-                comparison.null_converged_scalar
-                & comparison.alternative_converged_scalar
-            ).sum()
-        ),
-        "common_joint_convergence": int(common.sum()),
-        "common_median_absolute_statistic_difference": float(difference.median()),
-        "common_maximum_absolute_statistic_difference": float(difference.max()),
-        "common_statistic_spearman": float(
-            common_statistics.statistic_hybrid.corr(
-                common_statistics.statistic_scalar, method="spearman"
-            )
-        ),
-        "common_statistic_difference_above_0_1": int((difference > 0.1).sum()),
-        "common_statistic_difference_above_1": int((difference > 1.0).sum()),
-        "common_statistic_difference_above_5": int((difference > 5.0).sum()),
-        "hybrid_bh_discoveries": len(hybrid_calls),
-        "scalar_bh_discoveries": len(scalar_calls),
-        "shared_bh_discoveries": len(hybrid_calls & scalar_calls),
-        "hybrid_only_bh_discoveries": len(hybrid_calls - scalar_calls),
-        "scalar_only_bh_discoveries": len(scalar_calls - hybrid_calls),
-        "bh_discovery_jaccard": (
-            len(hybrid_calls & scalar_calls) / len(call_union) if call_union else 1.0
-        ),
+        "tests": len(result),
+        "hybrid_joint_convergence": int(result.converged.sum()),
+        "hybrid_bh_discoveries": int((result.bh_q_value <= 0.05).sum()),
         "null_worker_hours": sum(item["seconds"] for item in null_summaries) / 3600.0,
         "alternative_worker_hours": sum(
             item["seconds"] for item in alternative_summaries
@@ -201,11 +138,94 @@ def main():
             alternative.alternative_initialization.value_counts().to_dict()
         ),
     }
+    comparison = None
+    if args.scalar_results is not None:
+        scalar = pd.read_csv(args.scalar_results, sep="\t")
+        if "method" in scalar:
+            scalar = scalar.loc[scalar.method == "laplace_multinomial"]
+        scalar = scalar.drop_duplicates("test_id")
+        comparison = result.merge(
+            scalar[
+                [
+                    "test_id",
+                    "null_converged",
+                    "alternative_converged",
+                    "statistic",
+                    "lrt_p_value",
+                ]
+            ],
+            on="test_id",
+            suffixes=("_hybrid", "_scalar"),
+            validate="one_to_one",
+        )
+        scalar_converged = (
+            comparison.null_converged_scalar
+            & comparison.alternative_converged_scalar
+        )
+        comparison["scalar_bh_q_value"] = bh_over_converged(
+            comparison.lrt_p_value_scalar.to_numpy(), scalar_converged.to_numpy()
+        )
+        common = (
+            comparison.converged
+            & comparison.null_converged_scalar
+            & comparison.alternative_converged_scalar
+        )
+        difference = np.abs(
+            comparison.loc[common, "statistic_hybrid"]
+            - comparison.loc[common, "statistic_scalar"]
+        )
+        common_statistics = comparison.loc[
+            common, ["statistic_hybrid", "statistic_scalar"]
+        ]
+        hybrid_calls = set(
+            comparison.loc[comparison.bh_q_value <= 0.05, "test_id"]
+        )
+        scalar_calls = set(
+            comparison.loc[comparison.scalar_bh_q_value <= 0.05, "test_id"]
+        )
+        call_union = hybrid_calls | scalar_calls
+        summary.update(
+            {
+                "scalar_joint_convergence": int(scalar_converged.sum()),
+                "common_joint_convergence": int(common.sum()),
+                "common_median_absolute_statistic_difference": float(
+                    difference.median()
+                ),
+                "common_maximum_absolute_statistic_difference": float(
+                    difference.max()
+                ),
+                "common_statistic_spearman": float(
+                    common_statistics.statistic_hybrid.corr(
+                        common_statistics.statistic_scalar,
+                        method="spearman",
+                    )
+                ),
+                "common_statistic_difference_above_0_1": int(
+                    (difference > 0.1).sum()
+                ),
+                "common_statistic_difference_above_1": int(
+                    (difference > 1.0).sum()
+                ),
+                "common_statistic_difference_above_5": int(
+                    (difference > 5.0).sum()
+                ),
+                "scalar_bh_discoveries": len(scalar_calls),
+                "shared_bh_discoveries": len(hybrid_calls & scalar_calls),
+                "hybrid_only_bh_discoveries": len(hybrid_calls - scalar_calls),
+                "scalar_only_bh_discoveries": len(scalar_calls - hybrid_calls),
+                "bh_discovery_jaccard": (
+                    len(hybrid_calls & scalar_calls) / len(call_union)
+                    if call_union
+                    else 1.0
+                ),
+            }
+        )
     args.output_dir.mkdir(parents=True, exist_ok=True)
     result.to_csv(args.output_dir / "hybrid_results.tsv.gz", sep="\t", index=False)
-    comparison.to_csv(
-        args.output_dir / "scalar_comparison.tsv.gz", sep="\t", index=False
-    )
+    if comparison is not None:
+        comparison.to_csv(
+            args.output_dir / "scalar_comparison.tsv.gz", sep="\t", index=False
+        )
     (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps(summary, indent=2))
 
