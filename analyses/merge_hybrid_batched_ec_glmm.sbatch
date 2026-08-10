@@ -13,17 +13,21 @@ set -euo pipefail
 : "${CANDIDATE_CACHE:?set CANDIDATE_CACHE}"
 : "${BATCHABILITY:?set BATCHABILITY}"
 : "${OUTPUT_TAG:?set OUTPUT_TAG}"
-: "${SCALAR_RESULTS:?set SCALAR_RESULTS}"
 
 source "${CONFIG}"
 module load "${PYTHON_MODULE}"
 source "${HOME}/venv/cpa_blackwell/bin/activate"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 
-python "${REPO_ROOT}/analyses/merge_hybrid_batched_ec_glmm.py" \
-  --null-shards "${RUN_ROOT}/differential/${OUTPUT_TAG}_null_*_shard*" \
-  --alternative-shards "${RUN_ROOT}/differential/${OUTPUT_TAG}_alternative_*_shard*" \
-  --candidate-cache "${CANDIDATE_CACHE}" \
-  --batchability "${BATCHABILITY}" \
-  --scalar-results "${SCALAR_RESULTS}" \
+command=(
+  python "${REPO_ROOT}/analyses/merge_hybrid_batched_ec_glmm.py"
+  --null-shards "${RUN_ROOT}/differential/${OUTPUT_TAG}_null_*_shard*"
+  --alternative-shards "${RUN_ROOT}/differential/${OUTPUT_TAG}_alternative_*_shard*"
+  --candidate-cache "${CANDIDATE_CACHE}"
+  --batchability "${BATCHABILITY}"
   --output-dir "${RUN_ROOT}/differential/${OUTPUT_TAG}_merged"
+)
+if [[ -n "${SCALAR_RESULTS:-}" ]]; then
+  command+=(--scalar-results "${SCALAR_RESULTS}")
+fi
+"${command[@]}"
