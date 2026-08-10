@@ -312,6 +312,7 @@ def fit_laplace(
     mode_warm_start=False,
     mode_tolerance=0.0,
     return_outer_hessian=False,
+    multinomial_derivatives="analytic",
 ):
     """Fit an EC-count GLMM by Laplace approximation.
 
@@ -329,6 +330,10 @@ def fit_laplace(
     mappings, designs, fixed-effect tensors, and cluster layouts are passed
     dynamically and may differ between calls sharing that key.  Use
     :func:`laplace_objective_shape_key` to construct a safe global key.
+
+    ``multinomial_derivatives="analytic"`` evaluates the EC multinomial score
+    and curvature in closed form.  The reference ``"autodiff"`` path obtains
+    the same quantities by nested automatic differentiation.
     """
     if observation_noise and family != "multinomial":
         raise ValueError(
@@ -336,8 +341,10 @@ def fit_laplace(
         )
     if mode_gradient not in ("unrolled", "implicit"):
         raise ValueError("mode_gradient must be 'unrolled' or 'implicit'")
-    if optimizer not in ("lbfgs", "adam", "adam_lbfgs"):
-        raise ValueError("optimizer must be 'lbfgs', 'adam', or 'adam_lbfgs'")
+    if optimizer not in ("lbfgs", "adam", "adam_lbfgs", "trust_ncg"):
+        raise ValueError(
+            "optimizer must be 'lbfgs', 'adam', 'adam_lbfgs', or 'trust_ncg'"
+        )
     if float(adam_learning_rate) <= 0:
         raise ValueError("adam_learning_rate must be positive")
     if int(adam_steps) < 0:
@@ -346,6 +353,10 @@ def fit_laplace(
         raise ValueError("mode_tolerance must be nonnegative")
     if float(mode_tolerance) > 0 and mode_gradient != "implicit":
         raise ValueError("adaptive mode termination requires implicit gradients")
+    if multinomial_derivatives not in ("analytic", "autodiff"):
+        raise ValueError(
+            "multinomial_derivatives must be 'analytic' or 'autodiff'"
+        )
     (
         jax,
         jnp,
@@ -468,6 +479,43 @@ def fit_laplace(
         in_axes=(0, (0,) * len(counts), (None,) * len(mappings), None),
     )
 
+    def analytic_multinomial_derivatives(
+        free_logits,
+        observed_rows,
+        active_mappings,
+    ):
+        logits = jnp.concatenate(
+            (free_logits, jnp.zeros(1, dtype=free_logits.dtype))
+        )
+        abundance = jax.nn.softmax(logits)
+        gradient = jnp.zeros_like(logits)
+        hessian = jnp.zeros((len(logits), len(logits)), dtype=logits.dtype)
+        for observed, mapping in zip(observed_rows, active_mappings):
+            if mapping.shape[0] == 0:
+                continue
+            component_mass = jnp.maximum(mapping @ abundance, 1e-300)
+            total_mass = jnp.maximum(jnp.sum(component_mass), 1e-300)
+            total = jnp.sum(observed)
+            weighted_mapping = mapping * abundance[None, :]
+            abundance_coverage = jnp.sum(weighted_mapping, axis=0)
+            local_gradient = weighted_mapping.T @ (observed / component_mass)
+            local_gradient -= total * abundance_coverage / total_mass
+            local_hessian = jnp.diag(local_gradient)
+            local_hessian -= weighted_mapping.T @ (
+                weighted_mapping * (observed / component_mass**2)[:, None]
+            )
+            local_hessian += total * jnp.outer(
+                abundance_coverage, abundance_coverage
+            ) / total_mass**2
+            gradient += local_gradient
+            hessian += local_hessian
+        return gradient[:-1], hessian[:-1, :-1]
+
+    analytic_observation_derivatives = jax.vmap(
+        analytic_multinomial_derivatives,
+        in_axes=(0, (0,) * len(counts), (None,) * len(mappings)),
+    )
+
     def mode_derivatives(
         modes,
         outer,
@@ -489,24 +537,32 @@ def fit_laplace(
             "ndi,ni->nd", active_selection, modes[active_cluster_index]
         )
         free_logits = fixed_values + random_logits
-        score_rows = observation_gradient(
-            free_logits,
-            active_counts,
-            active_mappings,
-            log_kappa,
-        )
+        if family == "multinomial" and multinomial_derivatives == "analytic":
+            score_rows, observation_hessians = analytic_observation_derivatives(
+                free_logits,
+                active_counts,
+                active_mappings,
+            )
+        else:
+            score_rows = observation_gradient(
+                free_logits,
+                active_counts,
+                active_mappings,
+                log_kappa,
+            )
+            observation_hessians = observation_hessian(
+                free_logits,
+                active_counts,
+                active_mappings,
+                log_kappa,
+            )
         log_sds = prior_log_sds(outer)
         variances = jnp.exp(2.0 * log_sds)
         latent_score_rows = jnp.einsum(
             "ndi,nd->ni", active_selection, score_rows
         )
         score = active_membership.T @ latent_score_rows - modes / variances
-        curvature_rows = -observation_hessian(
-            free_logits,
-            active_counts,
-            active_mappings,
-            log_kappa,
-        )
+        curvature_rows = -observation_hessians
         latent_curvature_rows = jnp.einsum(
             "nai,nab,nbj->nij",
             active_selection,
@@ -823,6 +879,7 @@ def fit_laplace(
             int(mode_steps),
             mode_gradient,
             float(mode_tolerance),
+            multinomial_derivatives,
         )
     if cache_key is not None and cache_key in objective_cache:
         value_and_gradient = objective_cache[cache_key]
@@ -832,6 +889,38 @@ def fit_laplace(
         )
         if cache_key is not None:
             objective_cache[cache_key] = value_and_gradient
+    hessian_vector_product = None
+    if optimizer == "trust_ncg":
+        def outer_hessian_vector_product(
+            outer,
+            vector,
+            initial_modes,
+            active_design,
+            active_fixed_effect_tensor,
+            active_counts,
+            active_mappings,
+            active_membership,
+            active_selection,
+            active_cluster_index,
+        ):
+            def scalar_objective(value):
+                return objective(
+                    value,
+                    initial_modes,
+                    active_design,
+                    active_fixed_effect_tensor,
+                    active_counts,
+                    active_mappings,
+                    active_membership,
+                    active_selection,
+                    active_cluster_index,
+                )[0]
+
+            return jax.grad(
+                lambda value: jnp.vdot(jax.grad(scalar_objective)(value), vector)
+            )(outer)
+
+        hessian_vector_product = jax.jit(outer_hessian_vector_product)
     hessian_function = None
     if return_outer_hessian:
         hessian_cache_key = None
@@ -844,6 +933,7 @@ def fit_laplace(
                 int(mode_steps),
                 mode_gradient,
                 float(mode_tolerance),
+                multinomial_derivatives,
             )
         if hessian_cache_key is not None and hessian_cache_key in objective_cache:
             hessian_function = objective_cache[hessian_cache_key]
@@ -915,6 +1005,17 @@ def fit_laplace(
     optimizer_started = time.perf_counter()
     adam_result = None
     lbfgs_result = None
+    trust_result = None
+
+    def accept_iterate(parameters, *_):
+        nonlocal accepted_modes
+        if not mode_warm_start:
+            return
+        key = np.asarray(parameters, dtype=float).tobytes()
+        if key in evaluated_modes:
+            accepted_modes = evaluated_modes[key]
+        evaluated_modes.clear()
+
     if optimizer in ("adam", "adam_lbfgs"):
         steps = int(max_iter) if optimizer == "adam" else int(adam_steps)
         adam_result = _projected_adam(
@@ -930,15 +1031,6 @@ def fit_laplace(
             np.asarray(initial, dtype=float)
             if adam_result is None else np.asarray(adam_result["x"], dtype=float)
         )
-        def accept_iterate(parameters):
-            nonlocal accepted_modes
-            if not mode_warm_start:
-                return
-            key = np.asarray(parameters, dtype=float).tobytes()
-            if key in evaluated_modes:
-                accepted_modes = evaluated_modes[key]
-            evaluated_modes.clear()
-
         lbfgs_result = scipy.optimize.minimize(
             scaled_scipy_objective,
             lbfgs_initial,
@@ -953,8 +1045,55 @@ def fit_laplace(
                 "maxls": 100,
             },
         )
+    hessian_vector_evaluations = 0
+    hessian_vector_seconds = 0.0
+    if optimizer == "trust_ncg" and int(max_iter) > 0:
+        def scaled_hessian_vector(parameters, vector):
+            nonlocal hessian_vector_evaluations, hessian_vector_seconds
+            started = time.perf_counter()
+            result = hessian_vector_product(
+                jnp.asarray(parameters),
+                jnp.asarray(vector),
+                accepted_modes if mode_warm_start else zero_modes,
+                active_design,
+                active_fixed_effect_tensor,
+                counts,
+                active_mappings,
+                active_membership,
+                active_selection,
+                active_cluster_index,
+            )
+            result = np.asarray(result, dtype=float) / optimizer_scale
+            hessian_vector_seconds += time.perf_counter() - started
+            hessian_vector_evaluations += 1
+            return result
+
+        trust_result = scipy.optimize.minimize(
+            scaled_scipy_objective,
+            np.asarray(initial, dtype=float),
+            method="trust-constr",
+            jac=True,
+            hessp=scaled_hessian_vector,
+            bounds=scipy.optimize.Bounds(
+                [bound[0] for bound in bounds],
+                [bound[1] for bound in bounds],
+            ),
+            callback=accept_iterate,
+            options={
+                "maxiter": int(max_iter),
+                "gtol": 1e-5,
+                "xtol": 1e-10,
+                "barrier_tol": 1e-10,
+                "verbose": 0,
+            },
+        )
     optimizer_seconds = time.perf_counter() - optimizer_started
-    if lbfgs_result is not None:
+    if trust_result is not None:
+        parameters = np.asarray(trust_result.x)
+        optimizer_success = bool(trust_result.success)
+        optimizer_iterations = int(trust_result.nit)
+        optimizer_message = str(trust_result.message)
+    elif lbfgs_result is not None:
         parameters = np.asarray(lbfgs_result.x)
         optimizer_success = bool(lbfgs_result.success)
         optimizer_iterations = int(lbfgs_result.nit) + (
@@ -1050,6 +1189,11 @@ def fit_laplace(
         "lbfgs_iterations": (
             0 if lbfgs_result is None else int(lbfgs_result.nit)
         ),
+        "trust_iterations": (
+            0 if trust_result is None else int(trust_result.nit)
+        ),
+        "hessian_vector_evaluations": int(hessian_vector_evaluations),
+        "hessian_vector_seconds": float(hessian_vector_seconds),
         "objective_evaluations": int(evaluation_count),
         "objective_evaluation_seconds": float(evaluation_seconds),
         "initial_objective_seconds": float(initial_objective_seconds),
@@ -1065,6 +1209,7 @@ def fit_laplace(
         "mode_warm_start": bool(mode_warm_start),
         "mode_tolerance": float(mode_tolerance),
         "mode_score_norm": mode_score_norm,
+        "multinomial_derivatives": multinomial_derivatives,
         "message": optimizer_message,
     }
 

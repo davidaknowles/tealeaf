@@ -96,8 +96,13 @@ def parse_args():
     parser.add_argument("--laplace-cache-size", type=int, default=16)
     parser.add_argument(
         "--laplace-optimizer",
-        choices=("lbfgs", "adam", "adam_lbfgs"),
+        choices=("lbfgs", "adam", "adam_lbfgs", "trust_ncg"),
         default="lbfgs",
+    )
+    parser.add_argument(
+        "--laplace-multinomial-derivatives",
+        choices=("analytic", "autodiff"),
+        default="analytic",
     )
     parser.add_argument("--adam-learning-rate", type=float, default=0.03)
     parser.add_argument("--adam-steps", type=int, default=100)
@@ -538,6 +543,9 @@ def fit_method(
             objective_cache_key=objective_cache_key,
             mode_warm_start=getattr(args, "laplace_mode_warm_start", False),
             mode_tolerance=getattr(args, "laplace_mode_tolerance", 0.0),
+            multinomial_derivatives=getattr(
+                args, "laplace_multinomial_derivatives", "analytic"
+            ),
         )
     if method.startswith("cavi_"):
         observation_noise = "_noise_" in method
@@ -1165,6 +1173,18 @@ def main():
                     ),
                     "alternative_optimizer_seconds": alternative.get(
                         "optimizer_seconds", np.nan
+                    ),
+                    "null_hessian_vector_evaluations": null.get(
+                        "hessian_vector_evaluations", 0
+                    ),
+                    "alternative_hessian_vector_evaluations": alternative.get(
+                        "hessian_vector_evaluations", 0
+                    ),
+                    "null_hessian_vector_seconds": null.get(
+                        "hessian_vector_seconds", 0.0
+                    ),
+                    "alternative_hessian_vector_seconds": alternative.get(
+                        "hessian_vector_seconds", 0.0
                     ),
                 })
                 if args.calibration != "bootstrap":

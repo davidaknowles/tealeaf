@@ -223,6 +223,61 @@ def test_implicit_laplace_mode_gradient_matches_unrolled_fit():
     )
 
 
+def test_analytic_multinomial_derivatives_match_autodiff_laplace():
+    data = simulated_data(seed=91, effect=0.7)
+    autodiff = ec_glmm.fit_laplace(
+        data,
+        max_iter=0,
+        mode_steps=12,
+        mode_gradient="implicit",
+        multinomial_derivatives="autodiff",
+    )
+    analytic = ec_glmm.fit_laplace(
+        data,
+        initial=autodiff["parameters"],
+        max_iter=0,
+        mode_steps=12,
+        mode_gradient="implicit",
+        multinomial_derivatives="analytic",
+    )
+    np.testing.assert_allclose(
+        analytic["objective"], autodiff["objective"], rtol=1e-9
+    )
+    np.testing.assert_allclose(
+        analytic["outer_gradient"],
+        autodiff["outer_gradient"],
+        rtol=2e-7,
+        atol=2e-8,
+    )
+    np.testing.assert_allclose(
+        analytic["latent_mean"],
+        autodiff["latent_mean"],
+        rtol=2e-8,
+        atol=2e-9,
+    )
+
+
+def test_trust_ncg_uses_hessian_vector_products():
+    data = simulated_data(seed=92, effect=0.7)
+    initial = ec_glmm.fit_laplace(
+        data,
+        max_iter=0,
+        mode_steps=12,
+        mode_gradient="implicit",
+    )
+    trust = ec_glmm.fit_laplace(
+        data,
+        optimizer="trust_ncg",
+        max_iter=20,
+        mode_steps=12,
+        mode_gradient="implicit",
+    )
+    assert np.isfinite(trust["objective"])
+    assert trust["objective"] < initial["objective"]
+    assert trust["hessian_vector_evaluations"] > 0
+    assert trust["hessian_vector_seconds"] > 0
+
+
 def test_projected_adam_respects_bounds_and_improves_quadratic():
     def objective(value):
         residual = value - np.asarray([2.0, -3.0])

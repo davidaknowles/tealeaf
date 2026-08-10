@@ -45,6 +45,7 @@ ARGS=(
   --laplace-mode-gradient "${LAPLACE_MODE_GRADIENT:-implicit}"
   --laplace-cache-scope "${LAPLACE_CACHE_SCOPE:-gene_shape}"
   --laplace-optimizer "${LAPLACE_OPTIMIZER:-lbfgs}"
+  --laplace-multinomial-derivatives "${LAPLACE_MULTINOMIAL_DERIVATIVES:-analytic}"
   --adam-learning-rate "${ADAM_LEARNING_RATE:-0.03}"
   --adam-steps "${ADAM_STEPS:-100}"
   --null-warm-start "${NULL_WARM_START:-default}"

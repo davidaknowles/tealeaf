@@ -1,0 +1,5 @@
+scope	dataset	analytic_peak_gib	reference_peak_gib
+matched_benchmark	mouse	1.329571	2.351898
+matched_benchmark	human	4.320869	4.808273
+full_data	mouse	3.998413	3.97
+full_data	human	8.248127	6.55
