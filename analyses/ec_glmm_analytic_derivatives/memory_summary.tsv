@@ -3,3 +3,7 @@ matched_benchmark	mouse	1.329571	2.351898
 matched_benchmark	human	4.320869	4.808273
 full_data	mouse	3.998413	3.97
 full_data	human	8.248127	6.55
+full_data_condition	mouse	4.809586	4.741962
+full_data_condition	human	6.157078	6.831982
+full_campaign	mouse	4.809586	4.741962
+full_campaign	human	8.248127	6.831982
