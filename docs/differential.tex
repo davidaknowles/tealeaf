@@ -317,6 +317,53 @@ For cell type, 80\%, 85\%, 90\%, and 95\% GPD thresholds produce 242, 240, 252, 
 
 For condition within cell type, the same thresholds produce zero, 28, zero, and zero calls, with an empty intersection. At the primary 90\% threshold the minimum FDR is 0.0545. The data therefore support strong cell-type DS but no condition DS event that is robust to the tail threshold.
 
+\subsection*{Splice-event classes and functional precedents}
+
+The 238 robust mouse cell-type discoveries were classified from the paths actually represented in each fitted test, after supported-isoform filtering, rather than from every path in the GTF. The audit is restricted to this empirically calibrated primary set. The ordinary-LRT mouse and human yields are descriptive because the multilevel analytic reference is not calibrated, so they are not presented as validated discoveries. For an internal two-path block, exact intervals shared by both paths are removed before assigning cassette-exon, multi-exon-skipping, alternative-donor, alternative-acceptor, mutually-exclusive-exon, or retained-intron structure. Internal blocks with more than two represented paths are called compound. A block adjacent to a terminal pseudo-anchor is called an alternative first or last \emph{region}, because its paths can differ at several exons or transcript ends and need not describe one simple alternative terminal exon. If the gene has no common constitutive anchor, the whole-gene block is left as complex. Table~\ref{tab:robust-event-types} gives the resulting mutually exclusive categories; canonical components nested inside compound or terminal regions are retained in the machine-readable catalog but are not counted again in the table.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Structural classes among the 238 robust calibrated mouse cell-type discoveries.}
+\label{tab:robust-event-types}
+\begin{tabular}{lrr}
+\toprule
+Event class & Events & Fraction\\
+\midrule
+Alternative first region & 154 & 64.71\%\\
+Alternative last region & 31 & 13.03\%\\
+Cassette exon & 28 & 11.76\%\\
+Whole-gene complex & 22 & 9.24\%\\
+Compound internal & 2 & 0.84\%\\
+Multi-exon skipping & 1 & 0.42\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The dominance of transcript-end regions is a property of the tested GENCODE path partitions and should not be read as 185 independently verified promoter or polyadenylation switches. It indicates that the discriminating supported isoforms differ somewhere between a constitutive anchor and a transcript boundary. Exact junction-level follow-up is required to distinguish alternative promoters, alternative terminal exons, alternative polyadenylation, and compound terminal paths.
+
+We next required a literature match to agree with the discovered block structure, not merely its gene. Table~\ref{tab:functional-splicing-precedents} reports five examples with primary experimental evidence. The clearest brain-cell-type precedent is \emph{Ntrk2}, whose discovered alternative-last-region block separates short kinase-deficient from long kinase-containing TrkB paths, including the TrkB.T1 family. Mouse astrocytes predominantly express TrkB.T1, and loss of this isoform impairs astrocyte morphogenesis and support of excitatory synaptogenesis. The \emph{Grin1} paths differ by the 111-nt C1 cassette, whose retention motifs alter GluN1 surface trafficking. The \emph{App} paths differ by the 54-nt mouse exon 15; exclusion produces L-APP, changes polarized secretion and amyloidogenic processing, and has a cell-specific neuronal versus non-neuronal distribution. The \emph{Enah} event is the exact 63-nt exon 11a cassette, although its characterized effects on actin polymerization and motility come from epithelial and carcinoma systems rather than brain. The \emph{Dlg4} finding overlaps an established functional isoform system but requires more caution because its six-path omnibus block does not isolate PSD-95 alpha from beta.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Robust cell-type DS events overlapping experimentally characterized splice isoforms. Confidence describes the structural mapping from the fitted GENCODE paths to the published event, not statistical confidence.}
+\label{tab:functional-splicing-precedents}
+\begin{tabular}{p{1.0cm}p{2.1cm}p{1.5cm}p{7.1cm}p{2.4cm}}
+\toprule
+Gene & Event & Mapping & Characterized consequence & Primary evidence\\
+\midrule
+\emph{Ntrk2} & Alternative last region & High & TrkB.T1 is enriched in astrocytes; its loss reduces astrocyte morphological maturation and impairs support of excitatory synaptogenesis. & \href{https://doi.org/10.7554/eLife.44667}{Holt et al., 2019}\\
+\emph{Grin1} & C1 cassette exon & High & C1 contains endoplasmic-reticulum retention motifs and changes surface trafficking of full-length GluN1. & \href{https://doi.org/10.1074/jbc.M807050200}{Horak and Wenthold, 2009}\\
+\emph{Dlg4} & Alternative first region & Moderate & The PSD-95 beta L27 domain binds CASK and Hrs; disrupting Hrs selectively blocks beta, but not palmitoylated alpha, synaptic clustering. & \href{https://doi.org/10.1523/JNEUROSCI.22-15-06415.2002}{Chetkovich et al., 2002}\\
+\emph{App} & Exon-15 cassette & High & Exon-15 exclusion produces L-APP, changes polarized APP secretion, and decreases beta-amyloid production relative to p3. & \href{https://doi.org/10.1074/jbc.271.22.13208}{Hartmann et al., 1996}\\
+\emph{Enah} & Exon-11a cassette & High & Mena11a reduces actin polymerization, membrane protrusion, and motility; this evidence is outside the brain. & \href{https://doi.org/10.1038/srep35298}{Balsamo et al., 2016}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+These precedents establish that a subset of discovered coordinates encode functional isoform choices, with \emph{Ntrk2} providing a direct glial example. They do not validate every call or identify the cell-type pair and path direction responsible for an omnibus statistic. Isoform-specific junction quantification and perturbation are needed for those claims. The complete catalog, event components, coordinates, empirical p-values, and literature audit are recorded under \path{analyses/celltype_event_annotation}.
+
 \subsection*{Nonbootstrap Laplace sensitivity}
 
 Table~\ref{tab:laplace-lrt-sensitivity} compares the analytic Laplace LRT and BIC Bayes-factor approximation with the completed mouse bootstrap analysis. A Laplace fit is retained only when the infinity norms of its scaled outer gradient and random-effect mode score are each at most \(10^{-4}\). Scaling the objective and gradient by the absolute initial objective changes neither the optimum nor the likelihood ratio, but prevents count depth from setting the numerical line-search scale.

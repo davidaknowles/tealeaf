@@ -37,6 +37,77 @@ class SpliceBlock:
         return len(self.path_signatures)
 
 
+def _block_value(block, name):
+    if isinstance(block, dict):
+        return block[name]
+    return getattr(block, name)
+
+
+def _path_pair_event(first, second, strand):
+    """Classify the structural difference between two local exon chains."""
+    first = tuple(tuple(interval) for interval in first)
+    second = tuple(tuple(interval) for interval in second)
+    first_unique = tuple(interval for interval in first if interval not in second)
+    second_unique = tuple(interval for interval in second if interval not in first)
+    if not first_unique or not second_unique:
+        inserted = second_unique if not first_unique else first_unique
+        if len(inserted) == 1:
+            return "cassette exon"
+        if len(inserted) > 1:
+            return "multi-exon skipping"
+    if len(first_unique) == len(second_unique) == 1:
+        (first_start, first_end), (second_start, second_end) = first_unique[0], second_unique[0]
+        if first_start == second_start and first_end != second_end:
+            return "alternative donor" if strand == "+" else "alternative acceptor"
+        if first_end == second_end and first_start != second_start:
+            return "alternative acceptor" if strand == "+" else "alternative donor"
+        if first_end <= second_start or second_end <= first_start:
+            return "mutually exclusive exons"
+    for one, many in ((first_unique, second_unique), (second_unique, first_unique)):
+        many_start = min((interval[0] for interval in many), default=0)
+        many_end = max((interval[1] for interval in many), default=0)
+        if len(one) == 1 and len(many) > 1 and one[0][0] <= many_start and one[0][1] >= many_end:
+            return "retained intron"
+    return "complex internal"
+
+
+def classify_splice_block(block, path_signatures=None):
+    """Return a mutually exclusive structural event class for a splice block.
+
+    ``path_signatures`` can restrict annotation paths to the paths represented
+    by a fitted test. Terminal classes are called regions because one terminal
+    block can contain several alternative exons or transcript ends.
+    """
+    signatures = _block_value(block, "path_signatures") if path_signatures is None else path_signatures
+    signatures = tuple(tuple(tuple(interval) for interval in path) for path in signatures)
+    left_anchor = _block_value(block, "left_anchor")
+    right_anchor = _block_value(block, "right_anchor")
+    strand = _block_value(block, "strand")
+    if left_anchor is None and right_anchor is None:
+        return "whole-gene complex"
+    if left_anchor is None:
+        return "alternative first region" if strand == "+" else "alternative last region"
+    if right_anchor is None:
+        return "alternative last region" if strand == "+" else "alternative first region"
+    if len(signatures) == 2:
+        return _path_pair_event(signatures[0], signatures[1], strand)
+    return "compound internal"
+
+
+def splice_block_event_components(block, path_signatures=None):
+    """Return canonical event components found among a block's path pairs."""
+    signatures = _block_value(block, "path_signatures") if path_signatures is None else path_signatures
+    signatures = tuple(tuple(tuple(interval) for interval in path) for path in signatures)
+    strand = _block_value(block, "strand")
+    components = {
+        _path_pair_event(signatures[first], signatures[second], strand)
+        for first in range(len(signatures))
+        for second in range(first + 1, len(signatures))
+    }
+    components.discard("complex internal")
+    return tuple(sorted(components))
+
+
 @dataclass
 class CovarianceResult:
     """Covariance together with identifiability diagnostics."""

@@ -35,6 +35,47 @@ class SpliceBlockTest(unittest.TestCase):
         self.assertEqual(blocks[0].n_paths, 2)
         self.assertNotEqual(*blocks[0].path_index)
 
+    def test_event_classifier_uses_only_tested_paths(self):
+        block = differential.SpliceBlock(
+            gene_id="g",
+            block_id="g:B1",
+            chromosome="chr1",
+            strand="+",
+            left_anchor=(0, 10),
+            right_anchor=(90, 100),
+            transcripts=("t1", "t2", "t3"),
+            path_index=(0, 1, 2),
+            path_signatures=(
+                ((20, 30),),
+                ((20, 30), (40, 50)),
+                ((60, 70),),
+            ),
+        )
+        tested = (block.path_signatures[0], block.path_signatures[1])
+        self.assertEqual(differential.classify_splice_block(block, tested), "cassette exon")
+        self.assertEqual(differential.classify_splice_block(block), "compound internal")
+
+    def test_terminal_event_classifier_respects_strand(self):
+        block = {
+            "left_anchor": None,
+            "right_anchor": (90, 100),
+            "strand": "-",
+            "path_signatures": (((20, 30),), ((40, 50),)),
+        }
+        self.assertEqual(differential.classify_splice_block(block), "alternative last region")
+
+    def test_event_components_find_cassette_and_donor(self):
+        block = {
+            "left_anchor": (0, 10),
+            "right_anchor": (90, 100),
+            "strand": "+",
+            "path_signatures": ((), ((20, 30),), ((20, 40),)),
+        }
+        self.assertEqual(
+            differential.splice_block_event_components(block),
+            ("alternative donor", "cassette exon"),
+        )
+
 
 class CovarianceTest(unittest.TestCase):
     def test_collapsing_recovers_identifiable_path_contrast(self):
