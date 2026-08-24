@@ -8,6 +8,15 @@
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+
+\definecolor{tealeafNavy}{HTML}{17324D}
+\definecolor{tealeafTeal}{HTML}{168C8C}
+\definecolor{tealeafLightTeal}{HTML}{DDF1EF}
+\definecolor{tealeafOrange}{HTML}{E6813B}
+\definecolor{tealeafLight}{HTML}{F3F6F7}
 
 \newcommand{\Beta}{\bm B}
 
@@ -117,6 +126,25 @@ Here \(A_{gpkt}\) is the fixed compatibility or conditional weight of EC \(k\) f
 \]
 
 Conditioning on each observed primer total removes library size from the composition likelihood. An EC may be compatible with multiple isoforms; there is no preliminary allocation of its count to a transcript or path. Unsupported isoforms and ECs not assigned to \(g\) are excluded, but every supported isoform of \(g\), including an unspliced nuisance isoform, remains in every block likelihood for that gene.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[>=Latex,node distance=5mm and 7mm,every node/.style={font=\small},stage/.style={rounded corners=2pt,draw=tealeafNavy!60,line width=.7pt,minimum height=15mm,align=center,inner sep=5pt},flow/.style={->,line width=1.1pt,tealeafTeal},branch/.style={->,line width=1pt,tealeafOrange}]
+\node[stage,fill=tealeafLightTeal,text width=28mm] (block) {\textbf{Block parameters}\\fixed effects $\bm\beta_b$\\latent effects $\bm u_{gm},\bm e_{gi}$};
+\node[stage,fill=tealeafLight,text width=31mm,right=of block] (iso) {\textbf{Isoform composition}\\$\bm\eta_{gi}\in\mathbb R^{T_g}$\\$\bm\theta_{gi}=\operatorname{softmax}(\bm\eta_{gi})$};
+\node[stage,fill=tealeafLight,text width=32mm,above right=3mm and 9mm of iso] (dtec) {\textbf{oligo(dT) EC proportions}\\$A_{g,\mathrm{dT}}\in\mathbb R_+^{K_{g,\mathrm{dT}}\times T_g}$\\$\bm q_{gi,\mathrm{dT}}\in\Delta^{K_{g,\mathrm{dT}}-1}$};
+\node[stage,fill=tealeafLight,text width=32mm,below right=3mm and 9mm of iso] (rhec) {\textbf{random-hexamer EC proportions}\\$A_{g,\mathrm{RH}}\in\mathbb R_+^{K_{g,\mathrm{RH}}\times T_g}$\\$\bm q_{gi,\mathrm{RH}}\in\Delta^{K_{g,\mathrm{RH}}-1}$};
+\node[stage,fill=tealeafLightTeal,text width=29mm,right=of dtec] (dtcount) {\textbf{Observed EC counts}\\$\bm c_{gi,\mathrm{dT}}\sim\operatorname{Multinomial}$\\$(n_{gi,\mathrm{dT}},\bm q_{gi,\mathrm{dT}})$};
+\node[stage,fill=tealeafLightTeal,text width=29mm,right=of rhec] (rhcount) {\textbf{Observed EC counts}\\$\bm c_{gi,\mathrm{RH}}\sim\operatorname{Multinomial}$\\$(n_{gi,\mathrm{RH}},\bm q_{gi,\mathrm{RH}})$};
+\draw[flow] (block)--(iso);
+\draw[branch] (iso.east)--(dtec.west);
+\draw[branch] (iso.east)--(rhec.west);
+\draw[flow] (dtec)--(dtcount);
+\draw[flow] (rhec)--(rhcount);
+\end{tikzpicture}
+\caption{Generative flow for gene $g=g(b)$ and pseudobulk $i$. Block-level fixed effects and mouse- and pseudobulk-level Gaussian effects determine one shared isoform composition $\bm\theta_{gi}\in\Delta^{T_g-1}$. The two fixed primer-specific maps transform that composition into separate EC probability vectors, from which the observed oligo(dT) and random-hexamer count vectors are drawn. The branch therefore represents observation chemistry, not two independently fitted isoform compositions.}
+\label{fig:ec-generative-model}
+\end{figure}
 
 \subsection*{Multinomial EC GLMM}
 

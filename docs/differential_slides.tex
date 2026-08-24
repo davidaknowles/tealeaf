@@ -1,0 +1,290 @@
+\documentclass[aspectratio=169,10pt]{beamer}
+
+\usepackage{amsmath,amssymb,bm,booktabs,array}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc,positioning,shapes.geometric}
+
+\definecolor{tlNavy}{HTML}{17324D}
+\definecolor{tlTeal}{HTML}{168C8C}
+\definecolor{tlLightTeal}{HTML}{DDF1EF}
+\definecolor{tlOrange}{HTML}{E6813B}
+\definecolor{tlGold}{HTML}{F5C36A}
+\definecolor{tlInk}{HTML}{24313D}
+\definecolor{tlGray}{HTML}{66727D}
+\definecolor{tlLight}{HTML}{F3F6F7}
+\definecolor{tlRed}{HTML}{B74A4A}
+
+\setbeamercolor{normal text}{fg=tlInk,bg=white}
+\setbeamercolor{frametitle}{fg=tlNavy,bg=white}
+\setbeamercolor{title}{fg=white}
+\setbeamercolor{subtitle}{fg=tlLightTeal}
+\setbeamercolor{structure}{fg=tlTeal}
+\setbeamerfont{frametitle}{series=\bfseries,size=\Large}
+\setbeamerfont{title}{series=\bfseries,size=\huge}
+\setbeamerfont{subtitle}{size=\large}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{itemize item}{\color{tlTeal}\raise0.15ex\hbox{\scriptsize$\blacktriangleright$}}
+\setbeamertemplate{itemize subitem}{\color{tlOrange}\raise0.1ex\hbox{\tiny$\blacktriangleright$}}
+\setbeamertemplate{frametitle}{\vspace{0.25cm}\insertframetitle\par\vspace{-0.1cm}\color{tlTeal}\rule{\textwidth}{0.8pt}}
+\setbeamertemplate{footline}{\leavevmode\hbox{\begin{beamercolorbox}[wd=.86\paperwidth,ht=2.6ex,dp=1.2ex,leftskip=.45cm]{author in head/foot}\color{tlGray}\scriptsize Tealeaf differential splicing\end{beamercolorbox}\begin{beamercolorbox}[wd=.14\paperwidth,ht=2.6ex,dp=1.2ex,rightskip=.45cm plus1fil]{author in head/foot}\color{tlGray}\scriptsize\insertframenumber/\inserttotalframenumber\end{beamercolorbox}}}
+
+\newcommand{\source}[1]{\vfill{\color{tlGray}\tiny #1}}
+\newcommand{\metric}[3]{\begin{tikzpicture}[baseline=(n.base)]\node[rounded corners=2pt,fill=#1!12,draw=#1!55,line width=.6pt,minimum width=2.65cm,minimum height=1.05cm,align=center,inner sep=4pt] (n) {\color{#1}\Large\bfseries #2\\[-1pt]\color{tlInk}\scriptsize #3};\end{tikzpicture}}
+\newcommand{\pill}[2]{\tikz[baseline=(p.base)]\node[rounded corners=4pt,fill=#1!14,text=#1,inner xsep=5pt,inner ysep=2pt,font=\scriptsize\bfseries] (p) {#2};}
+
+\title{Differential splicing from equivalence-class counts}
+\subtitle{Local splice-path effects propagated through isoforms and primer-aware observations}
+\author{}
+\date{}
+
+\begin{document}
+
+{\setbeamertemplate{footline}{}\setbeamercolor{background canvas}{bg=tlNavy}\begin{frame}
+\titlepage
+\vspace{-0.4cm}
+\begin{tikzpicture}[remember picture,overlay]
+\fill[tlTeal] ([yshift=0.55cm]current page.south west) rectangle ([yshift=0.72cm]current page.south east);
+\fill[tlOrange] ([xshift=10.4cm,yshift=0.55cm]current page.south west) rectangle ([yshift=0.72cm]current page.south east);
+\end{tikzpicture}
+\end{frame}}
+
+\begin{frame}{The target is a local splice choice with biological replication}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.52\textwidth}
+\vspace{0.15cm}
+\begin{tikzpicture}[x=0.72cm,y=0.72cm,thick]
+\draw[tlGray,line width=2pt] (0,2.2)--(1.0,2.2);
+\draw[tlGray,line width=2pt] (5.1,2.2)--(6.1,2.2);
+\foreach \x in {0,5.1} \fill[tlNavy] (\x,1.92) rectangle +(1.0,.56);
+\draw[tlTeal,line width=2.3pt] (1.0,2.2)--(2.0,3.0)--(4.0,3.0)--(5.1,2.2);
+\draw[tlOrange,line width=2.3pt] (1.0,2.2)--(2.0,1.4)--(2.65,1.4)--(3.05,1.4);
+\draw[tlOrange,line width=2.3pt] (3.95,1.4)--(5.1,2.2);
+\fill[tlOrange!75] (3.05,1.12) rectangle +(0.9,.56);
+\node[tlNavy,font=\small\bfseries] at (3.05,3.45) {path 1};
+\node[tlOrange,font=\small\bfseries] at (3.05,0.82) {path 2};
+\node[align=center,font=\small] at (3.05,-0.05) {splice block between\\constitutive anchors};
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.46\textwidth}
+\begin{block}{Two questions}
+\small
+\textbf{Cell type}, does path usage differ across cell types while condition is unrestricted?
+
+\medskip
+\textbf{Condition}, does path usage differ across conditions within one cell type?
+\end{block}
+\vspace{0.15cm}
+\begin{itemize}\small
+\item One hypothesis per nonredundant local path partition
+\item Mouse random effects represent biological replication
+\item Cells contribute to mouse $\times$ condition $\times$ cell-type pseudobulks, never independent replicates
+\end{itemize}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Forward model, splice-path effects $\rightarrow$ isoforms $\rightarrow$ ECs $\rightarrow$ counts}
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.55cm,>=Latex,every node/.style={font=\small},box/.style={rounded corners=3pt,draw=tlNavy!55,line width=.7pt,minimum width=2.65cm,minimum height=4.25cm,align=center,inner sep=7pt},arr/.style={->,line width=1.25pt,tlTeal}]
+\node[box,fill=tlLightTeal] (path) {\textbf{Local path effects}\\[5pt]$\bm\gamma_b\in\mathbb R^{d_b}$\\$d_b=S_b-1$\\[8pt]\begin{tikzpicture}[x=.3cm,y=.3cm]\draw[tlTeal,line width=1.6pt](0,1)--(1,2)--(3,2)--(4,1);\draw[tlOrange,line width=1.6pt](0,1)--(1,0)--(3,0)--(4,1);\fill[tlNavy](0,.65)rectangle(.7,1.35);\fill[tlNavy](3.3,.65)rectangle(4,1.35);\end{tikzpicture}\\[6pt]tested basis\\$H_b\in\mathbb R^{(T_g-1)\times d_b}$};
+\node[box,fill=tlLight,right=of path] (iso) {\textbf{Isoform composition}\\[5pt]$\bm\eta_{gi,-}\in\mathbb R^{T_g-1}$\\$\bm\theta_{gi}=\operatorname{softmax}\{(\bm\eta_{gi,-}',0)'\}$\\[8pt]\begin{tikzpicture}[x=.27cm,y=.27cm]\foreach \y/\c in {2/tlTeal,1/tlOrange,0/tlGold}{\draw[\c,line width=1.6pt](0,\y)--(1,\y)--(2,\y+.25)--(3,\y+.25)--(4,\y);\fill[tlNavy](0,\y-.18)rectangle(.7,\y+.18);\fill[tlNavy](3.3,\y-.18)rectangle(4,\y+.18);}\end{tikzpicture}\\shared across primers};
+\node[box,fill=tlLight,right=of iso] (ec) {\textbf{EC probabilities}\\[5pt]$A_{gp}\in\mathbb R_+^{K_{gp}\times T_g}$\\[2pt]$\displaystyle\bm q_{gip}=\frac{A_{gp}\bm\theta_{gi}}{\bm1' A_{gp}\bm\theta_{gi}}$\\[8pt]\begin{tikzpicture}[x=.24cm,y=.24cm]\foreach \y in {0,1,2}{\fill[tlTeal!75](0,\y)circle(.13);}\foreach \y in {0,.65,1.3,1.95,2.6}{\fill[tlOrange!75](3,\y-.3)circle(.13);}\draw[tlGray!60](.15,0)--(2.85,-.3) (.15,0)--(2.85,.35) (.15,1)--(2.85,.35) (.15,1)--(2.85,1) (.15,2)--(2.85,1.65) (.15,2)--(2.85,2.3);\end{tikzpicture}\\primer-specific maps};
+\node[box,fill=tlLight,right=of ec] (count) {\textbf{Observed counts}\\[5pt]$\bm c_{gip}\in\mathbb N_0^{K_{gp}}$\\[2pt]$\bm c_{gip}\sim\operatorname{Multinomial}(n_{gip},\bm q_{gip})$\\[9pt]\begin{tikzpicture}[x=.24cm,y=.24cm]\foreach \x/\h/\c in {0/1.0/tlTeal,1/2.2/tlOrange,2/1.5/tlGold,3/2.8/tlTeal,4/.7/tlOrange}{\fill[\c!80](\x,0)rectangle +(0.65,\h);}\end{tikzpicture}\\paired oligo(dT) and\\random-hexamer vectors};
+\draw[arr] (path)--(iso);
+\draw[arr] (iso)--(ec);
+\draw[arr] (ec)--(count);
+\end{tikzpicture}
+}
+\vspace{0.2cm}
+\small Ambiguous ECs remain ambiguous, primer design enters through $A_{gp}$, and the biological effect is tested only in the local path subspace.
+\end{frame}
+
+\begin{frame}{The nested test isolates the block contrast without fixing the rest of the gene}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.55\textwidth}
+\vspace{0.1cm}
+\begin{block}{Isoform-logit predictor}
+\small The tested block basis $H_b\in\mathbb R^{(T_g-1)\times d_b}$ lifts an orthonormal path contrast into isoform space. The nuisance basis $N_b\in\mathbb R^{(T_g-1)\times(T_g-S_b)}$ spans every orthogonal gene-level direction.
+\end{block}
+\vspace{0.15cm}
+\small The null predictor is $\mathcal F_{bi}^{(0)}=B_0'Z_{bi}'+\sum_jW_{bij}N_b\bm\alpha_{bj}$, while the alternative adds $\sum_jW_{bij}H_b\bm\gamma_{bj}$.
+\vspace{0.2cm}
+\begin{itemize}\small
+\item $Z_b\in\mathbb R^{I_b\times q_0}$ carries nuisance covariates
+\item $W_b\in\mathbb R^{I_b\times q_1}$ carries the tested cell-type or condition design
+\item The alternative adds $q_1d_b$ local path coefficients, but remains unrestricted in free isoform-logit space
+\end{itemize}
+\end{column}
+\begin{column}{0.42\textwidth}
+\begin{tikzpicture}[x=1cm,y=1cm,>=Latex]
+\node[rounded corners=3pt,fill=tlLight,draw=tlGray!55,minimum width=4.5cm,minimum height=1.15cm,align=center] (null) at (0,3.6) {\textbf{Null}\\nuisance gene directions $N_b$};
+\node[rounded corners=3pt,fill=tlLightTeal,draw=tlTeal!70,minimum width=4.5cm,minimum height=1.15cm,align=center] (alt) at (0,1.75) {\textbf{Alternative}\\$N_b$ plus local path directions $H_b$};
+\draw[->,tlTeal,line width=1.5pt] (null)--node[right,font=\scriptsize,align=left] {add $q_1d_b$\\coefficients} (alt);
+\node[rounded corners=3pt,fill=tlNavy,text=white,minimum width=4.5cm,minimum height=.9cm,align=center] at (0,.15) {fit nested EC GLMMs\\calibrate objective gain};
+\end{tikzpicture}
+\vspace{0.1cm}
+\begin{alertblock}{Calibration matters}
+\scriptsize The ordinary multilevel chi-square LRT is anti-conservative under structured nulls. The primary mouse result uses simulated nulls, cross-fitted tail modeling, leave-block-out calibration, and BH.
+\end{alertblock}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Two brain datasets, one subject-level analysis design}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.49\textwidth}
+\begin{block}{\Large Mouse \hfill \pill{tlTeal}{GSE189033}}
+\small
+\textbf{Biology}, 5xFAD amyloidosis crossed with Csf1r $\Delta$FIRE microglial deficiency, including PBS and microglia-transplant arms
+
+\medskip
+\textbf{Samples}, 48 mice, six groups, balanced 4 female and 4 male per group, age 5--6 months
+
+\medskip
+\textbf{Assay}, SPLiT-seq single-nucleus RNA-seq, paired oligo(dT) and random-hexamer observations
+
+\medskip
+\textbf{Analysis strata}, 936 mouse $\times$ condition $\times$ cell-type pseudobulks before feature-level support filtering
+\end{block}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{block}{\Large Human \hfill \pill{tlOrange}{GSE233208}}
+\small
+\textbf{Biology}, cortical postmortem tissue spanning control, sporadic Alzheimer disease, Down syndrome, and Down syndrome with AD
+
+\medskip
+\textbf{Scale}, 396,277 annotated nuclei represented by 40 paired sequencing runs in five batches
+
+\medskip
+\textbf{Assay}, Parse Biosciences Evercode WT v1 single-nucleus RNA-seq
+
+\medskip
+\textbf{Role}, independent cross-species sensitivity analysis with the same EC GLMM fitting procedure
+\end{block}
+\end{column}
+\end{columns}
+\source{Sources, Spangenberg et al., Cell Reports 2022, GEO GSE189033; Miyoshi et al., Nature Genetics 2024, GEO GSE233208. Counts shown are the analysis metadata summarized in this repository.}
+\end{frame}
+
+\begin{frame}{Calibrated mouse analysis finds cell-type splicing, not robust condition effects}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.49\textwidth}
+\centering
+\metric{tlTeal}{238}{robust cell-type discoveries}
+\hspace{0.15cm}
+\metric{tlOrange}{0}{robust condition discoveries}
+\vspace{0.55cm}
+\begin{tikzpicture}[x=.013cm,y=.43cm]
+\draw[->,tlGray] (0,0)--(280,0) node[right,font=\scriptsize] {BH calls};
+\foreach \y/\lab/\v in {4/80\%/242,3/85\%/240,2/90\%/252,1/95\%/245}{\fill[tlTeal!78] (0,\y-.28) rectangle (\v,\y+.28);\node[left,font=\scriptsize] at (0,\y) {\lab};\node[right,font=\scriptsize,tlNavy] at (\v,\y) {\v};}
+\node[font=\scriptsize,tlGray,align=center] at (135,-.85) {GPD tail threshold};
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.48\textwidth}
+\vspace{0.05cm}
+\begin{itemize}\small
+\item 4,825 cell-type path partitions and 14,833 condition-within-cell-type tests
+\item Aggregate null rejection matches 0.05, 0.01, and 0.001 after cross-fitted calibration
+\item A robust event passes BH across every 80--95\% tail threshold
+\item The primary logistic-normal likelihood allows pseudobulk extra-multinomial variation shared across the two primer halves
+\end{itemize}
+\vspace{0.2cm}
+\begin{block}{Interpretation}
+\small Cell identity is associated with many local isoform choices. No condition effect survives the prespecified calibration sensitivity analysis.
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Matched comparator yields span different feature universes}
+\centering
+\scriptsize
+\renewcommand{\arraystretch}{1.23}
+\setlength{\tabcolsep}{5.5pt}
+\begin{tabular}{lcrrrcrrr}
+\toprule
+& & \multicolumn{3}{c}{Mouse} & \multicolumn{3}{c}{Human}\\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}
+Method & Unit & CT tests & CT BH & CT rate & CT tests & CT BH & CT rate\\
+\midrule
+\textbf{Tealeaf} & EC block & 4,825 & 322 & 6.67\% & 11,597 & 1,463 & 12.62\%\\
+LeafCutter & intron cluster & 1,020 & 229 & 22.45\% & 2,155 & 238 & 11.04\%\\
+MAJIQ Heterogen & LSV edge & 46 & 27 & 58.70\% & 582 & 342 & 58.76\%\\
+scQuint & intron group & 16,081 & 828 & 5.15\% & 27,097 & 2,239 & 8.26\%\\
+\bottomrule
+\end{tabular}
+\vspace{0.35cm}
+\begin{tikzpicture}[x=.72cm,y=.43cm]
+\node[anchor=east,font=\scriptsize\bfseries] at (-.25,3.7) {Condition};
+\foreach \i/\name/\mc/\hc/\clr in {0/Tealeaf/3/193/tlTeal,1/LeafCutter/40/475/tlNavy,2/MAJIQ/34/278/tlOrange,3/scQuint/16/36/tlGold}{\node[anchor=east,font=\scriptsize] at (2.05,3-\i*.72) {\name};\fill[\clr!82] (2.25,2.79-\i*.72) rectangle ({2.25+\mc/25},3.19-\i*.72);\node[anchor=west,font=\tiny] at ({2.35+\mc/25},2.99-\i*.72) {mouse \mc};\fill[\clr!38] (8.4,2.79-\i*.72) rectangle ({8.4+\hc/110},3.19-\i*.72);\node[anchor=west,font=\tiny] at ({8.5+\hc/110},2.99-\i*.72) {human \hc};}
+\end{tikzpicture}
+\vspace{-0.15cm}
+\begin{alertblock}{Read as descriptive yield, not a power ranking}
+\scriptsize Methods test different units and apply different filters. External cell-type results combine pairwise tests by Simes, whereas Tealeaf fits an omnibus model. The ordinary multilevel Tealeaf LRT used here is not structured-null calibrated, so these BH counts are descriptive; the 238-call calibrated mouse analysis is the validated result.
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{EC ambiguity and latent-Gaussian fitting carry a compute cost}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.63\textwidth}
+\centering
+\begin{tikzpicture}[x=.018cm,y=.6cm]
+\draw[->,tlGray] (0,0)--(325,0);
+\foreach \i/\name/\m/\h/\clr in {0/Tealeaf/51.0/313.3/tlTeal,1/LeafCutter/11.7/38.6/tlNavy,2/MAJIQ/6.6/9.5/tlOrange,3/scQuint/15.3/94.1/tlGold}{\node[anchor=east,font=\scriptsize] at (-4,5.1-\i*1.25) {\name};\fill[\clr!85] (0,4.95-\i*1.25) rectangle (\m,5.35-\i*1.25);\node[anchor=west,font=\tiny] at (\m+3,5.15-\i*1.25) {M \m};\fill[\clr!40] (0,4.45-\i*1.25) rectangle (\h,4.85-\i*1.25);\node[anchor=west,font=\tiny] at (\h+3,4.65-\i*1.25) {H \h};}
+\node[anchor=west,font=\tiny,tlGray] at (0,-.55) {M, mouse; H, human};
+\node[font=\scriptsize,tlGray] at (162,-1.0) {aggregate worker hours};
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.34\textwidth}
+\metric{tlTeal}{3.3$\times$}{slower than scQuint in both broad campaigns}
+\vspace{0.3cm}
+\begin{itemize}\scriptsize
+\item Same scalar Laplace LRT and analytic EC derivatives in both species
+\item Human has 4.3$\times$ more tests
+\item Median human test has 5 isoforms, 26 ECs, and 5 paths; mouse has 3, 9, and 2
+\item Peak memory, 4.81 GiB mouse and 8.25 GiB human
+\end{itemize}
+\end{column}
+\end{columns}
+\source{Scope starts from prepared method inputs and includes cell-type plus condition fitting and result construction; shared read processing is excluded.}
+\end{frame}
+
+\begin{frame}{Robust mouse calls are enriched for transcript-end differences}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.52\textwidth}
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[x=.032cm,y=.63cm]
+\foreach \i/\name/\v/\pct/\clr in {0/Alternative first region/154/64.7/tlTeal,1/Alternative last region/31/13.0/tlNavy,2/Cassette exon/28/11.8/tlOrange,3/Whole-gene complex/22/9.2/tlGold,4/Other/3/1.3/tlGray}{\node[anchor=east,font=\scriptsize] at (-2,4.6-\i*.85) {\name};\fill[\clr!80] (0,4.35-\i*.85) rectangle (\v,4.85-\i*.85);\node[anchor=west,font=\scriptsize] at (\v+2,4.6-\i*.85) {\v\; (\pct\%)};}
+\end{tikzpicture}
+}
+\end{column}
+\begin{column}{0.45\textwidth}
+\small
+\textbf{Functional precedents among robust calls}
+\vspace{0.15cm}
+\begin{itemize}\scriptsize
+\item \textit{Ntrk2}, alternative last region separating short kinase-deficient and long TrkB paths; TrkB.T1 has a characterized astrocyte role
+\item \textit{Grin1}, C1 cassette exon linked to receptor surface trafficking
+\item \textit{App}, exon 15 cassette linked to polarized secretion and amyloid processing
+\item \textit{Enah}, exon 11a cassette linked to actin dynamics outside brain
+\end{itemize}
+\vspace{0.05cm}
+\begin{alertblock}{Boundary of the annotation}
+\scriptsize A terminal-region label means supported paths differ between a constitutive anchor and a transcript boundary. It does not by itself distinguish promoter choice, terminal exon choice, or polyadenylation.
+\end{alertblock}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Takeaways}
+\vspace{0.25cm}
+\begin{tikzpicture}[node distance=.28cm,box/.style={rounded corners=4pt,minimum width=13.9cm,minimum height=1.18cm,text width=13.1cm,align=left,inner xsep=12pt,font=\large}]
+\node[box,fill=tlLightTeal,draw=tlTeal!55] (a) {\textbf{Model the observations that were measured.} Local path effects act through full isoforms, primer-specific EC maps, and observed pseudobulk counts without hard EC allocation.};
+\node[box,fill=tlLight,draw=tlNavy!35,below=of a] (b) {\textbf{Separate biology from calibration.} The calibrated mouse analysis supports 238 robust cell-type events and no robust condition events; human ordinary-LRT yields remain sensitivity results.};
+\node[box,fill=tlOrange!10,draw=tlOrange!50,below=of b] (c) {\textbf{Comparator yield is not accuracy.} Tealeaf, LeafCutter, MAJIQ, and scQuint use different feature universes, filters, and omnibus constructions.};
+\node[box,fill=tlNavy,text=white,below=of c] (d) {\textbf{The remaining tradeoff is compute.} Retaining EC ambiguity and repeatedly solving nested latent-Gaussian models costs about 3.3$\times$ scQuint's broad worker time after analytic derivative speedups.};
+\end{tikzpicture}
+\end{frame}
+
+\end{document}
