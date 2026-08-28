@@ -105,7 +105,7 @@ Using one-based row \(r\in\{1,\ldots,S_b\}\) and column \(j\in\{1,\ldots,d_b\}\)
 \]
 For any strictly positive \(\bm\psi_{bi}\in\Delta^{S_b-1}\), the ILR coordinate is \(\bm y_{bi}=Q_b^\prime\log\bm\psi_{bi}\in\mathbb R^{d_b}\), where the logarithm is elementwise. For \(S_b=2\), \(Q_b=(1,-1)^\prime/\sqrt2\) and \(y_{bi}=\log(\psi_{bi1}/\psi_{bi2})/\sqrt2\). Thus a two-path ILR test is a scaled log-odds, or differential-PSI, test.
 
-\section*{Primary EC-count GLMMs}
+\section*{Tealeaf Methods}
 
 \subsection*{Observed data and primer-specific EC probabilities}
 
@@ -251,25 +251,8 @@ Summing bounded expected log likelihoods and subtracting these KL terms gives th
 
 JAX supplies 64-bit objective values and gradients; bounded L-BFGS runs for at most 300 strict iterations. A fit that reaches this limit resumes from the complete previous parameter vector for at most 50 iterations with a relaxed relative-objective tolerance. The returned parameters are transformed back to the common physical representation. The alternative copies the fitted null fixed effects, variational means, Cholesky factors, and variance parameters, initializes only the new block coefficients to zero, and then optimizes. This warm start keeps the nested objective comparison on the same local branch.
 
-\subsection*{Bouchard coordinate-ascent alternative}
-
-A deterministic alternative uses Bouchard's quadratic softmax bound. EC-to-isoform responsibilities give a linear lower bound for each positive EC numerator, while the Bouchard--Jaakkola construction gives a quadratic upper bound for each subtracted primer normalizer. After collecting terms, pseudobulk \(i\)'s bounded log likelihood has the form \[
- -\tfrac12E_q(\bm\eta_{gi,-}^\prime\Omega_{gi}\bm\eta_{gi,-})
- +\bm h_{gi}^\prime E_q(\bm\eta_{gi,-})+C_{gi},
- \qquad \Omega_{gi}\in\mathbb S_+^{r_g},\quad\bm h_{gi}\in\mathbb R^{r_g}.
-\]
-This restores closed-form coordinate updates for every full-covariance mouse factor, the fixed effects, and the empirical-Bayes variance components. One sweep updates EC responsibilities, Bouchard location and curvature parameters, mouse Gaussian moments, fixed effects, and variance components. No gradient optimizer is used. Because the fixed effects and variances remain point estimates, this is coordinate-ascent variational EM; conjugate priors would give fully Bayesian CAVI. The complete derivation and dimensions are given in \texttt{docs/cavi.tex}.
-
-The CAVI posterior used the same packed representation as the tilted fit and could initialize tilted L-BFGS directly. In six null and six effect random-intercept simulations, 25 CAVI initialization sweeps reduced median tilted iterations from 39.5 to 37.0 under the null and from 45.5 to 43.5 under the effect, but did not change convergence or the final objective and increased total time. In the harder three-isoform logistic-normal simulations, direct and hybrid tilted fitting each converged in four of six null replicates, while direct fitting converged in four of six effect replicates and the hybrid in three of six. Standalone CAVI had a much looser bound and larger coefficient error. The derivation and benchmark are retained as a negative result, but the CAVI fitter and initialization options were removed from the package and analysis runners.
-
-The 65-gene real-data logistic-normal screens make the CAVI result stronger. The established Laplace-initialized tilted fit converged under both nested models for 52 condition genes and 56 cell-type genes, or 80.0\% and 86.2\%. With 25 CAVI initialization sweeps, the same tilted optimizer converged under both models for only 11 condition genes and 10 cell-type genes, and rescued none of the historical failures. Where both initializations converged, their final tilted objectives agreed closely. The Bouchard solution can lead to the same optimum, but its loose separable bound places the optimizer too far from that optimum to improve convergence in these data.
-
-A contemporaneous rerun compared optimizer schedules on the same 65 genes per contrast. The original 25-update, fully differentiated schedule converged for both nested models in 40 genes for each contrast. Eight local updates, envelope gradients, three-quarter prior-scale reparameterization, and selective relaxed continuation increased joint convergence to 64 of 65 genes in each contrast. The remaining gene had an empty EC matrix for one primer; treating this likelihood contribution as its mathematical value of zero, rather than evaluating an indeterminate zero times negative infinity, made both nested fits converge in both contrasts and raised corrected joint convergence to 65 of 65. Median time per nested-model pair decreased from 6.47 to 5.86 seconds for cell type and from 6.76 to 5.97 seconds for condition. On matched genes, the reparameterized schedule had median objective improvements of 0.18--0.24 for three of the four contrast-by-model combinations and 0.015 for the fourth, with no objective more than 0.33 below the original fit. These results support optimizer conditioning rather than CAVI initialization as the convergence remedy.
-
-Lower objective precision was tested on 24 difficult gene--contrast fits. fp32 reduced median time per nested pair from 11.38 to 8.58 seconds and reported convergence for every fit, but its null and alternative objectives were lower than fp64 by medians of 0.22 and 0.68. The nested-model objective gain changed by a median absolute 0.45 and by as much as 9.27. On a representative hard gene, bfloat16 gave coarse objective values, failed the null fit, and was slower than fp64. A 25-iteration fp32 warm-up followed by fp64 refinement restored objective accuracy and found one alternative optimum 7.52 units above the direct fp64 fit, but increased median time by 34\%. It is useful as a sensitivity restart, not as the default initializer. Final fitting therefore remains fp64.
-
 \begin{algorithm}[H]
-\caption{Fit one multinomial or logistic-normal block EC GLMM test}
+\caption{Fit one multinomial or logistic-normal block-level EC-count GLMM test}
 \label{alg:primary-ec-glmm}
 \begin{algorithmic}[1]
 \Require Paired counts \(\bm c_{gip}\), maps \(A_{gp}\), block path map \(\pi_b\), labels, mouse indices, and model type
@@ -292,7 +275,7 @@ Lower objective precision was tested on 24 difficult gene--contrast fits. fp32 r
 
 For each block, the fitted null generates five parametric-bootstrap replicates. Each replicate draws mouse effects and, for the logistic-normal model, pseudobulk effects; forms primer-specific EC probabilities through \(A_{gp}\); preserves every observed \(n_{gip}\); draws multinomial EC counts; and refits both nested models with the same warm-start and stopping rules.
 
-Raw empirical ranks within tested-dimension strata are calibrated at ordinary levels but do not resolve genome-wide tails: after deduplication their minimum p-values are approximately \(4.5\times10^{-4}\), while BH requires values near \(10^{-5}\) at the first ranks. Tail calibration therefore proceeds as follows. Within each likelihood and tested-dimension stratum, let \(u_s\) be the 90th percentile of bootstrap statistics. Excesses \(T-u_s>0\) follow a fitted generalized Pareto distribution with shape \(\xi_s\in\mathbb R\) and scale \(\beta_s>0\). Entire block tests, including all their bootstrap replicates, are assigned to one of five folds. The tail model fitted on four folds maps statistics in the held-out fold to lower-tail scores \(\rho\in(0,1]\).
+Raw empirical ranks within tested-dimension strata are calibrated at ordinary levels but do not resolve genome-wide tails: after deduplication their minimum p-values are approximately \(4.5\times10^{-4}\), while BH requires values near \(10^{-5}\) at the first ranks. Tail calibration therefore proceeds as follows. Within each likelihood and tested-dimension stratum, let \(u_s\) be the 90th percentile of bootstrap statistics. Excesses \(T-u_s>0\) follow a fitted generalized Pareto distribution (GPD) with shape \(\xi_s\in\mathbb R\) and scale \(\beta_s>0\). The GPD is a peaks-over-threshold model for the conditional distribution of values exceeding \(u_s\). Entire block tests, including all their bootstrap replicates, are assigned to one of five folds. The tail model fitted on four folds maps statistics in the held-out fold to lower-tail scores \(\rho\in(0,1]\).
 
 Residual GPD error is removed by a second empirical calibration. Let \(\mathcal R_{-b}\) contain all cross-fitted null scores except scores generated for block \(b\). The reported p-value is \[
  p_b=\frac{1+\sum_{\rho\in\mathcal R_{-b}}
@@ -322,7 +305,42 @@ Every bootstrap replicate receives the same leave-block-out calibration. Aggrega
 \end{algorithmic}
 \end{algorithm}
 
-\section*{Primary Results}
+\section*{Comparator Methods and Reproducibility Design}
+
+The method comparison uses the same cells, biological subjects, cell-type labels, and subject-by-cell-type pseudobulk definitions for Tealeaf, LeafCutter, MAJIQ Heterogen, and scQuint. Spliced alignments are restricted to unique genomic mappings and deduplicated by cell barcode, UMI, genomic start, and CIGAR before junction UMIs are aggregated. LeafCutter tests intron clusters, MAJIQ tests edges within local splicing variations, and scQuint tests intron groups. Their distinct feature definitions make raw discovery counts incomparable, so the primary comparison is reproducibility on independent subject splits rather than genome-wide discovery yield.
+
+For this benchmark Tealeaf deliberately uses the same filtered junction groups as scQuint, rather than the EC-count GLMM. This removes EC ambiguity resolution and testing-universe size as explanations for any difference. For one junction group with \(K\geq2\) introns and \(n\) subjects observed in both cell types, let \(\bm y_{ic}\in\mathbb N_0^K\) be subject \(i\)'s pseudobulk junction-count vector in cell type \(c\in\{0,1\}\). Define \(\operatorname{clr}(\bm y)=\log(\bm y+1/2)-\bm1_K\bm1_K^\prime\log(\bm y+1/2)/K\) and the paired contrast \(\bm d_i=H_K^\prime\{\operatorname{clr}(\bm y_{i1})-\operatorname{clr}(\bm y_{i0})\}\in\mathbb R^{K-1}\), where \(H_K\in\mathbb R^{K\times(K-1)}\) is an orthonormal Helmert basis. Pairing removes additive subject effects shared by the two cell types, while the centered log ratio removes junction-group depth. For \(K=2\), Tealeaf uses the exact two-sided one-sample Student \(t\) test. For \(K>2\), it uses Hotelling's statistic \(T^2=n\bar{\bm d}^{\prime}S_d^{-1}\bar{\bm d}\), with \((n-K+1)T^2/\{(K-1)(n-1)\}\sim F_{K-1,n-K+1}\) under the null. The test requires \(n\geq8\), \(n>K-1\), and full-rank \(S_d\in\mathbb S_+^{K-1}\). Junction groups use the scQuint filters, each intron must occur in at least three samples per arm, have global proportion at least \(10^{-3}\), and belong to a nonsingleton group.
+
+Biological subjects are divided into two condition-balanced halves and every cell-type analysis is rerun independently. Features are mapped to genes and feature p-values are combined within gene by Simes. Each Tealeaf--comparator evaluation is restricted to genes and cell-type pairs eligible for both methods in both halves. For method \(m\), gene \(g\), and half \(h\in\{1,2\}\), let \(p_{mgh}\in[0,1]\) be the Simes gene p-value. The conjunction p-value \(p_{mg}^{\rm rep}=\max(p_{mg1},p_{mg2})\) tests whether the gene has signal in both halves, and BH at 0.05 is applied once on the shared gene universe. Secondary endpoints are held-half nominal replication, the fraction of \(p\leq0.05\) findings in one half with \(p\leq0.05\) in the other, and Spearman correlation of gene--pair \(-\log_{10}p\) across halves. Thirty-two paired-label-swap families assess calibration while preserving each subject's paired observations.
+
+\section*{Results}
+
+\subsection*{Reproducibility across independent subject halves}
+
+Table~\ref{tab:paired-reproducibility} gives the primary comparison. Tealeaf finds more independently replicated genes than every comparator, 5.4 times as many as LeafCutter, 4.2 times as many as scQuint, and 1.8 times as many as stringent MAJIQ. The stringent MAJIQ universe contains only 12 shared genes; rebuilding MAJIQ with UMI-appropriate coverage thresholds expands the shared universe to 1,630 genes, on which Tealeaf finds 490 replicated genes versus 50 for MAJIQ. Tealeaf also has higher held-half replication than LeafCutter and both MAJIQ configurations and higher fold-to-fold rank correlation than LeafCutter, relaxed MAJIQ, and scQuint.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Cell-type differential-splicing reproducibility across independent subject halves. ``Rep.'' is the number of genes passing BH on \(p^{\rm rep}\); ``held'' is held-half nominal replication; \(\rho\) is Spearman correlation of gene--pair \(-\log_{10}p\). Comparator p-values are their native values.}
+\label{tab:paired-reproducibility}
+\begin{tabular}{lrrrrrrr}
+\toprule
+& Shared & \multicolumn{3}{c}{Tealeaf} & \multicolumn{3}{c}{Comparator}\\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}
+Comparator & genes & Rep. & held & \(\rho\) & Rep. & held & \(\rho\)\\
+\midrule
+LeafCutter & 264 & 193 & 0.906 & 0.685 & 36 & 0.712 & 0.449\\
+MAJIQ Heterogen & 12 & 11 & 0.958 & 0.713 & 6 & 0.875 & 0.769\\
+MAJIQ relaxed UMI & 1,630 & 490 & 0.791 & 0.638 & 50 & 0.723 & 0.369\\
+scQuint & 2,164 & 646 & 0.788 & 0.642 & 154 & 0.819 & 0.435\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Across 12,760 eligible Tealeaf null tests, paired-label swaps give rejection rates 0.0509, 0.00964, 0.000627, and 0.0000784 at nominal levels 0.05, 0.01, 0.001, and \(10^{-4}\); reapplying BH within each permuted family yields two discoveries across 32 families. The pooled comparator rejection rates at 0.05 are 0.0620 for LeafCutter, 0.0837 for scQuint, and 0.0260 for stringent MAJIQ. After mapping comparator p-values through method-specific empirical null CDFs, Tealeaf has 193 versus 21 replicated genes for LeafCutter, 646 versus 134 for scQuint, and 11 versus zero for stringent MAJIQ. The relaxed MAJIQ null is conservative, and empirical-null calibration increases its replicated count from 50 to 89, still below Tealeaf's 490 on the shared universe.
+
+\subsection*{Full calibrated Tealeaf analysis}
 
 At the 90\% tail threshold, the nonredundant logistic-normal analysis tests 4,825 cell-type partitions and 14,833 block-by-cell-type condition hypotheses. Table~\ref{tab:primary-ec-results} reports the results. The null rates at 0.05, 0.01, and 0.001 are from held-out block tests and therefore assess the complete tail-scoring and empirical-recalibration procedure.
 
@@ -392,6 +410,11 @@ Gene & Event & Mapping & Characterized consequence & Primary evidence\\
 
 These precedents establish that a subset of discovered coordinates encode functional isoform choices, with \emph{Ntrk2} providing a direct glial example. They do not validate every call or identify the cell-type pair and path direction responsible for an omnibus statistic. Isoform-specific junction quantification and perturbation are needed for those claims. The complete catalog, event components, coordinates, empirical p-values, and literature audit are recorded under \path{analyses/celltype_event_annotation}.
 
+\clearpage
+\appendix
+
+\section{Exploratory and Supporting Analyses}
+
 \subsection*{Nonbootstrap Laplace sensitivity}
 
 Table~\ref{tab:laplace-lrt-sensitivity} compares the analytic Laplace LRT and BIC Bayes-factor approximation with the completed mouse bootstrap analysis. A Laplace fit is retained only when the infinity norms of its scaled outer gradient and random-effect mode score are each at most \(10^{-4}\). Scaling the objective and gradient by the absolute initial objective changes neither the optimum nor the likelihood ratio, but prevents count depth from setting the numerical line-search scale.
@@ -420,7 +443,7 @@ The independent human analysis gives the results in Table~\ref{tab:human-laplace
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{Nonbootstrap human EC-block results. Condition hypotheses are block-by-cell-type tests. BF counts include only converged nested fits.}
+\caption{Nonbootstrap human block results from EC-count models. Condition hypotheses are block-by-cell-type tests. BF counts include only converged nested fits.}
 \label{tab:human-laplace-lrt}
 \begin{tabular}{llrrrrr}
 \toprule
@@ -435,55 +458,9 @@ Condition & Multinomial & 73,144 & 0.940 & 5,497 & 193 & 522\\
 
 The condition nominal rate is 0.0799 among converged tests, whereas the cell-type multinomial rate is 0.2331, as expected for the stronger biological contrast. The BF and BH counts need not be ordered: \(\mathrm{BF}>10\) is an uncorrected evidence threshold whose BIC penalty depends on tested dimension and subject count, while BH controls a genome-wide frequentist error rate.
 
-\subsection*{Matched external-method comparison}
+\subsection*{Computational benchmarks}
 
-LeafCutter, scQuint, and MAJIQ are compared on junction evidence from the same cells and biological-replicate definitions used by the EC GLMM. Reads are aligned with STARsolo using the three-round Split-seq barcode geometry. Spliced alignments are restricted to unique genomic mappings and deduplicated by cell barcode, UMI, genomic start, and CIGAR. Junction UMIs are then summed within subject-by-cell-type pseudobulks. This prevents individual cells from being treated as independent biological replicates and gives every external method the same subject and cell-type support.
-
-Condition tests compare conditions separately within each cell type. Cell-type tests use only subjects represented in both cell types. LeafCutter includes subject as a covariate for the paired cell-type tests. scQuint is run on the pseudobulk junction matrix because its differential-splicing interface has no covariate argument. MAJIQ v3 builds one common splice graph and PSI-coverage object from the pseudobulk BAMs, then applies its replicate-level Heterogen Mann--Whitney test to each LSV edge. Its raw test p-value is used for BH. The 95th percentile over tests of posterior PSI draws is retained as a sensitivity statistic, but MAJIQ documents that quantity as uncalibrated as a p-value, so it is not used for MHT. MAJIQ and scQuint therefore use the matched replicates but cannot model their cell-type pairing. Each method receives BH correction within a pairwise contrast. For a cell-type-wide feature score, pairwise p-values are combined by Simes before a second BH correction. The comparison is run unchanged on both the mouse microglialess data and an independent human Parse Biosciences brain dataset.
-
-Two MAJIQ coverage configurations are retained. The stringent configuration uses its bulk-RNA defaults: 50\% experiment support at splice-graph build and Heterogen, then at least 10 reads across three nonzero bins per pseudobulk for PSI coverage. Because all 936 mouse pseudobulks form one build group, the first threshold requires global support in approximately 468 pseudobulks. The relaxed UMI configuration instead requires absolute support in three pseudobulks at build, three UMIs in one nonzero bin for PSI coverage, and three quantified pseudobulks in each Heterogen arm. It retains MAJIQ's strict, nonredundant LSV selection.
-
-Tables~\ref{tab:mouse-method-comparison} and \ref{tab:human-method-comparison} report the resulting genome-wide test and discovery counts. These are comparisons of practical discovery yield, not estimates of relative power: no ground truth is available, and the methods test different units. Tealeaf tests EC-supported splice-block path partitions, LeafCutter tests intron clusters, MAJIQ tests edges within local splicing variations (LSVs), and scQuint tests intron groups. Their filters consequently produce different testing universes. The discovery fraction is reported to make that difference visible, but it is not an accuracy measure. In particular, a larger fraction can reflect stronger filtering as well as greater sensitivity.
-
-\begin{table}[H]
-\centering
-\scriptsize
-\caption{Matched mouse differential-splicing results. Tealeaf uses the ordinary multinomial EC GLMM with the same optimized Laplace LRT used for the human data; the separately reported calibrated logistic-normal analysis remains the primary mouse validation result. External-method cell-type entries are Simes omnibus tests over pairwise contrasts; their condition entries are pairwise feature-by-contrast tests. All discovery counts use BH FDR 0.05. Rate is discoveries divided by tests.}
-\label{tab:mouse-method-comparison}
-\begin{tabular}{llrrr@{\qquad}rrr}
-\toprule
-& & \multicolumn{3}{c}{Cell type} & \multicolumn{3}{c}{Condition}\\
-\cmidrule(lr){3-5}\cmidrule(lr){6-8}
-Method & Test unit & Tests & BH & Rate & Tests & BH & Rate\\
-\midrule
-Tealeaf EC GLMM & EC block & 4,825 & 322 & 6.67\% & 14,833 & 3 & 0.02\%\\
-LeafCutter & Intron cluster & 1,020 & 229 & 22.45\% & 10,279 & 40 & 0.39\%\\
-MAJIQ Heterogen & LSV edge & 46 & 27 & 58.70\% & 3,836 & 34 & 0.89\%\\
-scQuint & Intron group & 16,081 & 828 & 5.15\% & 161,711 & 16 & 0.01\%\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{table}[H]
-\centering
-\scriptsize
-\caption{Matched human differential-splicing results. Tealeaf uses the ordinary multinomial EC GLMM with the same optimized Laplace LRT used for the mouse data; external-method summaries are constructed as in Table~\ref{tab:mouse-method-comparison}. All discovery counts use BH FDR 0.05. Rate is discoveries divided by tests.}
-\label{tab:human-method-comparison}
-\begin{tabular}{llrrr@{\qquad}rrr}
-\toprule
-& & \multicolumn{3}{c}{Cell type} & \multicolumn{3}{c}{Condition}\\
-\cmidrule(lr){3-5}\cmidrule(lr){6-8}
-Method & Test unit & Tests & BH & Rate & Tests & BH & Rate\\
-\midrule
-Tealeaf EC GLMM & EC block & 11,597 & 1,463 & 12.62\% & 73,144 & 193 & 0.26\%\\
-LeafCutter & Intron cluster & 2,155 & 238 & 11.04\% & 5,238 & 475 & 9.07\%\\
-MAJIQ Heterogen & LSV edge & 582 & 342 & 58.76\% & 3,522 & 278 & 7.89\%\\
-scQuint & Intron group & 27,097 & 2,239 & 8.26\% & 85,852 & 36 & 0.04\%\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Table~\ref{tab:method-resources} compares aggregate worker time and peak resident memory for the broad cell-type and condition campaigns that produced Tables~\ref{tab:mouse-method-comparison} and~\ref{tab:human-method-comparison}. Aggregate worker time is the sum of elapsed time over analysis tasks, so it is independent of queue delay and parallelism. Peak memory is the maximum for one worker. The accounting starts from each method's prepared analysis input and includes model fitting and method-specific result construction, but excludes shared read processing. Tealeaf uses the same ordinary multinomial EC GLMM, closed-form row derivatives, and Laplace LRT in both datasets. Each first attempt uses 12 posterior-mode Newton updates and implicit differentiation, failed-convergence fits receive a 30-update continuation, and compiled objectives are reused within bounded gene-and-shape groups. On a complete 72-test human condition shard, implicit differentiation reduced elapsed time from 79.7 to 37.1 minutes and peak memory from 6.88 to 6.66 GiB relative to differentiating through the Newton updates, with the same 69 jointly converged tests and median absolute statistic difference below \(10^{-12}\). Gene-group compilation reuse reduced a second shard benchmark from 37.9 to 37.1 minutes. Complete analytic-derivative cell-type and condition reruns used 51.0 mouse worker hours and 4.81 GiB peak worker memory, and 313.3 human worker hours and 8.25 GiB; each broad campaign is 3.3-fold slower than scQuint, compared with 7.8-fold before the derivative change. Human condition fitting uses finer shards than cell-type fitting because retaining compiled shapes across hundreds of heterogeneous condition tests in one process exceeds the worker memory budget; the mathematical model, initialization, optimizer, tolerances, and continuation are unchanged. The human run has 4.3-fold more tests than mouse and its median test has five rather than three isoforms, 26 rather than nine ECs, and five rather than two block paths; these larger likelihoods account for most of the remaining dataset difference. Lower-precision and early-stopping experiments did not preserve accuracy or reduce real-data elapsed time, and CAVI initialization reduced convergence, so none was used for the reported fits.
+Table~\ref{tab:method-resources} compares aggregate worker time and peak resident memory for the broad cell-type and condition campaigns. Aggregate worker time is the sum of elapsed time over analysis tasks, so it is independent of queue delay and parallelism. Peak memory is the maximum for one worker. The accounting starts from each method's prepared analysis input and includes model fitting and method-specific result construction, but excludes shared read processing. Tealeaf uses the same ordinary multinomial EC GLMM, closed-form row derivatives, and Laplace LRT in both datasets. Each first attempt uses 12 posterior-mode Newton updates and implicit differentiation, failed-convergence fits receive a 30-update continuation, and compiled objectives are reused within bounded gene-and-shape groups. On a complete 72-test human condition shard, implicit differentiation reduced elapsed time from 79.7 to 37.1 minutes and peak memory from 6.88 to 6.66 GiB relative to differentiating through the Newton updates, with the same 69 jointly converged tests and median absolute statistic difference below \(10^{-12}\). Gene-group compilation reuse reduced a second shard benchmark from 37.9 to 37.1 minutes. Complete analytic-derivative cell-type and condition reruns used 51.0 mouse worker hours and 4.81 GiB peak worker memory, and 313.3 human worker hours and 8.25 GiB; each broad campaign is 3.3-fold slower than scQuint, compared with 7.8-fold before the derivative change. Human condition fitting uses finer shards than cell-type fitting because retaining compiled shapes across hundreds of heterogeneous condition tests in one process exceeds the worker memory budget; the mathematical model, initialization, optimizer, tolerances, and continuation are unchanged. The human run has 4.3-fold more tests than mouse and its median test has five rather than three isoforms, 26 rather than nine ECs, and five rather than two block paths; these larger likelihoods account for most of the remaining dataset difference. Lower-precision and early-stopping experiments did not preserve accuracy or reduce real-data elapsed time, so neither is used for the reported fits.
 
 A matched optimization study retained L-BFGS as the production outer optimizer. Pure projected Adam at two learning rates failed the joint outer-gradient and posterior-mode convergence criteria on nearly every tested fit and changed some LRT statistics by hundreds; an Adam warm-up followed by L-BFGS recovered convergence but reached different local optima and changed statistics by as much as 3.79. Muon is not used because the fixed-effect vector has no natural matrix axis, its apparent matrix shape would couple unrelated mice or depend on the arbitrary block-contrast basis. Momentum SGD, RMSProp, Lion, and related fixed-schedule first-order methods share Adam's batching advantage but not L-BFGS's line search or curvature history, so the failed Adam experiment provides no reason to replace the converged optimizer with them. Projecting a previously fitted alternative into later null models reduced iterations but also moved local optima. Running two independent L-BFGS workers reduced matched wall time by 38\% for mouse and 24\% for human, with greater peak memory and little reduction in aggregate CPU time.
 
@@ -559,7 +536,7 @@ scQuint & 15.3 & 3.99 & 94.1 & 4.76\\
 \end{tabular}
 \end{table}
 
-Raw yield still does not establish that one method is better. We therefore use an independent-subject reproducibility benchmark on a common gene and cell-type-pair universe. For this benchmark Tealeaf uses a paired junction log-ratio test. It deliberately uses the same filtered junction groups as scQuint, so its advantage cannot be attributed to EC ambiguity resolution or a larger testing universe.
+Computational cost does not establish that one method is statistically better. The main text therefore uses the independent-subject reproducibility benchmark on a common gene and cell-type-pair universe. Its Tealeaf analysis deliberately uses the same filtered junction groups as scQuint, so the comparison does not attribute an advantage to EC ambiguity resolution or a larger testing universe.
 
 \subsection*{Paired junction log-ratio test}
 
@@ -596,41 +573,18 @@ The test requires \(n\geq8\), \(n>q\), and full-rank \(S_d\). The eight-subject 
 \end{algorithmic}
 \end{algorithm}
 
-\subsection*{Independent-subject power comparison}
+\subsection*{Additional reproducibility calibration details}
 
 The benchmark divides biological subjects into two condition-balanced halves and reruns every cell-type analysis independently. Features are mapped to genes and feature p-values are combined within gene by Simes. Each Tealeaf--comparator evaluation is restricted to genes and cell-type pairs eligible for both methods in both halves. For method \(m\), gene \(g\), and fold \(h\in\{1,2\}\), let \(p_{mgh}\in[0,1]\) be the Simes gene p-value. The conjunction p-value \[
  p_{mg}^{\rm rep}=\max(p_{mg1},p_{mg2})
 \]
 tests whether the gene has signal in both independent halves. BH at 0.05 is applied once to these conjunction p-values on the shared gene universe. Secondary endpoints are the fraction of nominal discoveries in one half with \(p\leq0.05\) in the other and Spearman correlation of \(-\log_{10}p\) across all shared gene--pair tests.
 
-Table~\ref{tab:paired-reproducibility} gives the uncalibrated comparator results. Tealeaf finds more independently replicated genes than every comparator: 5.4 times as many as LeafCutter, 4.2 times as many as scQuint, and 1.8 times as many as MAJIQ. The MAJIQ universe is small, so its comparison is less precise. Tealeaf also has higher held-half replication than LeafCutter and MAJIQ and markedly higher fold-to-fold rank correlation than LeafCutter and scQuint.
-
-\begin{table}[H]
-\centering
-\scriptsize
-\caption{Cell-type differential-splicing reproducibility across independent subject halves. ``Rep.'' is the number of genes passing BH on \(p^{\rm rep}\); ``held'' is held-half nominal replication; \(\rho\) is Spearman correlation of gene--pair \(-\log_{10}p\). Comparator p-values in this table are their native, uncalibrated values.}
-\label{tab:paired-reproducibility}
-\begin{tabular}{lrrrrrrr}
-\toprule
-& Shared & \multicolumn{3}{c}{Tealeaf} & \multicolumn{3}{c}{Comparator}\\
-\cmidrule(lr){3-5}\cmidrule(lr){6-8}
-Comparator & genes & Rep. & held & \(\rho\) & Rep. & held & \(\rho\)\\
-\midrule
-LeafCutter & 264 & 193 & 0.906 & 0.685 & 36 & 0.712 & 0.449\\
-MAJIQ Heterogen & 12 & 11 & 0.958 & 0.713 & 6 & 0.875 & 0.769\\
-MAJIQ relaxed UMI & 1,630 & 490 & 0.791 & 0.638 & 50 & 0.723 & 0.369\\
-scQuint & 2,164 & 646 & 0.788 & 0.642 & 154 & 0.819 & 0.435\\
-\bottomrule
-\end{tabular}
-\end{table}
-
 Calibration uses 32 paired-label-swap families. Within each cell-type pair, subjects are swapped independently, conditional on at least one swapped and one unswapped subject; this excludes the identity and complete-reversal configurations, both of which reproduce the observed two-sided contrast. Across 12,760 eligible Tealeaf null tests, the rejection rates at \(0.05,0.01,0.001,10^{-4}\) are respectively \(0.0509,0.00964,0.000627,0.0000784\). Reapplying BH within each permuted family yields two discoveries across 32 families. Thus the native Tealeaf p-values are adequately calibrated at the selected threshold.
 
 The comparator nulls are not uniformly calibrated: their pooled nominal 0.05 rates are 0.0620 for LeafCutter, 0.0837 for scQuint, and 0.0260 for MAJIQ. As a sensitivity analysis, each comparator p-value is mapped through its method-specific pooled empirical null CDF before repeating the same benchmark. Tealeaf remains unchanged and has 193 versus 21 replicated genes for LeafCutter, 646 versus 134 for scQuint, and 11 versus 0 for MAJIQ. The power conclusion therefore does not depend on favorable comparator miscalibration; correcting it increases Tealeaf's margin. The 32-family calibration is intended to validate the body and moderate tail of each null, not to estimate genome-wide p-values smaller than its empirical resolution.
 
 The stringent MAJIQ universe is small because its combined build and quantification defaults leave only 46 LSV edges from 13 genes; the cross-fold, common-pair intersection contains 12 genes. Lowering only the Heterogen experiment fraction increases feature--contrast tests but cannot add features absent from PSI coverage. Rebuilding with the relaxed UMI thresholds produces 20,954 and 18,914 fold-specific LSV features and a common comparison of 1,630 genes. Its 178,793 null edge tests reject at rates 0.0320, 0.00456, and 0.000151 at nominal levels 0.05, 0.01, and 0.001, with no within-family BH discoveries in 32 permutations. Empirical-null calibration corrects this conservatism. On the expanded universe, Tealeaf has 490 replicated genes versus 50 for native MAJIQ and 89 for calibrated MAJIQ. The power advantage therefore persists after removing the stringent MAJIQ coverage bottleneck.
-
-\appendix
 
 \section{Alternative Models and Supporting Derivations}
 
@@ -981,7 +935,7 @@ The same $e_{gi}$ enters both primer likelihoods, because it perturbs the underl
 
 Laplace inference maximizes the joint conditional density over \(u_g\in\mathbb R^{M_g\times d_g}\). Its negative Hessian satisfies \(H_g\in\mathbb S_+^{M_gd_g}\), and the marginal approximation adds the correction \(-\tfrac12\log|H_g|\). The outer fit optimizes \(B_g\), \(\sigma_g\), and, for the overdispersed model, \(\kappa_g\).
 
-For outer parameter vector \(\bm\theta_g\in\mathbb R^{p_g}\), cluster mode \(\widehat{\bm u}_{gm}\in\mathbb R^{d_g}\), mode score \(\bm s_{gm}=\partial\ell_{gm}/\partial\bm u_{gm}\in\mathbb R^{d_g}\), and positive mode Hessian \(H_{gm}=-\partial\bm s_{gm}/\partial\bm u_{gm}\in\mathbb S_{++}^{d_g}\), the fitted mode satisfies \(\bm s_{gm}(\widehat{\bm u}_{gm},\bm\theta_g)=\bm0_{d_g}\). Rather than retaining and differentiating through every Newton update, the optimized implementation differentiates this stationarity equation implicitly, \[\frac{\partial\widehat{\bm u}_{gm}}{\partial\bm\theta_g}=H_{gm}^{-1}\frac{\partial\bm s_{gm}}{\partial\bm\theta_g}\in\mathbb R^{d_g\times p_g}.\] For a reverse-mode cotangent \(\bm v_{gm}\in\mathbb R^{d_g}\), it solves one \(d_g\times d_g\) system with \(H_{gm}\) and applies the score vector--Jacobian product. This gives the derivative of the same Laplace objective at a converged mode without backpropagating through the 12 Newton updates. Fits that fail the joint outer-gradient and mode-score criteria receive a 30-update continuation. Compiled objectives are reused only among contiguous tests with the same gene, pseudobulk set, and tensor shape; counts and block-specific fixed-effect tensors are dynamic arguments, and the cache is released before the next group.
+Let \(\bm\theta_g\in\mathbb R^{p_g}\) be the outer parameter vector and \(\widehat{\bm u}_{gm}\in\mathbb R^{d_g}\) the cluster mode. The mode score is \(\bm s_{gm}=\partial\ell_{gm}/\partial\bm u_{gm}\in\mathbb R^{d_g}\), and the positive mode Hessian is \(H_{gm}=-\partial\bm s_{gm}/\partial\bm u_{gm}\in\mathbb S_{++}^{d_g}\). The fitted mode satisfies \(\bm s_{gm}(\widehat{\bm u}_{gm},\bm\theta_g)=\bm0_{d_g}\). Rather than retaining and differentiating through every Newton update, the optimized implementation differentiates this stationarity equation implicitly, \[\frac{\partial\widehat{\bm u}_{gm}}{\partial\bm\theta_g}=H_{gm}^{-1}\frac{\partial\bm s_{gm}}{\partial\bm\theta_g}\in\mathbb R^{d_g\times p_g}.\] For a reverse-mode cotangent \(\bm v_{gm}\in\mathbb R^{d_g}\), it solves one \(d_g\times d_g\) system with \(H_{gm}\) and applies the score vector--Jacobian product. This gives the derivative of the same Laplace objective at a converged mode without backpropagating through the 12 Newton updates. Fits that fail the joint outer-gradient and mode-score criteria receive a 30-update continuation. Compiled objectives are reused only among contiguous tests with the same gene, pseudobulk set, and tensor shape; counts and block-specific fixed-effect tensors are dynamic arguments, and the cache is released before the next group.
 
 \subsubsection*{Nonbootstrap Laplace inference}
 
@@ -1363,7 +1317,7 @@ All algorithms operate independently over canonical blocks unless a joint gene-l
 
 \begin{algorithm}[H]
 \caption{Block-specific paired EC-count GLMM cell-type test}
-\label{alg:ec-block-glmm}
+\label{alg:block-count-glmm}
 \begin{algorithmic}[1]
 \Require Block \(b\), paired gene EC counts \(\bm c_{gip}\), maps \(A_{gp}\), condition design \(Z_b\), cell-type design \(W_b\), mouse indices, and \(R\) parametric-bootstrap replicates
 \Ensure Empirically calibrated block p-value
@@ -1549,13 +1503,13 @@ The observation-level logistic-normal model was validated with 96 null and 96 ef
 
 In the real data, tilted logistic-normal fits converged under both nested models for 80.0\% of condition genes and 86.2\% of cell-type genes. The alternative residual standard deviation had median 0.040 for condition and 0.029 for cell type; the respective interquartile ranges were 0.007--0.239 and 0.006--0.234. Relative to the multinomial full posterior, fresh ELBO condition gains changed by a median absolute 0.335 and retained rank correlation 0.809. Cell-type gains changed by 10.68 and retained correlation 0.959, consistent with extra-multinomial variation having more impact on the larger cell-type omnibus statistic. Because residual-scale estimates often approached zero and convergence was weaker, this model is retained as an overdispersion sensitivity analysis rather than replacing the primary test.
 
-The initial block-specific EC analysis inherited 406 coverage-eligible partitions from the path-count analysis and tested 399 after EC identifiability filtering. This was unnecessarily restrictive because it required reliable path estimates before fitting the EC likelihood. The genome-wide EC screen instead includes one EC count vector for every pseudobulk--primer combination in the likelihood, retains cell types represented in at least three mice, and requires at least two represented cell types. The strict rule additionally requires at least 25 gene UMIs and 30 covered pseudobulks; the permissive rule requires at least 10 gene UMIs. These rules retain 1,926 and 5,650 blocks, respectively. Five parametric-bootstrap replicates per block provide pooled null distributions matched by tested dimension. Table~\ref{tab:ec-block-results} reports the calibrated tests.
+The initial block-specific EC analysis inherited 406 coverage-eligible partitions from the path-count analysis and tested 399 after EC identifiability filtering. This was unnecessarily restrictive because it required reliable path estimates before fitting the EC likelihood. The genome-wide EC screen instead includes one EC count vector for every pseudobulk--primer combination in the likelihood, retains cell types represented in at least three mice, and requires at least two represented cell types. The strict rule additionally requires at least 25 gene UMIs and 30 covered pseudobulks; the permissive rule requires at least 10 gene UMIs. These rules retain 1,926 and 5,650 blocks, respectively. Five parametric-bootstrap replicates per block provide pooled null distributions matched by tested dimension. Table~\ref{tab:initial-block-results} reports the calibrated tests.
 
 \begin{table}[H]
 \centering
 \scriptsize
 \caption{Parametric-bootstrap-calibrated cell-type tests using gene EC counts. The depth column gives the range of null rejection rates across independent gene-depth quartiles. MN is multinomial, LN is logistic-normal multinomial, and DM is Dirichlet--multinomial.}
-\label{tab:ec-block-results}
+\label{tab:initial-block-results}
 \begin{tabular}{llrrrrrr}
 \toprule
 Coverage & Likelihood & Tests & Conv. & Nominal & FDR & Null $<.05$ & Depth range\\
@@ -1574,30 +1528,11 @@ The permissive rule increases absolute discoveries from 174 to 294 for MN and fr
 
 \subsection*{Expanded EC likelihood and coverage comparison}
 
-The final analysis uses one likelihood and testing construction for both biological contrasts: the logistic-normal multinomial block EC GLMM. For the cell-type test, condition indicators are nuisance fixed effects and the alternative adds block-path-by-cell-type interactions. For the condition test, models are fit separately within each cell type; the null has an intercept fixed effect and the alternative adds block-path-by-condition interactions. Both versions retain a mouse random effect and paired primer-specific EC likelihoods. Every retained condition must be represented by at least three mice, and every tested pseudobulk must have at least 10 modeled gene UMIs.
-
 The annotation-level block equivalence relation is insufficient after EC screening: removing unsupported isoforms can make two distinct annotated blocks induce exactly the same partition of the remaining isoforms. The final hypothesis family therefore retains one representative for each tuple of gene, EC-supported isoforms, canonical block-path partition, covered observations, and tested factor levels. This reduces the permissive cell-type family from 5,650 to 4,825 tests and the condition family from 17,685 to 14,833 block-by-cell-type tests over 5,608 representative blocks. This collapse is performed before calibration and BH correction.
-
-\begin{table}[H]
-\centering
-\scriptsize
-\caption{The unified, nonredundant logistic-normal block EC GLMM after cross-fitted tail calibration. Condition tests are within cell type. Robust calls are significant at every tail threshold from 80\% through 95\%.}
-\label{tab:unified-ec-block-results}
-\begin{tabular}{lrrrrrrrr}
-\toprule
-Contrast & Tests & Conv. & Nominal & FDR & Robust & Null $<.05$ & Null $<.01$ & Null $<.001$\\
-\midrule
-Cell type & 4,825 & 0.999 & 771 & 252 & 238 & 0.04999 & 0.00999 & 0.00099\\
-Condition & 14,833 & 1.000 & 1,397 & 0 & 0 & 0.05001 & 0.00999 & 0.00100\\
-\bottomrule
-\end{tabular}
-\end{table}
 
 The initial empirical calibration compared each test only with its degrees-of-freedom-specific bootstrap pool. After supported-partition deduplication, its minimum attainable p-values were approximately $4.5\times10^{-4}$, whereas BH requires resolution near $10^{-5}$ at the first ranks. Its zero logistic-normal calls were therefore a bootstrap-tail resolution artifact, not disappearance of the cell-type signal.
 
-The final calibration fits a generalized Pareto peaks-over-threshold model within each degrees-of-freedom stratum. Fits are cross-fitted by holding out whole block tests. The resulting observed and held-out-null tail scores are then recalibrated by a global leave-block-out empirical null CDF. This second stage corrects residual tail-model bias and gives sufficient pooled resolution for genome-wide BH. At a 90\% threshold, multinomial, logistic-normal multinomial, and Dirichlet--multinomial EC tests identify 272, 252, and 59 nonredundant cell-type partitions. Logistic-normal thresholds of 80\%, 85\%, 90\%, and 95\% give 242, 240, 252, and 245 calls; 238 occur in all four sets, 231 of those are multinomial calls, and 45 are called by all three likelihoods.
-
-Condition is less stable. The same four thresholds give zero, 28, zero, and zero calls, with no partition in all four sets; at the 90\% threshold the minimum FDR is 0.0545. The final conclusion is therefore strong calibrated cell-type DS, but no robust condition DS. The earlier 193 logistic-normal calls in Table~\ref{tab:ec-block-results} used annotation-level duplicates and under-resolved empirical tails and are superseded by the 238 robust set.
+The resolved-tail procedure in the main Methods replaces this initial calibration. Its nonredundant results are reported once in Table~\ref{tab:primary-ec-results}; the earlier annotation-level counts in Table~\ref{tab:initial-block-results} are retained only to document why supported-partition deduplication and resolved-tail calibration were required.
 
 \subsection*{Cell-type effects within mouse}
 
@@ -1655,11 +1590,5 @@ ACAT across cell types produced 8 nominal GLS and 12 nominal Dirichlet--multinom
 Naive shared-effect pooling illustrates the pseudoreplication risk. It gave 43 nominal and one FDR Dirichlet--multinomial partition, but synchronized mouse permutations rejected 13.2\% of nulls at 0.05. The apparent discovery had asymptotic \(p=6.4\times10^{-5}\) but permutation \(p=0.143\). Naive shared GLS was also inflated, with 8.4\% null rejection.
 
 The mouse-clustered shared GLS restored conservative calibration: 2.19\% of 7,169 synchronized permutation p-values were below 0.05. It produced 11 nominal partitions among 359 tests and no FDR discoveries; its smallest p-value was 0.0126 with FDR 0.86. Gene-level ACAT gave 9 nominal genes among 313 and no FDR discoveries. Thus the calibrated gain is limited to the increase from 12 to 18 nominal within-cell-type tests under the Dirichlet--multinomial. None of the evaluated strategies creates a genome-wide condition discovery in this dataset.
-
-\section{Limitations and Extensions}
-
-The profile covariance is conditional on the fitted genome-wide decoder. Uncertainty in shared decoder parameters is expected to be small for common paths but may matter for rare genes or cell types. A mouse-level jackknife of the hierarchical fit is the preferred extension.
-
-The current biological variance is isotropic in log-ratio space. Estimating a full covariance separately for every block would be unstable with few mice. A later empirical-Bayes model could shrink path-specific biological covariances across genes.
 
 \end{document}
