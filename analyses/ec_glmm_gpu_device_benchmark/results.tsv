@@ -1,0 +1,5 @@
+sample	dataset	candidate_design	tests	cpu_seconds	gpu_seconds	cpu_over_gpu_speedup	cpu_joint_converged	gpu_joint_converged	median_absolute_lrt_difference	maximum_absolute_lrt_difference	cpu_objective_evaluations	gpu_objective_evaluations
+mouse_random12	mouse	random_shape-changing	12	128.145761	187.164117	0.684671	12	12	2.27374e-12	0.00837768	978	957
+mouse_grouped9	mouse	dimension-stratified_gene-grouped	9	90.585794	90.221528	1.004037	9	9	5.00222e-12	0.000360852	929	929
+human_grouped8	human	dimension-stratified_gene-grouped	8	95.648936	94.262438	1.014709	8	8	1.21663e-11	4.40213e-06	662	662
+human_singletons4	human	one_block_per_gene	4	70.313675	71.325974	0.985807	4	4	3.01270e-11	0.000353567	311	311
