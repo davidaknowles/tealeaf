@@ -1,0 +1,7 @@
+comparison	method	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	shared_gene_pairs
+Tealeaf EC GLMM vs LeafCutter	Tealeaf EC GLMM	36	7	5	4	0.7571428571428571	0.3974259974259975	172
+Tealeaf EC GLMM vs LeafCutter	LeafCutter	36	14	11	9	0.7662337662337663	0.6612918608223743	172
+Tealeaf EC GLMM vs MAJIQ Heterogen	Tealeaf EC GLMM	63	17	12	11	0.7818627450980392	0.49420154501484675	364
+Tealeaf EC GLMM vs MAJIQ Heterogen	MAJIQ Heterogen	63	19	31	17	0.8225806451612903	0.7003012229433692	364
+Tealeaf EC GLMM vs scQuint	Tealeaf EC GLMM	61	17	12	11	0.7818627450980392	0.45689723981141056	337
+Tealeaf EC GLMM vs scQuint	scQuint	61	16	19	11	0.8009868421052632	0.6164463246959281	337

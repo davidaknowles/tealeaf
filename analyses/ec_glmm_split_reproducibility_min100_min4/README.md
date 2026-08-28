@@ -1,0 +1,7 @@
+# Tealeaf EC-GLMM split reproducibility
+
+This directory contains the primary data-split comparator scoring for the actual Tealeaf logistic-normal EC-count GLMM. Completed pairwise cell-type fits were filtered at the calibration-selected minimum median gene depth of 100 modeled UMIs and the native eligibility requirement of at least four paired mice. Tealeaf retains paired-primer EC counts, primer-specific compatibility maps, isoform ambiguity, condition nuisance effects, mouse random intercepts, and pseudobulk logistic-normal effects. The split fits use Laplace inference and likelihood-ratio p-values.
+
+Each Tealeaf--comparator row is scored on genes and cell-type pairs available to both methods in both condition-balanced subject halves. Feature p-values are combined by Simes within gene--pair and then across the shared pairs within gene. `gene_metrics.tsv` contains the reported discovery and reproducibility summaries, `gene_reproducibility.tsv.gz` contains gene-level fold statistics, and `topk_overlap.tsv` contains top-ranked overlap summaries.
+
+The label-swap calibration subset contains 77 converged tests after the 100-UMI filter. Its rejection rate is 0.0519 at nominal 0.05, no p-value is below 0.01, and no test passes BH at 0.05. This audit selected the depth threshold before the split result was inspected but has limited tail resolution.

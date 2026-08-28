@@ -1,0 +1,31 @@
+comparison	method	k	overlap	overlap_fraction	shared_gene_pairs
+Tealeaf EC GLMM vs LeafCutter	Tealeaf EC GLMM	25	22	0.88	116
+Tealeaf EC GLMM vs LeafCutter	Tealeaf EC GLMM	30	30	1.0	116
+Tealeaf EC GLMM vs LeafCutter	Tealeaf EC GLMM	30	30	1.0	116
+Tealeaf EC GLMM vs LeafCutter	Tealeaf EC GLMM	30	30	1.0	116
+Tealeaf EC GLMM vs LeafCutter	Tealeaf EC GLMM	30	30	1.0	116
+Tealeaf EC GLMM vs LeafCutter	LeafCutter	25	23	0.92	116
+Tealeaf EC GLMM vs LeafCutter	LeafCutter	30	30	1.0	116
+Tealeaf EC GLMM vs LeafCutter	LeafCutter	30	30	1.0	116
+Tealeaf EC GLMM vs LeafCutter	LeafCutter	30	30	1.0	116
+Tealeaf EC GLMM vs LeafCutter	LeafCutter	30	30	1.0	116
+Tealeaf EC GLMM vs MAJIQ Heterogen	Tealeaf EC GLMM	25	15	0.6	220
+Tealeaf EC GLMM vs MAJIQ Heterogen	Tealeaf EC GLMM	50	48	0.96	220
+Tealeaf EC GLMM vs MAJIQ Heterogen	Tealeaf EC GLMM	54	54	1.0	220
+Tealeaf EC GLMM vs MAJIQ Heterogen	Tealeaf EC GLMM	54	54	1.0	220
+Tealeaf EC GLMM vs MAJIQ Heterogen	Tealeaf EC GLMM	54	54	1.0	220
+Tealeaf EC GLMM vs MAJIQ Heterogen	MAJIQ Heterogen	25	16	0.64	220
+Tealeaf EC GLMM vs MAJIQ Heterogen	MAJIQ Heterogen	50	46	0.92	220
+Tealeaf EC GLMM vs MAJIQ Heterogen	MAJIQ Heterogen	54	54	1.0	220
+Tealeaf EC GLMM vs MAJIQ Heterogen	MAJIQ Heterogen	54	54	1.0	220
+Tealeaf EC GLMM vs MAJIQ Heterogen	MAJIQ Heterogen	54	54	1.0	220
+Tealeaf EC GLMM vs scQuint	Tealeaf EC GLMM	25	15	0.6	204
+Tealeaf EC GLMM vs scQuint	Tealeaf EC GLMM	50	49	0.98	204
+Tealeaf EC GLMM vs scQuint	Tealeaf EC GLMM	52	52	1.0	204
+Tealeaf EC GLMM vs scQuint	Tealeaf EC GLMM	52	52	1.0	204
+Tealeaf EC GLMM vs scQuint	Tealeaf EC GLMM	52	52	1.0	204
+Tealeaf EC GLMM vs scQuint	scQuint	25	17	0.68	204
+Tealeaf EC GLMM vs scQuint	scQuint	50	49	0.98	204
+Tealeaf EC GLMM vs scQuint	scQuint	52	52	1.0	204
+Tealeaf EC GLMM vs scQuint	scQuint	52	52	1.0	204
+Tealeaf EC GLMM vs scQuint	scQuint	52	52	1.0	204
