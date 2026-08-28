@@ -319,7 +319,7 @@ Every bootstrap replicate receives the same leave-block-out calibration. Aggrega
 
 The primary comparator benchmark uses the Tealeaf EC-count GLMM itself, not the paired junction baseline described in the appendix. To match the pairwise cell-type hypotheses reported by LeafCutter, MAJIQ Heterogen, and scQuint, Tealeaf fits each eligible pair separately using only mice represented in both cell types. The likelihood retains the observed paired-primer EC vectors, primer-specific maps \(A_{gp}\), all supported gene isoforms, condition nuisance effects, a mouse random intercept, and the logistic-normal pseudobulk effect. In the notation above, each pairwise block test has \(J_b=2\) and tested dimension \(d_b=S_b-1\). The split benchmark uses the Laplace fitting option and its chi-square LRT because every model must be refit independently in both subject halves.
 
-The minimum median gene depth of 100 modeled UMIs was selected from paired-label null fits before inspecting split reproducibility. Among the 77 converged null tests retained by this threshold, the rejection rate was 0.0519 at nominal 0.05, no p-value was below 0.01, and none passed BH. At least four paired mice are required. A stricter eight-paired-mouse sensitivity is also reported. This audit is smaller than the parametric-bootstrap calibration of the full primary analysis, so the split comparison is evidence about reproducibility rather than a replacement for the calibrated full-data result.
+The comparator benchmark retains the native EC screen of at least 10 modeled gene UMIs per pseudobulk and at least four paired mice, followed by joint convergence of the null and alternative fits. Tealeaf fits 7,671 and 5,140 block-by-cell-type-pair hypotheses in the two halves, of which 7,436 and 4,949 jointly converge. A 1,000-test paired-label-swap audit has 967 jointly converged fits; its rejection rates at nominal levels 0.05, 0.01, and 0.001 are 0.0745, 0.0186, and 0.00414, with no BH discoveries. The asymptotic tail is therefore mildly anti-conservative. The split comparison is an empirical reproducibility benchmark, its BH counts are descriptive rather than calibrated FDR claims, and it does not replace the bootstrap-calibrated full-data analysis. A depth-filtered calibration sensitivity is reported in the appendix rather than used to collapse the main benchmark.
 
 The same biological subjects are divided into two condition-balanced halves for all methods. Spliced alignments supplied to the external methods are restricted to unique genomic mappings and deduplicated by cell barcode, UMI, genomic start, and CIGAR. LeafCutter tests intron clusters, MAJIQ tests edges within local splicing variations, and scQuint tests intron groups. For each Tealeaf--comparator pair, scoring retains only genes and cell-type pairs eligible for both methods in both halves. Feature p-values are combined by Simes within each gene--cell-type pair and then across the shared pairs within a gene. For method \(m\), gene \(g\), and half \(h\in\{1,2\}\), let \(p_{mgh}\in[0,1]\) be the resulting gene p-value. The conjunction p-value \(p_{mg}^{\rm rep}=\max(p_{mg1},p_{mg2})\) tests whether the gene has signal in both halves, and BH at 0.05 is applied on the pairwise shared gene universe. Secondary endpoints are held-half nominal replication and Spearman correlation of gene--pair \(-\log_{10}p\) across halves.
 
@@ -327,27 +327,25 @@ The same biological subjects are divided into two condition-balanced halves for 
 
 \subsection*{EC-GLMM reproducibility against comparator methods}
 
-Table~\ref{tab:ec-glmm-reproducibility} gives the comparison using the actual logistic-normal Tealeaf EC GLMM. Tealeaf has fewer replicated genes than LeafCutter, 4 versus 9, and relaxed-coverage MAJIQ, 11 versus 17, and ties scQuint at 11. Its held-half replication is similar to LeafCutter and scQuint but its fold-to-fold rank correlation is lower than all three comparators. The result therefore does not support a claim that the current EC model is more reproducible or powerful than the junction-based methods. The shared universes are small because the calibration-selected 100-UMI threshold and EC identifiability filters are applied before intersection with each comparator.
+Table~\ref{tab:ec-glmm-reproducibility} gives the comparison using the actual logistic-normal Tealeaf EC GLMM on the full native-screened test set. The MAJIQ and scQuint comparisons contain 2,471 and 2,519 shared gene-by-cell-type-pair tests; the LeafCutter intersection contains 739. Tealeaf has fewer replicated genes than every comparator, 10 versus 25 for LeafCutter, 17 versus 38 for relaxed-coverage MAJIQ, and 17 versus 57 for scQuint. Its held-half replication rate is higher in all three matched comparisons, while its fold-to-fold rank correlation is higher than LeafCutter and lower than MAJIQ and scQuint. The result supports reproducibility of Tealeaf's smaller discovery set but does not support greater power than the junction-based methods.
 
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{Cell-type differential-splicing reproducibility across independent subject halves using the Tealeaf logistic-normal EC GLMM. ``Rep.'' is the number of genes passing BH on \(p^{\rm rep}\); ``held'' is held-half nominal replication; \(\rho\) is Spearman correlation of gene--pair \(-\log_{10}p\). Each row uses the gene and cell-type-pair universe shared by Tealeaf and that comparator in both halves. Comparator p-values are their native values.}
+\caption{Cell-type differential-splicing reproducibility across independent subject halves using the Tealeaf logistic-normal EC GLMM. ``Tests'' counts shared gene-by-cell-type-pair hypotheses, ``Rep.'' is the number of genes passing BH on \(p^{\rm rep}\), ``held'' is held-half nominal replication, and \(\rho\) is Spearman correlation of gene--pair \(-\log_{10}p\). Each row uses the hypothesis universe shared by Tealeaf and that comparator in both halves. P-values are native asymptotic values, and BH counts are descriptive because the Tealeaf label-swap audit is mildly anti-conservative.}
 \label{tab:ec-glmm-reproducibility}
-\begin{tabular}{lrrrrrrr}
+\begin{tabular}{lrrrrrrrr}
 \toprule
-& Shared & \multicolumn{3}{c}{Tealeaf EC GLMM} & \multicolumn{3}{c}{Comparator}\\
-\cmidrule(lr){3-5}\cmidrule(lr){6-8}
-Comparator & genes & Rep. & held & \(\rho\) & Rep. & held & \(\rho\)\\
+& \multicolumn{2}{c}{Shared} & \multicolumn{3}{c}{Tealeaf EC GLMM} & \multicolumn{3}{c}{Comparator}\\
+\cmidrule(lr){2-3}\cmidrule(lr){4-6}\cmidrule(lr){7-9}
+Comparator & tests & genes & Rep. & held & \(\rho\) & Rep. & held & \(\rho\)\\
 \midrule
-LeafCutter & 36 & 4 & 0.757 & 0.397 & 9 & 0.766 & 0.661\\
-MAJIQ relaxed UMI & 63 & 11 & 0.782 & 0.494 & 17 & 0.823 & 0.700\\
-scQuint & 61 & 11 & 0.782 & 0.457 & 11 & 0.801 & 0.616\\
+LeafCutter & 739 & 138 & 10 & 0.839 & 0.561 & 25 & 0.744 & 0.537\\
+MAJIQ relaxed UMI & 2,471 & 475 & 17 & 0.849 & 0.394 & 38 & 0.692 & 0.432\\
+scQuint & 2,519 & 494 & 17 & 0.830 & 0.366 & 57 & 0.773 & 0.464\\
 \bottomrule
 \end{tabular}
 \end{table}
-
-Requiring at least eight paired mice reduces the shared universes to 30, 54, and 52 genes. Tealeaf then has 3 versus 8 replicated genes against LeafCutter, 9 versus 14 against relaxed MAJIQ, and 9 versus 11 against scQuint. This stricter sensitivity reaches the same conclusion.
 
 \subsection*{Full calibrated EC-GLMM analysis}
 
@@ -423,6 +421,10 @@ These precedents establish that a subset of discovered coordinates encode functi
 \appendix
 
 \section{Exploratory and Supporting Analyses}
+
+\subsection*{Depth-filtered split sensitivity}
+
+Filtering the pairwise split benchmark at a median gene depth of 100 modeled UMIs reduces the jointly converged Tealeaf fits to 1,101 block-pair tests from 202 genes in fold 0 and 564 tests from 94 genes in fold 1. The intersections with LeafCutter, relaxed-coverage MAJIQ, and scQuint then contain only 172, 364, and 337 gene-pair tests from 36, 63, and 61 genes. Tealeaf has 4, 11, and 11 replicated genes on these intersections, compared with 9, 17, and 11 for the respective comparators. Although the retained 77-test label-swap subset has a 0.0519 nominal rejection rate and no p-value below 0.01, its resolution is too low and its coverage loss is too severe for this filter to define the main genome-wide comparison. It is retained only as a depth sensitivity.
 
 \subsection*{Nonbootstrap Laplace sensitivity}
 
