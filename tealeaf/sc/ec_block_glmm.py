@@ -197,6 +197,62 @@ def block_fixed_effect_tensors(nuisance_design, tested_design, path_index):
     return null, alternative, path_contrasts.shape[1] * tested_design.shape[1]
 
 
+def tangent_block_fixed_effect_tensors(
+    nuisance_design, tested_design, path_index, baseline
+):
+    """Build a block test whose null is tangent to fixed path proportions.
+
+    ``baseline`` has dimension ``T`` and defines the point at which tested
+    nuisance directions have zero derivative in every local path ILR. This
+    corrects the Euclidean logit basis used by
+    :func:`block_fixed_effect_tensors`, whose orthogonal complement can change
+    aggregate path proportions when a path contains unequal isoform weights.
+    """
+    nuisance_design = np.asarray(nuisance_design, dtype=float)
+    tested_design = np.asarray(tested_design, dtype=float)
+    path_index = np.asarray(path_index, dtype=int)
+    baseline = np.maximum(np.asarray(baseline, dtype=float), 1e-12)
+    if baseline.shape != path_index.shape:
+        raise ValueError("baseline and path_index must have dimension T")
+    if len(nuisance_design) != len(tested_design):
+        raise ValueError("nuisance and tested designs do not align")
+    jacobian = differential.path_logratio_jacobian(
+        baseline / baseline.sum(), path_index
+    )[:, :-1]
+    _, singular_values, right = np.linalg.svd(jacobian, full_matrices=True)
+    tolerance = (
+        np.finfo(float).eps * max(jacobian.shape) * singular_values[0]
+    )
+    rank = int(np.sum(singular_values > tolerance))
+    if rank != jacobian.shape[0]:
+        raise ValueError("baseline path ILRs are not locally identifiable")
+    tested_basis = jacobian.T @ np.linalg.solve(
+        jacobian @ jacobian.T,
+        np.eye(rank),
+    )
+    nuisance_basis = right[rank:].T
+    condition = unrestricted_tensor(nuisance_design, len(path_index) - 1)
+
+    def additions(basis):
+        return [
+            tested_design[:, column, None]
+            * basis[:, contrast][None, :]
+            for column in range(tested_design.shape[1])
+            for contrast in range(basis.shape[1])
+        ]
+
+    null_additions = additions(nuisance_basis)
+    null = (
+        np.concatenate((condition, np.stack(null_additions, axis=2)), axis=2)
+        if null_additions
+        else condition
+    )
+    alternative = np.concatenate(
+        (null, np.stack(additions(tested_basis), axis=2)), axis=2
+    )
+    return null, alternative, rank * tested_design.shape[1]
+
+
 def nested_laplace_tests(
     null_data,
     alternative_data,

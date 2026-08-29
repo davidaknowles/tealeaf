@@ -1,0 +1,10 @@
+metric	value
+candidate_cassette_tests	100
+testable_with_pure_path_ecs	76
+tests_missing_a_pure_ec_for_at_least_one_path	24
+median_pure_path_ecs	16
+median_pure_path_umis	96.5
+median_fraction_of_crude_gene_umi_exposure	0.1069
+pure_ec_nominal_0.05_among_76	10
+local_path_nominal_0.05_among_same_76	15
+global_isoform_nominal_0.05_among_same_76	14

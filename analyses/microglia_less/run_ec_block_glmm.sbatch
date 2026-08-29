@@ -74,7 +74,7 @@ ARGS=(
   --laplace-mode-gradient "${LAPLACE_MODE_GRADIENT:-implicit}"
   --laplace-cache-scope "${LAPLACE_CACHE_SCOPE:-gene_shape}"
   --laplace-multinomial-derivatives "${LAPLACE_MULTINOMIAL_DERIVATIVES:-analytic}"
-  --latent-space "${LATENT_SPACE:-isoform}"
+  --latent-space "${LATENT_SPACE:-isoform_tangent}"
   --retries "${RETRIES}"
   --null-replicate-retries "${NULL_REPLICATE_RETRIES}"
   --vi-samples "${VI_SAMPLES}"

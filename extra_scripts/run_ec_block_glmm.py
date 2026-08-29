@@ -115,9 +115,15 @@ def parse_args():
     parser.add_argument("--joint-gene-test", action="store_true")
     parser.add_argument(
         "--latent-space",
-        choices=("isoform", "path_uniform", "path_pooled"),
-        default="isoform",
-        help="Fit the original isoform space or a fixed-mixture path space.",
+        choices=(
+            "isoform_tangent",
+            "path_local",
+        ),
+        default="isoform_tangent",
+        help=(
+            "Fit the production pooled-baseline local-path tangent model or "
+            "the exact fixed-mixture local-path sensitivity."
+        ),
     )
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
@@ -632,6 +638,29 @@ def reparameterize_fixed_effects(fit, source_tensor, target_tensor):
     return np.r_[target_coefficients, fit["parameters"][source_count:]]
 
 
+def nested_alternative_is_worse(method, null, alternative, rtol=1e-8):
+    """Return whether a cached alternative violates nesting numerically."""
+    null_objective = float(null["objective"])
+    alternative_objective = float(alternative["objective"])
+    tolerance = float(rtol) * max(
+        1.0, abs(null_objective), abs(alternative_objective)
+    )
+    if method.startswith("laplace_"):
+        return alternative_objective > null_objective + tolerance
+    return alternative_objective < null_objective - tolerance
+
+
+def better_fit(method, candidate, incumbent):
+    """Choose the fit with the better optimized objective."""
+    if bool(candidate["converged"]) != bool(incumbent["converged"]):
+        return candidate if candidate["converged"] else incumbent
+    if method.startswith("laplace_"):
+        better = candidate["objective"] < incumbent["objective"]
+    else:
+        better = candidate["objective"] > incumbent["objective"]
+    return candidate if better else incumbent
+
+
 def main():
     args = parse_args()
     if args.calibration == "lrt_bic" and any(
@@ -908,28 +937,46 @@ def main():
             )
             original_isoforms = base.n_isoforms
             modeled_path_index = np.asarray(path_index, dtype=int)
-            if args.latent_space != "isoform":
+            if args.latent_space == "isoform_tangent":
                 weight_key = (gene, tuple(rows), tuple(transcripts))
-                weights = None
-                if args.latent_space == "path_pooled":
-                    if weight_key not in pooled_weight_cache:
-                        pooled_weight_cache[weight_key] = (
-                            ec_block_glmm.pooled_isoform_weights(base)
-                        )
-                    weights = pooled_weight_cache[weight_key]
+                if weight_key not in pooled_weight_cache:
+                    pooled_weight_cache[weight_key] = (
+                        ec_block_glmm.pooled_isoform_weights(base)
+                    )
+                tangent_weights = pooled_weight_cache[weight_key]
+            else:
+                tangent_weights = None
+            if args.latent_space == "path_local":
+                weight_key = (gene, tuple(rows), tuple(transcripts))
+                if weight_key not in pooled_weight_cache:
+                    pooled_weight_cache[weight_key] = (
+                        ec_block_glmm.pooled_isoform_weights(base)
+                    )
                 base, modeled_path_index = (
                     ec_block_glmm.collapse_isoforms_to_paths(
-                        base, path_index, weights=weights
+                        base,
+                        path_index,
+                        weights=pooled_weight_cache[weight_key],
                     )
                 )
                 if args.laplace_cache_scope != "global_shape":
                     objective_cache.clear()
             tested = treatment_design(labels, len(tested_levels))
-            null_tensor, alternative_tensor, degrees = (
-                ec_block_glmm.block_fixed_effect_tensors(
-                    nuisance, tested, modeled_path_index
+            if args.latent_space == "isoform_tangent":
+                null_tensor, alternative_tensor, degrees = (
+                    ec_block_glmm.tangent_block_fixed_effect_tensors(
+                        nuisance,
+                        tested,
+                        modeled_path_index,
+                        tangent_weights,
+                    )
                 )
-            )
+            else:
+                null_tensor, alternative_tensor, degrees = (
+                    ec_block_glmm.block_fixed_effect_tensors(
+                        nuisance, tested, modeled_path_index
+                    )
+                )
             null_data = tensor_data(base, null_tensor)
             full_alternative_tensor = ec_block_glmm.full_fixed_effect_tensor(
                 nuisance, tested, base.n_isoforms - 1
@@ -940,7 +987,7 @@ def main():
                 cache_key = (test_id, method)
                 alternative_key = (
                     (gene, tuple(rows), method, args.latent_space)
-                    if args.latent_space == "isoform"
+                    if args.latent_space == "isoform_tangent"
                     else (test_id, method, args.latent_space)
                 )
                 if cache_key not in null_cache:
@@ -1015,6 +1062,40 @@ def main():
                         objective_cache, args.laplace_cache_size
                     )
                 alternative = alternative_cache[alternative_key]
+                if alternative_reused and (
+                    not alternative["converged"]
+                    or nested_alternative_is_worse(method, null, alternative)
+                ):
+                    refined = fit_with_retries(
+                        method,
+                        full_alternative_data,
+                        args,
+                        initial=reparameterize_fixed_effects(
+                            null,
+                            null_tensor,
+                            full_alternative_tensor,
+                        ),
+                        objective_cache=objective_cache,
+                        objective_cache_key=laplace_objective_cache_key(
+                            args,
+                            method,
+                            full_alternative_data,
+                            ("observed_alternative", *alternative_key),
+                        ),
+                    )
+                    trim_objective_cache(
+                        objective_cache, args.laplace_cache_size
+                    )
+                    alternative = better_fit(method, refined, alternative)
+                    alternative_cache[alternative_key] = alternative
+                block_parameters = reparameterize_fixed_effects(
+                    alternative,
+                    full_alternative_tensor,
+                    alternative_tensor,
+                )
+                tested_coefficients = block_parameters[
+                    null_tensor.shape[2] : alternative_tensor.shape[2]
+                ]
                 completed_methods[method] = {
                     "null": null,
                     "alternative": alternative,
@@ -1067,6 +1148,17 @@ def main():
                     "n_samples": len(local_metadata),
                     "n_test_levels": len(tested_levels),
                     "degrees_of_freedom": degrees,
+                    "tested_effect": (
+                        float(tested_coefficients[0])
+                        if len(tested_coefficients) == 1
+                        else np.nan
+                    ),
+                    "tested_effect_norm": float(
+                        np.linalg.norm(tested_coefficients)
+                    ),
+                    "tested_effects": json.dumps(
+                        np.asarray(tested_coefficients, dtype=float).tolist()
+                    ),
                     "median_gene_umis": float(np.median(totals)),
                     "statistic": statistic,
                     "lrt_p_value": lrt_p_value,

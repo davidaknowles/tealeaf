@@ -28,7 +28,7 @@
 \setbeamertemplate{frametitle}{\vspace{0.25cm}\insertframetitle\par\vspace{-0.1cm}\color{tlTeal}\rule{\textwidth}{0.8pt}}
 \setbeamertemplate{footline}{\leavevmode\hbox{\begin{beamercolorbox}[wd=.86\paperwidth,ht=2.6ex,dp=1.2ex,leftskip=.45cm]{author in head/foot}\color{tlGray}\scriptsize Tealeaf differential splicing\end{beamercolorbox}\begin{beamercolorbox}[wd=.14\paperwidth,ht=2.6ex,dp=1.2ex,rightskip=.45cm plus1fil]{author in head/foot}\color{tlGray}\scriptsize\insertframenumber/\inserttotalframenumber\end{beamercolorbox}}}
 
-\newcommand{\source}[1]{\vfill{\color{tlGray}\tiny #1}}
+\newcommand{\source}[1]{\par\vfill\noindent\parbox{0.96\linewidth}{\color{tlGray}\tiny #1}\par}
 \newcommand{\metric}[3]{\begin{tikzpicture}[baseline=(n.base)]\node[rounded corners=2pt,fill=#1!12,draw=#1!55,line width=.6pt,minimum width=2.65cm,minimum height=1.05cm,align=center,inner sep=4pt] (n) {\color{#1}\Large\bfseries #2\\[-1pt]\color{tlInk}\scriptsize #3};\end{tikzpicture}}
 \newcommand{\pill}[2]{\tikz[baseline=(p.base)]\node[rounded corners=4pt,fill=#1!14,text=#1,inner xsep=5pt,inner ysep=2pt,font=\scriptsize\bfseries] (p) {#2};}
 
@@ -74,7 +74,7 @@
 \textbf{Condition}, does path usage differ across conditions within one cell type?
 \end{block}
 \vspace{0.15cm}
-\begin{itemize}\small
+\begin{itemize}\scriptsize
 \item One hypothesis per nonredundant local path partition
 \item Mouse random effects represent biological replication
 \item Cells contribute to mouse $\times$ condition $\times$ cell-type pseudobulks, never independent replicates
@@ -97,29 +97,29 @@
 \end{tikzpicture}
 }
 \vspace{0.2cm}
-\small Ambiguous ECs remain ambiguous, primer design enters through $A_{gp}$, and the biological effect is tested only in the local path subspace.
+\small Ambiguous ECs remain ambiguous, primer design enters through $A_{gp}$, and a pooled-baseline Jacobian defines the local path effect without discarding global isoform nuisance variation.
 \end{frame}
 
-\begin{frame}{The nested test isolates the block contrast without fixing the rest of the gene}
+\begin{frame}{The corrected null follows constant local path usage}
 \begin{columns}[T,onlytextwidth]
 \begin{column}{0.55\textwidth}
 \vspace{0.1cm}
 \begin{block}{Isoform-logit predictor}
-\small The tested block basis $H_b\in\mathbb R^{(T_g-1)\times d_b}$ lifts an orthonormal path contrast into isoform space. The nuisance basis $N_b\in\mathbb R^{(T_g-1)\times(T_g-S_b)}$ spans every orthogonal gene-level direction.
+\scriptsize A label-independent pooled fit defines the path-ILR Jacobian $J_b\in\mathbb R^{d_b\times(T_g-1)}$. The tested basis is a right inverse, $J_bH_b=I_{d_b}$, and the nuisance basis spans its kernel, $J_bN_b=0$.
 \end{block}
 \vspace{0.15cm}
-\small The null predictor is $\mathcal F_{bi}^{(0)}=B_0'Z_{bi}'+\sum_jW_{bij}N_b\bm\alpha_{bj}$, while the alternative adds $\sum_jW_{bij}H_b\bm\gamma_{bj}$.
+\scriptsize The null predictor is $\mathcal F_{bi}^{(0)}=B_0'Z_{bi}'+\sum_jW_{bij}N_b\bm\alpha_{bj}$, while the alternative adds $\sum_jW_{bij}H_b\bm\gamma_{bj}$.
 \vspace{0.2cm}
-\begin{itemize}\small
+\begin{itemize}\scriptsize
 \item $Z_b\in\mathbb R^{I_b\times q_0}$ carries nuisance covariates
 \item $W_b\in\mathbb R^{I_b\times q_1}$ carries the tested cell-type or condition design
-\item The alternative adds $q_1d_b$ local path coefficients, but remains unrestricted in free isoform-logit space
+\item The alternative adds $q_1d_b$ local path coefficients and remains unrestricted; for a pairwise cassette test, $d_b=1$
 \end{itemize}
 \end{column}
 \begin{column}{0.42\textwidth}
 \begin{tikzpicture}[x=1cm,y=1cm,>=Latex]
-\node[rounded corners=3pt,fill=tlLight,draw=tlGray!55,minimum width=4.5cm,minimum height=1.15cm,align=center] (null) at (0,3.6) {\textbf{Null}\\nuisance gene directions $N_b$};
-\node[rounded corners=3pt,fill=tlLightTeal,draw=tlTeal!70,minimum width=4.5cm,minimum height=1.15cm,align=center] (alt) at (0,1.75) {\textbf{Alternative}\\$N_b$ plus local path directions $H_b$};
+\node[rounded corners=3pt,fill=tlLight,draw=tlGray!55,minimum width=4.5cm,minimum height=1.15cm,align=center] (null) at (0,3.6) {\textbf{Null}\\tangent directions $N_b=\ker(J_b)$};
+\node[rounded corners=3pt,fill=tlLightTeal,draw=tlTeal!70,minimum width=4.5cm,minimum height=1.15cm,align=center] (alt) at (0,1.75) {\textbf{Alternative}\\$N_b$ plus right inverse $H_b$};
 \draw[->,tlTeal,line width=1.5pt] (null)--node[right,font=\scriptsize,align=left] {add $q_1d_b$\\coefficients} (alt);
 \node[rounded corners=3pt,fill=tlNavy,text=white,minimum width=4.5cm,minimum height=.9cm,align=center] at (0,.15) {fit nested EC GLMMs\\calibrate objective gain};
 \end{tikzpicture}
@@ -167,11 +167,11 @@
 \source{Sources, Spangenberg et al., Cell Reports 2022, GEO GSE189033; Miyoshi et al., Nature Genetics 2024, GEO GSE233208. Counts shown are the analysis metadata summarized in this repository.}
 \end{frame}
 
-\begin{frame}{Calibrated mouse analysis finds cell-type splicing, not robust condition effects}
+\begin{frame}{Former-basis calibration found cell-type splicing, not condition effects}
 \begin{columns}[T,onlytextwidth]
 \begin{column}{0.49\textwidth}
 \centering
-\metric{tlTeal}{238}{robust cell-type discoveries}
+\metric{tlTeal}{238}{former-basis cell-type calls}
 \hspace{0.15cm}
 \metric{tlOrange}{0}{robust condition discoveries}
 \vspace{0.55cm}
@@ -185,43 +185,39 @@
 \vspace{0.05cm}
 \begin{itemize}\small
 \item 4,825 cell-type path partitions and 14,833 condition-within-cell-type tests
-\item Aggregate null rejection matches 0.05, 0.01, and 0.001 after cross-fitted calibration
-\item A robust event passes BH across every 80--95\% tail threshold
+\item Aggregate null rejection matches 0.05, 0.01, and 0.001 after cross-fitted calibration; robust events pass BH across every 80--95\% tail threshold
 \item The primary logistic-normal likelihood allows pseudobulk extra-multinomial variation shared across the two primer halves
 \end{itemize}
-\vspace{0.2cm}
+\vspace{0.05cm}
 \begin{block}{Interpretation}
-\small Cell identity is associated with many local isoform choices. No condition effect survives the prespecified calibration sensitivity analysis.
+\scriptsize Cell identity is associated with many local isoform choices. No condition effect survived the former-basis calibration sensitivity analysis. These full-data counts require rerunning under the corrected tangent null.
 \end{block}
 \end{column}
 \end{columns}
 \end{frame}
 
-\begin{frame}{Matched comparator yields span different feature universes}
+\begin{frame}{Split reproducibility against junction comparators}
 \centering
 \scriptsize
 \renewcommand{\arraystretch}{1.23}
 \setlength{\tabcolsep}{5.5pt}
-\begin{tabular}{lcrrrcrrr}
+\begin{tabular}{lrrrrrr}
 \toprule
-& & \multicolumn{3}{c}{Mouse} & \multicolumn{3}{c}{Human}\\
-\cmidrule(lr){3-5}\cmidrule(lr){6-8}
-Method & Unit & CT tests & CT BH & CT rate & CT tests & CT BH & CT rate\\
+& \multicolumn{3}{c}{Tealeaf} & \multicolumn{3}{c}{Comparator}\\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Comparator & Rep. & held & $\rho$ & Rep. & held & $\rho$\\
 \midrule
-\textbf{Tealeaf} & EC block & 4,825 & 322 & 6.67\% & 11,597 & 1,463 & 12.62\%\\
-LeafCutter & intron cluster & 1,020 & 229 & 22.45\% & 2,155 & 238 & 11.04\%\\
-MAJIQ Heterogen & LSV edge & 46 & 27 & 58.70\% & 582 & 342 & 58.76\%\\
-scQuint & intron group & 16,081 & 828 & 5.15\% & 27,097 & 2,239 & 8.26\%\\
+LeafCutter & 12 & \textbf{0.867} & \textbf{0.562} & \textbf{25} & 0.744 & 0.543\\
+MAJIQ Heterogen & 19 & \textbf{0.828} & 0.362 & \textbf{38} & 0.697 & \textbf{0.434}\\
+scQuint & 18 & \textbf{0.828} & 0.358 & \textbf{57} & 0.777 & \textbf{0.461}\\
 \bottomrule
 \end{tabular}
-\vspace{0.35cm}
-\begin{tikzpicture}[x=.72cm,y=.43cm]
-\node[anchor=east,font=\scriptsize\bfseries] at (-.25,3.7) {Condition};
-\foreach \i/\name/\mc/\hc/\clr in {0/Tealeaf/3/193/tlTeal,1/LeafCutter/40/475/tlNavy,2/MAJIQ/34/278/tlOrange,3/scQuint/16/36/tlGold}{\node[anchor=east,font=\scriptsize] at (2.05,3-\i*.72) {\name};\fill[\clr!82] (2.25,2.79-\i*.72) rectangle ({2.25+\mc/25},3.19-\i*.72);\node[anchor=west,font=\tiny] at ({2.35+\mc/25},2.99-\i*.72) {mouse \mc};\fill[\clr!38] (8.4,2.79-\i*.72) rectangle ({8.4+\hc/110},3.19-\i*.72);\node[anchor=west,font=\tiny] at ({8.5+\hc/110},2.99-\i*.72) {human \hc};}
-\end{tikzpicture}
-\vspace{-0.15cm}
-\begin{alertblock}{Read as descriptive yield, not a power ranking}
-\scriptsize Methods test different units and apply different filters. External cell-type results combine pairwise tests by Simes, whereas Tealeaf fits an omnibus model. The ordinary multilevel Tealeaf LRT used here is not structured-null calibrated, so these BH counts are descriptive; the 238-call calibrated mouse analysis is the validated result.
+\vspace{0.4cm}
+\begin{block}{What the corrected hypothesis changes}
+\scriptsize The pooled-baseline tangent null increases Tealeaf replicated-gene counts from 10, 17, and 17 to 12, 19, and 18. Tealeaf has higher held-half nominal replication in every matched comparison, but fewer replicated discoveries. ``Rep.'' applies BH to the conjunction p-value on each pairwise shared gene universe; $\rho$ is fold correlation of gene--pair $-\log_{10}p$.
+\end{block}
+\begin{alertblock}{Interpretation}
+\scriptsize Native asymptotic p-values make this an empirical reproducibility benchmark, not a calibrated FDR power ranking. The methods also report different feature units before common gene-level aggregation.
 \end{alertblock}
 \end{frame}
 
@@ -237,7 +233,7 @@ scQuint & intron group & 16,081 & 828 & 5.15\% & 27,097 & 2,239 & 8.26\%\\
 \end{tikzpicture}
 \end{column}
 \begin{column}{0.34\textwidth}
-\metric{tlTeal}{3.3$\times$}{slower than scQuint in both broad campaigns}
+\metric{tlTeal}{3.3$\times$}{slower than scQuint\\broad worker time}
 \vspace{0.3cm}
 \begin{itemize}\scriptsize
 \item Same scalar Laplace LRT and analytic EC derivatives in both species
@@ -247,7 +243,7 @@ scQuint & intron group & 16,081 & 828 & 5.15\% & 27,097 & 2,239 & 8.26\%\\
 \end{itemize}
 \end{column}
 \end{columns}
-\source{Scope starts from prepared method inputs and includes cell-type plus condition fitting and result construction; shared read processing is excluded.}
+\source{Worker time starts from prepared inputs and excludes shared read processing.}
 \end{frame}
 
 \begin{frame}{Robust mouse calls are enriched for transcript-end differences}
@@ -278,11 +274,11 @@ scQuint & intron group & 16,081 & 828 & 5.15\% & 27,097 & 2,239 & 8.26\%\\
 \end{frame}
 
 \begin{frame}{Takeaways}
-\vspace{0.25cm}
-\begin{tikzpicture}[node distance=.28cm,box/.style={rounded corners=4pt,minimum width=13.9cm,minimum height=1.18cm,text width=13.1cm,align=left,inner xsep=12pt,font=\large}]
+\vspace{0.1cm}
+\begin{tikzpicture}[node distance=.22cm,box/.style={rounded corners=4pt,minimum width=13.9cm,minimum height=1.08cm,text width=13.1cm,align=left,inner xsep=12pt,font=\normalsize}]
 \node[box,fill=tlLightTeal,draw=tlTeal!55] (a) {\textbf{Model the observations that were measured.} Local path effects act through full isoforms, primer-specific EC maps, and observed pseudobulk counts without hard EC allocation.};
-\node[box,fill=tlLight,draw=tlNavy!35,below=of a] (b) {\textbf{Separate biology from calibration.} The calibrated mouse analysis supports 238 robust cell-type events and no robust condition events; human ordinary-LRT yields remain sensitivity results.};
-\node[box,fill=tlOrange!10,draw=tlOrange!50,below=of b] (c) {\textbf{Comparator yield is not accuracy.} Tealeaf, LeafCutter, MAJIQ, and scQuint use different feature universes, filters, and omnibus constructions.};
+\node[box,fill=tlLight,draw=tlNavy!35,below=of a] (b) {\textbf{Separate biology from calibration.} The 238-call full-data result predates the tangent correction and is provisional until recalibrated; human ordinary-LRT yields are sensitivity results.};
+\node[box,fill=tlOrange!10,draw=tlOrange!50,below=of b] (c) {\textbf{The corrected test helps but does not dominate.} It improves cassette and genome-wide split replication, with higher held-half replication but fewer replicated genes than the comparators.};
 \node[box,fill=tlNavy,text=white,below=of c] (d) {\textbf{The remaining tradeoff is compute.} Retaining EC ambiguity and repeatedly solving nested latent-Gaussian models costs about 3.3$\times$ scQuint's broad worker time after analytic derivative speedups.};
 \end{tikzpicture}
 \end{frame}

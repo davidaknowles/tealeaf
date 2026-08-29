@@ -1,0 +1,4 @@
+model	fold0_candidates	fold0_converged	fold1_candidates	fold1_converged	exact_common	both_nominal_0.05	conjunction_bh_0.05	same_sign_among_both_nominal	effect_spearman	null_universe	null_converged	null_rate_0.05	null_rate_0.01	null_rate_0.001	null_bh_0.05
+former_global_isoform	1353	1302	859	820	719	11	2	NA	NA	native_pairwise	967	0.074457	0.018614	0.004137	0
+exact_local_path	1353	1311	859	829	732	27	6	25/27	0.728327	cassette	971	0.058702	0.011329	0.002060	0
+global_isoform_tangent	1353	1319	859	824	730	28	6	26/28	0.721949	cassette	975	0.061538	0.013333	0.002051	0

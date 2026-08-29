@@ -12,12 +12,14 @@ from extra_scripts.merge_ec_block_glmm import (
     gpd_tail_p_values,
 )
 from extra_scripts.run_ec_block_glmm import (
+    better_fit,
     covered_celltype_design,
     covered_celltype_pairwise_designs,
     covered_condition_designs,
     deduplicate_supported_partitions,
     fit_method,
     modeled_gene_umis,
+    nested_alternative_is_worse,
     joint_gene_candidates,
     partition_candidates,
     permute_paired_labels,
@@ -27,7 +29,7 @@ from extra_scripts.run_celltype_compositional_splicing import (
     paired_celltype_design,
 )
 from extra_scripts.run_differential_splicing import block_mapping
-from tealeaf.sc import ec_block_glmm, ec_glmm, ec_glmm_full
+from tealeaf.sc import differential, ec_block_glmm, ec_glmm, ec_glmm_full
 
 
 def test_laplace_dirichlet_multinomial_dispatches_family(monkeypatch):
@@ -47,6 +49,17 @@ def test_laplace_dirichlet_multinomial_dispatches_family(monkeypatch):
     assert captured["family"] == "dirichlet_multinomial"
     assert captured["observation_noise"] is False
     assert captured["max_iter"] == 17
+
+
+def test_cached_alternative_rescue_respects_objective_direction():
+    low = {"objective": 8.0, "converged": True}
+    high = {"objective": 10.0, "converged": True}
+    assert nested_alternative_is_worse("laplace_multinomial", low, high)
+    assert not nested_alternative_is_worse("multinomial_full", low, high)
+    assert better_fit("laplace_multinomial", low, high) is low
+    assert better_fit("multinomial_full", low, high) is high
+    failed = {"objective": 7.0, "converged": False}
+    assert better_fit("laplace_multinomial", failed, high) is high
 
 
 def test_celltype_design_can_omit_subject_fixed_effects():
@@ -94,6 +107,29 @@ def test_path_and_nuisance_bases_span_centered_isoform_logits():
     np.testing.assert_allclose(
         full_centered(path).T @ full_centered(nuisance), 0.0, atol=1e-12
     )
+
+
+def test_global_logit_orthogonality_does_not_fix_aggregate_path_ratio():
+    path_index = np.array([1, 1, 0, 0, 0, 1])
+    baseline = np.arange(1, 7, dtype=float)
+    _, nuisance = ec_block_glmm.block_effect_bases(path_index)
+    jacobian = differential.path_logratio_jacobian(
+        baseline / baseline.sum(), path_index
+    )[:, :-1]
+    assert np.linalg.norm(jacobian @ nuisance) > 0.25
+
+
+def test_local_component_nuisance_fixes_path_ratio_exactly():
+    _, nuisance = ec_block_glmm.block_effect_bases([0, 1, -1])
+    reference_logits = np.log(np.array([0.2, 0.3]) / 0.5)
+    baseline = np.r_[np.exp(reference_logits), 1.0]
+    baseline_ratio = differential.path_proportions(
+        baseline, [0, 1, -1]
+    )[0]
+    for effect in (-2.0, -0.5, 0.5, 2.0):
+        abundance = np.r_[np.exp(reference_logits + effect * nuisance[:, 0]), 1.0]
+        ratio = differential.path_proportions(abundance, [0, 1, -1])[0]
+        np.testing.assert_allclose(ratio, baseline_ratio)
 
 
 def test_path_collapse_uses_weighted_columns_and_keeps_nuisance_isoforms():
@@ -169,6 +205,27 @@ def test_block_tensors_are_nested_with_expected_df():
     assert alternative.shape == (3, 3, 12)
     assert degrees == 4
     np.testing.assert_array_equal(alternative[:, :, :8], null)
+
+
+def test_tangent_block_null_preserves_path_ilr_to_first_order():
+    path_index = np.array([1, 1, 0, 0, 0, 1])
+    baseline = np.arange(1, 7, dtype=float)
+    nuisance = np.ones((4, 1), dtype=float)
+    tested = np.array([[0], [1], [0], [1]], dtype=float)
+    null, alternative, degrees = (
+        ec_block_glmm.tangent_block_fixed_effect_tensors(
+            nuisance, tested, path_index, baseline
+        )
+    )
+    condition_columns = len(path_index) - 1
+    tested_nuisance = null[1, :, condition_columns:]
+    tested_effect = alternative[1, :, null.shape[2]:]
+    jacobian = differential.path_logratio_jacobian(
+        baseline / baseline.sum(), path_index
+    )[:, :-1]
+    np.testing.assert_allclose(jacobian @ tested_nuisance, 0.0, atol=1e-12)
+    np.testing.assert_allclose(jacobian @ tested_effect, np.eye(1), atol=1e-12)
+    assert degrees == 1
 
 
 def test_canonical_full_alternative_has_same_block_model_span():
