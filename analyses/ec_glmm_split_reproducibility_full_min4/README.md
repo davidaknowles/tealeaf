@@ -1,6 +1,6 @@
 # Full-universe Tealeaf EC-GLMM split reproducibility
 
-This directory contains the primary data-split comparator scoring for the actual Tealeaf logistic-normal EC-count GLMM. It retains all jointly converged fits passing the native screen of at least 10 modeled gene UMIs per pseudobulk and at least four paired mice, without the post-fit 100-UMI sensitivity filter. Tealeaf fits 7,671 and 5,140 block-by-cell-type-pair hypotheses in the two condition-balanced subject halves, of which 7,436 and 4,949 jointly converge.
+This directory contains the primary data-split comparator scoring for the actual Tealeaf logistic-normal EC-count GLMM. It retains all jointly converged fits passing the production screen of at least 25 modeled gene UMIs in each included pseudobulk and at least four paired mice, without the post-fit 100-UMI sensitivity filter. Tealeaf fits 7,671 and 5,140 block-by-cell-type-pair hypotheses in the two condition-balanced subject halves, of which 7,436 and 4,949 jointly converge.
 
 Each Tealeaf--comparator row is scored on gene-by-cell-type-pair hypotheses available to both methods in both halves. Block or comparator-feature p-values are combined by Simes within gene and pair and then across the shared pairs within gene. `gene_metrics.tsv` contains discovery and reproducibility summaries, `gene_reproducibility.tsv.gz` contains gene-level fold statistics, and `topk_overlap.tsv` contains top-ranked overlap summaries.
 

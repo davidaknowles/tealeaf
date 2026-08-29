@@ -44,6 +44,14 @@ def parse_args():
         help="Cache the screened genome-wide block/test manifest.",
     )
     parser.add_argument(
+        "--source-candidate-cache",
+        type=Path,
+        help=(
+            "Reuse a compatible untransformed block manifest when building a "
+            "gene-level candidate cache."
+        ),
+    )
+    parser.add_argument(
         "--event-table",
         type=Path,
         help="Optionally restrict tests to inference-eligible rows in this table.",
@@ -440,6 +448,26 @@ def joint_gene_candidates(candidates):
     return result
 
 
+def transform_gene_candidates(args, candidates):
+    """Apply the requested gene-level candidate transformation."""
+    if args.joint_gene_test:
+        return joint_gene_candidates(candidates)
+    return candidates
+
+
+def write_candidate_cache(path, settings, candidates):
+    """Atomically write a screened candidate manifest."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    with temporary.open("wb") as handle:
+        pickle.dump(
+            {"settings": settings, "candidates": candidates},
+            handle,
+            protocol=pickle.HIGHEST_PROTOCOL,
+        )
+    temporary.replace(path)
+
+
 def local_test_design(metadata, rows, tested_levels, test_effect):
     """Reconstruct one cached candidate's fixed-effect design."""
     local = metadata.iloc[np.asarray(rows, dtype=int)].reset_index(drop=True)
@@ -645,15 +673,32 @@ def main():
         metadata = metadata.loc[global_rows].reset_index(drop=True)
         counts = tuple(matrix[global_rows] for matrix in counts)
     cache_settings = candidate_cache_settings(args)
-    if args.candidate_cache is not None and args.candidate_cache.exists():
-        with args.candidate_cache.open("rb") as handle:
+    cache_input = args.candidate_cache
+    transform_source = False
+    if (
+        (cache_input is None or not cache_input.exists())
+        and args.source_candidate_cache is not None
+    ):
+        cache_input = args.source_candidate_cache
+        transform_source = True
+    if cache_input is not None and cache_input.exists():
+        with cache_input.open("rb") as handle:
             cached = pickle.load(handle)
         cached_settings = normalize_cached_candidate_settings(
             cached.get("settings", {})
         )
-        if cached_settings != cache_settings:
+        expected_settings = dict(cache_settings)
+        if transform_source:
+            expected_settings["joint_gene_test"] = False
+        if cached_settings != expected_settings:
             raise ValueError("candidate cache does not match screening settings")
         candidates = cached["candidates"]
+        if transform_source:
+            candidates = transform_gene_candidates(args, candidates)
+            if args.candidate_cache is not None:
+                write_candidate_cache(
+                    args.candidate_cache, cache_settings, candidates
+                )
     else:
         screening_counts = tuple(matrix.tocsc() for matrix in counts)
         blocks = load_blocks(args.block_cache, None)
@@ -760,20 +805,11 @@ def main():
                     tuple(tested_levels),
                 ))
         candidates = deduplicate_supported_partitions(candidates)
-        if args.joint_gene_test:
-            candidates = joint_gene_candidates(candidates)
+        candidates = transform_gene_candidates(args, candidates)
         if args.candidate_cache is not None:
-            args.candidate_cache.parent.mkdir(parents=True, exist_ok=True)
-            temporary = args.candidate_cache.with_suffix(
-                args.candidate_cache.suffix + ".tmp"
+            write_candidate_cache(
+                args.candidate_cache, cache_settings, candidates
             )
-            with temporary.open("wb") as handle:
-                pickle.dump(
-                    {"settings": cache_settings, "candidates": candidates},
-                    handle,
-                    protocol=pickle.HIGHEST_PROTOCOL,
-                )
-            temporary.replace(args.candidate_cache)
     if not candidates:
         raise ValueError(
             "no candidate block tests passed screening; check annotation ID "
