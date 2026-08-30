@@ -256,6 +256,24 @@ class ClusteredCompositionalTest(unittest.TestCase):
         self.assertEqual(result["n_subjects"], 12)
         self.assertLess(result["p_value"], 0.01)
 
+    def test_variance_moderation_shrinks_noisy_variances(self):
+        variances = np.array([0.8, 0.9, 1.0, 1.1, 4.0])
+        residual_df = np.repeat(4.0, len(variances))
+        prior_df, prior_variance = differential.fit_variance_prior(
+            variances, residual_df, winsor_tail=0
+        )
+        self.assertGreater(prior_df, 0)
+        self.assertGreater(prior_variance, 0)
+        pvalues = differential.moderated_t_pvalues(
+            np.repeat(2.0, len(variances)),
+            variances,
+            residual_df,
+            prior_df,
+            prior_variance,
+        )
+        self.assertGreater(pvalues[0], pvalues[-1])
+        self.assertTrue(np.all((pvalues >= 0) & (pvalues <= 1)))
+
     def test_multinomial_glmm_recovers_clustered_effect(self):
         counts, null, alternative, clusters = self.simulated_counts(
             subjects=28,

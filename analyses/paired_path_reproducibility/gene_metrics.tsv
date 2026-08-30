@@ -1,0 +1,7 @@
+comparison	method	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	shared_gene_pairs
+Tealeaf direct local path vs LeafCutter	Tealeaf direct local path	139	78	63	50	0.798840	0.710540	747
+Tealeaf direct local path vs LeafCutter	LeafCutter	139	39	44	26	0.749709	0.541509	747
+Tealeaf direct local path vs MAJIQ Heterogen	Tealeaf direct local path	480	165	149	103	0.810372	0.622494	2500
+Tealeaf direct local path vs MAJIQ Heterogen	MAJIQ Heterogen	480	58	116	38	0.698276	0.437310	2500
+Tealeaf direct local path vs scQuint	Tealeaf direct local path	507	158	156	101	0.818525	0.656071	2600
+Tealeaf direct local path vs scQuint	scQuint	507	89	98	56	0.774880	0.458208	2600

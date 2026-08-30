@@ -1,0 +1,3 @@
+fold	tests	eligible	nominal_0.05	bh_0.05	null_rejection_0.05	null_rejection_0.01	null_rejection_0.001	null_mean_bh_0.05	null_max_bh_0.05	failures
+0	7671	7523	2123	1163	0.050038	0.010003	0.001001	0.0	0	0
+1	5140	5057	1397	770	0.050011	0.010029	0.001001	0.0	0	0

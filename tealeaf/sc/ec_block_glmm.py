@@ -103,6 +103,92 @@ def collapse_isoforms_to_paths(data, path_index, weights=None):
     return collapsed, collapsed_path_index
 
 
+def paired_path_test(
+    data,
+    path_index,
+    labels,
+    clusters,
+    *,
+    baseline=None,
+    max_iter=100,
+    path_pseudocount=0.0,
+):
+    """Test paired local-path shifts after aggregating rows within subjects.
+
+    The two primer-specific EC vectors are summed separately for every
+    subject-by-label combination. Each aggregate is quantified once in the
+    ``S - 1`` local-path ILR coordinates while holding the pooled within-path
+    isoform mixture fixed. The returned test is a paired t test for ``S = 2``
+    and Hotelling's T-squared test for ``S > 2``.
+    """
+    labels = np.asarray(labels)
+    clusters = np.asarray(clusters)
+    path_index = np.asarray(path_index, dtype=int)
+    n_samples = data.counts[0].shape[0]
+    if len(labels) != n_samples or len(clusters) != n_samples:
+        raise ValueError("labels, clusters, and EC data must align")
+    levels = np.unique(labels)
+    if len(levels) != 2:
+        raise ValueError("paired path testing requires two levels")
+    if baseline is None:
+        baseline = pooled_isoform_weights(data)
+    differences = []
+    subject_ids = []
+    fits = []
+    for cluster in np.unique(clusters):
+        positions = [
+            np.flatnonzero((clusters == cluster) & (labels == level))
+            for level in levels
+        ]
+        if any(not len(local) for local in positions):
+            continue
+        local_fits = []
+        for local in positions:
+            counts = tuple(
+                np.asarray(values[local], dtype=float).sum(axis=0)
+                for values in data.counts
+            )
+            if sum(float(values.sum()) for values in counts) <= 0:
+                local_fits = []
+                break
+            try:
+                fit = differential.fit_path_perturbation(
+                    counts,
+                    data.compatibility,
+                    baseline,
+                    path_index,
+                    max_iter=max_iter,
+                    path_pseudocount=path_pseudocount,
+                )
+            except (ValueError, np.linalg.LinAlgError):
+                local_fits = []
+                break
+            if not fit.converged or not np.isfinite(fit.path_logratios).all():
+                local_fits = []
+                break
+            local_fits.append(fit)
+        if len(local_fits) != 2:
+            continue
+        differences.append(
+            local_fits[1].path_logratios - local_fits[0].path_logratios
+        )
+        subject_ids.append(cluster)
+        fits.append(local_fits)
+    dimension = len(np.unique(path_index[path_index >= 0])) - 1
+    if differences:
+        difference_array = np.asarray(differences, dtype=float)
+    else:
+        difference_array = np.empty((0, dimension), dtype=float)
+    result = differential.paired_mean_test(difference_array)
+    return {
+        **result,
+        "differences": difference_array,
+        "subject_ids": np.asarray(subject_ids),
+        "path_fits": fits,
+        "levels": tuple(levels),
+    }
+
+
 def block_effect_bases(path_index):
     """Return block-path and orthogonal nuisance bases in reference logits.
 

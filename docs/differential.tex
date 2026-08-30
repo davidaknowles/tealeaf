@@ -58,7 +58,7 @@ The primary analysis proceeds in five steps:
   \item Calibrate the nested objective gain by null simulation, cross-fitted tail modeling, and a global leave-block-out empirical null CDF; then apply BH separately to cell-type and condition hypotheses.
 \end{enumerate}
 
-The EC GLMM has two supported fitting options. Full-covariance tilted variational fitting with parametric-bootstrap calibration supplies the primary calibrated results. Laplace fitting supplies a conventional approximate marginal likelihood, likelihood-ratio statistic, and BIC approximation; its analytic reference tests are retained as nonbootstrap sensitivities because the multilevel cell-type reference was not calibrated under structured null permutations. Path-estimate Gaussian, compositional, Dirichlet--multinomial, GEE, cell-resolved, and junction-count analyses appear in the appendices and are not separate versions of the primary test.
+The EC GLMM has two supported fitting options. Full-covariance tilted variational fitting with parametric-bootstrap calibration supplies the full-data calibrated results. Laplace fitting supplies a conventional approximate marginal likelihood, likelihood-ratio statistic, and BIC approximation; its analytic reference tests are retained as nonbootstrap sensitivities because the multilevel cell-type reference was not calibrated under structured null permutations. The comparator benchmark uses the direct subject-paired local-path likelihood defined below, which retains both primer-specific EC observations but avoids fitting global latent random effects for each pairwise contrast. Gaussian path-estimate, compositional, Dirichlet--multinomial, GEE, cell-resolved, and junction-count analyses appear in the appendices.
 
 \section*{Notation and Dimensions}
 
@@ -317,67 +317,78 @@ Every bootstrap replicate receives the same leave-block-out calibration. Aggrega
 
 \section*{Comparator Methods and Reproducibility Design}
 
-The primary comparator benchmark uses the Tealeaf EC-count GLMM itself, not the paired junction baseline described in the appendix. To match the pairwise cell-type hypotheses reported by LeafCutter, MAJIQ Heterogen, and scQuint, Tealeaf fits each eligible pair separately using only mice represented in both cell types. The likelihood retains the observed paired-primer EC vectors, primer-specific maps \(A_{gp}\), all supported gene isoforms, condition nuisance effects, a mouse random intercept, and the logistic-normal pseudobulk effect. In the notation above, each pairwise block test has \(C_b^{\rm cell}=2\) and tested dimension \(d_b=S_b-1\). The split benchmark uses the Laplace fitting option and its chi-square LRT because every model must be refit independently in both subject halves.
+The primary comparator benchmark uses a direct local-path Tealeaf likelihood, not the paired junction baseline described in the appendix. For block \(b\) with \(T_g\in\mathbb N\) supported gene isoforms and \(S_b\in\mathbb N\) represented paths, let \(\overline{\bm\theta}_g\in\Delta^{T_g-1}\) be the label-independent pooled isoform composition and let \(B_b\in\mathbb R^{S_b\times(S_b-1)}\) be a Helmert basis. For subject \(m\), cell-type level \(c\), and primer \(p\in\{1,2\}\), the observed EC vector is \(\bm c_{bmcp}\in\mathbb N_0^{K_{gp}}\), where \(K_{gp}\in\mathbb N\) is the number of retained ECs defined above. Rows from the same subject and level are summed within primer. A local perturbation \(\bm\delta_{bmc}\in\mathbb R^{S_b-1}\) multiplies every represented isoform on path \(s\) by \(\exp(B_{bs}^{\mathsf T}\bm\delta_{bmc})\), then renormalizes the represented isoforms to their pooled total mass. This holds within-path isoform ratios, unrepresented nuisance isoforms, and the total represented-path mass fixed while allowing the local path composition \(\bm\psi_{bmc}\in\Delta^{S_b-1}\) to change.
 
-The comparator benchmark retains the production EC screen of at least 25 modeled gene UMIs in each included pseudobulk and at least four paired mice, followed by joint convergence of the null and alternative fits. Tealeaf fits 7,671 and 5,140 block-by-cell-type-pair hypotheses in the two halves, of which 7,471 and 4,967 jointly converge under the corrected tangent null. A cassette-focused 1,000-test paired-label-swap audit has 975 jointly converged fits; its rejection rates at nominal levels 0.05, 0.01, and 0.001 are 0.0615, 0.0133, and 0.00205, with no BH discoveries. The split comparison is an empirical reproducibility benchmark, its BH counts are descriptive rather than calibrated FDR claims, and it does not replace a bootstrap calibration of the corrected model. Depth and gene-level aggregation sensitivities are reported in the appendix.
+The estimate maximizes the two-primer EC log likelihood with symmetric path smoothing \(\alpha=2\), \[\widehat{\bm\delta}_{bmc}=\arg\max_{\bm\delta\in\mathbb R^{S_b-1}}\left\{\sum_{p=1}^2\bm c_{bmcp}^{\mathsf T}\log\left(\frac{A_{gp}\bm\theta_g(\bm\delta)}{\bm1^{\mathsf T}A_{gp}\bm\theta_g(\bm\delta)}\right)+\alpha\sum_{s=1}^{S_b}\log\psi_{bmcs}(\bm\delta)\right\}.\] Here \(A_{gp}\in\mathbb R_+^{K_{gp}\times T_g}\) is the primer-specific compatibility design. For fully observed path counts, \(\alpha\) is an add-two pseudocount; in the EC likelihood it is the corresponding symmetric log-barrier. Thus junction, exonic, and ambiguous reads contribute through their compatibility patterns without first assigning reads to global isoforms.
+
+Let \(\widehat{\bm y}_{bmc}=B_b^{\mathsf T}\log\widehat{\bm\psi}_{bmc}\in\mathbb R^{S_b-1}\) and let \(\bm d_{bm}=\widehat{\bm y}_{bm2}-\widehat{\bm y}_{bm1}\in\mathbb R^{S_b-1}\). Blocks with \(S_b=2\) use a paired t-test of the scalar differences; blocks with \(S_b>2\) use Hotelling's \(T^2\). Because many scalar tests have only four to eight paired subjects, their variances are moderated across the \(M\in\mathbb N\) eligible scalar block tests. If \(s_b^2>0\) has residual degrees of freedom \(\nu_b=n_b-1\), log-variance moment matching estimates a scaled inverse-chi-squared prior with variance \(s_0^2>0\) and degrees of freedom \(\nu_0>0\), using symmetric 5\% Winsorization. The moderated variance is \(\widetilde s_b^2=(\nu_b s_b^2+\nu_0s_0^2)/(\nu_b+\nu_0)\), and the resulting statistic is compared with a t distribution on \(\nu_b+\nu_0\) degrees of freedom.
+
+Thirty-two paired sign-flip null families are generated independently within each subject half. Each null family refits its own variance prior. Residual tail error is removed by mapping observed and null p-values through a leave-one-event-out empirical null CDF within path-dimension and paired-subject-count strata. The comparator benchmark retains the 25-modeled-gene-UMI candidate screen and at least four paired mice. It tests 7,671 and 5,140 block-by-cell-type-pair hypotheses in the two halves, with 7,523 and 5,057 eligible after local fitting. Depth, smoothing, global-isoform GLMM, and gene-aggregation sensitivities are reported in the appendix.
 
 The same biological subjects are divided into two condition-balanced halves for all methods. Spliced alignments supplied to the external methods are restricted to unique genomic mappings and deduplicated by cell barcode, UMI, genomic start, and CIGAR. LeafCutter tests intron clusters, MAJIQ tests edges within local splicing variations, and scQuint tests intron groups. For each Tealeaf--comparator pair, scoring retains only genes and cell-type pairs eligible for both methods in both halves. Feature p-values are combined by Simes within each gene--cell-type pair and then across the shared pairs within a gene. For method \(m\), gene \(g\), and half \(h\in\{1,2\}\), let \(p_{mgh}\in[0,1]\) be the resulting gene p-value. The conjunction p-value \(p_{mg}^{\rm rep}=\max(p_{mg1},p_{mg2})\) tests whether the gene has signal in both halves, and BH at 0.05 is applied on the pairwise shared gene universe. Secondary endpoints are held-half nominal replication and Spearman correlation of gene--pair \(-\log_{10}p\) across halves.
 
 \section*{Results}
 
-\subsection*{EC-GLMM reproducibility against comparator methods}
+\subsection*{Tealeaf reproducibility against comparator methods}
 
-Table~\ref{tab:ec-glmm-reproducibility} gives the comparison using the corrected tangent-null Tealeaf EC GLMM on the full native-screened test set. The MAJIQ and scQuint comparisons contain 2,481 and 2,531 shared gene-by-cell-type-pair tests; the LeafCutter intersection contains 742. Correcting the null increases Tealeaf's replicated-gene counts from 10, 17, and 17 under the former basis to 12, 19, and 18, but Tealeaf still has fewer than LeafCutter, relaxed-coverage MAJIQ, and scQuint, which have 25, 38, and 57. Tealeaf's held-half replication rate is higher in all three matched comparisons, while its fold-to-fold rank correlation is higher than LeafCutter and lower than MAJIQ and scQuint. The corrected hypothesis recovers some of the expected local-path power, especially for cassette exons, but does not support a genome-wide power advantage over the junction methods.
+Table~\ref{tab:ec-glmm-reproducibility} gives the calibrated direct local-path comparison. Tealeaf has more independently replicated genes than every comparator, 50 versus 26 for LeafCutter, 103 versus 38 for relaxed-coverage MAJIQ Heterogen, and 101 versus 56 for scQuint. Its held-half nominal replication and fold-to-fold rank correlation are also higher in all three comparisons. The advantage is therefore not a consequence of admitting a larger unstable discovery set. It is consistent with the intended information gain from combining junction, exonic, and ambiguous EC reads while testing the \(S_b-1\) local path coordinates rather than a larger set of junction coefficients. Because \(\alpha=2\) was selected after a smoothing sensitivity on these subject splits, the numerical advantage is internally validated rather than an untouched external benchmark and requires confirmation in an independent dataset.
+
+The fold-specific Tealeaf analyses make 1,163 and 770 BH calls among 7,523 and 5,057 eligible block tests. Their calibrated sign-flip null rejection rates are respectively 0.05004 and 0.05001 at nominal 0.05, 0.01000 and 0.01003 at nominal 0.01, and 0.00100 in both folds at nominal 0.001. No fold-specific null family makes a BH call. Propagating the null p-values through the same within-pair Simes aggregation, across-pair gene aggregation, two-fold conjunction, and BH procedure produces zero replicated genes in every one of 32 null families on each comparator-matched universe.
+
+The 192 one-core fitting shards use 2.516 aggregate worker hours across both folds, with maximum shard elapsed time 78 seconds and peak worker resident memory 0.288 GiB. Merge-time moderation and empirical calibration add less than two minutes of serial work. This is substantially cheaper than repeatedly fitting the nested latent EC GLMM and shows that preserving primer-specific EC compatibility does not itself require the larger computational cost of the global random-effects model.
 
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{Cell-type differential-splicing reproducibility across independent subject halves using the corrected tangent-null Tealeaf EC GLMM. ``Tests'' counts shared gene-by-cell-type-pair hypotheses, ``Rep.'' is the number of genes passing BH on \(p^{\rm rep}\), ``held'' is held-half nominal replication, and \(\rho\) is Spearman correlation of gene--pair \(-\log_{10}p\). Each row uses the hypothesis universe shared by Tealeaf and that comparator in both halves. P-values are native asymptotic values, so BH counts are descriptive.}
+\caption{Cell-type differential-splicing reproducibility across independent subject halves using the calibrated Tealeaf direct local-path test. ``Tests'' counts shared gene-by-cell-type-pair hypotheses, ``Rep.'' is the number of genes passing BH on \(p^{\rm rep}\), ``held'' is held-half nominal replication, and \(\rho\) is Spearman correlation of gene--pair \(-\log_{10}p\). Each row uses the hypothesis universe shared by Tealeaf and that comparator in both halves.}
 \label{tab:ec-glmm-reproducibility}
 \begin{tabular}{lrrrrrrrr}
 \toprule
-& \multicolumn{2}{c}{Shared} & \multicolumn{3}{c}{Tealeaf EC GLMM} & \multicolumn{3}{c}{Comparator}\\
+& \multicolumn{2}{c}{Shared} & \multicolumn{3}{c}{Tealeaf} & \multicolumn{3}{c}{Comparator}\\
 \cmidrule(lr){2-3}\cmidrule(lr){4-6}\cmidrule(lr){7-9}
 Comparator & tests & genes & Rep. & held & \(\rho\) & Rep. & held & \(\rho\)\\
 \midrule
-LeafCutter & 742 & 139 & 12 & 0.867 & 0.562 & 25 & 0.744 & 0.543\\
-MAJIQ relaxed UMI & 2,481 & 473 & 19 & 0.828 & 0.362 & 38 & 0.697 & 0.434\\
-scQuint & 2,531 & 492 & 18 & 0.828 & 0.358 & 57 & 0.777 & 0.461\\
+LeafCutter & 747 & 139 & 50 & 0.799 & 0.711 & 26 & 0.750 & 0.542\\
+MAJIQ relaxed UMI & 2,500 & 480 & 103 & 0.810 & 0.622 & 38 & 0.698 & 0.437\\
+scQuint & 2,600 & 507 & 101 & 0.819 & 0.656 & 56 & 0.775 & 0.458\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection*{Former-basis full calibrated EC-GLMM analysis}
+\subsection*{Corrected full-data EC-GLMM analysis}
 
-The available full-data bootstrap calibration predates the tangent-null correction. It is retained to document the biological signals and the calibration procedure, but it is not a production result for the corrected hypothesis and its discovery counts require rerunning before confirmatory use. At the 90\% tail threshold, this former-basis logistic-normal analysis tests 4,825 cell-type partitions and 14,833 block-by-cell-type condition hypotheses. Table~\ref{tab:primary-ec-results} reports the results. The null rates at 0.05, 0.01, and 0.001 are from held-out block tests and therefore assess the complete tail-scoring and empirical-recalibration procedure under that former basis.
+The full corrected tangent-null bootstrap reruns test 4,825 cell-type partitions and 14,833 block-by-cell-type condition hypotheses. Table~\ref{tab:primary-ec-results} reports the cross-fitted GPD and leave-block-out empirical calibration at the 90\% tail threshold. Both null families are calibrated at the audited nominal levels, but neither observed family contains a BH discovery.
 
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{Former-basis full-data logistic-normal EC GLMM results. Robust calls pass BH at every GPD threshold from 80\% through 95\%; these counts predate the tangent-null correction.}
+\caption{Corrected tangent-null full-data logistic-normal EC GLMM results. Null columns assess the complete cross-fitted tail scoring and empirical recalibration.}
 \label{tab:primary-ec-results}
-\begin{tabular}{lrrrrrrrr}
+\begin{tabular}{lrrrrrrr}
 \toprule
-Contrast & Tests & Conv. & Nominal & FDR & Robust & Null $<.05$ & Null $<.01$ & Null $<.001$\\
+Contrast & Tests & Nominal & BH & Minimum \(p\) & Null $<.05$ & Null $<.01$ & Null $<.001$\\
 \midrule
-Cell type & 4,825 & 0.999 & 771 & 252 & 238 & 0.04999 & 0.00999 & 0.00099\\
-Condition & 14,833 & 1.000 & 1,397 & 0 & 0 & 0.05001 & 0.00999 & 0.00100\\
+Cell type & 4,825 & 522 & 0 & 0.00216 & 0.0500 & 0.0100 & 0.0010\\
+Condition & 14,833 & 922 & 0 & 0.000148 & 0.0500 & 0.0100 & 0.0010\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-For cell type, 80\%, 85\%, 90\%, and 95\% GPD thresholds produce 242, 240, 252, and 245 calls; 238 occur in all four sets. The multinomial EC GLMM identifies 272 partitions at the 90\% threshold and overlaps 231 of the 238 robust logistic-normal calls. The direct EC Dirichlet--multinomial appendix sensitivity identifies 59, with 45 partitions called by all three EC likelihoods. Thus the cell-type result is not specific to the logistic-normal variance model.
+The corrected families show broad moderate enrichment but not the extreme tail required for genome-wide discovery. The smallest cell-type p-value is 0.00216 and the smallest condition p-value is 0.000148, whereas the first BH thresholds are substantially smaller. The former-basis event catalog and literature matches are therefore retained only as exploratory interpretation in the appendix and are not presented as validated corrected-model calls.
 
-For condition within cell type, the same thresholds produce zero, 28, zero, and zero calls, with an empty intersection. At the primary 90\% threshold the minimum FDR is 0.0545. The data therefore support strong cell-type DS but no condition DS event that is robust to the tail threshold.
+\clearpage
+\appendix
 
-\subsection*{Splice-event classes and functional precedents}
+\section{Exploratory and Supporting Analyses}
 
-The 238 former-basis mouse cell-type discoveries were classified from the paths actually represented in each fitted test, after supported-isoform filtering, rather than from every path in the GTF. This interpretation is provisional until the corrected tangent-null full-data calibration is complete. The ordinary-LRT mouse and human yields are descriptive because the multilevel analytic reference is not calibrated, so they are not presented as validated discoveries. For an internal two-path block, exact intervals shared by both paths are removed before assigning cassette-exon, multi-exon-skipping, alternative-donor, alternative-acceptor, mutually-exclusive-exon, or retained-intron structure. Internal blocks with more than two represented paths are called compound. A block adjacent to a terminal pseudo-anchor is called an alternative first or last \emph{region}, because its paths can differ at several exons or transcript ends and need not describe one simple alternative terminal exon. If the gene has no common constitutive anchor, the whole-gene block is left as complex. Table~\ref{tab:robust-event-types} gives the resulting mutually exclusive categories; canonical components nested inside compound or terminal regions are retained in the machine-readable catalog but are not counted again in the table.
+\subsection*{Former-basis splice-event classes and functional precedents}
+
+The 238 former-basis mouse cell-type discoveries were classified from the paths actually represented in each fitted test, after supported-isoform filtering, rather than from every path in the GTF. The corrected tangent-null analysis has no BH discoveries, so this catalog is hypothesis-generating rather than confirmatory. For an internal two-path block, exact intervals shared by both paths are removed before assigning cassette-exon, multi-exon-skipping, alternative-donor, alternative-acceptor, mutually-exclusive-exon, or retained-intron structure. Internal blocks with more than two represented paths are called compound. A block adjacent to a terminal pseudo-anchor is called an alternative first or last \emph{region}, because its paths can differ at several exons or transcript ends and need not describe one simple alternative terminal exon. If the gene has no common constitutive anchor, the whole-gene block is left as complex. Table~\ref{tab:robust-event-types} gives the resulting mutually exclusive categories; canonical components nested inside compound or terminal regions are retained in the machine-readable catalog but are not counted again in the table.
 
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{Structural classes among the 238 robust calibrated mouse cell-type discoveries.}
+\caption{Structural classes among the 238 former-basis mouse cell-type calls.}
 \label{tab:robust-event-types}
 \begin{tabular}{lrr}
 \toprule
@@ -400,7 +411,7 @@ We next required a literature match to agree with the discovered block structure
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{Robust cell-type DS events overlapping experimentally characterized splice isoforms. Confidence describes the structural mapping from the fitted GENCODE paths to the published event, not statistical confidence.}
+\caption{Former-basis cell-type DS calls overlapping experimentally characterized splice isoforms. Confidence describes the structural mapping from the fitted GENCODE paths to the published event, not statistical confidence.}
 \label{tab:functional-splicing-precedents}
 \begin{tabular}{p{1.0cm}p{2.1cm}p{1.5cm}p{7.1cm}p{2.4cm}}
 \toprule
@@ -415,12 +426,13 @@ Gene & Event & Mapping & Characterized consequence & Primary evidence\\
 \end{tabular}
 \end{table}
 
-These precedents establish that a subset of discovered coordinates encode functional isoform choices, with \emph{Ntrk2} providing a direct glial example. They do not validate every call or identify the cell-type pair and path direction responsible for an omnibus statistic. Isoform-specific junction quantification and perturbation are needed for those claims. The complete catalog, event components, coordinates, empirical p-values, and literature audit are recorded under \path{analyses/celltype_event_annotation}.
+These precedents establish that a subset of the former-basis coordinates encode functional isoform choices, with \emph{Ntrk2} providing a direct glial example. They do not validate the former-basis statistical calls or identify the cell-type pair and path direction responsible for an omnibus statistic. Isoform-specific junction quantification and perturbation are needed for those claims. The complete catalog, event components, coordinates, former-basis empirical p-values, and literature audit are recorded under \path{analyses/celltype_event_annotation}.
 
-\clearpage
-\appendix
+\subsection*{Pairwise Tealeaf sensitivity analyses}
 
-\section{Exploratory and Supporting Analyses}
+The corrected tangent-null Laplace EC GLMM was first rerun on the complete 25-UMI pairwise candidate manifests. Against LeafCutter, relaxed-coverage MAJIQ Heterogen, and scQuint it had 12, 19, and 18 replicated genes, compared with 25, 38, and 57, while its held-half nominal replication rates were 0.867, 0.828, and 0.828. The global latent model therefore retained stable signals but did not realize the expected local-path power advantage.
+
+The direct local-path estimator without smoothing had unstable boundary estimates. A 0.5 path pseudocount restored native paired-test calibration but produced only 8, 20, and 21 replicated genes against LeafCutter, MAJIQ, and scQuint. Add-one smoothing followed by variance moderation and empirical calibration produced 31, 53, and 56, compared with 26, 38, and 56 for the comparators. Add-two smoothing produced the main-text result. Dropping nuisance isoforms and ECs with only nuisance support, combining globally and locally conditioned p-values, restricting to two-path blocks, and replacing Simes with Cauchy gene aggregation did not improve calibrated replication and were rejected. These analyses show that boundary stabilization and cross-block variance moderation, rather than discarding ambiguous EC information, account for the final power gain.
 
 \subsection*{Depth-filtered split sensitivity}
 
@@ -626,7 +638,7 @@ The stringent MAJIQ universe is small because its combined build and quantificat
 
 \section{Alternative Models and Supporting Derivations}
 
-The main text defines the two primary EC-count GLMMs and their implemented test. This appendix records the path-estimate models, covariance approximations, alternative EC likelihoods, and inference benchmarks used to understand or validate that analysis.
+The main text defines the two EC-count GLMMs, the direct paired local-path likelihood, and their implemented tests. This appendix records additional path-estimate models, covariance approximations, alternative EC likelihoods, and inference benchmarks used to understand or validate those analyses.
 
 \subsection*{Paired-primer EC likelihood}
 
@@ -662,7 +674,7 @@ The cassette-specific audit isolates the hypothesis geometry that the earlier ge
 
 Discarding ambiguous observations is not responsible for this gain. In a 100-cassette strict audit, 24 tests lack a pure EC for at least one path. Among the 76 feasible tests, pure path-identifying ECs contain a median 96.5 UMIs, 16 ECs, and 10.7\% of crude gene UMI exposure. The strict likelihood gives 10 nominal tests, compared with 15 for the local-path likelihood on the same 76. Shared-exon and precursor-compatible reads are not automatically informative about cassette inclusion, but retaining the full EC vector lets every read contribute according to its primer-specific compatibility.
 
-The tangent global-isoform model avoids fixing conditional isoform mixtures within paths and gives essentially the same cassette result, 28 both-nominal events, six conjunction-BH events, 26 of 28 signs agreeing, and effect Spearman correlation 0.722. Among 975 converged cassette paired-label swaps, its rejection rates are 0.0615, 0.0133, and 0.00205 at nominal levels 0.05, 0.01, and 0.001, with no BH calls. It is therefore the production correction. The exact local collapse remains a sensitivity demonstrating that direct local-path quantification from the EC likelihood reaches the same conclusion.
+The tangent global-isoform model avoids fixing conditional isoform mixtures within paths and gives essentially the same cassette result, 28 both-nominal events, six conjunction-BH events, 26 of 28 signs agreeing, and effect Spearman correlation 0.722. Among 975 converged cassette paired-label swaps, its rejection rates are 0.0615, 0.0133, and 0.00205 at nominal levels 0.05, 0.01, and 0.001, with no BH calls. It remains the corrected hypothesis geometry for the full-data EC GLMM. The direct local-path estimator is used for the primary pairwise comparator benchmark because it is faster and its calibrated subject-paired test has higher replication.
 
 \begin{table}[H]
 \centering

@@ -195,6 +195,51 @@ def test_pooled_isoform_weights_match_identity_ec_proportions():
     np.testing.assert_allclose(weights, [0.8, 0.2], atol=1e-5)
 
 
+def test_paired_path_test_recovers_subject_paired_shift():
+    rng = np.random.default_rng(18)
+    counts = []
+    labels = []
+    clusters = []
+    for subject in range(12):
+        baseline = rng.normal(0.0, 0.25)
+        for label, effect in ((0, 0.0), (1, 0.9)):
+            probability = 1 / (1 + np.exp(-(baseline + effect)))
+            first = rng.binomial(100, probability)
+            counts.append([first, 100 - first])
+            labels.append(label)
+            clusters.append(subject)
+    data = ec_glmm.ECGLMMData(
+        (np.asarray(counts, dtype=float),),
+        (np.eye(2),),
+        np.ones((len(counts), 1)),
+        np.asarray(clusters),
+    )
+    result = ec_block_glmm.paired_path_test(
+        data,
+        [0, 1],
+        labels,
+        clusters,
+        baseline=[0.5, 0.5],
+    )
+    assert result["converged"]
+    assert result["degrees_of_freedom"] == 1
+    assert result["n_subjects"] == 12
+    assert result["p_value"] < 0.01
+
+
+def test_path_pseudocount_regularizes_boundary_estimate():
+    fit = differential.fit_path_perturbation(
+        (np.array([100.0, 0.0]),),
+        (np.eye(2),),
+        np.array([0.5, 0.5]),
+        np.array([0, 1]),
+        path_pseudocount=0.5,
+    )
+    assert fit.converged
+    assert fit.path_proportions.min() > 0.001
+    assert fit.path_proportions.max() < 0.999
+
+
 def test_block_tensors_are_nested_with_expected_df():
     nuisance = np.array([[1, 0], [0, 1], [1, 0]], dtype=float)
     tested = np.array([[0, 0], [1, 0], [0, 1]], dtype=float)

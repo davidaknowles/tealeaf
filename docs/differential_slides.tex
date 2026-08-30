@@ -167,36 +167,35 @@
 \source{Sources, Spangenberg et al., Cell Reports 2022, GEO GSE189033; Miyoshi et al., Nature Genetics 2024, GEO GSE233208. Counts shown are the analysis metadata summarized in this repository.}
 \end{frame}
 
-\begin{frame}{Former-basis calibration found cell-type splicing, not condition effects}
+\begin{frame}{Corrected full-data calibration yields no BH discoveries}
 \begin{columns}[T,onlytextwidth]
 \begin{column}{0.49\textwidth}
 \centering
-\metric{tlTeal}{238}{former-basis cell-type calls}
+\metric{tlTeal}{522}{nominal cell-type tests}
 \hspace{0.15cm}
-\metric{tlOrange}{0}{robust condition discoveries}
+\metric{tlOrange}{922}{nominal condition tests}
 \vspace{0.55cm}
-\begin{tikzpicture}[x=.013cm,y=.43cm]
-\draw[->,tlGray] (0,0)--(280,0) node[right,font=\scriptsize] {BH calls};
-\foreach \y/\lab/\v in {4/80\%/242,3/85\%/240,2/90\%/252,1/95\%/245}{\fill[tlTeal!78] (0,\y-.28) rectangle (\v,\y+.28);\node[left,font=\scriptsize] at (0,\y) {\lab};\node[right,font=\scriptsize,tlNavy] at (\v,\y) {\v};}
-\node[font=\scriptsize,tlGray,align=center] at (135,-.85) {GPD tail threshold};
-\end{tikzpicture}
+\metric{tlNavy}{0}{cell-type BH calls}
+\hspace{0.15cm}
+\metric{tlGold}{0}{condition BH calls}
 \end{column}
 \begin{column}{0.48\textwidth}
 \vspace{0.05cm}
 \begin{itemize}\small
 \item 4,825 cell-type path partitions and 14,833 condition-within-cell-type tests
-\item Aggregate null rejection matches 0.05, 0.01, and 0.001 after cross-fitted calibration; robust events pass BH across every 80--95\% tail threshold
+\item Aggregate null rejection matches 0.05, 0.01, and 0.001 after cross-fitted calibration
+\item Minimum calibrated p-values are 0.00216 for cell type and 0.000148 for condition, above their first BH thresholds
 \item The primary logistic-normal likelihood allows pseudobulk extra-multinomial variation shared across the two primer halves
 \end{itemize}
 \vspace{0.05cm}
 \begin{block}{Interpretation}
-\scriptsize Cell identity is associated with many local isoform choices. No condition effect survived the former-basis calibration sensitivity analysis. These full-data counts require rerunning under the corrected tangent null.
+\scriptsize The corrected tangent null removes the former-basis 238-call set. The earlier structural and literature catalog is hypothesis-generating rather than a validated discovery list.
 \end{block}
 \end{column}
 \end{columns}
 \end{frame}
 
-\begin{frame}{Split reproducibility against junction comparators}
+\begin{frame}{Direct local-path Tealeaf exceeds junction comparators}
 \centering
 \scriptsize
 \renewcommand{\arraystretch}{1.23}
@@ -207,17 +206,17 @@
 \cmidrule(lr){2-4}\cmidrule(lr){5-7}
 Comparator & Rep. & held & $\rho$ & Rep. & held & $\rho$\\
 \midrule
-LeafCutter & 12 & \textbf{0.867} & \textbf{0.562} & \textbf{25} & 0.744 & 0.543\\
-MAJIQ Heterogen & 19 & \textbf{0.828} & 0.362 & \textbf{38} & 0.697 & \textbf{0.434}\\
-scQuint & 18 & \textbf{0.828} & 0.358 & \textbf{57} & 0.777 & \textbf{0.461}\\
+LeafCutter & \textbf{50} & \textbf{0.799} & \textbf{0.711} & 26 & 0.750 & 0.542\\
+MAJIQ Heterogen & \textbf{103} & \textbf{0.810} & \textbf{0.622} & 38 & 0.698 & 0.437\\
+scQuint & \textbf{101} & \textbf{0.819} & \textbf{0.656} & 56 & 0.775 & 0.458\\
 \bottomrule
 \end{tabular}
 \vspace{0.4cm}
-\begin{block}{What the corrected hypothesis changes}
-\scriptsize The pooled-baseline tangent null increases Tealeaf replicated-gene counts from 10, 17, and 17 to 12, 19, and 18. Tealeaf has higher held-half nominal replication in every matched comparison, but fewer replicated discoveries. ``Rep.'' applies BH to the conjunction p-value on each pairwise shared gene universe; $\rho$ is fold correlation of gene--pair $-\log_{10}p$.
+\begin{block}{What the paired local-path test changes}
+\scriptsize Subject-level path ILRs are estimated directly from both primer-specific EC vectors, stabilized by add-two smoothing, variance-moderated across scalar tests, and empirically calibrated with 32 sign-flip families. ``Rep.'' applies BH to the conjunction p-value on each pairwise shared gene universe; $\rho$ is fold correlation of gene--pair $-\log_{10}p$.
 \end{block}
 \begin{alertblock}{Interpretation}
-\scriptsize Native asymptotic p-values make this an empirical reproducibility benchmark, not a calibrated FDR power ranking. The methods also report different feature units before common gene-level aggregation.
+\scriptsize Every aggregated replicated-gene null family has zero BH calls. Add-two smoothing was selected on these splits, so independent-data confirmation remains necessary.
 \end{alertblock}
 \end{frame}
 
@@ -277,8 +276,8 @@ scQuint & 18 & \textbf{0.828} & 0.358 & \textbf{57} & 0.777 & \textbf{0.461}\\
 \vspace{0.1cm}
 \begin{tikzpicture}[node distance=.22cm,box/.style={rounded corners=4pt,minimum width=13.9cm,minimum height=1.08cm,text width=13.1cm,align=left,inner xsep=12pt,font=\normalsize}]
 \node[box,fill=tlLightTeal,draw=tlTeal!55] (a) {\textbf{Model the observations that were measured.} Local path effects act through full isoforms, primer-specific EC maps, and observed pseudobulk counts without hard EC allocation.};
-\node[box,fill=tlLight,draw=tlNavy!35,below=of a] (b) {\textbf{Separate biology from calibration.} The 238-call full-data result predates the tangent correction and is provisional until recalibrated; human ordinary-LRT yields are sensitivity results.};
-\node[box,fill=tlOrange!10,draw=tlOrange!50,below=of b] (c) {\textbf{The corrected test helps but does not dominate.} It improves cassette and genome-wide split replication, with higher held-half replication but fewer replicated genes than the comparators.};
+\node[box,fill=tlLight,draw=tlNavy!35,below=of a] (b) {\textbf{Separate biology from calibration.} The corrected full-data EC GLMM has no BH discoveries; the former-basis functional catalog is exploratory.};
+\node[box,fill=tlOrange!10,draw=tlOrange!50,below=of b] (c) {\textbf{Local inference realizes the power advantage.} The calibrated paired local-path test has more replicated genes and higher held-half replication than every comparator.};
 \node[box,fill=tlNavy,text=white,below=of c] (d) {\textbf{The remaining tradeoff is compute.} Retaining EC ambiguity and repeatedly solving nested latent-Gaussian models costs about 3.3$\times$ scQuint's broad worker time after analytic derivative speedups.};
 \end{tikzpicture}
 \end{frame}

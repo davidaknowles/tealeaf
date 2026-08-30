@@ -37,7 +37,7 @@ def parse_args():
     parser.add_argument("--tealeaf-fit-method", default="laplace_multinomial")
     parser.add_argument(
         "--tealeaf-format",
-        choices=("ec", "compositional", "junction"),
+        choices=("ec", "compositional", "junction", "paired_path"),
         default="ec",
     )
     parser.add_argument("--min-median-gene-umis", type=float, default=0.0)
@@ -129,6 +129,17 @@ def load_pairwise_fold(
             method=tealeaf_label,
             min_paired_subjects=min_paired_subjects,
         )
+    elif tealeaf_format == "paired_path":
+        tealeaf = pd.read_csv(
+            path / tealeaf_subdir / "paired_path.tsv", sep="\t"
+        )
+        tealeaf = tealeaf.loc[
+            tealeaf.converged.astype(bool)
+            & tealeaf.median_gene_umis.ge(min_median_gene_umis)
+            & tealeaf.n_subjects.ge(int(min_paired_subjects)),
+            ["gene_id", "level_a", "level_b", "p_value"],
+        ].copy()
+        tealeaf.insert(0, "method", tealeaf_label)
     else:
         tealeaf = pd.read_csv(
             path / tealeaf_subdir / "ec_block_glmm.tsv", sep="\t"

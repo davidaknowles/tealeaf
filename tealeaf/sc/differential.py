@@ -782,6 +782,7 @@ def fit_path_perturbation(
     *,
     max_iter=100,
     tolerance=1e-7,
+    path_pseudocount=0.0,
 ):
     """Fit local path logits and return conditional Fisher covariance."""
     baseline = np.maximum(np.asarray(baseline, dtype=float), 1e-12)
@@ -793,6 +794,9 @@ def fit_path_perturbation(
     totals = tuple(float(value.sum()) for value in counts)
     baseline_paths = path_proportions(baseline, path_index)
     baseline_logratios = basis.T @ np.log(baseline_paths)
+    path_pseudocount = float(path_pseudocount)
+    if path_pseudocount < 0:
+        raise ValueError("path_pseudocount must be nonnegative")
 
     def objective(delta):
         theta, log_jacobian = _perturbed_theta(
@@ -815,6 +819,16 @@ def fit_path_perturbation(
             ).ravel()
             score -= total * theta * np.asarray(design.sum(axis=0)).ravel() / normalizer
             gradient -= log_jacobian.T @ score[selected]
+        if path_pseudocount:
+            proportions = path_proportions(theta, path_index)
+            loss -= path_pseudocount * float(
+                np.log(np.maximum(proportions, 1e-300)).sum()
+            )
+            gradient += (
+                path_pseudocount
+                * n_paths
+                * (proportions @ basis)
+            )
         return loss, gradient
 
     initial_delta = np.zeros(n_paths - 1, dtype=float)
@@ -1476,9 +1490,21 @@ def paired_logratio_test(
         )
         clr = logged - logged.mean(axis=1, keepdims=True)
         differences.append(clr[1] - clr[0])
-    differences = np.asarray(differences)
-    n_subjects = len(differences)
-    dimension = counts.shape[1] - 1
+    basis = scipy.linalg.helmert(counts.shape[1], full=False).T
+    coordinates = (
+        np.asarray(differences) @ basis
+        if differences
+        else np.empty((0, basis.shape[1]), dtype=float)
+    )
+    return paired_mean_test(coordinates)
+
+
+def paired_mean_test(differences):
+    """Test whether independent paired multivariate differences have mean zero."""
+    differences = np.asarray(differences, dtype=float)
+    if differences.ndim != 2 or differences.shape[1] < 1:
+        raise ValueError("differences must be subjects by coordinates")
+    n_subjects, dimension = differences.shape
     if n_subjects < 3 or n_subjects <= dimension:
         return {
             "statistic": 0.0,
@@ -1487,11 +1513,9 @@ def paired_logratio_test(
             "n_subjects": n_subjects,
             "converged": False,
         }
-    basis = scipy.linalg.helmert(counts.shape[1], full=False).T
-    coordinates = differences @ basis
-    mean = coordinates.mean(axis=0)
+    mean = differences.mean(axis=0)
     if dimension == 1:
-        standard_error = coordinates[:, 0].std(ddof=1) / np.sqrt(n_subjects)
+        standard_error = differences[:, 0].std(ddof=1) / np.sqrt(n_subjects)
         statistic = (
             float(mean[0] / standard_error)
             if standard_error > 0
@@ -1502,7 +1526,7 @@ def paired_logratio_test(
         )
         reported = statistic * statistic
     else:
-        covariance = np.cov(coordinates, rowvar=False, ddof=1)
+        covariance = np.cov(differences, rowvar=False, ddof=1)
         if np.linalg.matrix_rank(covariance, tol=1e-10) < dimension:
             return {
                 "statistic": 0.0,
@@ -1536,6 +1560,91 @@ def paired_logratio_test(
         "n_subjects": n_subjects,
         "converged": True,
     }
+
+
+def fit_variance_prior(variances, residual_df, *, winsor_tail=0.05):
+    """Fit a scaled inverse-chi-squared prior to ``M`` sample variances.
+
+    ``variances`` and ``residual_df`` are length-``M`` vectors. The method
+    matches the first two log-variance moments after removing each test's
+    chi-squared sampling moments. Symmetric Winsorization limits the influence
+    of genes with unusual biological variance.
+    """
+    variances = np.asarray(variances, dtype=float)
+    residual_df = np.broadcast_to(
+        np.asarray(residual_df, dtype=float), variances.shape
+    )
+    valid = (
+        np.isfinite(variances)
+        & (variances > 0)
+        & np.isfinite(residual_df)
+        & (residual_df > 0)
+    )
+    if valid.sum() < 3:
+        raise ValueError("at least three finite positive variances are required")
+    variances = variances[valid]
+    residual_df = residual_df[valid]
+    winsor_tail = float(winsor_tail)
+    if not 0 <= winsor_tail < 0.5:
+        raise ValueError("winsor_tail must be in [0, 0.5)")
+    adjusted = (
+        np.log(variances)
+        - scipy.special.digamma(residual_df / 2)
+        + np.log(residual_df / 2)
+    )
+    if winsor_tail:
+        lower, upper = np.quantile(
+            adjusted, [winsor_tail, 1 - winsor_tail]
+        )
+        adjusted = np.clip(adjusted, lower, upper)
+    target = max(
+        float(
+            adjusted.var(ddof=1)
+            - np.mean(scipy.special.polygamma(1, residual_df / 2))
+        ),
+        1e-8,
+    )
+    prior_df = float(
+        scipy.optimize.brentq(
+            lambda value: scipy.special.polygamma(1, value / 2) - target,
+            1e-3,
+            1e12,
+        )
+    )
+    prior_variance = float(
+        np.exp(
+            adjusted.mean()
+            + scipy.special.digamma(prior_df / 2)
+            - np.log(prior_df / 2)
+        )
+    )
+    return prior_df, prior_variance
+
+
+def moderated_t_pvalues(
+    t_statistics,
+    variances,
+    residual_df,
+    prior_df,
+    prior_variance,
+):
+    """Return two-sided moderated-t p-values for ``M`` scalar tests."""
+    t_statistics = np.asarray(t_statistics, dtype=float)
+    variances = np.broadcast_to(
+        np.asarray(variances, dtype=float), t_statistics.shape
+    )
+    residual_df = np.broadcast_to(
+        np.asarray(residual_df, dtype=float), t_statistics.shape
+    )
+    prior_df = float(prior_df)
+    prior_variance = float(prior_variance)
+    if prior_df <= 0 or prior_variance <= 0:
+        raise ValueError("prior_df and prior_variance must be positive")
+    posterior = (
+        residual_df * variances + prior_df * prior_variance
+    ) / (residual_df + prior_df)
+    moderated = np.abs(t_statistics) * np.sqrt(variances / posterior)
+    return 2 * scipy.stats.t.sf(moderated, residual_df + prior_df)
 
 
 def _multinomial_glmm_cluster_mode(
