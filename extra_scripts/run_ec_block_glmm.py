@@ -1293,10 +1293,12 @@ def main():
                         base.compatibility,
                         np.ones((len(base.clusters), 1), dtype=float),
                         base.clusters,
-                        fixed_effect_tensor=alternative_tensor,
+                        fixed_effect_tensor=full_alternative_tensor,
                     )
-                    simulated_initial = ec_glmm_full.fixed_effect_warm_start(
-                        simulated_null, alternative_tensor.shape[2]
+                    simulated_initial = reparameterize_fixed_effects(
+                        simulated_null,
+                        null_tensor,
+                        full_alternative_tensor,
                     )
                     simulated_fit = fit_with_retries(
                         method,
@@ -1309,7 +1311,11 @@ def main():
                             args,
                             method,
                             simulated_alternative_data,
-                            ("bootstrap_alternative", test_id, method),
+                            (
+                                "bootstrap_full_alternative",
+                                test_id,
+                                method,
+                            ),
                         ),
                     )
                     trim_objective_cache(
