@@ -1,0 +1,3 @@
+contrast	tests	eligible	nominal_0.05	fdr_0.05	fdr_genes	minimum_p	null_rejection_0.05	null_rejection_0.01	null_rejection_0.001	null_max_bh_0.05
+cell_type_pairwise	11462	11315	3537	2222	440	2.0708650003106297e-05	0.050008	0.010025	0.000991	0
+condition_within_cell_type	14833	14833	1111	0	0	4.713201677899797e-05	0.049962	0.009952	0.000946	0

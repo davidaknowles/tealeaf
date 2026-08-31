@@ -134,6 +134,47 @@ class PathFit:
     objective: float
 
 
+def path_laplace_log_evidence(
+    fit, path_pseudocount, *, prior_center=None
+):
+    """Return the Laplace evidence for one ILR smoothing prior.
+
+    The prior density with respect to orthonormal ILR coordinates is
+    proportional to ``prod(psi**alpha)``. Constants independent of ``alpha``
+    are omitted, which is sufficient for empirical-Bayes selection within a
+    fixed path dimension.
+    """
+    alpha = float(path_pseudocount)
+    if alpha <= 0:
+        raise ValueError("path_pseudocount must be positive for evidence")
+    n_paths = len(fit.path_proportions)
+    dimension = n_paths - 1
+    if not fit.covariance.identifiable:
+        return -np.inf
+    sign, covariance_log_determinant = np.linalg.slogdet(
+        fit.covariance.covariance
+    )
+    if sign <= 0:
+        return -np.inf
+    if prior_center is None:
+        prior_center = np.full(n_paths, 1.0 / n_paths)
+    prior_center = np.asarray(prior_center, dtype=float)
+    if prior_center.shape != (n_paths,) or np.any(prior_center <= 0):
+        raise ValueError("prior_center must be a positive path composition")
+    prior_center = prior_center / prior_center.sum()
+    prior_counts = alpha * n_paths * prior_center
+    log_prior_normalizer = (
+        scipy.special.gammaln(prior_counts.sum())
+        - scipy.special.gammaln(prior_counts).sum()
+    )
+    return float(
+        -fit.objective
+        + log_prior_normalizer
+        + 0.5 * dimension * np.log(2 * np.pi)
+        + 0.5 * covariance_log_determinant
+    )
+
+
 @dataclass
 class SharedPathFit:
     """Shared path shift fit to cells with distinct transcript baselines."""
@@ -783,6 +824,7 @@ def fit_path_perturbation(
     max_iter=100,
     tolerance=1e-7,
     path_pseudocount=0.0,
+    path_prior_center="uniform",
 ):
     """Fit local path logits and return conditional Fisher covariance."""
     baseline = np.maximum(np.asarray(baseline, dtype=float), 1e-12)
@@ -797,6 +839,13 @@ def fit_path_perturbation(
     path_pseudocount = float(path_pseudocount)
     if path_pseudocount < 0:
         raise ValueError("path_pseudocount must be nonnegative")
+    if path_prior_center == "uniform":
+        prior_center = np.full(n_paths, 1.0 / n_paths)
+    elif path_prior_center == "baseline":
+        prior_center = baseline_paths
+    else:
+        raise ValueError("path_prior_center must be uniform or baseline")
+    prior_counts = path_pseudocount * n_paths * prior_center
 
     def objective(delta):
         theta, log_jacobian = _perturbed_theta(
@@ -821,13 +870,12 @@ def fit_path_perturbation(
             gradient -= log_jacobian.T @ score[selected]
         if path_pseudocount:
             proportions = path_proportions(theta, path_index)
-            loss -= path_pseudocount * float(
-                np.log(np.maximum(proportions, 1e-300)).sum()
+            loss -= float(
+                prior_counts @ np.log(np.maximum(proportions, 1e-300))
             )
             gradient += (
-                path_pseudocount
-                * n_paths
-                * (proportions @ basis)
+                prior_counts.sum() * (proportions @ basis)
+                - prior_counts @ basis
             )
         return loss, gradient
 
@@ -852,6 +900,17 @@ def fit_path_perturbation(
     information = conditional_path_information(
         theta, path_index, basis, designs, totals
     )
+    if path_pseudocount:
+        proportions = path_proportions(theta, path_index)
+        simplex_covariance = (
+            np.diag(proportions) - np.outer(proportions, proportions)
+        )
+        information += (
+            prior_counts.sum()
+            * basis.T
+            @ simplex_covariance
+            @ basis
+        )
     covariance = identifiable_covariance(
         information, np.eye(n_paths - 1), rtol=1e-8
     )
@@ -866,6 +925,123 @@ def fit_path_perturbation(
         iterations=int(result.nit),
         objective=float(result.fun),
     )
+
+
+def paired_measurement_error_test(
+    differences,
+    covariances,
+    *,
+    uncertainty_scale=1.0,
+    biological_variance=None,
+):
+    """Test a paired mean while retaining conditional measurement covariance.
+
+    ``differences`` has shape ``(M, D)`` and ``covariances`` has shape
+    ``(M, D, D)``, where ``M`` is the number of paired subjects and ``D`` is
+    the number of path log-ratio coordinates. A scalar isotropic biological
+    variance is estimated by restricted maximum likelihood. The returned
+    Wald reference is intended to be calibrated by design-matched sign flips.
+    """
+    differences = np.asarray(differences, dtype=float)
+    covariances = np.asarray(covariances, dtype=float)
+    if differences.ndim != 2 or differences.shape[1] < 1:
+        raise ValueError("differences must be subjects by coordinates")
+    n_subjects, dimension = differences.shape
+    if covariances.shape != (n_subjects, dimension, dimension):
+        raise ValueError("covariances have the wrong shape")
+    uncertainty_scale = float(uncertainty_scale)
+    if not np.isfinite(uncertainty_scale) or uncertainty_scale < 0:
+        raise ValueError("uncertainty_scale must be finite and nonnegative")
+    covariances = uncertainty_scale * covariances
+    if n_subjects < 3 or n_subjects <= dimension:
+        return {
+            "statistic": 0.0,
+            "degrees_of_freedom": dimension,
+            "p_value": 1.0,
+            "n_subjects": n_subjects,
+            "biological_variance": np.nan,
+            "mean": np.zeros(dimension),
+            "mean_covariance": np.full((dimension, dimension), np.inf),
+            "converged": False,
+        }
+
+    identity = np.eye(dimension)
+
+    def fit_at_tau(tau2):
+        precision = np.zeros((dimension, dimension), dtype=float)
+        score = np.zeros(dimension, dtype=float)
+        log_determinant = 0.0
+        quadratic_constant = 0.0
+        for value, covariance in zip(differences, covariances):
+            variance = covariance + float(tau2) * identity
+            sign, local_log_determinant = np.linalg.slogdet(variance)
+            if sign <= 0:
+                return None
+            weight = scipy.linalg.inv(variance, check_finite=False)
+            precision += weight
+            score += weight @ value
+            quadratic_constant += value @ weight @ value
+            log_determinant += local_log_determinant
+        sign, precision_log_determinant = np.linalg.slogdet(precision)
+        if sign <= 0:
+            return None
+        mean_covariance = scipy.linalg.inv(precision, check_finite=False)
+        mean = mean_covariance @ score
+        residual_quadratic = quadratic_constant - score @ mean
+        restricted_objective = (
+            log_determinant
+            + precision_log_determinant
+            + max(float(residual_quadratic), 0.0)
+        )
+        return restricted_objective, mean, mean_covariance
+
+    empirical_scale = max(
+        float(np.mean(np.var(differences, axis=0, ddof=1))),
+        float(np.mean(np.trace(covariances, axis1=1, axis2=2)) / dimension),
+        1e-8,
+    )
+    if biological_variance is None:
+        optimized = scipy.optimize.minimize_scalar(
+            lambda log_tau2: (
+                np.inf
+                if (fit := fit_at_tau(np.exp(log_tau2))) is None
+                else fit[0]
+            ),
+            bounds=(np.log(empirical_scale) - 18.0, np.log(empirical_scale) + 7.0),
+            method="bounded",
+            options={"xatol": 1e-5},
+        )
+        candidates = [(0.0, fit_at_tau(0.0))]
+        if optimized.success:
+            tau2 = float(np.exp(optimized.x))
+            candidates.append((tau2, fit_at_tau(tau2)))
+        candidates = [item for item in candidates if item[1] is not None]
+    else:
+        tau2 = max(float(biological_variance), 0.0)
+        candidates = [(tau2, fit_at_tau(tau2))]
+    if not candidates:
+        raise np.linalg.LinAlgError("paired measurement covariance is singular")
+    biological_variance, fitted = min(
+        candidates, key=lambda item: item[1][0]
+    )
+    restricted_objective, mean, mean_covariance = fitted
+    statistic = float(
+        mean
+        @ scipy.linalg.pinvh(mean_covariance, rtol=1e-10)
+        @ mean
+    )
+    return {
+        "statistic": statistic,
+        "degrees_of_freedom": dimension,
+        "p_value": float(scipy.stats.chi2.sf(statistic, dimension)),
+        "n_subjects": n_subjects,
+        "biological_variance": biological_variance,
+        "restricted_objective": restricted_objective,
+        "uncertainty_scale": uncertainty_scale,
+        "mean": mean,
+        "mean_covariance": mean_covariance,
+        "converged": True,
+    }
 
 
 def multivariate_gls_test(
@@ -965,9 +1141,15 @@ def multivariate_gls_test(
         ]
         if not candidates:
             raise np.linalg.LinAlgError("GLS null design has singular precision")
-        tau2 = min(candidates, key=lambda candidate: candidate[1][0])[0]
+        selected = min(candidates, key=lambda candidate: candidate[1][0])
+        tau2 = selected[0]
+        null_restricted_objective = float(selected[1][0])
     else:
         tau2 = max(float(biological_variance), 0.0)
+        null_fit = fit_at_tau(tau2, null_design)
+        if null_fit is None:
+            raise np.linalg.LinAlgError("GLS null design has singular precision")
+        null_restricted_objective = float(null_fit[0])
     fitted = fit_at_tau(tau2, design)
     if fitted is None:
         raise np.linalg.LinAlgError("GLS design has singular precision")
@@ -989,6 +1171,7 @@ def multivariate_gls_test(
         "degrees_of_freedom": degrees_of_freedom,
         "p_value": float(scipy.stats.chi2.sf(statistic, degrees_of_freedom)),
         "biological_variance": tau2,
+        "restricted_objective": null_restricted_objective,
         "coefficients": coefficients.reshape(design.shape[1], dimension),
         "coefficient_covariance": coefficient_covariance,
     }

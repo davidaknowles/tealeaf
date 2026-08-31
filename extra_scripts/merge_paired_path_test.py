@@ -256,6 +256,10 @@ def main():
         "failures": len(failures),
         "calibration": args.calibration,
         "moderate_variances": args.moderate_variances,
+        "retain_uncertainty": bool(table.retain_uncertainty.any()) if "retain_uncertainty" in table else False,
+        "minimum_path_pseudocount": float(table.path_pseudocount.min()),
+        "median_path_pseudocount": float(table.path_pseudocount.median()),
+        "maximum_path_pseudocount": float(table.path_pseudocount.max()),
     }
     pd.DataFrame([summary]).to_csv(
         args.output_dir / "summary.tsv", sep="\t", index=False

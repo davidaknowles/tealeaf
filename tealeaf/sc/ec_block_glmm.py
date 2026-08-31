@@ -112,14 +112,18 @@ def paired_path_test(
     baseline=None,
     max_iter=100,
     path_pseudocount=0.0,
+    path_prior_center="uniform",
+    retain_uncertainty=False,
+    uncertainty_scale=1.0,
 ):
     """Test paired local-path shifts after aggregating rows within subjects.
 
     The two primer-specific EC vectors are summed separately for every
     subject-by-label combination. Each aggregate is quantified once in the
     ``S - 1`` local-path ILR coordinates while holding the pooled within-path
-    isoform mixture fixed. The returned test is a paired t test for ``S = 2``
-    and Hotelling's T-squared test for ``S > 2``.
+    isoform mixture fixed. The production result is a paired t test for
+    ``S = 2`` and Hotelling's T-squared test for ``S > 2``. The optional
+    measurement-error sensitivity carries the conditional path covariance.
     """
     labels = np.asarray(labels)
     clusters = np.asarray(clusters)
@@ -133,6 +137,7 @@ def paired_path_test(
     if baseline is None:
         baseline = pooled_isoform_weights(data)
     differences = []
+    difference_covariances = []
     subject_ids = []
     fits = []
     for cluster in np.unique(clusters):
@@ -159,11 +164,16 @@ def paired_path_test(
                     path_index,
                     max_iter=max_iter,
                     path_pseudocount=path_pseudocount,
+                    path_prior_center=path_prior_center,
                 )
             except (ValueError, np.linalg.LinAlgError):
                 local_fits = []
                 break
-            if not fit.converged or not np.isfinite(fit.path_logratios).all():
+            if (
+                not fit.converged
+                or not np.isfinite(fit.path_logratios).all()
+                or (retain_uncertainty and not fit.covariance.identifiable)
+            ):
                 local_fits = []
                 break
             local_fits.append(fit)
@@ -172,20 +182,120 @@ def paired_path_test(
         differences.append(
             local_fits[1].path_logratios - local_fits[0].path_logratios
         )
+        difference_covariances.append(
+            local_fits[0].covariance.covariance
+            + local_fits[1].covariance.covariance
+        )
         subject_ids.append(cluster)
         fits.append(local_fits)
     dimension = len(np.unique(path_index[path_index >= 0])) - 1
     if differences:
         difference_array = np.asarray(differences, dtype=float)
+        covariance_array = np.asarray(difference_covariances, dtype=float)
     else:
         difference_array = np.empty((0, dimension), dtype=float)
-    result = differential.paired_mean_test(difference_array)
+        covariance_array = np.empty((0, dimension, dimension), dtype=float)
+    result = (
+        differential.paired_measurement_error_test(
+            difference_array,
+            covariance_array,
+            uncertainty_scale=uncertainty_scale,
+        )
+        if retain_uncertainty
+        else differential.paired_mean_test(difference_array)
+    )
     return {
         **result,
         "differences": difference_array,
+        "difference_covariances": covariance_array,
         "subject_ids": np.asarray(subject_ids),
         "path_fits": fits,
         "levels": tuple(levels),
+    }
+
+
+def independent_path_test(
+    data,
+    path_index,
+    labels,
+    clusters,
+    *,
+    baseline=None,
+    max_iter=100,
+    path_pseudocount=0.0,
+    path_prior_center="uniform",
+    uncertainty_scale=1.0,
+):
+    """Test an independent multi-level effect on EC-derived path ILRs."""
+    labels = np.asarray(labels)
+    clusters = np.asarray(clusters)
+    path_index = np.asarray(path_index, dtype=int)
+    if len(labels) != data.counts[0].shape[0] or len(clusters) != len(labels):
+        raise ValueError("labels, clusters, and EC data must align")
+    levels = np.unique(labels)
+    if len(levels) < 2:
+        raise ValueError("independent path testing requires two levels")
+    if baseline is None:
+        baseline = pooled_isoform_weights(data)
+    values = []
+    covariances = []
+    subject_labels = []
+    subject_ids = []
+    fits = []
+    for cluster in np.unique(clusters):
+        positions = np.flatnonzero(clusters == cluster)
+        local_labels = np.unique(labels[positions])
+        if len(local_labels) != 1:
+            raise ValueError("each independent subject must have one label")
+        counts = tuple(
+            np.asarray(observed[positions], dtype=float).sum(axis=0)
+            for observed in data.counts
+        )
+        if sum(float(observed.sum()) for observed in counts) <= 0:
+            continue
+        fit = differential.fit_path_perturbation(
+            counts,
+            data.compatibility,
+            baseline,
+            path_index,
+            max_iter=max_iter,
+            path_pseudocount=path_pseudocount,
+            path_prior_center=path_prior_center,
+        )
+        if not fit.converged or not fit.covariance.identifiable:
+            continue
+        values.append(fit.path_logratios)
+        covariances.append(fit.covariance.covariance)
+        subject_labels.append(local_labels[0])
+        subject_ids.append(cluster)
+        fits.append(fit)
+    dimension = len(np.unique(path_index[path_index >= 0])) - 1
+    values = np.asarray(values, dtype=float).reshape(-1, dimension)
+    covariances = np.asarray(covariances, dtype=float).reshape(
+        -1, dimension, dimension
+    )
+    subject_labels = np.asarray(subject_labels)
+    design = np.column_stack([
+        np.ones(len(values)),
+        *[subject_labels == level for level in levels[1:]],
+    ]).astype(float)
+    result = differential.multivariate_gls_test(
+        values,
+        float(uncertainty_scale) * covariances,
+        design,
+        np.arange(1, len(levels)),
+    )
+    return {
+        **result,
+        "n_subjects": len(values),
+        "converged": True,
+        "values": values,
+        "covariances": covariances,
+        "subject_labels": subject_labels,
+        "subject_ids": np.asarray(subject_ids),
+        "path_fits": fits,
+        "levels": tuple(levels),
+        "uncertainty_scale": float(uncertainty_scale),
     }
 
 

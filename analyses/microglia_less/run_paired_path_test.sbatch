@@ -18,12 +18,30 @@ export OPENBLAS_NUM_THREADS=1
 SHARD_COUNT=${SHARD_COUNT:-96}
 SHARD_INDEX=${SHARD_INDEX:-${SLURM_ARRAY_TASK_ID}}
 
-python "${REPO_ROOT}/extra_scripts/run_paired_path_test.py" \
-  --data-cache "${RUN_ROOT}/differential/ec_glmm_prepared.pkl" \
-  --candidate-cache "${CANDIDATE_CACHE:?}" \
-  --output-dir "${OUTPUT_ROOT:?}/shard_${SHARD_INDEX}" \
-  --null-replicates "${NULL_REPLICATES:-32}" \
-  --path-pseudocount "${PATH_PSEUDOCOUNT:-0}" \
-  --seed "${SEED:-20260830}" \
-  --shard-index "${SHARD_INDEX}" \
+ARGS=(
+  --data-cache "${RUN_ROOT}/differential/ec_glmm_prepared.pkl"
+  --candidate-cache "${CANDIDATE_CACHE:?}"
+  --output-dir "${OUTPUT_ROOT:?}/shard_${SHARD_INDEX}"
+  --null-replicates "${NULL_REPLICATES:-32}"
+  --path-pseudocount "${PATH_PSEUDOCOUNT:-0}"
+  --path-prior-center "${PATH_PRIOR_CENTER:-uniform}"
+  --seed "${SEED:-20260830}"
+  --shard-index "${SHARD_INDEX}"
   --shard-count "${SHARD_COUNT}"
+)
+if [[ "${RETAIN_UNCERTAINTY:-0}" == 1 ]]; then
+  ARGS+=(--retain-uncertainty)
+fi
+if [[ -n "${SMOOTHING_MAP:-}" ]]; then
+  ARGS+=(--smoothing-map "${SMOOTHING_MAP}")
+fi
+if [[ -n "${UNCERTAINTY_SCALE_MAP:-}" ]]; then
+  ARGS+=(--uncertainty-scale-map "${UNCERTAINTY_SCALE_MAP}")
+else
+  ARGS+=(--uncertainty-scale "${UNCERTAINTY_SCALE:-1}")
+fi
+if [[ -n "${UNCERTAINTY_SCALE_GRID:-}" ]]; then
+  ARGS+=(--uncertainty-scale-grid "${UNCERTAINTY_SCALE_GRID}")
+fi
+
+python "${REPO_ROOT}/extra_scripts/run_paired_path_test.py" "${ARGS[@]}"

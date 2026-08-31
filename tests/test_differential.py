@@ -141,6 +141,55 @@ class CovarianceTest(unittest.TestCase):
         self.assertTrue(fit.converged)
         np.testing.assert_allclose(fit.path_proportions, [0.8, 0.2], atol=1e-5)
 
+    def test_path_pseudocount_curvature_reduces_covariance(self):
+        arguments = (
+            (np.array([50.0, 50.0]),),
+            (sp.eye(2, format="csr"),),
+            np.array([0.5, 0.5]),
+            np.array([0, 1]),
+        )
+        unregularized = differential.fit_path_perturbation(*arguments)
+        regularized = differential.fit_path_perturbation(
+            *arguments, path_pseudocount=2.0
+        )
+        self.assertLess(
+            regularized.covariance.covariance[0, 0],
+            unregularized.covariance.covariance[0, 0],
+        )
+        self.assertTrue(
+            np.isfinite(differential.path_laplace_log_evidence(regularized, 2.0))
+        )
+
+    def test_baseline_centered_smoothing_targets_baseline_usage(self):
+        fit = differential.fit_path_perturbation(
+            (np.array([10.0, 10.0]),),
+            (sp.eye(2, format="csr"),),
+            np.array([0.9, 0.1]),
+            np.array([0, 1]),
+            path_pseudocount=100.0,
+            path_prior_center="baseline",
+        )
+        self.assertGreater(fit.path_proportions[0], 0.8)
+
+    def test_paired_measurement_error_downweights_noisy_subject(self):
+        differences = np.array([[0.9], [1.1], [1.0], [-8.0]])
+        covariances = np.array([[[0.01]], [[0.01]], [[0.01]], [[100.0]]])
+        result = differential.paired_measurement_error_test(
+            differences, covariances
+        )
+        self.assertTrue(result["converged"])
+        self.assertGreater(result["mean"][0], 0.8)
+        self.assertLess(result["p_value"], 0.05)
+
+    def test_zero_uncertainty_scale_reduces_to_biological_model(self):
+        differences = np.array([[0.2], [0.4], [0.3], [0.5]])
+        covariances = np.repeat(np.array([[[2.0]]]), 4, axis=0)
+        result = differential.paired_measurement_error_test(
+            differences, covariances, uncertainty_scale=0.0
+        )
+        self.assertEqual(result["uncertainty_scale"], 0.0)
+        self.assertTrue(np.isfinite(result["restricted_objective"]))
+
     def test_shared_cell_fit_matches_homogeneous_pseudobulk(self):
         design = sp.eye(2, format="csr")
         cell_counts = sp.csr_matrix(
@@ -313,6 +362,34 @@ class DifferentialTest(unittest.TestCase):
         )
         self.assertEqual(result["degrees_of_freedom"], 2)
         self.assertLess(result["p_value"], 1e-6)
+
+    def test_gls_null_variance_is_reusable_across_label_permutations(self):
+        rng = np.random.default_rng(71)
+        labels = np.repeat([0, 1, 2], 8)
+        values = rng.normal(size=(len(labels), 2))
+        covariance = np.repeat((0.02 * np.eye(2))[None], len(labels), axis=0)
+        design = np.column_stack((np.ones(len(labels)), labels == 1, labels == 2))
+        fitted = differential.multivariate_gls_test(
+            values, covariance, design, tested_columns=[1, 2]
+        )
+        permuted = rng.permutation(labels)
+        permuted_design = np.column_stack(
+            (np.ones(len(labels)), permuted == 1, permuted == 2)
+        )
+        refitted = differential.multivariate_gls_test(
+            values, covariance, permuted_design, tested_columns=[1, 2]
+        )
+        reused = differential.multivariate_gls_test(
+            values,
+            covariance,
+            permuted_design,
+            tested_columns=[1, 2],
+            biological_variance=fitted["biological_variance"],
+        )
+        self.assertAlmostEqual(
+            refitted["biological_variance"], fitted["biological_variance"]
+        )
+        self.assertAlmostEqual(refitted["statistic"], reused["statistic"])
 
     def test_effective_multinomial_size_recovers_known_size(self):
         proportions = np.array([0.2, 0.3, 0.5])

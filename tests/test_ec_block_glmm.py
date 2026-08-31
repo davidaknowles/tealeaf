@@ -227,6 +227,31 @@ def test_paired_path_test_recovers_subject_paired_shift():
     assert result["p_value"] < 0.01
 
 
+def test_independent_path_test_recovers_group_shift():
+    rng = np.random.default_rng(81)
+    labels = np.repeat([0, 1], 20)
+    probabilities = 1 / (1 + np.exp(-(labels * 0.8 - 0.4)))
+    first = np.array([rng.binomial(120, value) for value in probabilities])
+    data = ec_glmm.ECGLMMData(
+        (np.column_stack([first, 120 - first]).astype(float),),
+        (np.eye(2),),
+        np.ones((len(labels), 1)),
+        np.arange(len(labels)),
+    )
+    result = ec_block_glmm.independent_path_test(
+        data,
+        [0, 1],
+        labels,
+        np.arange(len(labels)),
+        baseline=[0.5, 0.5],
+        path_pseudocount=1.0,
+    )
+    assert result["converged"]
+    assert result["degrees_of_freedom"] == 1
+    assert result["p_value"] < 0.01
+    assert np.isfinite(result["restricted_objective"])
+
+
 def test_path_pseudocount_regularizes_boundary_estimate():
     fit = differential.fit_path_perturbation(
         (np.array([100.0, 0.0]),),

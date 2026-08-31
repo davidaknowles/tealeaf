@@ -36,16 +36,16 @@ The analysis asks two distinct questions:
   \item Does local splice-path usage differ by experimental condition within a cell type?
   \item Does local splice-path usage differ across cell types within the same mice?
 \end{enumerate}
-The primary analysis aggregates cells into \emph{mouse-by-condition-by-cell-type pseudobulks} and models their observed paired-primer equivalence-class (EC) counts directly. Biological replication is represented by mouse random effects; cells are never treated as independent condition replicates.
+The primary analysis aggregates cells into \emph{mouse-by-condition-by-cell-type pseudobulks} and estimates local splice-path compositions from their observed paired-primer equivalence-class (EC) counts. Biological replication is represented by mouse; cells are never treated as independent condition replicates.
 
 A splice block is a local region between constitutive exonic anchors. Transcripts that take the same path through that region are collapsed to one subisoform. This targets local splicing choices, which can be identifiable even when the corresponding full-length isoforms are not.
 
 For condition effects, each hypothesis is indexed by a splice block and a cell type. It is an omnibus test of \[
   H_0:\quad\text{mean path usage is equal across the included conditions}.
 \]
-Only conditions represented by at least three mouse pseudobulks are included. With two conditions and two paths, this is a precision-weighted differential-PSI test. With more conditions or paths, all condition coefficients and path log-ratios are tested jointly.
+Only conditions represented by at least three mouse pseudobulks are included. With two conditions and two paths, this is a mouse-level differential path-log-ratio test. With more conditions or paths, all condition coefficients and path log-ratios are tested jointly.
 
-For cell-type effects, each hypothesis is indexed by a nonredundant splice-path partition. It is an omnibus test of equal path usage across the included cell types while condition is an unrestricted nuisance fixed effect and mouse is a random effect. Cell types must be represented in at least three mice. Both contrasts require at least 10 modeled gene UMIs per retained pseudobulk. The cell-type and condition hypothesis families are reported separately.
+For cell-type effects, each hypothesis is indexed by a nonredundant splice-path partition and a pair of cell types observed in the same mice. It tests whether the paired mouse-level path difference is zero. Cell types must be represented in at least four paired mice for the comparator benchmark and full cell-type analysis. Condition tests require at least 10 modeled gene UMIs per retained pseudobulk; the comparator benchmark uses 25 UMIs for alignment with the external-method screens. The cell-type and condition hypothesis families are reported separately.
 
 \subsection*{Workflow}
 
@@ -53,12 +53,12 @@ The primary analysis proceeds in five steps:
 \begin{enumerate}[leftmargin=*]
   \item Construct local splice blocks from the isoform annotation and map every supported isoform to a local path.
   \item Aggregate paired oligo(dT) and random-hexamer EC counts within each mouse, condition, and cell type while retaining separate primer maps.
-  \item For each block, construct a label-independent pooled isoform baseline and nested fixed-effect tensors whose tested-label nuisance directions are tangent to constant local path usage.
-  \item Fit multinomial and logistic-normal multinomial EC GLMMs with full-covariance variational posteriors, warm-starting each alternative from its fitted null.
-  \item Calibrate the nested objective gain by null simulation, cross-fitted tail modeling, and a global leave-block-out empirical null CDF; then apply BH separately to cell-type and condition hypotheses.
+  \item For each block, construct a label-independent pooled isoform baseline and estimate only its $d_b=S_b-1$ local path-log-ratio perturbations while preserving within-path isoform mixtures and nuisance isoforms.
+  \item Stabilize local path estimates with two pseudo-observations per path, then fit the paired or independent biological-replicate model.
+  \item Calibrate the resulting statistics against 32 design-matched null families with a leave-one-event-out empirical null CDF, then apply BH separately to cell-type and condition hypotheses.
 \end{enumerate}
 
-The EC GLMM has two supported fitting options. Full-covariance tilted variational fitting with parametric-bootstrap calibration supplies the full-data calibrated results. Laplace fitting supplies a conventional approximate marginal likelihood, likelihood-ratio statistic, and BIC approximation; its analytic reference tests are retained as nonbootstrap sensitivities because the multilevel cell-type reference was not calibrated under structured null permutations. The comparator benchmark uses the direct subject-paired local-path likelihood defined below, which retains both primer-specific EC observations but avoids fitting global latent random effects for each pairwise contrast. Gaussian path-estimate, compositional, Dirichlet--multinomial, GEE, cell-resolved, and junction-count analyses appear in the appendices.
+The same direct local-path likelihood is used for the comparator benchmark and full-data analyses. It retains both primer-specific EC observations but avoids fitting global latent random effects for every hypothesis. The former full-covariance variational and Laplace EC GLMMs, their corrected full-data results, and Gaussian path-estimate, compositional, Dirichlet--multinomial, GEE, cell-resolved, and junction-count analyses appear in the appendices.
 
 \section*{Notation and Dimensions}
 
@@ -78,14 +78,14 @@ t & \{1,\ldots,T_g\} & \text{isoform index within gene }g(b)\\
 s & \{1,\ldots,S_b\} & \text{splice-path index}\\
 \bm c_{gip} & \mathbb N_0^{K_{gp}} & \text{observed pseudobulk EC counts}\\
 A_{gp} & \mathbb R_+^{K_{gp}\times T_g} & \text{weighted EC-by-isoform map}\\
-\bm\eta_{gi,-} & \mathbb R^{r_g} & \text{free isoform logits}\\
+\overline{\bm\theta}_g & \Delta^{T_g-1} & \text{label-independent pooled isoform baseline}\\
+\bm\delta_{bi} & \mathbb R^{d_b} & \text{local path-log-ratio perturbation}\\
+V_{bi} & \mathbb S_+^{d_b} & \text{conditional covariance of }\widehat{\bm\delta}_{bi}\\
 \bm q_{gip} & \Delta^{K_{gp}-1} & \text{primer-specific EC probabilities}\\
 Q_b & \mathbb R^{S_b\times d_b} & \text{Helmert ILR basis}\\
-H_b & \mathbb R^{r_g\times d_b} & \text{tested right inverse of }J_b\\
-J_b & \mathbb R^{d_b\times r_g} & \text{pooled-baseline path-ILR Jacobian}\\
-N_b & \mathbb R^{r_g\times(r_g-d_b)} & \text{tangent nuisance basis}\\
-\bm u_{gm} & \mathbb R^{r_g} & \text{mouse random effect}\\
-\bm e_{gi} & \mathbb R^{r_g} & \text{logistic-normal pseudobulk effect}\\
+H_b & \mathbb R^{r_g\times d_b} & \text{tested right inverse in the appendix GLMM}\\
+J_b & \mathbb R^{d_b\times r_g} & \text{path-ILR Jacobian in the appendix GLMM}\\
+N_b & \mathbb R^{r_g\times(r_g-d_b)} & \text{tangent nuisance basis in the appendix GLMM}\\
 \bottomrule
 \end{array}
 \]
@@ -131,7 +131,7 @@ Conditioning on each observed primer total removes library size from the composi
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[>=Latex,node distance=5mm and 7mm,every node/.style={font=\small},stage/.style={rounded corners=2pt,draw=tealeafNavy!60,line width=.7pt,minimum height=15mm,align=center,inner sep=5pt},flow/.style={->,line width=1.1pt,tealeafTeal},branch/.style={->,line width=1pt,tealeafOrange}]
-\node[stage,fill=tealeafLightTeal,text width=28mm] (block) {\textbf{Block parameters}\\fixed effects $\bm\beta_b$\\latent effects $\bm u_{gm},\bm e_{gi}$};
+\node[stage,fill=tealeafLightTeal,text width=28mm] (block) {\textbf{Block parameters}\\pooled baseline $\overline{\bm\theta}_g$\\local shift $\bm\delta_{bi}$};
 \node[stage,fill=tealeafLight,text width=31mm,right=of block] (iso) {\textbf{Isoform composition}\\$\bm\eta_{gi}\in\mathbb R^{T_g}$\\$\bm\theta_{gi}=\operatorname{softmax}(\bm\eta_{gi})$};
 \node[stage,fill=tealeafLight,text width=32mm,above right=3mm and 9mm of iso] (dtec) {\textbf{oligo(dT) EC proportions}\\$A_{g,\mathrm{dT}}\in\mathbb R_+^{K_{g,\mathrm{dT}}\times T_g}$\\$\bm q_{gi,\mathrm{dT}}\in\Delta^{K_{g,\mathrm{dT}}-1}$};
 \node[stage,fill=tealeafLight,text width=32mm,below right=3mm and 9mm of iso] (rhec) {\textbf{random-hexamer EC proportions}\\$A_{g,\mathrm{RH}}\in\mathbb R_+^{K_{g,\mathrm{RH}}\times T_g}$\\$\bm q_{gi,\mathrm{RH}}\in\Delta^{K_{g,\mathrm{RH}}-1}$};
@@ -143,187 +143,19 @@ Conditioning on each observed primer total removes library size from the composi
 \draw[flow] (dtec)--(dtcount);
 \draw[flow] (rhec)--(rhcount);
 \end{tikzpicture}
-\caption{Generative flow for gene $g=g(b)$ and pseudobulk $i$. Block-level fixed effects and mouse- and pseudobulk-level Gaussian effects determine one shared isoform composition $\bm\theta_{gi}\in\Delta^{T_g-1}$. The two fixed primer-specific maps transform that composition into separate EC probability vectors, from which the observed oligo(dT) and random-hexamer count vectors are drawn. The branch therefore represents observation chemistry, not two independently fitted isoform compositions.}
+\caption{Generative flow for gene $g=g(b)$ and pseudobulk $i$. A local path perturbation of the pooled isoform baseline determines one isoform composition $\bm\theta_{gi}\in\Delta^{T_g-1}$. The two fixed primer-specific maps transform that composition into separate EC probability vectors, from which the observed oligo(dT) and random-hexamer count vectors are drawn. The branch represents observation chemistry, not two independently fitted isoform compositions.}
 \label{fig:ec-generative-model}
 \end{figure}
 
-\subsection*{Multinomial EC GLMM}
-
-Let \(m(i)\in\{1,\ldots,M_b\}\) denote the mouse for pseudobulk \(i\). The multinomial EC GLMM is, \begin{align}
- \bm c_{gip}\mid\bm\eta_{gi}
- &\sim\operatorname{Multinomial}
-   \{n_{gip},\bm q_{gip}(\bm\eta_{gi})\},\\
- \bm\eta_{gi,-}
- &=\mathcal F_{bi}(\bm\beta_b)+\bm u_{g,m(i)},\\
- \bm u_{gm}&\sim N(\bm0_{r_g},\sigma_g^2I_{r_g}),
- \qquad \bm u_{gm}\in\mathbb R^{r_g},\quad\sigma_g>0.
-\end{align}
-
-The same mouse effect enters both primer halves and every pseudobulk from that mouse. The fixed predictor \(\mathcal F_{bi}(\bm\beta_b)\in\mathbb R^{r_g}\) is a tensor design defined below. Thus the model uses observed EC counts, preserves gene-wide ambiguity, and tests a local block contrast without first estimating a response vector.
-
-\subsection*{Logistic-normal EC GLMM}
-
-The logistic-normal extension adds one isotropic residual composition effect per pseudobulk, \begin{align}
- \bm\eta_{gi,-}
- &=\mathcal F_{bi}(\bm\beta_b)+\bm u_{g,m(i)}+\bm e_{gi},\\
- \bm e_{gi}&\sim N(\bm0_{r_g},\tau_g^2I_{r_g}),
- \qquad \bm e_{gi}\in\mathbb R^{r_g},\quad\tau_g>0.
-\end{align}
-
-The multinomial observation model is otherwise unchanged. The same \(\bm e_{gi}\) enters the oligo(dT) and random-hexamer likelihood terms because it perturbs the latent isoform composition rather than primer-specific EC probabilities. It therefore represents correlated extra-multinomial variation across the paired primer halves. The multinomial model is the special case \(\tau_g=0\). This logistic-normal construction is the primary overdispersion model; the direct EC Dirichlet--multinomial is retained only as an appendix sensitivity analysis.
-
-\subsection*{Local path contrast and nested fixed-effect tensors}
-
-Let \(\pi_b(t)\in\{-1,1,\ldots,S_b\}\) be isoform \(t\)'s represented path, where \(-1\) marks an isoform retained only as a likelihood nuisance. For \(\bm\theta\in\Delta^{T_g-1}\), define the represented path composition \(\bm\psi_b(\bm\theta)\in\Delta^{S_b-1}\) by \[
- \psi_{bs}(\bm\theta)=\frac{\sum_{t:\pi_b(t)=s}\theta_t}{\sum_{u:\pi_b(u)\geq1}\theta_u},\qquad s\in\{1,\ldots,S_b\}.
-\]
-The tested local coordinate is the map \(\bm f_b:\mathbb R^{r_g}\to\mathbb R^{d_b}\), \[
- \bm f_b(\bm\eta_-)=Q_b^\prime\log\bm\psi_b\left[\operatorname{softmax}\{(\bm\eta_-^\prime,0)^\prime\}\right].
-\]
-
-Before using cell-type or condition labels, Tealeaf estimates a pooled isoform composition \(\widehat{\bm\theta}_b\in\Delta^{T_g-1}\) from all EC counts in the covered pseudobulks by maximizing the paired-primer conditional EC likelihood. Let \(\widehat{\bm\eta}_{b,-}\in\mathbb R^{r_g}\) be its reference logits and let \(J_b\in\mathbb R^{d_b\times r_g}\) be the Jacobian \[
- J_b=\left.\frac{\partial\bm f_b(\bm\eta_-)}{\partial\bm\eta_-^\prime}\right|_{\bm\eta_-=\widehat{\bm\eta}_{b,-}}.
-\]
-After the information screen, \(J_b\) has row rank \(d_b\). Define the tested right inverse and a nuisance kernel basis as \[
- H_b=J_b^\prime(J_bJ_b^\prime)^{-1}\in\mathbb R^{r_g\times d_b},\qquad N_b\in\mathbb R^{r_g\times(r_g-d_b)},\qquad J_bH_b=I_{d_b},\quad J_bN_b=0.
-\]
-The columns of \(N_b\) are obtained from the right singular vectors of \(J_b\). They permit tested-label changes among global isoforms that have zero first derivative in every local path ILR at the pooled baseline. The columns of \(H_b\) add one unit of the corresponding local ILR derivative and complete the unrestricted isoform-logit alternative. This construction corrects the former Euclidean complement, which could change aggregate path usage when a path contained isoforms with unequal baseline abundance. It retains isoform-specific nuisance changes within each path rather than fixing their conditional mixture.
-
-For a two-path cassette, \(d_b=1\), so a pairwise comparison has one tested coefficient. The tangent restriction is local rather than an exact finite-effect constraint. An exact pre-collapsed path likelihood gives almost identical cassette replication and is reported in the appendix; the tangent construction is used because it preserves the global within-path isoform nuisance space.
-
-Let \(Z_b\in\mathbb R^{I_b\times q_0}\) be the nuisance design and \(W_b\in\mathbb R^{I_b\times q_1}\) the treatment-coded tested design. The nested predictors are \begin{align}
- \mathcal F_{bi}^{(0)}
- &=B_0^\prime Z_{bi}^\prime
-   +\sum_{j=1}^{q_1}W_{bij}N_b\bm\alpha_{bj},\\
- \mathcal F_{bi}^{(1)}
- &=\mathcal F_{bi}^{(0)}
-   +\sum_{j=1}^{q_1}W_{bij}H_b\bm\gamma_{bj},
-\end{align}
-
-where \(B_0\in\mathbb R^{q_0\times r_g}\), \(\bm\alpha_{bj}\in\mathbb R^{r_g-d_b}\), and \(\bm\gamma_{bj}\in\mathbb R^{d_b}\). The null sets every \(\bm\gamma_{bj}=\bm0_{d_b}\); the alternative adds \(q_1d_b\) block-path coefficients. In implementation these expressions are stored as tensors \(\mathcal X_b^{(h)}\in\mathbb R^{I_b\times r_g\times a_h}\), \(h\in\{0,1\}\), and evaluated as \(\mathcal F_{bi}^{(h)}=\mathcal X_{bi}^{(h)}\bm\beta_b^{(h)}\).
-
-The two biological tests differ only in \(Z_b\) and \(W_b\),
-\begin{itemize}[leftmargin=*]
-  \item For the cell-type test, \(Z_b\) is a one-hot condition design and \(W_b\) has \(C_b^{\rm cell}-1\) columns, where \(C_b^{\rm cell}\in\mathbb N\) is the number of cell types. The tested dimension is \((C_b^{\rm cell}-1)d_b\). All condition-by-isoform effects and cell-type effects tangent to constant path usage are present under the null.
-  \item For condition within cell type, the data are restricted to one cell type, \(Z_b=\bm1_{I_b}\), and \(W_b\) has \(C_b^{\rm cond}-1\) condition columns. The tested dimension is \((C_b^{\rm cond}-1)d_b\). Each retained condition must be represented by at least three mice.
-\end{itemize}
-
-Distinct annotated blocks can induce the same partition after unsupported isoforms are removed. Before fitting or BH correction, tests are therefore deduplicated by gene, supported isoform set, canonical path partition, covered pseudobulks, and tested factor levels.
-
-\subsection*{Full-covariance variational fitting}
-
-For mouse \(m\), let \(h_{gm}\in\mathbb N\) be its number of retained pseudobulks. In the multinomial model define \(\bm z_{gm}=\bm u_{gm}\in\mathbb R^{r_g}\). In the logistic-normal model, \[
- \bm z_{gm}=(\bm u_{gm}^\prime,
- \bm e_{gi_1}^\prime,\ldots,\bm e_{gi_{h_{gm}}}^\prime)^\prime
- \in\mathbb R^{L_{gm}},\qquad L_{gm}=(1+h_{gm})r_g.
-\]
-
-The prior covariance is, \[
- P_{gm}=\operatorname{diag}
- (\sigma_g^2I_{r_g},\tau_g^2I_{h_{gm}r_g})
- \in\mathbb S_{++}^{L_{gm}},
-\]
-
-with the residual block omitted for the multinomial model. The variational family factorizes across mice but has unrestricted covariance within mouse, \[
- Q(\bm z_g)=\prod_{m=1}^{M_b}
- N(\bm z_{gm};\bm\mu_{gm},\Sigma_{gm}),\qquad
- \Sigma_{gm}\in\mathbb S_{++}^{L_{gm}}.
-\]
-
-Every \(\Sigma_{gm}\) is parameterized by a lower Cholesky factor with an exponentiated diagonal. It captures posterior dependence among isoform logits and, in the logistic-normal model, between the shared mouse effect and all residuals from that mouse. It does not add an unstructured covariance parameter to the generative model.
-
-The multinomial likelihood uses the analytic tilted log-sum-exp bound. For a Gaussian logit vector with mean \(\bm m\in\mathbb R^{T_g}\), covariance \(V\in\mathbb S_+^{T_g}\), and local coordinate \(\bm a\in\Delta^{T_g-1}\), \begin{align}
- E\log\sum_t\exp(\eta_t)
- &\leq \frac12\bm a^\prime V\bm a
- +\log\sum_t\exp\{m_t+\tfrac12V_{tt}-(V\bm a)_t\},\\
- \bm a&=\operatorname{softmax}
- \{\bm m+\tfrac12\operatorname{diag}(V)-V\bm a\}.
-\end{align}
-
-The local coordinate is iterated for eight fixed-point updates. At this accuracy, differentiating through the updates changes the objective gradient by less than \(10^{-8}\) in the benchmark fits, so the implementation stops the local-coordinate gradient and uses the envelope theorem. The Gaussian KL term is exact,\[
- \operatorname{KL}(Q_m\Vert P_m)=\frac12\left[
- \operatorname{tr}(P_m^{-1}\Sigma_m)
- +\bm\mu_m^\prime P_m^{-1}\bm\mu_m-L_{gm}
- +\log|P_m|-\log|\Sigma_m|\right].
-\]
-
-Summing bounded expected log likelihoods and subtracting these KL terms gives the optimized objective \(\mathcal L_b^{(h)}\in\mathbb R\). To improve conditioning, let \(s_{gmj}>0\) be the prior standard deviation of latent coordinate \(j\), let \(\widetilde\mu_{gmj}\in\mathbb R\) be its optimizer-scale mean, and let \(\widetilde L_{gmjk}\in\mathbb R\) be element \((j,k)\) of its optimizer-scale lower Cholesky factor. The physical variational parameters are obtained by the row scaling \(\mu_{gmj}=s_{gmj}^{3/4}\widetilde\mu_{gmj}\) and \(L_{gmjk}=s_{gmj}^{3/4}\widetilde L_{gmjk}\). This is an invertible reparameterization, not a change to the posterior family, and reduces the ridge between latent moments and their estimated prior scales.
-
-JAX supplies 64-bit objective values and gradients; bounded L-BFGS runs for at most 300 strict iterations. A fit that reaches this limit resumes from the complete previous parameter vector for at most 50 iterations with a relaxed relative-objective tolerance. The returned parameters are transformed back to the common physical representation. The alternative copies the fitted null fixed effects, variational means, Cholesky factors, and variance parameters, initializes only the new block coefficients to zero, and then optimizes. This warm start keeps the nested objective comparison on the same local branch.
-
-\begin{algorithm}[H]
-\caption{Fit one multinomial or logistic-normal block-level EC-count GLMM test}
-\label{alg:primary-ec-glmm}
-\begin{algorithmic}[1]
-\Require Paired counts \(\bm c_{gip}\), maps \(A_{gp}\), block path map \(\pi_b\), labels, mouse indices, and model type
-\Ensure Nested-fit statistic \(T_b\) and fitted null for simulation
-\State Retain pseudobulks with at least 10 modeled gene UMIs and enforce the three-mouse representation rules.
-\State Construct \(H_b\), \(N_b\), and deduplicate the supported partition.
-\State Build \(Z_b,W_b,\mathcal X_b^{(0)},\mathcal X_b^{(1)}\) for the chosen cell-type or condition contrast.
-\State Initialize the null full-covariance posterior and variance parameters.
-\Repeat
-  \State Iterate every tilted local coordinate for eight updates and apply the envelope theorem.
-  \State Evaluate the bounded ELBO and its 64-bit gradient in prior-scale optimizer coordinates.
-  \State Update fixed effects, scaled posterior means and Cholesky rows, and \(\log\sigma_g\) plus optional \(\log\tau_g\) by bounded L-BFGS.
-\Until{convergence or the retry budget is exhausted}
-\State Expand the null parameter vector with zero block coefficients and fit the alternative from this warm start.
-\State Set \(T_b\gets2(\mathcal L_b^{(1)}-\mathcal L_b^{(0)})\).
-\end{algorithmic}
-\end{algorithm}
-
-\subsection*{Laplace fitting option}
-
-The same EC likelihoods and nested fixed-effect tensors can instead be fit by a Laplace approximation. For mouse \(m\), let \(\widehat{\bm z}_{gm}(\bm\theta)\in\mathbb R^{L_{gm}}\) be the posterior mode of its latent Gaussian block at outer parameter vector \(\bm\theta\in\mathbb R^{a_h+v}\), where \(a_h\in\mathbb N\) is the number of fixed-effect coefficients under hypothesis \(h\in\{0,1\}\) and \(v\in\{1,2\}\) is the number of fitted variance components. Let \(J_{gm}(\bm\theta)\in\mathbb S_{++}^{L_{gm}}\) be the negative Hessian of the mouse-specific log joint density with respect to \(\bm z_{gm}\), evaluated at that mode. Up to constants independent of \(\bm\theta\), the Laplace objective is \[
- \widetilde\ell_b^{(h)}(\bm\theta)=\sum_{m=1}^{M_b}\left[\ell_{gm}\{\widehat{\bm z}_{gm}(\bm\theta),\bm\theta\}-\frac12\log|J_{gm}(\bm\theta)|\right]\in\mathbb R.
-\]
-
-Each posterior mode is obtained by fixed Newton updates. Implicit differentiation of the mode equation supplies the outer gradient, and closed-form EC multinomial score and Hessian calculations avoid nested automatic differentiation. Gene-grouped bounded L-BFGS fits the outer parameters, reuses compiled objectives and a shared unrestricted alternative where possible, and initializes each alternative by projecting its fitted null into the expanded design. The implementation retains a longer mode-solve continuation when either nested fit fails its gradient or mode-score tolerance.
-
-Laplace and variational fitting are alternatives for the same generative EC GLMM, not different biological models. Tilted VI was five- to seven-fold faster than the original Laplace implementation in controlled low-dimensional simulations, whereas analytic derivatives and compilation reuse later made Laplace practical for large nonbootstrap screens. The Laplace objective gives the statistic \(2\{\widetilde\ell_b^{(1)}-\widetilde\ell_b^{(0)}\}\) and the BIC approximation \(2\log\widehat{\mathrm{BF}}_{10,b}^{\rm BIC}=2\{\widetilde\ell_b^{(1)}-\widetilde\ell_b^{(0)}\}-q_1d_b\log M_b\). These analytic summaries do not replace the bootstrap-calibrated variational result: structured mouse null permutations showed that the ordinary chi-square reference for the multilevel cell-type LRT is anti-conservative. The completed Laplace analyses and computational comparisons are therefore reported in the appendix.
-
-\subsection*{Null simulation and resolved-tail calibration}
-
-For each block, the fitted null generates five parametric-bootstrap replicates. Each replicate draws mouse effects and, for the logistic-normal model, pseudobulk effects; forms primer-specific EC probabilities through \(A_{gp}\); preserves every observed \(n_{gip}\); draws multinomial EC counts; and refits both nested models with the same warm-start and stopping rules.
-
-Raw empirical ranks within tested-dimension strata are calibrated at ordinary levels but do not resolve genome-wide tails: after deduplication their minimum p-values are approximately \(4.5\times10^{-4}\), while BH requires values near \(10^{-5}\) at the first ranks. Tail calibration therefore proceeds as follows. Within each likelihood and tested-dimension stratum, let \(u_s\) be the 90th percentile of bootstrap statistics. Excesses \(T-u_s>0\) follow a fitted generalized Pareto distribution (GPD) with shape \(\xi_s\in\mathbb R\) and scale \(\beta_s>0\). The GPD is a peaks-over-threshold model for the conditional distribution of values exceeding \(u_s\). Entire block tests, including all their bootstrap replicates, are assigned to one of five folds. The tail model fitted on four folds maps statistics in the held-out fold to lower-tail scores \(\rho\in(0,1]\).
-
-Residual GPD error is removed by a second empirical calibration. Let \(\mathcal R_{-b}\) contain all cross-fitted null scores except scores generated for block \(b\). The reported p-value is \[
- p_b=\frac{1+\sum_{\rho\in\mathcal R_{-b}}
-                  \mathbf1\{\rho\leq\rho_b\}}
-             {1+|\mathcal R_{-b}|}.
-\]
-
-Every bootstrap replicate receives the same leave-block-out calibration. Aggregate null rejection is audited at 0.05, 0.01, and 0.001, and 0.05 rejection is also checked by gene-depth and sample-count quartile. BH values are released only when aggregate and quartile 0.05 rejection rates lie in the prespecified interval 0.025--0.075. Thresholds 80\%, 85\%, 90\%, and 95\% are reported as a tail-model sensitivity analysis; a robust call must pass BH in all four analyses.
-
-\begin{algorithm}[H]
-\caption{Cross-fitted calibration and genome-wide correction}
-\label{alg:primary-ec-calibration}
-\begin{algorithmic}[1]
-\Require Observed statistics, fitted nulls, five null replicates per test, and tail threshold \(q\)
-\Ensure Calibrated p-values and BH values
-\ForAll{tests \(b\)}
-  \State Simulate paired-primer counts from the fitted null while preserving observed primer totals; refit both nested models.
-\EndFor
-\State Pool converged null statistics by likelihood and tested dimension; combine dimensions represented by fewer than 100 tests into a rare stratum.
-\For{\(f=1,\ldots,5\)}
-  \State Fit each GPD tail using blocks outside fold \(f\).
-  \State Score observed and null statistics belonging to fold \(f\).
-\EndFor
-\State Recalibrate every score against the global leave-block-out null-score CDF within likelihood.
-\State Audit null rejection overall and by depth and sample count.
-\State Apply BH separately to the cell-type and within-cell-type condition families.
-\end{algorithmic}
-\end{algorithm}
-
-\section*{Comparator Methods and Reproducibility Design}
+\section*{Local-Path Inference and Comparator Design}
 
 The primary comparator benchmark uses a direct local-path Tealeaf likelihood, not the paired junction baseline described in the appendix. For block \(b\) with \(T_g\in\mathbb N\) supported gene isoforms and \(S_b\in\mathbb N\) represented paths, let \(\overline{\bm\theta}_g\in\Delta^{T_g-1}\) be the label-independent pooled isoform composition and let \(B_b\in\mathbb R^{S_b\times(S_b-1)}\) be a Helmert basis. For subject \(m\), cell-type level \(c\), and primer \(p\in\{1,2\}\), the observed EC vector is \(\bm c_{bmcp}\in\mathbb N_0^{K_{gp}}\), where \(K_{gp}\in\mathbb N\) is the number of retained ECs defined above. Rows from the same subject and level are summed within primer. A local perturbation \(\bm\delta_{bmc}\in\mathbb R^{S_b-1}\) multiplies every represented isoform on path \(s\) by \(\exp(B_{bs}^{\mathsf T}\bm\delta_{bmc})\), then renormalizes the represented isoforms to their pooled total mass. This holds within-path isoform ratios, unrepresented nuisance isoforms, and the total represented-path mass fixed while allowing the local path composition \(\bm\psi_{bmc}\in\Delta^{S_b-1}\) to change.
 
-The estimate maximizes the two-primer EC log likelihood with symmetric path smoothing \(\alpha=2\), \[\widehat{\bm\delta}_{bmc}=\arg\max_{\bm\delta\in\mathbb R^{S_b-1}}\left\{\sum_{p=1}^2\bm c_{bmcp}^{\mathsf T}\log\left(\frac{A_{gp}\bm\theta_g(\bm\delta)}{\bm1^{\mathsf T}A_{gp}\bm\theta_g(\bm\delta)}\right)+\alpha\sum_{s=1}^{S_b}\log\psi_{bmcs}(\bm\delta)\right\}.\] Here \(A_{gp}\in\mathbb R_+^{K_{gp}\times T_g}\) is the primer-specific compatibility design. For fully observed path counts, \(\alpha\) is an add-two pseudocount; in the EC likelihood it is the corresponding symmetric log-barrier. Thus junction, exonic, and ambiguous reads contribute through their compatibility patterns without first assigning reads to global isoforms.
+Let \(\bm\psi_{bmc}(\bm\delta)\in\Delta^{S_b-1}\) be the path composition induced by the perturbed isoform vector. The production estimate maximizes the two-primer EC log likelihood with \(\alpha=2\) pseudo-observations on every path, \[\widehat{\bm\delta}_{bmc}=\arg\max_{\bm\delta\in\mathbb R^{S_b-1}}\left\{\sum_{p=1}^2\bm c_{bmcp}^{\mathsf T}\log\left(\frac{A_{gp}\bm\theta_g(\bm\delta)}{\bm1^{\mathsf T}A_{gp}\bm\theta_g(\bm\delta)}\right)+\alpha\sum_{s=1}^{S_b}\log\psi_{bmcs}(\bm\delta)\right\},\qquad\alpha=2.\] Here \(A_{gp}\in\mathbb R_+^{K_{gp}\times T_g}\) is the primer-specific compatibility design. The penalty stabilizes boundary estimates. Junction, exonic, and ambiguous reads contribute through their compatibility patterns without first assigning reads to global isoforms.
 
-Let \(\widehat{\bm y}_{bmc}=B_b^{\mathsf T}\log\widehat{\bm\psi}_{bmc}\in\mathbb R^{S_b-1}\) and let \(\bm d_{bm}=\widehat{\bm y}_{bm2}-\widehat{\bm y}_{bm1}\in\mathbb R^{S_b-1}\). Blocks with \(S_b=2\) use a paired t-test of the scalar differences; blocks with \(S_b>2\) use Hotelling's \(T^2\). Because many scalar tests have only four to eight paired subjects, their variances are moderated across the \(M\in\mathbb N\) eligible scalar block tests. If \(s_b^2>0\) has residual degrees of freedom \(\nu_b=n_b-1\), log-variance moment matching estimates a scaled inverse-chi-squared prior with variance \(s_0^2>0\) and degrees of freedom \(\nu_0>0\), using symmetric 5\% Winsorization. The moderated variance is \(\widetilde s_b^2=(\nu_b s_b^2+\nu_0s_0^2)/(\nu_b+\nu_0)\), and the resulting statistic is compared with a t distribution on \(\nu_b+\nu_0\) degrees of freedom.
+Let \(\widehat{\bm y}_{bmc}=B_b^{\mathsf T}\log\widehat{\bm\psi}_{bmc}\in\mathbb R^{S_b-1}\). For a paired cell-type contrast, \(\widehat{\bm d}_{bm}=\widehat{\bm y}_{bm2}-\widehat{\bm y}_{bm1}\in\mathbb R^{S_b-1}\). A paired \(t\) test is used when \(S_b=2\), and Hotelling's test is used when \(S_b>2\). Scalar sampling variances are moderated across blocks with a robust scaled-inverse-chi-squared prior, refitted inside every null family. For a condition test within one cell type, the mouse-level vectors enter an equal-weight multivariate regression with an intercept and \(C_b^{\rm cond}-1\) condition columns; an isotropic between-mouse variance is fitted by REML under the null. The appendix evaluates propagation of the conditional covariance of \(\widehat{\bm y}_{bmc}\), baseline-centered empirical-Bayes smoothing, and the former global EC GLMM.
 
-Thirty-two paired sign-flip null families are generated independently within each subject half. Each null family refits its own variance prior. Residual tail error is removed by mapping observed and null p-values through a leave-one-event-out empirical null CDF within path-dimension and paired-subject-count strata. The comparator benchmark retains the 25-modeled-gene-UMI candidate screen and at least four paired mice. It tests 7,671 and 5,140 block-by-cell-type-pair hypotheses in the two halves, with 7,523 and 5,057 eligible after local fitting. Depth, smoothing, global-isoform GLMM, and gene-aggregation sensitivities are reported in the appendix.
+Thirty-two design-matched null families are generated by paired subject sign flips for cell-type contrasts and condition-label permutations for condition contrasts. Residual tail error is removed by mapping observed and null reference p-values through a leave-one-event-out empirical null CDF within tested-dimension and subject-count strata. The comparator benchmark retains the 25-modeled-gene-UMI candidate screen and at least four paired mice. It tests 7,671 and 5,140 block-by-cell-type-pair hypotheses in the two halves. The full cell-type and condition analyses use their complete screened candidate families. Fixed-smoothing, equal-weight, uncertainty-scale, depth, global-isoform GLMM, and gene-aggregation sensitivities are reported in the appendix.
 
 The same biological subjects are divided into two condition-balanced halves for all methods. Spliced alignments supplied to the external methods are restricted to unique genomic mappings and deduplicated by cell barcode, UMI, genomic start, and CIGAR. LeafCutter tests intron clusters, MAJIQ tests edges within local splicing variations, and scQuint tests intron groups. For each Tealeaf--comparator pair, scoring retains only genes and cell-type pairs eligible for both methods in both halves. Feature p-values are combined by Simes within each gene--cell-type pair and then across the shared pairs within a gene. For method \(m\), gene \(g\), and half \(h\in\{1,2\}\), let \(p_{mgh}\in[0,1]\) be the resulting gene p-value. The conjunction p-value \(p_{mg}^{\rm rep}=\max(p_{mg1},p_{mg2})\) tests whether the gene has signal in both halves, and BH at 0.05 is applied on the pairwise shared gene universe. Secondary endpoints are held-half nominal replication and Spearman correlation of gene--pair \(-\log_{10}p\) across halves.
 
@@ -355,15 +187,87 @@ scQuint & 2,600 & 507 & 101 & 0.819 & 0.656 & 56 & 0.775 & 0.458\\
 \end{tabular}
 \end{table}
 
-\subsection*{Corrected full-data EC-GLMM analysis}
+\subsection*{Full-data Tealeaf results}
 
-The full corrected tangent-null bootstrap reruns test 4,825 cell-type partitions and 14,833 block-by-cell-type condition hypotheses. Table~\ref{tab:primary-ec-results} reports the cross-fitted GPD and leave-block-out empirical calibration at the 90\% tail threshold. Both null families are calibrated at the audited nominal levels, but neither observed family contains a BH discovery.
+The production local-path analysis tests 11,462 block-by-cell-type-pair hypotheses and 14,833 block-by-cell-type condition hypotheses. Table~\ref{tab:primary-local-path-results} reports the complete observed and design-matched null analyses. Cell-type testing yields 2,222 BH events from 585 blocks and 440 genes. The condition family has broad nominal enrichment but no BH event. Every one of the 32 null families has zero BH calls in both analyses, and their pooled rejection rates match the audited nominal levels.
 
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{Corrected tangent-null full-data logistic-normal EC GLMM results. Null columns assess the complete cross-fitted tail scoring and empirical recalibration.}
-\label{tab:primary-ec-results}
+\caption{Full-data Tealeaf direct local-path results. Genes are counted among BH events and are descriptive rather than a separate gene-level FDR family.}
+\label{tab:primary-local-path-results}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+Contrast & Tests & Eligible & Nominal & BH & BH genes & Minimum \(p\) & Null $<.05$ & Null BH max\\
+\midrule
+Cell type & 11,462 & 11,315 & 3,537 & 2,222 & 440 & $2.07\times10^{-5}$ & 0.05001 & 0\\
+Condition & 14,833 & 14,833 & 1,111 & 0 & 0 & $4.71\times10^{-5}$ & 0.04996 & 0\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The full cell-type result is consistent with the subject-split benchmark rather than resting only on a large full-data discovery count. Tealeaf exceeds all three comparators in independently replicated genes on the matched split universes, while the complete sign-flip and conjunction pipeline produces no replicated null gene. The condition result shows that empirical calibration is not mechanically producing discoveries: its 1,111 nominal events do not reach the calibrated BH tail.
+
+From prepared inputs, the full cell-type and condition fits use 1.035 and 2.246 aggregate one-core worker hours, with peak worker memory of 0.384 and 0.410 GiB. The condition implementation reuses the REML biological variance fitted under its intercept-only null across label permutations, because that null is unchanged by the permutation. The full cell-type local-path fit is 49-fold cheaper in aggregate worker time than the former 51.0-hour global EC GLMM campaign while retaining the same primer-specific EC observations.
+
+The 2,222 cell-type calls represent repeated cell-type pairs for 585 distinct blocks. Table~\ref{tab:production-event-types} classifies each block once from the supported paths in its fitted partition. A block adjacent to a terminal pseudo-anchor is called an alternative first or last \emph{region}, because the paths may differ at several exons or transcript ends and do not necessarily isolate one promoter, terminal exon, or polyadenylation choice. Transcript-end regions dominate, but 110 distinct cassette-exon blocks are also discovered.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Structural classes among the 585 distinct full-data cell-type blocks with at least one BH event.}
+\label{tab:production-event-types}
+\begin{tabular}{lrr}
+\toprule
+Event class & Blocks & Fraction\\
+\midrule
+Alternative first region & 347 & 59.3\%\\
+Cassette exon & 110 & 18.8\%\\
+Alternative last region & 66 & 11.3\%\\
+Whole-gene complex & 24 & 4.1\%\\
+Compound internal & 16 & 2.7\%\\
+Other internal structures & 22 & 3.8\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Four of the five previously audited functional splice events recur in the production BH set. The \emph{Ntrk2} alternative-last-region block is significant in 12 cell-type pairs and separates short kinase-deficient from long kinase-containing TrkB paths, including the TrkB.T1 family; astrocytes predominantly express TrkB.T1, and its loss impairs astrocyte morphogenesis and support of excitatory synaptogenesis. The \emph{Grin1} block is significant in five pairs and differs by the 111-nt C1 cassette, whose retention motifs alter GluN1 surface trafficking. The \emph{App} exon-15 cassette is significant in 17 pairs; exclusion produces L-APP and changes polarized secretion and amyloidogenic processing. The six-path \emph{Dlg4} alternative-first-region block is significant in seven pairs and overlaps the functional PSD-95 alpha/beta isoform system, but the fitted partition does not isolate that pair of starts. These literature matches establish characterized consequences for the same local structures, not the direction or mechanism of every observed cell-type contrast.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Production cell-type blocks overlapping experimentally characterized splice isoforms. Mapping confidence concerns the structural correspondence between fitted paths and the published event.}
+\label{tab:production-functional-precedents}
+\begin{tabular}{p{1.0cm}p{2.1cm}p{1.3cm}p{7.3cm}p{2.4cm}}
+\toprule
+Gene & Event & Mapping & Characterized consequence & Primary evidence\\
+\midrule
+\emph{Ntrk2} & Alternative last region & High & TrkB.T1 is enriched in astrocytes; its loss reduces astrocyte morphological maturation and impairs support of excitatory synaptogenesis. & \href{https://doi.org/10.7554/eLife.44667}{Holt et al., 2019}\\
+\emph{Grin1} & C1 cassette exon & High & C1 contains endoplasmic-reticulum retention motifs and changes surface trafficking of full-length GluN1. & \href{https://doi.org/10.1074/jbc.M807050200}{Horak and Wenthold, 2009}\\
+\emph{Dlg4} & Alternative first region & Moderate & The PSD-95 beta L27 domain binds CASK and Hrs; disrupting Hrs selectively blocks beta, but not palmitoylated alpha, synaptic clustering. & \href{https://doi.org/10.1523/JNEUROSCI.22-15-06415.2002}{Chetkovich et al., 2002}\\
+\emph{App} & Exon-15 cassette & High & Exon-15 exclusion produces L-APP, changes polarized APP secretion, and decreases beta-amyloid production relative to p3. & \href{https://doi.org/10.1074/jbc.271.22.13208}{Hartmann et al., 1996}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The complete production event catalog, component annotations, coordinates, cell-type pairs, empirical p-values, and FDR values are recorded in the repository's local-path full-event annotation directory.
+
+\clearpage
+\appendix
+
+\section{Deprecated Full-Data EC GLMM}
+
+The former production analysis fitted a latent global-isoform EC GLMM separately for every block. Let \(m(i)\in\{1,\ldots,M_b\}\) identify pseudobulk \(i\)'s mouse. Its multinomial form was \(\bm c_{gip}\mid\bm\eta_{gi}\sim\operatorname{Multinomial}\{n_{gip},\bm q_{gip}(\bm\eta_{gi})\}\), with \(\bm\eta_{gi,-}=\mathcal F_{bi}(\bm\beta_b)+\bm u_{g,m(i)}\) and \(\bm u_{gm}\sim N(\bm0_{r_g},\sigma_g^2I_{r_g})\). The logistic-normal extension added \(\bm e_{gi}\sim N(\bm0_{r_g},\tau_g^2I_{r_g})\) to each pseudobulk. Both primer likelihoods shared the same latent composition. The tested block coefficients used the pooled-baseline path-ILR Jacobian \(J_b\in\mathbb R^{d_b\times r_g}\), its right inverse \(H_b=J_b^\prime(J_bJ_b^\prime)^{-1}\in\mathbb R^{r_g\times d_b}\), and a nuisance basis \(N_b\in\mathbb R^{r_g\times(r_g-d_b)}\) for \(\ker(J_b)\). This gave a corrected tangent null while retaining global isoform nuisance directions.
+
+Two fitting options remain implemented. Full-covariance tilted variational inference factorizes across mice but retains unrestricted covariance within each mouse's latent vector; it uses an analytic tilted log-sum-exp bound and exact Gaussian KL term. Laplace fitting instead integrates around each mouse-specific posterior mode and uses implicit differentiation with analytic EC likelihood derivatives. The corrected full-data analysis calibrated nested variational objective gains using parametric null simulation, a cross-fitted generalized Pareto tail, and a leave-block-out empirical null CDF. GPD means generalized Pareto distribution. The corresponding derivations, algorithms, and computational comparisons are retained in the supporting sections below.
+
+The corrected GLMM tested 4,825 cell-type partitions and 14,833 block-by-cell-type condition hypotheses. Both calibrated null families matched the audited nominal rates, but neither observed family contained a BH discovery.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Deprecated corrected tangent-null full-data logistic-normal EC GLMM results.}
+\label{tab:deprecated-primary-ec-results}
 \begin{tabular}{lrrrrrrr}
 \toprule
 Contrast & Tests & Nominal & BH & Minimum \(p\) & Null $<.05$ & Null $<.01$ & Null $<.001$\\
@@ -374,59 +278,17 @@ Condition & 14,833 & 922 & 0 & 0.000148 & 0.0500 & 0.0100 & 0.0010\\
 \end{tabular}
 \end{table}
 
-The corrected families show broad moderate enrichment but not the extreme tail required for genome-wide discovery. The smallest cell-type p-value is 0.00216 and the smallest condition p-value is 0.000148, whereas the first BH thresholds are substantially smaller. The former-basis event catalog and literature matches are therefore retained only as exploratory interpretation in the appendix and are not presented as validated corrected-model calls.
-
-\clearpage
-\appendix
-
 \section{Exploratory and Supporting Analyses}
 
-\subsection*{Former-basis splice-event classes and functional precedents}
+\subsection*{Empirical-Bayes smoothing and path-estimate uncertainty}
 
-The 238 former-basis mouse cell-type discoveries were classified from the paths actually represented in each fitted test, after supported-isoform filtering, rather than from every path in the GTF. The corrected tangent-null analysis has no BH discoveries, so this catalog is hypothesis-generating rather than confirmatory. For an internal two-path block, exact intervals shared by both paths are removed before assigning cassette-exon, multi-exon-skipping, alternative-donor, alternative-acceptor, mutually-exclusive-exon, or retained-intron structure. Internal blocks with more than two represented paths are called compound. A block adjacent to a terminal pseudo-anchor is called an alternative first or last \emph{region}, because its paths can differ at several exons or transcript ends and need not describe one simple alternative terminal exon. If the gene has no common constitutive anchor, the whole-gene block is left as complex. Table~\ref{tab:robust-event-types} gives the resulting mutually exclusive categories; canonical components nested inside compound or terminal regions are retained in the machine-readable catalog but are not counted again in the table.
+Two extensions were evaluated before fixing the production second stage. First, a baseline-centered Dirichlet penalty used prior counts \(\bm a_b=\alpha_bS_b\overline{\bm\psi}_b\in\mathbb R_+^{S_b}\), where \(\overline{\bm\psi}_b\in\Delta^{S_b-1}\) is induced by the label-independent pooled isoform baseline. A deterministic candidate sample was divided by subject. Each held-out subject fold was scored with a Laplace marginal likelihood after fitting its baseline on the other subjects, and evidence was then cross-fitted over five gene folds. A single prior component was driven to the largest precision by the null majority, so the final sensitivity used a high-precision spike at \(\alpha=128\) and selected a finite slab from \(\{0.25,0.5,1,2,4,8\}\). The cross-fitted slab estimates were almost always 4 or 8, with fitted spike weights between 0.91 and 1.00.
 
-\begin{table}[H]
-\centering
-\scriptsize
-\caption{Structural classes among the 238 former-basis mouse cell-type calls.}
-\label{tab:robust-event-types}
-\begin{tabular}{lrr}
-\toprule
-Event class & Events & Fraction\\
-\midrule
-Alternative first region & 154 & 64.71\%\\
-Alternative last region & 31 & 13.03\%\\
-Cassette exon & 28 & 11.76\%\\
-Whole-gene complex & 22 & 9.24\%\\
-Compound internal & 2 & 0.84\%\\
-Multi-exon skipping & 1 & 0.42\%\\
-\bottomrule
-\end{tabular}
-\end{table}
+This predictive criterion did not improve discovery performance. In the two subject halves it reduced fold-specific BH calls from 1,163 and 770 under production add-two smoothing to 106 and 42. On the comparator-matched universes it produced 3, 0, and 0 independently replicated genes against LeafCutter, MAJIQ Heterogen, and scQuint, while the comparators produced 26, 38, and 52. Held-half nominal replication remained 0.885, 0.889, and 0.783. The result indicates that the marginal predictive optimum is dominated by the null mass and over-shrinks the alternatives needed for discovery, even after separating a finite slab. Baseline-centered empirical-Bayes smoothing is therefore implemented but not used in production.
 
-The dominance of transcript-end regions is a property of the tested GENCODE path partitions and should not be read as 185 independently verified promoter or polyadenylation switches. It indicates that the discriminating supported isoforms differ somewhere between a constitutive anchor and a transcript boundary. Exact junction-level follow-up is required to distinguish alternative promoters, alternative terminal exons, alternative polyadenylation, and compound terminal paths.
+Second, if \(I_{bmc}\in\mathbb S_+^{S_b-1}\) is the expected EC likelihood information and \(C(\bm\psi)=\operatorname{diag}(\bm\psi)-\bm\psi\bm\psi^{\mathsf T}\), the conditional Laplace covariance was estimated as \[V_{bmc}=\left\{I_{bmc}+\alpha_bS_bB_b^{\mathsf T}C(\widehat{\bm\psi}_{bmc})B_b\right\}^{-1}\in\mathbb S_+^{S_b-1}.\] For a paired contrast, \(W_{bm}=V_{bm1}+V_{bm2}\in\mathbb S_+^{S_b-1}\) and the measurement-error model was \(\widehat{\bm d}_{bm}\mid\bm d_{bm}\sim N(\bm d_{bm},\lambda W_{bm})\), \(\bm d_{bm}\sim N(\bm\mu_b,\tau_b^2I_{S_b-1})\), where \(\lambda\geq0\) is shared within cross-fitting strata and \(\tau_b^2\geq0\) is fitted by REML. The analogous condition model scaled each mouse's covariance before multivariate GLS.
 
-We next required a literature match to agree with the discovered block structure, not merely its gene. Table~\ref{tab:functional-splicing-precedents} reports five examples with primary experimental evidence. The clearest brain-cell-type precedent is \emph{Ntrk2}, whose discovered alternative-last-region block separates short kinase-deficient from long kinase-containing TrkB paths, including the TrkB.T1 family. Mouse astrocytes predominantly express TrkB.T1, and loss of this isoform impairs astrocyte morphogenesis and support of excitatory synaptogenesis. The \emph{Grin1} paths differ by the 111-nt C1 cassette, whose retention motifs alter GluN1 surface trafficking. The \emph{App} paths differ by the 54-nt mouse exon 15; exclusion produces L-APP, changes polarized secretion and amyloidogenic processing, and has a cell-specific neuronal versus non-neuronal distribution. The \emph{Enah} event is the exact 63-nt exon 11a cassette, although its characterized effects on actin polymerization and motility come from epithelial and carcinoma systems rather than brain. The \emph{Dlg4} finding overlaps an established functional isoform system but requires more caution because its six-path omnibus block does not isolate PSD-95 alpha from beta.
-
-\begin{table}[H]
-\centering
-\scriptsize
-\caption{Former-basis cell-type DS calls overlapping experimentally characterized splice isoforms. Confidence describes the structural mapping from the fitted GENCODE paths to the published event, not statistical confidence.}
-\label{tab:functional-splicing-precedents}
-\begin{tabular}{p{1.0cm}p{2.1cm}p{1.5cm}p{7.1cm}p{2.4cm}}
-\toprule
-Gene & Event & Mapping & Characterized consequence & Primary evidence\\
-\midrule
-\emph{Ntrk2} & Alternative last region & High & TrkB.T1 is enriched in astrocytes; its loss reduces astrocyte morphological maturation and impairs support of excitatory synaptogenesis. & \href{https://doi.org/10.7554/eLife.44667}{Holt et al., 2019}\\
-\emph{Grin1} & C1 cassette exon & High & C1 contains endoplasmic-reticulum retention motifs and changes surface trafficking of full-length GluN1. & \href{https://doi.org/10.1074/jbc.M807050200}{Horak and Wenthold, 2009}\\
-\emph{Dlg4} & Alternative first region & Moderate & The PSD-95 beta L27 domain binds CASK and Hrs; disrupting Hrs selectively blocks beta, but not palmitoylated alpha, synaptic clustering. & \href{https://doi.org/10.1523/JNEUROSCI.22-15-06415.2002}{Chetkovich et al., 2002}\\
-\emph{App} & Exon-15 cassette & High & Exon-15 exclusion produces L-APP, changes polarized APP secretion, and decreases beta-amyloid production relative to p3. & \href{https://doi.org/10.1074/jbc.271.22.13208}{Hartmann et al., 1996}\\
-\emph{Enah} & Exon-11a cassette & High & Mena11a reduces actin polymerization, membrane protrusion, and motility; this evidence is outside the brain. & \href{https://doi.org/10.1038/srep35298}{Balsamo et al., 2016}\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-These precedents establish that a subset of the former-basis coordinates encode functional isoform choices, with \emph{Ntrk2} providing a direct glial example. They do not validate the former-basis statistical calls or identify the cell-type pair and path direction responsible for an omnibus statistic. Isoform-specific junction quantification and perturbation are needed for those claims. The complete catalog, event components, coordinates, former-basis empirical p-values, and literature audit are recorded under \path{analyses/celltype_event_annotation}.
+At \(\lambda=1\), the fold-specific cell-type analyses made 684 and 524 BH calls, but independently replicated genes fell to 28, 10, and 11 against the three comparators. Cross-fitted REML profiles over \(\lambda\in\{0,0.001,0.003,0.01,0.03,0.1,0.3,1,3\}\) selected zero in every split, full cell-type, and full condition stratum. The conditional EC covariance therefore did not explain held-out mouse-to-mouse error beyond the fitted biological variance and harmed the discovery tail when imposed at unit scale. Approximate uncertainty in \(\widehat{\bm\delta}\), \(\widehat{\bm y}\), and \(\widehat{\bm d}\) remains available as a sensitivity but is not carried into the production test.
 
 \subsection*{Pairwise Tealeaf sensitivity analyses}
 
@@ -1589,7 +1451,7 @@ The annotation-level block equivalence relation is insufficient after EC screeni
 
 The initial empirical calibration compared each test only with its degrees-of-freedom-specific bootstrap pool. After supported-partition deduplication, its minimum attainable p-values were approximately $4.5\times10^{-4}$, whereas BH requires resolution near $10^{-5}$ at the first ranks. Its zero logistic-normal calls were therefore a bootstrap-tail resolution artifact, not disappearance of the cell-type signal.
 
-The resolved-tail procedure in the main Methods replaces this initial calibration. Its nonredundant results are reported once in Table~\ref{tab:primary-ec-results}; the earlier annotation-level counts in Table~\ref{tab:initial-block-results} are retained only to document why supported-partition deduplication and resolved-tail calibration were required.
+The former resolved-tail procedure replaced this initial calibration. Its nonredundant deprecated results are reported in Table~\ref{tab:deprecated-primary-ec-results}; the earlier annotation-level counts in Table~\ref{tab:initial-block-results} are retained only to document why supported-partition deduplication and resolved-tail calibration were required.
 
 \subsection*{Cell-type effects within mouse}
 

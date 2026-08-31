@@ -62,6 +62,7 @@ def robust_catalog(significant_paths, primary_index, candidate_cache, blocks_pat
         records.append(
             {
                 "test_id": test_id,
+                "block_id": candidate[1],
                 "gene_id": gene_id,
                 "gene_name": gene_names.get(gene_id, gene_id),
                 "event_type": classify_splice_block(block, signatures),
@@ -72,7 +73,9 @@ def robust_catalog(significant_paths, primary_index, candidate_cache, blocks_pat
                 "right_anchor": json.dumps(block["right_anchor"]),
                 "n_tested_paths": len(signatures),
                 "tested_path_signatures": json.dumps(signatures),
-                "n_test_levels": int(result["n_test_levels"]),
+                "n_test_levels": int(
+                    result.get("n_test_levels", len(candidate[9]))
+                ),
                 "statistic": result["statistic"],
                 "empirical_p_value": result["p_value"],
                 "fdr": result["fdr"],
@@ -98,6 +101,10 @@ def main():
     summary = catalog.groupby("event_type", as_index=False).size().rename(columns={"size": "n_events"})
     summary["fraction"] = summary["n_events"] / len(catalog)
     summary.sort_values(["n_events", "event_type"], ascending=[False, True]).to_csv(args.output_dir / "event_type_summary.tsv", sep="\t", index=False)
+    unique_blocks = catalog.drop_duplicates("block_id")
+    block_summary = unique_blocks.groupby("event_type", as_index=False).size().rename(columns={"size": "n_blocks"})
+    block_summary["fraction"] = block_summary["n_blocks"] / len(unique_blocks)
+    block_summary.sort_values(["n_blocks", "event_type"], ascending=[False, True]).to_csv(args.output_dir / "event_type_block_summary.tsv", sep="\t", index=False)
 
 
 if __name__ == "__main__":
