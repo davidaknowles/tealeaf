@@ -183,6 +183,27 @@ scQuint & 2,600 & 507 & 101 & 0.819 & 0.656 & 56 & 0.775 & 0.458\\
 \end{tabular}
 \end{table}
 
+The smoothing sensitivity in Table~\ref{tab:path-alpha-sensitivity} holds variance moderation, empirical calibration, gene aggregation, and the two-fold replication endpoint fixed while varying only the uniform path pseudocount. Without smoothing, local estimates can approach the simplex boundary and some hypotheses are lost; stronger smoothing increases the stable replicated discovery count. Every setting retains pooled sign-flip rejection near 0.05 and produces no fold-level BH calls in any of 64 null families. Add-one smoothing has the highest LeafCutter-matched held-half replication, 0.865, but add-two yields the most independently replicated genes on all three comparator-matched universes. This is the basis for selecting \(\alpha=2\), subject to the internal-tuning caveat above.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Sensitivity of the pairwise subject-split benchmark to the uniform path pseudocount \(\alpha\). ``Fold BH'' gives block-by-cell-type-pair calls in halves 0 and 1. Replicated genes are reported on the respective LeafCutter, relaxed-coverage MAJIQ Heterogen, and scQuint matched universes after the complete Simes, conjunction, and BH procedure. The null column is the pooled rejection rate at nominal 0.05 in halves 0 and 1; none of the 64 fold-level null families makes a BH call at any setting. The unsmoothed fit has 7,295 and 4,911 eligible tests because of boundary instability; the smoothed fits have 7,523 and 5,057--5,058.}
+\label{tab:path-alpha-sensitivity}
+\begin{tabular}{crrrrrr}
+\toprule
+\(\alpha\) & Fold BH & \multicolumn{3}{c}{Replicated genes} & \multicolumn{2}{c}{Null rejection}\\
+\cmidrule(lr){3-5}\cmidrule(lr){6-7}
+& 0 / 1 & LeafCutter & MAJIQ & scQuint & fold 0 & fold 1\\
+\midrule
+0 & 22 / 24 & 1 & 0 & 0 & 0.05014 & 0.05009\\
+0.5 & 465 / 258 & 11 & 14 & 17 & 0.05005 & 0.05005\\
+1 & 803 / 510 & 31 & 53 & 56 & 0.05004 & 0.05004\\
+2 & 1,163 / 770 & 50 & 103 & 101 & 0.05004 & 0.05001\\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection*{Primary omnibus and pairwise cell-type testing}
 
 The primary subject-blocked omnibus regression improves split reproducibility when it and the secondary pairwise analysis are placed on the same block-level hypothesis universe. Pairwise p-values were combined by Simes across cell-type pairs within each block, so this comparison does not credit pairwise testing for producing more hypotheses. Among 988 blocks present in both analyses and both subject halves, omnibus testing independently replicates 212 blocks and 159 genes, compared with 112 blocks and 98 genes for pairwise testing. The omnibus gain is not explained by null inflation, its fold-specific calibrated rejection rates are 0.04991 and 0.05012, no fold-specific null family has a BH call, and the complete block-level and gene-level conjunction pipelines make zero null calls in all 32 families.
@@ -340,7 +361,7 @@ At \(\lambda=1\), the fold-specific cell-type analyses made 684 and 524 BH calls
 
 The corrected tangent-null Laplace EC GLMM was first rerun on the complete 25-UMI pairwise candidate manifests. Against LeafCutter, relaxed-coverage MAJIQ Heterogen, and scQuint it had 12, 19, and 18 replicated genes, compared with 25, 38, and 57, while its held-half nominal replication rates were 0.867, 0.828, and 0.828. The global latent model therefore retained stable signals but did not realize the expected local-path power advantage.
 
-The direct local-path estimator without smoothing had unstable boundary estimates. A 0.5 path pseudocount restored native paired-test calibration but produced only 8, 20, and 21 replicated genes against LeafCutter, MAJIQ, and scQuint. Add-one smoothing followed by variance moderation and empirical calibration produced 31, 53, and 56, compared with 26, 38, and 56 for the comparators. Add-two smoothing produced the main-text result. Dropping nuisance isoforms and ECs with only nuisance support, combining globally and locally conditioned p-values, restricting to two-path blocks, and replacing Simes with Cauchy gene aggregation did not improve calibrated replication and were rejected. These analyses show that boundary stabilization and cross-block variance moderation, rather than discarding ambiguous EC information, account for the final power gain.
+The direct local-path estimator without smoothing had unstable boundary estimates. Table~\ref{tab:path-alpha-sensitivity} reports the final common-pipeline comparison of no smoothing and 0.5, one, or two pseudo-observations per path. The earlier native-test screens used to develop variance moderation are superseded by this comparison. Dropping nuisance isoforms and ECs with only nuisance support, combining globally and locally conditioned p-values, restricting to two-path blocks, and replacing Simes with Cauchy gene aggregation did not improve calibrated replication and were rejected. These analyses show that boundary stabilization and cross-block variance moderation, rather than discarding ambiguous EC information, account for the final power gain.
 
 \subsection*{Depth-filtered split sensitivity}
 

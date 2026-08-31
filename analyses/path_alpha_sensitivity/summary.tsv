@@ -1,0 +1,5 @@
+alpha	fold0_eligible	fold1_eligible	fold0_bh	fold1_bh	fold0_null_rejection_0.05	fold1_null_rejection_0.05	fold_null_families_with_bh	fold_null_families	leafcutter_replicated_genes	majiq_replicated_genes	scquint_replicated_genes	leafcutter_heldout_replication	majiq_heldout_replication	scquint_heldout_replication
+0	7295	4911	22	24	0.05013708	0.05009163	0	64	1	0	0	0.535294	0.000000	NA
+0.5	7523	5058	465	258	0.05004652	0.05005066	0	64	11	14	17	0.757467	0.810883	0.836765
+1	7523	5057	803	510	0.05003822	0.05004202	0	64	31	53	56	0.865295	0.807726	0.798565
+2	7523	5057	1163	770	0.05003822	0.05001112	0	64	50	103	101	0.798840	0.810372	0.818525
