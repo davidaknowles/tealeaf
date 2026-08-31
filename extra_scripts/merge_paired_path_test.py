@@ -30,6 +30,11 @@ def parse_args():
         action="store_true",
         help="Moderate scalar paired-test variances across blocks.",
     )
+    parser.add_argument(
+        "--max-null-replicates",
+        type=int,
+        help="Use only null replicate indices below this value.",
+    )
     return parser.parse_args()
 
 
@@ -203,6 +208,10 @@ def main():
         raise ValueError("no paired path results found")
     table = pd.concat(tables, ignore_index=True).drop_duplicates("test_id")
     null = pd.concat(nulls, ignore_index=True) if nulls else pd.DataFrame()
+    if args.max_null_replicates is not None:
+        if args.max_null_replicates < 1:
+            raise ValueError("--max-null-replicates must be positive")
+        null = null.loc[null.replicate.lt(args.max_null_replicates)].copy()
     if args.moderate_variances:
         table, null = moderate_scalar_tests(table, null)
     table = add_calibration_strata(table, args.min_stratum_tests)
@@ -256,7 +265,11 @@ def main():
         "failures": len(failures),
         "calibration": args.calibration,
         "moderate_variances": args.moderate_variances,
-        "retain_uncertainty": bool(table.retain_uncertainty.any()) if "retain_uncertainty" in table else False,
+        "retain_uncertainty": (
+            bool(table.retain_uncertainty.any())
+            if "retain_uncertainty" in table
+            else False
+        ),
         "minimum_path_pseudocount": float(table.path_pseudocount.min()),
         "median_path_pseudocount": float(table.path_pseudocount.median()),
         "maximum_path_pseudocount": float(table.path_pseudocount.max()),

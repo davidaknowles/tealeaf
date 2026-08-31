@@ -1,0 +1,19 @@
+null_replicates	comparison	method	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	shared_gene_pairs
+32	Tealeaf direct local path vs LeafCutter	LeafCutter	139	39	44	26	0.7497086247086246	0.5415092615565018	747
+64	Tealeaf direct local path vs LeafCutter	LeafCutter	139	39	44	26	0.7497086247086246	0.5415092615565018	747
+128	Tealeaf direct local path vs LeafCutter	LeafCutter	139	39	44	26	0.7497086247086246	0.5415092615565018	747
+32	Tealeaf direct local path vs LeafCutter	Tealeaf direct local path	139	78	63	50	0.7988400488400489	0.7105395155068921	747
+64	Tealeaf direct local path vs LeafCutter	Tealeaf direct local path	139	79	62	50	0.7991016741527155	0.7213220056866162	747
+128	Tealeaf direct local path vs LeafCutter	Tealeaf direct local path	139	78	64	50	0.7986778846153846	0.7280754377426855	747
+32	Tealeaf direct local path vs MAJIQ Heterogen	MAJIQ Heterogen	480	58	116	38	0.6982758620689655	0.4373102889658014	2500
+64	Tealeaf direct local path vs MAJIQ Heterogen	MAJIQ Heterogen	480	58	116	38	0.6982758620689655	0.4373102889658014	2500
+128	Tealeaf direct local path vs MAJIQ Heterogen	MAJIQ Heterogen	480	58	116	38	0.6982758620689655	0.4373102889658014	2500
+32	Tealeaf direct local path vs MAJIQ Heterogen	Tealeaf direct local path	480	165	149	103	0.8103721781574131	0.6224941516494801	2500
+64	Tealeaf direct local path vs MAJIQ Heterogen	Tealeaf direct local path	480	166	150	104	0.8048995983935743	0.6259234018215202	2500
+128	Tealeaf direct local path vs MAJIQ Heterogen	Tealeaf direct local path	480	168	151	103	0.8067644276253547	0.6272829055195951	2500
+32	Tealeaf direct local path vs scQuint	Tealeaf direct local path	507	158	156	101	0.818524829600779	0.6560711356130585	2600
+64	Tealeaf direct local path vs scQuint	Tealeaf direct local path	507	164	158	98	0.8045693115159	0.6589185952746589	2600
+128	Tealeaf direct local path vs scQuint	Tealeaf direct local path	507	161	159	99	0.8093870854330247	0.6604029650639949	2600
+32	Tealeaf direct local path vs scQuint	scQuint	507	89	98	56	0.7748796147672552	0.4582076075768962	2600
+64	Tealeaf direct local path vs scQuint	scQuint	507	89	98	56	0.7748796147672552	0.4582076075768962	2600
+128	Tealeaf direct local path vs scQuint	scQuint	507	89	98	56	0.7748796147672552	0.4582076075768962	2600
