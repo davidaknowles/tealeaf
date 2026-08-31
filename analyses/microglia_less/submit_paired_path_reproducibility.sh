@@ -13,7 +13,7 @@ SMOOTHING_MAP_NAME=${SMOOTHING_MAP_NAME:-}
 UNCERTAINTY_SCALE_MAP_NAME=${UNCERTAINTY_SCALE_MAP_NAME:-}
 OUTPUT_TAG=${OUTPUT_TAG:-tealeaf_paired_path}
 RETAIN_UNCERTAINTY=${RETAIN_UNCERTAINTY:-0}
-job_file="${REPRO_ROOT}/paired_path_jobs.tsv"
+job_file="${REPRO_ROOT}/${OUTPUT_TAG}_jobs.tsv"
 mkdir -p "${REPRO_ROOT}/logs"
 printf 'fold\tstage\tjob_id\n' > "${job_file}"
 merge_jobs=()

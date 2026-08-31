@@ -183,12 +183,12 @@ scQuint & 2,600 & 507 & 101 & 0.819 & 0.656 & 56 & 0.775 & 0.458\\
 \end{tabular}
 \end{table}
 
-The smoothing sensitivity in Table~\ref{tab:path-alpha-sensitivity} holds variance moderation, empirical calibration, gene aggregation, and the two-fold replication endpoint fixed while varying only the uniform path pseudocount. Without smoothing, local estimates can approach the simplex boundary and some hypotheses are lost; stronger smoothing increases the stable replicated discovery count. Every setting retains pooled sign-flip rejection near 0.05 and produces no fold-level BH calls in any of 64 null families. Add-one smoothing has the highest LeafCutter-matched held-half replication, 0.865, but add-two yields the most independently replicated genes on all three comparator-matched universes. This is the basis for selecting \(\alpha=2\), subject to the internal-tuning caveat above.
+The smoothing sensitivity in Table~\ref{tab:path-alpha-sensitivity} holds variance moderation, empirical calibration, gene aggregation, and the two-fold replication endpoint fixed while varying only the uniform path pseudocount. Without smoothing, local estimates can approach the simplex boundary and some hypotheses are lost. Replicated discovery increases through an exploratory maximum at \(\alpha=32\), then decreases at 64 and again at 128 for the MAJIQ and scQuint matched universes; the LeafCutter result plateaus at 78 replicated genes at 32--64 and decreases to 77 at 128. Fold-specific block calls peak earlier, at \(\alpha=16\) in half 0 and 16--32 in half 1, and also decline at higher precision. The turnover is therefore visible in both intermediate block calls and the primary replication endpoint rather than being imposed by failed null calibration: every setting retains pooled sign-flip rejection near 0.05 and produces no fold-level BH calls in any of 64 null families. The reported \(\alpha=2\) setting was selected from the original grid before this extended sensitivity. We do not replace it with the post-hoc \(\alpha=32\) maximum because doing so would tune the headline benchmark further on its evaluation splits; independent data are required to select a larger production value.
 
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{Sensitivity of the pairwise subject-split benchmark to the uniform path pseudocount \(\alpha\). ``Fold BH'' gives block-by-cell-type-pair calls in halves 0 and 1. Replicated genes are reported on the respective LeafCutter, relaxed-coverage MAJIQ Heterogen, and scQuint matched universes after the complete Simes, conjunction, and BH procedure. The null column is the pooled rejection rate at nominal 0.05 in halves 0 and 1; none of the 64 fold-level null families makes a BH call at any setting. The unsmoothed fit has 7,295 and 4,911 eligible tests because of boundary instability; the smoothed fits have 7,523 and 5,057--5,058.}
+\caption{Sensitivity of the pairwise subject-split benchmark to the uniform path pseudocount \(\alpha\). ``Fold BH'' gives block-by-cell-type-pair calls in halves 0 and 1. Replicated genes are reported on the respective LeafCutter, relaxed-coverage MAJIQ Heterogen, and scQuint matched universes after the complete Simes, conjunction, and BH procedure. The null column is the pooled rejection rate at nominal 0.05 in halves 0 and 1; none of the 64 fold-level null families makes a BH call at any setting. The unsmoothed fit has 7,295 and 4,911 eligible tests because of boundary instability; smoothed fits retain 7,517--7,523 and 5,048--5,058.}
 \label{tab:path-alpha-sensitivity}
 \begin{tabular}{crrrrrr}
 \toprule
@@ -200,6 +200,12 @@ The smoothing sensitivity in Table~\ref{tab:path-alpha-sensitivity} holds varian
 0.5 & 465 / 258 & 11 & 14 & 17 & 0.05005 & 0.05005\\
 1 & 803 / 510 & 31 & 53 & 56 & 0.05004 & 0.05004\\
 2 & 1,163 / 770 & 50 & 103 & 101 & 0.05004 & 0.05001\\
+4 & 1,362 / 932 & 56 & 132 & 136 & 0.05004 & 0.05001\\
+8 & 1,456 / 1,022 & 70 & 141 & 147 & 0.04998 & 0.05000\\
+16 & 1,471 / 1,059 & 75 & 157 & 159 & 0.04999 & 0.04999\\
+32 & 1,404 / 1,054 & 78 & 161 & 161 & 0.05003 & 0.05006\\
+64 & 1,282 / 1,027 & 78 & 150 & 154 & 0.05004 & 0.05005\\
+128 & 1,250 / 1,004 & 77 & 147 & 148 & 0.05002 & 0.04996\\
 \bottomrule
 \end{tabular}
 \end{table}
