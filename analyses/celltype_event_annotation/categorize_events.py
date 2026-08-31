@@ -91,6 +91,11 @@ def main():
     parser.add_argument("--candidate-cache", type=Path, required=True)
     parser.add_argument("--blocks", type=Path, required=True)
     parser.add_argument("--gtf", type=Path, required=True)
+    parser.add_argument(
+        "--literature-audit",
+        type=Path,
+        help="Optional literature-audit table to intersect with the discovery set.",
+    )
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
     if not 0 <= args.primary_index < len(args.significant):
@@ -105,6 +110,21 @@ def main():
     block_summary = unique_blocks.groupby("event_type", as_index=False).size().rename(columns={"size": "n_blocks"})
     block_summary["fraction"] = block_summary["n_blocks"] / len(unique_blocks)
     block_summary.sort_values(["n_blocks", "event_type"], ascending=[False, True]).to_csv(args.output_dir / "event_type_block_summary.tsv", sep="\t", index=False)
+    if args.literature_audit is not None:
+        literature = pd.read_csv(args.literature_audit, sep="\t")
+        evidence = catalog[
+            [
+                "test_id",
+                "n_tested_paths",
+                "n_test_levels",
+                "statistic",
+                "empirical_p_value",
+                "fdr",
+            ]
+        ].rename(columns={"n_test_levels": "n_cell_types"})
+        literature.merge(evidence, on="test_id", how="inner").to_csv(
+            args.output_dir / "literature_matches.tsv", sep="\t", index=False
+        )
 
 
 if __name__ == "__main__":

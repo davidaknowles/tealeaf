@@ -229,33 +229,33 @@ From prepared inputs, the full omnibus cell-type and condition fits use 1.181 an
 
 A nested Monte Carlo sensitivity generated 128 null replicates once and recalibrated using the first 32, 64, or 128. Across the five full-data and split-fold analyses, calibrated \(-\log_{10}p\) ranks at 64 and 128 have Spearman correlation at least 0.9994 with the 32-replicate values, and BH-set Jaccard similarity is 0.972--1.000. In the nested rerun, omnibus cell-type BH counts are 583, 586, and 585 at \(R_{\rm null}=32,64,128\), condition counts are zero at all three budgets, and full pairwise localization counts are 2,225, 2,226, and 2,228. The separately generated default omnibus run in Table~\ref{tab:primary-local-path-results} calls 584 blocks, consistent with this Monte Carlo variation. The larger family-level audit is less uniformly null than the initial 32-family check. At 128 replicates, 4 omnibus families make one BH call, one full pairwise family makes two, and 15 and two families in split folds 0 and 1 make at least one fold-level call, with maxima of two and four. The omnibus complete-null family rejection frequency is therefore \(4/128=0.031\), while the first-fold pairwise intermediate endpoint is anti-conservative at \(15/128=0.117\). No condition family makes a BH call, and, as reported above, none of the 128 pairwise families produces a replicated gene after the two-fold conjunction. Thus the observed discovery and replicated-gene conclusions are stable at the default \(R_{\rm null}=32\), but 32 whole-family realizations are insufficient to characterize rare family-level failures; 128 gives a more informative audit.
 
-The secondary pairwise analysis makes 2,222 calls across 585 distinct blocks and provides pair-specific localization. Table~\ref{tab:production-event-types} classifies each pairwise-significant block once from the supported paths in its fitted partition. A block adjacent to a terminal pseudo-anchor is called an alternative first or last \emph{region}, because the paths may differ at several exons or transcript ends and do not necessarily isolate one promoter, terminal exon, or polyadenylation choice. Transcript-end regions dominate, but 110 distinct cassette-exon blocks are also discovered.
+Biological summaries use the 584 BH-significant blocks from the primary omnibus test, not the secondary pairwise localization family. Table~\ref{tab:production-event-types} classifies each omnibus-significant block once from the supported paths in its fitted partition. A block adjacent to a terminal pseudo-anchor is called an alternative first or last \emph{region}, because the paths may differ at several exons or transcript ends and do not necessarily isolate one promoter, terminal exon, or polyadenylation choice. Transcript-end regions dominate, but 97 distinct cassette-exon blocks are also discovered. The secondary pairwise analysis makes 2,222 calls across 585 distinct blocks and is used only to localize which cell-type contrasts may drive an omnibus discovery and to match comparator hypotheses.
 
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{Structural classes among the 585 distinct blocks localized by at least one BH-significant pairwise cell-type contrast.}
+\caption{Structural classes among the 584 BH-significant blocks from the primary subject-blocked omnibus cell-type test.}
 \label{tab:production-event-types}
 \begin{tabular}{lrr}
 \toprule
 Event class & Blocks & Fraction\\
 \midrule
-Alternative first region & 347 & 59.3\%\\
-Cassette exon & 110 & 18.8\%\\
-Alternative last region & 66 & 11.3\%\\
-Whole-gene complex & 24 & 4.1\%\\
-Compound internal & 16 & 2.7\%\\
-Other internal structures & 22 & 3.8\%\\
+Alternative first region & 344 & 58.9\%\\
+Cassette exon & 97 & 16.6\%\\
+Alternative last region & 74 & 12.7\%\\
+Whole-gene complex & 30 & 5.1\%\\
+Compound internal & 21 & 3.6\%\\
+Other internal structures & 18 & 3.1\%\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Four of the five previously audited functional splice events recur in the pairwise localization set. The \emph{Ntrk2} alternative-last-region block is significant in 12 cell-type pairs and separates short kinase-deficient from long kinase-containing TrkB paths, including the TrkB.T1 family; astrocytes predominantly express TrkB.T1, and its loss impairs astrocyte morphogenesis and support of excitatory synaptogenesis. The \emph{Grin1} block is significant in five pairs and differs by the 111-nt C1 cassette, whose retention motifs alter GluN1 surface trafficking. The \emph{App} exon-15 cassette is significant in 17 pairs; exclusion produces L-APP and changes polarized secretion and amyloidogenic processing. The six-path \emph{Dlg4} alternative-first-region block is significant in seven pairs and overlaps the functional PSD-95 alpha/beta isoform system, but the fitted partition does not isolate that pair of starts. These literature matches establish characterized consequences for the same local structures, not the direction or mechanism of every observed cell-type contrast.
+Four of the five previously audited functional splice events pass BH in the primary omnibus family. The \emph{Ntrk2} alternative-last-region block jointly differs across eight represented cell types and separates short kinase-deficient from long kinase-containing TrkB paths, including the TrkB.T1 family; astrocytes predominantly express TrkB.T1, and its loss impairs astrocyte morphogenesis and support of excitatory synaptogenesis. The \emph{Grin1} block jointly differs across five cell types and isolates the 111-nt C1 cassette, whose retention motifs alter GluN1 surface trafficking. The \emph{App} exon-15 cassette jointly differs across nine cell types; exclusion produces L-APP and changes polarized secretion and amyloidogenic processing. The six-path \emph{Dlg4} alternative-first-region block jointly differs across six cell types and overlaps the functional PSD-95 alpha/beta isoform system, but the fitted partition does not isolate that pair of starts. All four have omnibus FDR 0.00152; the audited \emph{Enah} exon-11a block does not pass omnibus BH. These literature matches establish characterized consequences for the same local structures, not the direction or mechanism of every observed cell-type contrast.
 
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{Pairwise-localized cell-type blocks overlapping experimentally characterized splice isoforms. Mapping confidence concerns the structural correspondence between fitted paths and the published event.}
+\caption{Primary omnibus cell-type discoveries overlapping experimentally characterized splice isoforms. Mapping confidence concerns the structural correspondence between fitted paths and the published event.}
 \label{tab:production-functional-precedents}
 \begin{tabular}{p{1.0cm}p{2.1cm}p{1.3cm}p{7.3cm}p{2.4cm}}
 \toprule
@@ -269,7 +269,7 @@ Gene & Event & Mapping & Characterized consequence & Primary evidence\\
 \end{tabular}
 \end{table}
 
-The complete pairwise localization catalog, component annotations, coordinates, cell-type pairs, empirical p-values, and FDR values are recorded in the repository's local-path full-event annotation directory.
+The complete omnibus discovery catalog, component annotations, coordinates, empirical p-values, FDR values, and literature-audit intersection are recorded in the repository's local-path omnibus event-annotation directory. The separate local-path full-event annotation directory retains the secondary pairwise localization catalog.
 
 \clearpage
 \appendix

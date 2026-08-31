@@ -1,0 +1,10 @@
+event_type	n_events	fraction
+alternative first region	344	0.589041095890411
+cassette exon	97	0.1660958904109589
+alternative last region	74	0.1267123287671233
+whole-gene complex	30	0.05136986301369863
+compound internal	21	0.03595890410958904
+mutually exclusive exons	8	0.0136986301369863
+multi-exon skipping	7	0.011986301369863013
+complex internal	2	0.003424657534246575
+alternative acceptor	1	0.0017123287671232876
