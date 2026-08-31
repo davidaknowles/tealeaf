@@ -107,9 +107,43 @@ def permuted_independent_p_value(
     ]).astype(float)
     return differential.multivariate_gls_test(
         values,
-        float(uncertainty_scale) * covariances,
+        (
+            np.zeros_like(covariances)
+            if uncertainty_scale == 0
+            else float(uncertainty_scale) * covariances
+        ),
         design,
         np.arange(1, len(levels)),
+        biological_variance=biological_variance,
+    )["p_value"]
+
+
+def permuted_blocked_p_value(
+    values,
+    covariances,
+    labels,
+    subjects,
+    rng,
+    uncertainty_scale,
+    biological_variance,
+):
+    permuted = np.asarray(labels).copy()
+    subjects = np.asarray(subjects)
+    for subject in np.unique(subjects):
+        positions = np.flatnonzero(subjects == subject)
+        permuted[positions] = rng.permutation(permuted[positions])
+    design, tested, _, _ = ec_block_glmm.blocked_multilevel_design(
+        permuted, subjects
+    )
+    return differential.multivariate_gls_test(
+        values,
+        (
+            np.zeros_like(covariances)
+            if uncertainty_scale == 0
+            else float(uncertainty_scale) * covariances
+        ),
+        design,
+        tested,
         biological_variance=biological_variance,
     )["p_value"]
 
@@ -145,8 +179,12 @@ def main():
         if np.any(uncertainty_grid < 0):
             raise ValueError("uncertainty scale grid must be nonnegative")
     test_effect = settings.get("test_effect")
-    if test_effect not in {"cell_type_pairwise", "condition_within_cell_type"}:
-        raise ValueError("local path testing requires pairwise cell type or condition candidates")
+    if test_effect not in {
+        "cell_type",
+        "cell_type_pairwise",
+        "condition_within_cell_type",
+    }:
+        raise ValueError("unsupported local path test effect")
     candidates = cached["candidates"]
     if args.max_candidates is not None:
         candidates = candidates[: int(args.max_candidates)]
@@ -220,6 +258,23 @@ def main():
                 values = result.pop("differences")
                 value_covariances = result.pop("difference_covariances")
                 null_labels = None
+                null_subjects = None
+            elif test_effect == "cell_type":
+                result = ec_block_glmm.blocked_multilevel_path_test(
+                    base,
+                    path_index,
+                    labels,
+                    clusters,
+                    baseline=baseline,
+                    max_iter=args.max_iter,
+                    path_pseudocount=path_pseudocount,
+                    path_prior_center=args.path_prior_center,
+                    uncertainty_scale=uncertainty_scale,
+                )
+                values = result.pop("values")
+                value_covariances = result.pop("covariances")
+                null_labels = result.pop("observation_labels")
+                null_subjects = result.pop("observation_subjects")
             else:
                 result = ec_block_glmm.independent_path_test(
                     base,
@@ -235,8 +290,9 @@ def main():
                 values = result.pop("values")
                 value_covariances = result.pop("covariances")
                 null_labels = result.pop("subject_labels")
+                null_subjects = None
             result.pop("path_fits")
-            result.pop("subject_ids")
+            result.pop("subject_ids", None)
             result.pop("levels")
             result.pop("mean", None)
             result.pop("mean_covariance", None)
@@ -256,7 +312,7 @@ def main():
                 "n_paths": len(signatures),
                 "n_isoforms": base.n_isoforms,
                 "n_ecs": len(gene_ecs[gene]),
-                "n_samples": len(local_metadata),
+                "n_samples": result.get("n_observations", len(local_metadata)),
                 "n_subjects": result["n_subjects"],
                 "degrees_of_freedom": result["degrees_of_freedom"],
                 "median_gene_umis": float(np.median(totals)),
@@ -282,7 +338,7 @@ def main():
                                 value_covariances,
                                 uncertainty_scale=scale,
                             )
-                        else:
+                        elif test_effect == "condition_within_cell_type":
                             levels = np.unique(null_labels)
                             profile_design = np.column_stack([
                                 np.ones(len(values)),
@@ -293,6 +349,18 @@ def main():
                                 scale * value_covariances,
                                 profile_design,
                                 np.arange(1, len(levels)),
+                            )
+                        else:
+                            profile_design, profile_tested, _, _ = (
+                                ec_block_glmm.blocked_multilevel_design(
+                                    null_labels, null_subjects
+                                )
+                            )
+                            profiled = differential.multivariate_gls_test(
+                                values,
+                                scale * value_covariances,
+                                profile_design,
+                                profile_tested,
                             )
                         profile_rows.append({
                             "test_id": test_id,
@@ -314,11 +382,21 @@ def main():
                             args.retain_uncertainty,
                             uncertainty_scale,
                         )
-                    else:
+                    elif test_effect == "condition_within_cell_type":
                         null_p_value = permuted_independent_p_value(
                             values,
                             value_covariances,
                             null_labels,
+                            rng,
+                            uncertainty_scale,
+                            result["biological_variance"],
+                        )
+                    else:
+                        null_p_value = permuted_blocked_p_value(
+                            values,
+                            value_covariances,
+                            null_labels,
+                            null_subjects,
                             rng,
                             uncertainty_scale,
                             result["biological_variance"],

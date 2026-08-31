@@ -128,34 +128,39 @@ Here \(A_{gpkt}\) is the fixed compatibility or conditional weight of EC \(k\) f
 
 Conditioning on each observed primer total removes library size from the composition likelihood. An EC may be compatible with multiple isoforms; there is no preliminary allocation of its count to a transcript or path. Unsupported isoforms and ECs not assigned to \(g\) are excluded, but every supported isoform of \(g\), including an unspliced nuisance isoform, remains in every block likelihood for that gene.
 
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}[>=Latex,node distance=5mm and 7mm,every node/.style={font=\small},stage/.style={rounded corners=2pt,draw=tealeafNavy!60,line width=.7pt,minimum height=15mm,align=center,inner sep=5pt},flow/.style={->,line width=1.1pt,tealeafTeal},branch/.style={->,line width=1pt,tealeafOrange}]
-\node[stage,fill=tealeafLightTeal,text width=28mm] (block) {\textbf{Block parameters}\\pooled baseline $\overline{\bm\theta}_g$\\local shift $\bm\delta_{bi}$};
-\node[stage,fill=tealeafLight,text width=31mm,right=of block] (iso) {\textbf{Isoform composition}\\$\bm\eta_{gi}\in\mathbb R^{T_g}$\\$\bm\theta_{gi}=\operatorname{softmax}(\bm\eta_{gi})$};
-\node[stage,fill=tealeafLight,text width=32mm,above right=3mm and 9mm of iso] (dtec) {\textbf{oligo(dT) EC proportions}\\$A_{g,\mathrm{dT}}\in\mathbb R_+^{K_{g,\mathrm{dT}}\times T_g}$\\$\bm q_{gi,\mathrm{dT}}\in\Delta^{K_{g,\mathrm{dT}}-1}$};
-\node[stage,fill=tealeafLight,text width=32mm,below right=3mm and 9mm of iso] (rhec) {\textbf{random-hexamer EC proportions}\\$A_{g,\mathrm{RH}}\in\mathbb R_+^{K_{g,\mathrm{RH}}\times T_g}$\\$\bm q_{gi,\mathrm{RH}}\in\Delta^{K_{g,\mathrm{RH}}-1}$};
-\node[stage,fill=tealeafLightTeal,text width=29mm,right=of dtec] (dtcount) {\textbf{Observed EC counts}\\$\bm c_{gi,\mathrm{dT}}\sim\operatorname{Multinomial}$\\$(n_{gi,\mathrm{dT}},\bm q_{gi,\mathrm{dT}})$};
-\node[stage,fill=tealeafLightTeal,text width=29mm,right=of rhec] (rhcount) {\textbf{Observed EC counts}\\$\bm c_{gi,\mathrm{RH}}\sim\operatorname{Multinomial}$\\$(n_{gi,\mathrm{RH}},\bm q_{gi,\mathrm{RH}})$};
-\draw[flow] (block)--(iso);
-\draw[branch] (iso.east)--(dtec.west);
-\draw[branch] (iso.east)--(rhec.west);
-\draw[flow] (dtec)--(dtcount);
-\draw[flow] (rhec)--(rhcount);
-\end{tikzpicture}
-\caption{Generative flow for gene $g=g(b)$ and pseudobulk $i$. A local path perturbation of the pooled isoform baseline determines one isoform composition $\bm\theta_{gi}\in\Delta^{T_g-1}$. The two fixed primer-specific maps transform that composition into separate EC probability vectors, from which the observed oligo(dT) and random-hexamer count vectors are drawn. The branch represents observation chemistry, not two independently fitted isoform compositions.}
-\label{fig:ec-generative-model}
-\end{figure}
-
 \section*{Local-Path Inference and Comparator Design}
 
-The primary comparator benchmark uses a direct local-path Tealeaf likelihood, not the paired junction baseline described in the appendix. For block \(b\) with \(T_g\in\mathbb N\) supported gene isoforms and \(S_b\in\mathbb N\) represented paths, let \(\overline{\bm\theta}_g\in\Delta^{T_g-1}\) be the label-independent pooled isoform composition and let \(B_b\in\mathbb R^{S_b\times(S_b-1)}\) be a Helmert basis. For subject \(m\), cell-type level \(c\), and primer \(p\in\{1,2\}\), the observed EC vector is \(\bm c_{bmcp}\in\mathbb N_0^{K_{gp}}\), where \(K_{gp}\in\mathbb N\) is the number of retained ECs defined above. Rows from the same subject and level are summed within primer. A local perturbation \(\bm\delta_{bmc}\in\mathbb R^{S_b-1}\) multiplies every represented isoform on path \(s\) by \(\exp(B_{bs}^{\mathsf T}\bm\delta_{bmc})\), then renormalizes the represented isoforms to their pooled total mass. This holds within-path isoform ratios, unrepresented nuisance isoforms, and the total represented-path mass fixed while allowing the local path composition \(\bm\psi_{bmc}\in\Delta^{S_b-1}\) to change.
+The primary comparator benchmark uses a direct local-path Tealeaf likelihood, not the paired junction baseline described in the appendix. For block \(b\) with \(T_g\in\mathbb N\) supported gene isoforms and \(S_b\in\mathbb N\) represented paths, let \(\overline{\bm\theta}_g\in\Delta^{T_g-1}\) be the label-independent pooled isoform composition and let \(Q_b\in\mathbb R^{S_b\times(S_b-1)}\) be the Helmert basis defined above. Let \(r_b(t)\in\{1,\ldots,S_b\}\cup\{\varnothing\}\) map isoform \(t\) to its represented path or mark it as a nuisance isoform, let \(\mathcal R_b=\{t:r_b(t)\ne\varnothing\}\), and let \(\overline\rho_b=\sum_{t\in\mathcal R_b}\overline\theta_{gt}\in(0,1]\) be the pooled mass of represented isoforms. For subject \(m\), cell-type level \(c\), and primer \(p\in\{1,2\}\), the observed EC vector is \(\bm c_{bmcp}\in\mathbb N_0^{K_{gp}}\), where \(K_{gp}\in\mathbb N\) is the number of retained ECs defined above. Rows from the same subject and level are summed within primer.
 
-Let \(\bm\psi_{bmc}(\bm\delta)\in\Delta^{S_b-1}\) be the path composition induced by the perturbed isoform vector. The production estimate maximizes the two-primer EC log likelihood with \(\alpha=2\) pseudo-observations on every path, \[\widehat{\bm\delta}_{bmc}=\arg\max_{\bm\delta\in\mathbb R^{S_b-1}}\left\{\sum_{p=1}^2\bm c_{bmcp}^{\mathsf T}\log\left(\frac{A_{gp}\bm\theta_g(\bm\delta)}{\bm1^{\mathsf T}A_{gp}\bm\theta_g(\bm\delta)}\right)+\alpha\sum_{s=1}^{S_b}\log\psi_{bmcs}(\bm\delta)\right\},\qquad\alpha=2.\] Here \(A_{gp}\in\mathbb R_+^{K_{gp}\times T_g}\) is the primer-specific compatibility design. The penalty stabilizes boundary estimates. Junction, exonic, and ambiguous reads contribute through their compatibility patterns without first assigning reads to global isoforms.
+For any \(\bm\delta\in\mathbb R^{S_b-1}\), define the perturbed isoform composition \(\bm\theta_g(\bm\delta)\in\Delta^{T_g-1}\) componentwise by \[\theta_{gt}(\bm\delta)=\begin{cases}\displaystyle \overline\rho_b\frac{\overline\theta_{gt}\exp\{Q_{b,r_b(t)}^{\mathsf T}\bm\delta\}}{\sum_{u\in\mathcal R_b}\overline\theta_{gu}\exp\{Q_{b,r_b(u)}^{\mathsf T}\bm\delta\}},&t\in\mathcal R_b,\\ \overline\theta_{gt},&t\notin\mathcal R_b.\end{cases}\] Define its represented path composition \(\bm\psi_b(\bm\delta)\in\Delta^{S_b-1}\) by \[\psi_{bs}(\bm\delta)=\overline\rho_b^{-1}\sum_{t\in\mathcal R_b:r_b(t)=s}\theta_{gt}(\bm\delta),\qquad s\in\{1,\ldots,S_b\}.\] Thus \(\bm\delta\) changes only local path usage, while within-path isoform ratios, nuisance isoforms, and total represented mass remain fixed.
 
-Let \(\widehat{\bm y}_{bmc}=B_b^{\mathsf T}\log\widehat{\bm\psi}_{bmc}\in\mathbb R^{S_b-1}\). For a paired cell-type contrast, \(\widehat{\bm d}_{bm}=\widehat{\bm y}_{bm2}-\widehat{\bm y}_{bm1}\in\mathbb R^{S_b-1}\). A paired \(t\) test is used when \(S_b=2\), and Hotelling's test is used when \(S_b>2\). Scalar sampling variances are moderated across blocks with a robust scaled-inverse-chi-squared prior, refitted inside every null family. For a condition test within one cell type, the mouse-level vectors enter an equal-weight multivariate regression with an intercept and \(C_b^{\rm cond}-1\) condition columns; an isotropic between-mouse variance is fitted by REML under the null. The appendix evaluates propagation of the conditional covariance of \(\widehat{\bm y}_{bmc}\), baseline-centered empirical-Bayes smoothing, and the former global EC GLMM.
+The production estimate for mouse--cell-type combination \((m,c)\) maximizes the two-primer EC log likelihood with \(\alpha=2\) pseudo-observations on every path, \[\widehat{\bm\delta}_{bmc}=\arg\max_{\bm\delta\in\mathbb R^{S_b-1}}\left\{\sum_{p=1}^2\bm c_{bmcp}^{\mathsf T}\log\left(\frac{A_{gp}\bm\theta_g(\bm\delta)}{\bm1^{\mathsf T}A_{gp}\bm\theta_g(\bm\delta)}\right)+\alpha\sum_{s=1}^{S_b}\log\psi_{bs}(\bm\delta)\right\},\qquad\alpha=2.\] Here \(A_{gp}\in\mathbb R_+^{K_{gp}\times T_g}\) is the primer-specific compatibility design. The penalty stabilizes boundary estimates. Junction, exonic, and ambiguous reads contribute through their compatibility patterns without first assigning reads to global isoforms.
 
-Thirty-two design-matched null families are generated by paired subject sign flips for cell-type contrasts and condition-label permutations for condition contrasts. Residual tail error is removed by mapping observed and null reference p-values through a leave-one-event-out empirical null CDF within tested-dimension and subject-count strata. The comparator benchmark retains the 25-modeled-gene-UMI candidate screen and at least four paired mice. It tests 7,671 and 5,140 block-by-cell-type-pair hypotheses in the two halves. The full cell-type and condition analyses use their complete screened candidate families. Fixed-smoothing, equal-weight, uncertainty-scale, depth, global-isoform GLMM, and gene-aggregation sensitivities are reported in the appendix.
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[scale=.9,transform shape,>=Latex,node distance=5mm and 7mm,every node/.style={font=\footnotesize},stage/.style={rounded corners=2pt,draw=tealeafNavy!60,line width=.7pt,minimum height=14mm,align=center,inner sep=4pt},flow/.style={->,line width=1.1pt,tealeafTeal},branch/.style={->,line width=1pt,tealeafOrange}]
+\node[stage,fill=tealeafLightTeal,text width=24mm] (block) {\textbf{Local block}\\path map $r_b(t)$\\baseline $\overline{\bm\theta}_g$};
+\node[stage,fill=tealeafLight,text width=25mm,right=of block] (local) {\textbf{Local perturbation}\\$\bm\delta_{bmc}$\\$\bm\theta_g(\bm\delta_{bmc})$};
+\node[stage,fill=tealeafLight,text width=25mm,above right=2mm and 7mm of local] (dt) {\textbf{oligo(dT)}\\$A_{g,\mathrm{dT}}$\\$\bm c_{bmc,\mathrm{dT}}$};
+\node[stage,fill=tealeafLight,text width=25mm,below right=2mm and 7mm of local] (rh) {\textbf{random hexamer}\\$A_{g,\mathrm{RH}}$\\$\bm c_{bmc,\mathrm{RH}}$};
+\node[stage,fill=tealeafLightTeal,text width=25mm,right=43mm of local] (estimate) {\textbf{Path estimate}\\$\widehat{\bm\psi}_{bmc}$\\$\widehat{\bm y}_{bmc}=Q_b^{\mathsf T}\log\widehat{\bm\psi}_{bmc}$};
+\node[stage,fill=tealeafLight,text width=28mm,right=of estimate] (regression) {\textbf{Biological test}\\mouse-blocked cell-type\\or condition regression};
+\draw[flow] (block)--(local);
+\draw[branch] (local.east)--(dt.west);
+\draw[branch] (local.east)--(rh.west);
+\draw[branch] (dt.east)--(estimate.west);
+\draw[branch] (rh.east)--(estimate.west);
+\draw[flow] (estimate)--(regression);
+\end{tikzpicture}
+\caption{Production local-path workflow for block $b$. The pooled baseline and block path map define a low-dimensional perturbation shared by the two primer likelihoods. Their EC counts jointly estimate one path-ILR vector for each mouse--cell-type combination, and biological replication enters only in the second-stage multivariate regression.}
+\label{fig:local-path-workflow}
+\end{figure}
+
+Let \(\widehat{\bm y}_{bmc}=Q_b^{\mathsf T}\log\widehat{\bm\psi}_{bmc}\in\mathbb R^{S_b-1}\). For a paired cell-type contrast, \(\widehat{\bm d}_{bm}=\widehat{\bm y}_{bm2}-\widehat{\bm y}_{bm1}\in\mathbb R^{S_b-1}\). A paired \(t\) test is used when \(S_b=2\), and Hotelling's test is used when \(S_b>2\). Scalar sampling variances are moderated across blocks with a robust scaled-inverse-chi-squared prior, refitted inside every null family. For a condition test within one cell type, the mouse-level vectors enter an equal-weight multivariate regression with an intercept and \(C_b^{\rm cond}-1\) condition columns; an isotropic between-mouse variance is fitted by REML under the null. The appendix evaluates propagation of the conditional covariance of \(\widehat{\bm y}_{bmc}\), baseline-centered empirical-Bayes smoothing, and the former global EC GLMM.
+
+An omnibus cell-type alternative uses every fitted mouse--cell-type vector for a block in one multivariate regression. Let \(N_b^{\rm obs}\in\mathbb N\), \(M_b\in\mathbb N\), and \(C_b^{\rm cell}\in\mathbb N\) be its numbers of mouse--cell-type observations, mice, and cell types, and stack the responses as \(Y_b\in\mathbb R^{N_b^{\rm obs}\times d_b}\). The design \(X_b\in\mathbb R^{N_b^{\rm obs}\times(M_b+C_b^{\rm cell}-1)}\) contains an intercept, \(M_b-1\) mouse indicators, and \(C_b^{\rm cell}-1\) cell-type indicators. The equal-weight model is \[Y_b=X_b\Gamma_b+E_b,\qquad E_{bn}\overset{\mathrm{iid}}\sim N(\bm0_{d_b},\tau_b^2I_{d_b}),\] where \(\Gamma_b\in\mathbb R^{(M_b+C_b^{\rm cell}-1)\times d_b}\) and \(\tau_b^2\geq0\). The joint Wald test sets the \((C_b^{\rm cell}-1)\times d_b\) cell-type coefficient block to zero and therefore has at most \((C_b^{\rm cell}-1)d_b\) degrees of freedom. Mouse indicators retain the pairing while replacing many pair-specific hypotheses with one block-level hypothesis. With zero conditional measurement covariance, the REML scalar-variance GLS reduces exactly to multivariate ordinary least squares; the implementation uses this closed form.
+
+Thirty-two design-matched null families are generated by paired subject sign flips for pairwise cell-type contrasts, within-mouse cell-type-label permutations for the omnibus regression, and condition-label permutations for condition contrasts. Residual tail error is removed by mapping observed and null reference p-values through a leave-one-event-out empirical null CDF within tested-dimension and subject-count strata. The comparator benchmark retains the 25-modeled-gene-UMI candidate screen and at least four paired mice. It tests 7,671 and 5,140 block-by-cell-type-pair hypotheses in the two halves. The full cell-type and condition analyses use their complete screened candidate families. Fixed-smoothing, equal-weight, uncertainty-scale, depth, global-isoform GLMM, and gene-aggregation sensitivities are reported in the appendix.
 
 The same biological subjects are divided into two condition-balanced halves for all methods. Spliced alignments supplied to the external methods are restricted to unique genomic mappings and deduplicated by cell barcode, UMI, genomic start, and CIGAR. LeafCutter tests intron clusters, MAJIQ tests edges within local splicing variations, and scQuint tests intron groups. For each Tealeaf--comparator pair, scoring retains only genes and cell-type pairs eligible for both methods in both halves. Feature p-values are combined by Simes within each gene--cell-type pair and then across the shared pairs within a gene. For method \(m\), gene \(g\), and half \(h\in\{1,2\}\), let \(p_{mgh}\in[0,1]\) be the resulting gene p-value. The conjunction p-value \(p_{mg}^{\rm rep}=\max(p_{mg1},p_{mg2})\) tests whether the gene has signal in both halves, and BH at 0.05 is applied on the pairwise shared gene universe. Secondary endpoints are held-half nominal replication and Spearman correlation of gene--pair \(-\log_{10}p\) across halves.
 
@@ -186,6 +191,29 @@ scQuint & 2,600 & 507 & 101 & 0.819 & 0.656 & 56 & 0.775 & 0.458\\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\subsection*{Pairwise versus omnibus cell-type testing}
+
+The mouse-blocked omnibus regression improves split reproducibility when both approaches are placed on the same block-level hypothesis universe. Pairwise p-values were combined by Simes across cell-type pairs within each block, so this comparison does not credit pairwise testing for producing more hypotheses. Among 988 blocks present in both methods and both subject halves, omnibus testing independently replicates 212 blocks and 159 genes, compared with 112 blocks and 98 genes for pairwise testing. The omnibus gain is not explained by null inflation: its fold-specific calibrated rejection rates are 0.04991 and 0.05012, no fold-specific null family has a BH call, and the complete block-level and gene-level conjunction pipelines make zero null calls in all 32 families.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Mouse-blocked omnibus regression compared with pairwise testing after Simes aggregation of pairwise p-values to one value per block. Split statistics use the 988 blocks shared by both methods and both subject halves. Full-data BH counts use the 1,624 blocks shared by both full-data families and apply BH again on that common block universe. ``Held'' is held-half nominal replication and \(\rho\) is the split-to-split Spearman correlation of block \(-\log_{10}p\).}
+\label{tab:celltype-omnibus-comparison}
+\begin{tabular}{lrrrrr}
+\toprule
+Method & Full BH blocks & Replicated blocks & Replicated genes & Held & \(\rho\)\\
+\midrule
+Pairwise then Simes & 437 & 112 & 98 & 0.687 & 0.620\\
+Mouse-blocked omnibus & 599 & 212 & 159 & 0.722 & 0.613\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+On each method's complete full-data family, the omnibus regression calls 584 of 1,781 fitted blocks and 434 genes, whereas event-level pairwise BH calls at least one contrast for 585 blocks and 440 genes. The raw block sets overlap at 492 blocks. On the common 1,624-block universe in Table~\ref{tab:celltype-omnibus-comparison}, omnibus BH calls 599 blocks and pairwise Simes calls 437, with 412 shared. Thus the omnibus analysis provides stronger evidence for the global question of whether any cell type differs, while pairwise testing remains necessary for identifying which pairs differ and for matching comparator hypotheses. Its limitation is the joint \((C_b^{\rm cell}-1)d_b\) degrees of freedom, which can dilute a change confined to one cell-type pair.
+
+The final omnibus run uses 1.181 aggregate one-core worker hours from prepared inputs, compared with 1.035 hours for the pairwise family. Although it fits only 1,785 candidate blocks rather than 11,462 pair hypotheses, each block contains more mouse--cell-type path fits and a higher-dimensional regression. Replacing repeated zero-covariance GLS optimization with the exact bounded ordinary-least-squares form reduced the initial omnibus implementation from 1.445 to 1.181 worker hours without changing the BH set. The omnibus analysis is therefore 14\% slower than pairwise testing in aggregate worker time, not an order-of-magnitude speed improvement from reduced multiplicity.
 
 \subsection*{Full-data Tealeaf results}
 
@@ -258,6 +286,25 @@ The complete production event catalog, component annotations, coordinates, cell-
 \section{Deprecated Full-Data EC GLMM}
 
 The former production analysis fitted a latent global-isoform EC GLMM separately for every block. Let \(m(i)\in\{1,\ldots,M_b\}\) identify pseudobulk \(i\)'s mouse. Its multinomial form was \(\bm c_{gip}\mid\bm\eta_{gi}\sim\operatorname{Multinomial}\{n_{gip},\bm q_{gip}(\bm\eta_{gi})\}\), with \(\bm\eta_{gi,-}=\mathcal F_{bi}(\bm\beta_b)+\bm u_{g,m(i)}\) and \(\bm u_{gm}\sim N(\bm0_{r_g},\sigma_g^2I_{r_g})\). The logistic-normal extension added \(\bm e_{gi}\sim N(\bm0_{r_g},\tau_g^2I_{r_g})\) to each pseudobulk. Both primer likelihoods shared the same latent composition. The tested block coefficients used the pooled-baseline path-ILR Jacobian \(J_b\in\mathbb R^{d_b\times r_g}\), its right inverse \(H_b=J_b^\prime(J_bJ_b^\prime)^{-1}\in\mathbb R^{r_g\times d_b}\), and a nuisance basis \(N_b\in\mathbb R^{r_g\times(r_g-d_b)}\) for \(\ker(J_b)\). This gave a corrected tangent null while retaining global isoform nuisance directions.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[>=Latex,node distance=5mm and 7mm,every node/.style={font=\small},stage/.style={rounded corners=2pt,draw=tealeafNavy!60,line width=.7pt,minimum height=15mm,align=center,inner sep=5pt},flow/.style={->,line width=1.1pt,tealeafTeal},branch/.style={->,line width=1pt,tealeafOrange}]
+\node[stage,fill=tealeafLightTeal,text width=28mm] (block) {\textbf{Block parameters}\\pooled baseline $\overline{\bm\theta}_g$\\local shift $\bm\delta_{bi}$};
+\node[stage,fill=tealeafLight,text width=31mm,right=of block] (iso) {\textbf{Isoform composition}\\$\bm\eta_{gi}\in\mathbb R^{T_g}$\\$\bm\theta_{gi}=\operatorname{softmax}(\bm\eta_{gi})$};
+\node[stage,fill=tealeafLight,text width=32mm,above right=3mm and 9mm of iso] (dtec) {\textbf{oligo(dT) EC proportions}\\$A_{g,\mathrm{dT}}\in\mathbb R_+^{K_{g,\mathrm{dT}}\times T_g}$\\$\bm q_{gi,\mathrm{dT}}\in\Delta^{K_{g,\mathrm{dT}}-1}$};
+\node[stage,fill=tealeafLight,text width=32mm,below right=3mm and 9mm of iso] (rhec) {\textbf{random-hexamer EC proportions}\\$A_{g,\mathrm{RH}}\in\mathbb R_+^{K_{g,\mathrm{RH}}\times T_g}$\\$\bm q_{gi,\mathrm{RH}}\in\Delta^{K_{g,\mathrm{RH}}-1}$};
+\node[stage,fill=tealeafLightTeal,text width=29mm,right=of dtec] (dtcount) {\textbf{Observed EC counts}\\$\bm c_{gi,\mathrm{dT}}\sim\operatorname{Multinomial}$\\$(n_{gi,\mathrm{dT}},\bm q_{gi,\mathrm{dT}})$};
+\node[stage,fill=tealeafLightTeal,text width=29mm,right=of rhec] (rhcount) {\textbf{Observed EC counts}\\$\bm c_{gi,\mathrm{RH}}\sim\operatorname{Multinomial}$\\$(n_{gi,\mathrm{RH}},\bm q_{gi,\mathrm{RH}})$};
+\draw[flow] (block)--(iso);
+\draw[branch] (iso.east)--(dtec.west);
+\draw[branch] (iso.east)--(rhec.west);
+\draw[flow] (dtec)--(dtcount);
+\draw[flow] (rhec)--(rhcount);
+\end{tikzpicture}
+\caption{Generative flow for the deprecated global EC GLMM for gene $g=g(b)$ and pseudobulk $i$. The two primer maps share the same latent global isoform composition.}
+\label{fig:deprecated-ec-generative-model}
+\end{figure}
 
 Two fitting options remain implemented. Full-covariance tilted variational inference factorizes across mice but retains unrestricted covariance within each mouse's latent vector; it uses an analytic tilted log-sum-exp bound and exact Gaussian KL term. Laplace fitting instead integrates around each mouse-specific posterior mode and uses implicit differentiation with analytic EC likelihood derivatives. The corrected full-data analysis calibrated nested variational objective gains using parametric null simulation, a cross-fitted generalized Pareto tail, and a leave-block-out empirical null CDF. GPD means generalized Pareto distribution. The corresponding derivations, algorithms, and computational comparisons are retained in the supporting sections below.
 

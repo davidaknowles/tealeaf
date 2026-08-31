@@ -252,6 +252,52 @@ def test_independent_path_test_recovers_group_shift():
     assert np.isfinite(result["restricted_objective"])
 
 
+def test_blocked_multilevel_path_test_recovers_repeated_shift():
+    rng = np.random.default_rng(82)
+    counts = []
+    labels = []
+    subjects = []
+    for subject in range(12):
+        subject_shift = rng.normal(0.0, 0.35)
+        for label, effect in enumerate((0.0, 0.1, 0.9)):
+            probability = 1 / (1 + np.exp(-(subject_shift + effect - 0.4)))
+            first = rng.binomial(120, probability)
+            counts.append([first, 120 - first])
+            labels.append(label)
+            subjects.append(subject)
+    data = ec_glmm.ECGLMMData(
+        (np.asarray(counts, dtype=float),),
+        (np.eye(2),),
+        np.ones((len(counts), 1)),
+        np.asarray(subjects),
+    )
+    result = ec_block_glmm.blocked_multilevel_path_test(
+        data,
+        [0, 1],
+        labels,
+        subjects,
+        baseline=[0.5, 0.5],
+        path_pseudocount=1.0,
+    )
+    assert result["converged"]
+    assert result["degrees_of_freedom"] == 2
+    assert result["n_subjects"] == 12
+    assert result["n_observations"] == 36
+    assert result["p_value"] < 0.01
+
+
+def test_blocked_multilevel_design_is_invariant_to_subject_offsets():
+    labels = np.tile(np.arange(3), 4)
+    subjects = np.repeat(np.arange(4), 3)
+    design, tested, levels, subject_levels = (
+        ec_block_glmm.blocked_multilevel_design(labels, subjects)
+    )
+    assert design.shape == (12, 6)
+    np.testing.assert_array_equal(tested, [4, 5])
+    assert levels == (0, 1, 2)
+    assert subject_levels == (0, 1, 2, 3)
+
+
 def test_path_pseudocount_regularizes_boundary_estimate():
     fit = differential.fit_path_perturbation(
         (np.array([100.0, 0.0]),),

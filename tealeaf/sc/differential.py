@@ -1064,6 +1064,71 @@ def multivariate_gls_test(
         raise ValueError("covariances have the wrong shape")
     if design.shape[0] != n_samples:
         raise ValueError("design and values have different sample counts")
+    if np.count_nonzero(covariances) == 0:
+        null_design = np.delete(design, tested_columns, axis=1)
+        if not null_design.shape[1]:
+            raise ValueError("at least one untested design column is required")
+        null_coefficients = np.linalg.lstsq(
+            null_design, values, rcond=None
+        )[0]
+        null_residuals = values - null_design @ null_coefficients
+        residual_degrees = (
+            n_samples - np.linalg.matrix_rank(null_design)
+        ) * dimension
+        if residual_degrees <= 0:
+            raise ValueError("GLS null model has no residual degrees of freedom")
+        if biological_variance is None:
+            residual_scale = float(np.mean(np.square(null_residuals)))
+            lower_variance = max(residual_scale, 1e-8) * np.exp(-18.0)
+            tau2 = max(
+                float(np.sum(np.square(null_residuals)) / residual_degrees),
+                lower_variance,
+            )
+        else:
+            tau2 = max(float(biological_variance), np.finfo(float).tiny)
+        null_crossproduct = null_design.T @ null_design
+        sign, null_log_determinant = np.linalg.slogdet(null_crossproduct)
+        if sign <= 0:
+            raise np.linalg.LinAlgError("GLS null design has singular precision")
+        null_restricted_objective = float(
+            residual_degrees * np.log(tau2)
+            + dimension * null_log_determinant
+            + np.sum(np.square(null_residuals)) / tau2
+        )
+        crossproduct = design.T @ design
+        sign, _ = np.linalg.slogdet(crossproduct)
+        if sign <= 0:
+            raise np.linalg.LinAlgError("GLS design has singular precision")
+        crossproduct_inverse = scipy.linalg.inv(
+            crossproduct, check_finite=False
+        )
+        coefficients = crossproduct_inverse @ design.T @ values
+        coefficient_covariance = tau2 * np.kron(
+            crossproduct_inverse, np.eye(dimension)
+        )
+        tested = np.concatenate([
+            np.arange(column * dimension, (column + 1) * dimension)
+            for column in tested_columns
+        ])
+        tested_values = coefficients[tested_columns].ravel()
+        tested_covariance = coefficient_covariance[np.ix_(tested, tested)]
+        statistic = float(
+            tested_values
+            @ scipy.linalg.pinvh(tested_covariance, rtol=1e-10)
+            @ tested_values
+        )
+        degrees_of_freedom = int(np.linalg.matrix_rank(tested_covariance))
+        return {
+            "statistic": statistic,
+            "degrees_of_freedom": degrees_of_freedom,
+            "p_value": float(
+                scipy.stats.chi2.sf(statistic, degrees_of_freedom)
+            ),
+            "biological_variance": tau2,
+            "restricted_objective": null_restricted_objective,
+            "coefficients": coefficients,
+            "coefficient_covariance": coefficient_covariance,
+        }
     def fit_at_tau(tau2, model_design):
         parameter_count = model_design.shape[1] * dimension
         precision = np.zeros((parameter_count, parameter_count), dtype=float)

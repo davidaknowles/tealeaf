@@ -281,7 +281,11 @@ def independent_path_test(
     ]).astype(float)
     result = differential.multivariate_gls_test(
         values,
-        float(uncertainty_scale) * covariances,
+        (
+            np.zeros_like(covariances)
+            if uncertainty_scale == 0
+            else float(uncertainty_scale) * covariances
+        ),
         design,
         np.arange(1, len(levels)),
     )
@@ -296,6 +300,134 @@ def independent_path_test(
         "path_fits": fits,
         "levels": tuple(levels),
         "uncertainty_scale": float(uncertainty_scale),
+    }
+
+
+def blocked_multilevel_design(labels, subjects):
+    """Build a subject-blocked treatment design for a repeated factor.
+
+    ``labels`` and ``subjects`` each have length ``N``. The returned design has
+    one intercept, ``M - 1`` subject columns, and ``C - 1`` tested level
+    columns, where ``M`` and ``C`` are the numbers of subjects and levels.
+    """
+    labels = np.asarray(labels)
+    subjects = np.asarray(subjects)
+    if labels.ndim != 1 or subjects.shape != labels.shape:
+        raise ValueError("labels and subjects must be aligned vectors")
+    levels = np.unique(labels)
+    subject_levels = np.unique(subjects)
+    if len(levels) < 2:
+        raise ValueError("blocked testing requires at least two levels")
+    design = np.column_stack([
+        np.ones(len(labels)),
+        *[subjects == subject for subject in subject_levels[1:]],
+        *[labels == level for level in levels[1:]],
+    ]).astype(float)
+    tested = np.arange(
+        len(subject_levels),
+        len(subject_levels) + len(levels) - 1,
+    )
+    if np.linalg.matrix_rank(design) != design.shape[1]:
+        raise ValueError("subject-blocked level design is rank deficient")
+    return design, tested, tuple(levels), tuple(subject_levels)
+
+
+def blocked_multilevel_path_test(
+    data,
+    path_index,
+    labels,
+    clusters,
+    *,
+    baseline=None,
+    max_iter=100,
+    path_pseudocount=0.0,
+    path_prior_center="uniform",
+    uncertainty_scale=0.0,
+):
+    """Test a repeated multi-level effect on EC-derived path ILRs.
+
+    Rows are summed separately for each subject-by-level combination before
+    local-path quantification. A multivariate regression then includes subject
+    fixed effects and jointly tests the ``C - 1`` level coefficients.
+    """
+    labels = np.asarray(labels)
+    clusters = np.asarray(clusters)
+    path_index = np.asarray(path_index, dtype=int)
+    if len(labels) != data.counts[0].shape[0] or len(clusters) != len(labels):
+        raise ValueError("labels, clusters, and EC data must align")
+    if len(np.unique(labels)) < 2:
+        raise ValueError("blocked path testing requires at least two levels")
+    if baseline is None:
+        baseline = pooled_isoform_weights(data)
+    values = []
+    covariances = []
+    observation_labels = []
+    observation_subjects = []
+    fits = []
+    for cluster in np.unique(clusters):
+        for level in np.unique(labels[clusters == cluster]):
+            positions = np.flatnonzero(
+                (clusters == cluster) & (labels == level)
+            )
+            counts = tuple(
+                np.asarray(observed[positions], dtype=float).sum(axis=0)
+                for observed in data.counts
+            )
+            if sum(float(observed.sum()) for observed in counts) <= 0:
+                continue
+            fit = differential.fit_path_perturbation(
+                counts,
+                data.compatibility,
+                baseline,
+                path_index,
+                max_iter=max_iter,
+                path_pseudocount=path_pseudocount,
+                path_prior_center=path_prior_center,
+            )
+            if (
+                not fit.converged
+                or not np.isfinite(fit.path_logratios).all()
+                or (uncertainty_scale > 0 and not fit.covariance.identifiable)
+            ):
+                continue
+            values.append(fit.path_logratios)
+            covariances.append(fit.covariance.covariance)
+            observation_labels.append(level)
+            observation_subjects.append(cluster)
+            fits.append(fit)
+    dimension = len(np.unique(path_index[path_index >= 0])) - 1
+    values = np.asarray(values, dtype=float).reshape(-1, dimension)
+    covariances = np.asarray(covariances, dtype=float).reshape(
+        -1, dimension, dimension
+    )
+    observation_labels = np.asarray(observation_labels)
+    observation_subjects = np.asarray(observation_subjects)
+    design, tested, levels, subjects = blocked_multilevel_design(
+        observation_labels, observation_subjects
+    )
+    result = differential.multivariate_gls_test(
+        values,
+        (
+            np.zeros_like(covariances)
+            if uncertainty_scale == 0
+            else float(uncertainty_scale) * covariances
+        ),
+        design,
+        tested,
+    )
+    return {
+        **result,
+        "n_subjects": len(subjects),
+        "n_observations": len(values),
+        "converged": True,
+        "values": values,
+        "covariances": covariances,
+        "observation_labels": observation_labels,
+        "observation_subjects": observation_subjects,
+        "path_fits": fits,
+        "levels": levels,
+        "uncertainty_scale": float(uncertainty_scale),
+        "tested_columns": tested,
     }
 
 

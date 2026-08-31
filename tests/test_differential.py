@@ -391,6 +391,39 @@ class DifferentialTest(unittest.TestCase):
         )
         self.assertAlmostEqual(refitted["statistic"], reused["statistic"])
 
+    def test_zero_covariance_gls_matches_closed_form_ols(self):
+        rng = np.random.default_rng(72)
+        labels = np.repeat([0, 1, 2], 7)
+        design = np.column_stack((
+            np.ones(len(labels)), labels == 1, labels == 2
+        )).astype(float)
+        values = rng.normal(size=(len(labels), 2))
+        result = differential.multivariate_gls_test(
+            values,
+            np.zeros((len(values), 2, 2)),
+            design,
+            tested_columns=[1, 2],
+        )
+        expected_coefficients = np.linalg.lstsq(design, values, rcond=None)[0]
+        null_mean = values.mean(axis=0)
+        expected_variance = np.sum(np.square(values - null_mean)) / (
+            (len(values) - 1) * values.shape[1]
+        )
+        np.testing.assert_allclose(
+            result["coefficients"], expected_coefficients
+        )
+        self.assertAlmostEqual(
+            result["biological_variance"], expected_variance
+        )
+        reused = differential.multivariate_gls_test(
+            values,
+            np.zeros((len(values), 2, 2)),
+            design,
+            tested_columns=[1, 2],
+            biological_variance=result["biological_variance"],
+        )
+        self.assertAlmostEqual(result["statistic"], reused["statistic"])
+
     def test_effective_multinomial_size_recovers_known_size(self):
         proportions = np.array([0.2, 0.3, 0.5])
         basis = differential.helmert_basis(3)
