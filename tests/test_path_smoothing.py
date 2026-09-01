@@ -12,16 +12,18 @@ def test_spike_slab_empirical_bayes_recovers_finite_slab(tmp_path):
         evidence = (
             {1.0: -1.0, 2.0: 0.0, 8.0: -3.0, 128.0: -10.0}
             if variable
-            else {1.0: -6.0, 2.0: -5.0, 8.0: -2.0, 128.0: 0.0}
+            else {1.0: -6.0, 2.0: -5.0, 8.0: -3.0, 128.0: -4.0}
         )
         for alpha, value in evidence.items():
             rows.append({
                 "test_id": f"test_{gene}",
                 "gene": gene,
-                "n_paths": 2,
+                "n_paths": 2 + gene % 2,
                 "alpha": alpha,
                 "mean_log_evidence": value,
+                "mean_point_null_log_evidence": 0.0,
                 "n_aggregates": 8,
+                "path_pseudocount_scaling": "total",
             })
     input_path = tmp_path / "evidence.tsv"
     output_path = tmp_path / "map.json"
@@ -32,3 +34,5 @@ def test_spike_slab_empirical_bayes_recovers_finite_slab(tmp_path):
     records = json.loads(output_path.read_text())["records"]
     assert {record["alpha"] for record in records} == {2.0}
     assert all(0 < record["spike_weight"] < 1 for record in records)
+    assert len(records) == 5
+    assert json.loads(output_path.read_text())["selection_scope"] == "global"

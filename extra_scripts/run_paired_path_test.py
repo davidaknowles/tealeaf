@@ -163,10 +163,23 @@ def main():
     smoothing = None
     if args.smoothing_map is not None:
         specification = json.loads(args.smoothing_map.read_text())
-        smoothing = {
-            (int(record["gene_fold"]), int(record["n_paths"])): float(record["alpha"])
-            for record in specification["records"]
-        }
+        map_scaling = specification.get(
+            "path_pseudocount_scaling", "per_path"
+        )
+        if args.path_pseudocount_scaling != map_scaling:
+            raise ValueError(
+                "smoothing map and requested pseudocount scaling differ"
+            )
+        if specification.get("selection_scope") == "global":
+            smoothing = {
+                int(record["gene_fold"]): float(record["alpha"])
+                for record in specification["records"]
+            }
+        else:
+            smoothing = {
+                (int(record["gene_fold"]), int(record["n_paths"])): float(record["alpha"])
+                for record in specification["records"]
+            }
         smoothing_folds = int(specification["folds"])
     uncertainty_scaling = None
     if args.uncertainty_scale_map is not None:
@@ -222,7 +235,10 @@ def main():
             path_pseudocount = args.path_pseudocount
             if smoothing is not None:
                 gene_fold = zlib.crc32(str(gene).encode("utf-8")) % smoothing_folds
-                path_pseudocount = smoothing[(gene_fold, len(signatures))]
+                if specification.get("selection_scope") == "global":
+                    path_pseudocount = smoothing[gene_fold]
+                else:
+                    path_pseudocount = smoothing[(gene_fold, len(signatures))]
             uncertainty_scale = args.uncertainty_scale
             if uncertainty_scaling is not None:
                 gene_fold = zlib.crc32(str(gene).encode("utf-8")) % uncertainty_folds

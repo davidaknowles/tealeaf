@@ -32,7 +32,12 @@ def parse_args():
     parser.add_argument("--data-cache", required=True, type=Path)
     parser.add_argument("--candidate-cache", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--alpha-grid", type=parse_grid, default=parse_grid("0.25;0.5;1;2;4;8;16;32;64;128"))
+    parser.add_argument("--alpha-grid", type=parse_grid, default=parse_grid("0.5;1;2;4;8;16;32;64;128"))
+    parser.add_argument(
+        "--path-pseudocount-scaling",
+        choices=("per_path", "total"),
+        default="per_path",
+    )
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--shard-count", type=int, default=1)
     parser.add_argument("--max-candidates", type=int)
@@ -111,7 +116,11 @@ def main():
                         if sum(value.sum() for value in aggregate) > 0:
                             aggregates.append((aggregate, baseline))
             evidence_by_alpha = {float(alpha): [] for alpha in args.alpha_grid}
+            point_null_evidence = []
             for aggregate, baseline in aggregates:
+                spike = differential.path_point_null_log_evidence(
+                    aggregate, base.compatibility, baseline
+                )
                 local_evidence = {}
                 for alpha in args.alpha_grid:
                     fit = differential.fit_path_perturbation(
@@ -121,6 +130,7 @@ def main():
                         path_index,
                         path_pseudocount=alpha,
                         path_prior_center="baseline",
+                        path_pseudocount_scaling=args.path_pseudocount_scaling,
                     )
                     if fit.converged:
                         value = differential.path_laplace_log_evidence(
@@ -129,21 +139,27 @@ def main():
                             prior_center=differential.path_proportions(
                                 baseline, path_index
                             ),
+                            path_pseudocount_scaling=args.path_pseudocount_scaling,
                         )
                         if np.isfinite(value):
                             local_evidence[float(alpha)] = value
                 if len(local_evidence) == len(args.alpha_grid):
+                    point_null_evidence.append(spike)
                     for alpha, value in local_evidence.items():
                         evidence_by_alpha[alpha].append(value)
             for alpha, evidence in evidence_by_alpha.items():
-                if evidence:
+                if evidence and len(evidence) == len(point_null_evidence):
                     rows.append({
                         "test_id": test_id,
                         "gene": gene,
                         "n_paths": len(signatures),
                         "alpha": alpha,
                         "mean_log_evidence": float(np.mean(evidence)),
+                        "mean_point_null_log_evidence": float(
+                            np.mean(point_null_evidence)
+                        ),
                         "n_aggregates": len(evidence),
+                        "path_pseudocount_scaling": args.path_pseudocount_scaling,
                     })
         except (ValueError, np.linalg.LinAlgError):
             continue
@@ -156,70 +172,81 @@ def select_cross_fitted_alpha(
     output,
     folds=5,
     minimum_genes=25,
-    maximum_slab_alpha=8.0,
 ):
-    """Select a finite EB slab alpha against a high-precision spike."""
+    """Select one global finite alpha against an exact point-null spike."""
     table = pd.concat([pd.read_csv(path, sep="\t") for path in tables], ignore_index=True)
+    required = {"mean_point_null_log_evidence", "path_pseudocount_scaling"}
+    missing = required.difference(table.columns)
+    if missing:
+        raise ValueError(f"evidence table is missing columns: {sorted(missing)}")
+    scalings = table.path_pseudocount_scaling.unique()
+    if len(scalings) != 1:
+        raise ValueError("evidence tables must use one concentration scaling")
+    scaling = str(scalings[0])
     table["gene_fold"] = table.gene.map(lambda value: zlib.crc32(str(value).encode()) % folds)
     per_gene = table.groupby(["gene", "gene_fold", "n_paths", "alpha"], as_index=False).agg(
-        mean_log_evidence=("mean_log_evidence", "mean")
+        mean_log_evidence=("mean_log_evidence", "mean"),
+        mean_point_null_log_evidence=("mean_point_null_log_evidence", "mean"),
     )
     records = []
     for held_out in range(folds):
         training = per_gene.loc[per_gene.gene_fold.ne(held_out)]
-        for n_paths in sorted(per_gene.n_paths.unique()):
-            local = training.loc[training.n_paths.eq(n_paths)]
-            if local.gene.nunique() < minimum_genes:
-                local = training
-            local = local.groupby(
-                ["gene", "alpha"], as_index=False
-            ).mean_log_evidence.mean()
-            matrix = local.pivot(
-                index="gene", columns="alpha", values="mean_log_evidence"
-            ).dropna()
-            spike_alpha = float(matrix.columns.max())
-            slab_alphas = [
-                float(alpha)
-                for alpha in matrix.columns
-                if alpha < spike_alpha and alpha <= maximum_slab_alpha
-            ]
-            if not slab_alphas:
-                raise ValueError("alpha grid has no finite slab candidates")
-            spike = matrix[spike_alpha].to_numpy(dtype=float)
-            candidates = []
-            for alpha in slab_alphas:
-                slab = matrix[alpha].to_numpy(dtype=float)
+        matrix = training.pivot(
+            index=["gene", "n_paths"],
+            columns="alpha",
+            values="mean_log_evidence",
+        ).dropna()
+        if matrix.index.get_level_values("gene").nunique() < minimum_genes:
+            raise ValueError("too few genes for global alpha selection")
+        point_null = training.groupby(
+            ["gene", "n_paths"]
+        ).mean_point_null_log_evidence.mean().reindex(matrix.index)
+        retained = point_null.notna()
+        matrix = matrix.loc[retained]
+        spike = point_null.loc[retained].to_numpy(dtype=float)
+        gene_codes, genes = pd.factorize(matrix.index.get_level_values("gene"))
+        gene_counts = np.bincount(gene_codes)
+        candidates = []
+        for alpha in matrix.columns:
+            slab = matrix[alpha].to_numpy(dtype=float)
 
-                def objective(logit_weight):
-                    spike_weight = scipy.special.expit(logit_weight)
-                    values = np.logaddexp(
-                        np.log(spike_weight) + spike,
-                        np.log1p(-spike_weight) + slab,
-                    )
-                    return -float(values.mean())
-
-                optimized = scipy.optimize.minimize_scalar(
-                    objective,
-                    bounds=(-8.0, 8.0),
-                    method="bounded",
+            def objective(logit_weight):
+                spike_weight = scipy.special.expit(logit_weight)
+                values = np.logaddexp(
+                    np.log(spike_weight) + spike,
+                    np.log1p(-spike_weight) + slab,
                 )
-                candidates.append((
-                    -float(optimized.fun),
-                    alpha,
-                    float(scipy.special.expit(optimized.x)),
-                ))
-            mixture_evidence, selected_alpha, spike_weight = max(candidates)
-            records.append({
-                "gene_fold": held_out,
-                "n_paths": int(n_paths),
-                "alpha": selected_alpha,
-                "training_genes": int(matrix.shape[0]),
-                "spike_alpha": spike_alpha,
-                "spike_weight": spike_weight,
-                "mean_mixture_log_evidence": mixture_evidence,
-            })
+                per_gene = np.bincount(
+                    gene_codes, weights=values
+                ) / gene_counts
+                return -float(per_gene.mean())
+
+            optimized = scipy.optimize.minimize_scalar(
+                objective,
+                bounds=(-12.0, 12.0),
+                method="bounded",
+            )
+            candidates.append((
+                -float(optimized.fun),
+                float(alpha),
+                float(scipy.special.expit(optimized.x)),
+            ))
+        mixture_evidence, selected_alpha, spike_weight = max(candidates)
+        records.append({
+            "gene_fold": held_out,
+            "alpha": selected_alpha,
+            "training_genes": int(len(genes)),
+            "spike_model": "point_null",
+            "spike_weight": spike_weight,
+            "mean_mixture_log_evidence": mixture_evidence,
+        })
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps({"folds": folds, "records": records}, indent=2) + "\n")
+    output.write_text(json.dumps({
+        "folds": folds,
+        "selection_scope": "global",
+        "path_pseudocount_scaling": scaling,
+        "records": records,
+    }, indent=2) + "\n")
 
 
 if __name__ == "__main__":

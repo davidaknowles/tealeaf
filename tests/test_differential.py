@@ -159,6 +159,18 @@ class CovarianceTest(unittest.TestCase):
         self.assertTrue(
             np.isfinite(differential.path_laplace_log_evidence(regularized, 2.0))
         )
+        prior_counts = np.ones(2) * 2.0
+        expected = (
+            -regularized.objective
+            + scipy.special.gammaln(prior_counts.sum())
+            - scipy.special.gammaln(prior_counts).sum()
+            + 0.5 * np.log(2)
+            + 0.5 * np.log(2 * np.pi)
+            + 0.5 * np.linalg.slogdet(regularized.covariance.covariance)[1]
+        )
+        self.assertAlmostEqual(
+            differential.path_laplace_log_evidence(regularized, 2.0), expected
+        )
 
     def test_baseline_centered_smoothing_targets_baseline_usage(self):
         fit = differential.fit_path_perturbation(
@@ -178,6 +190,14 @@ class CovarianceTest(unittest.TestCase):
         self.assertAlmostEqual(per_path.sum(), 32.0)
         self.assertAlmostEqual(total.sum(), 8.0)
         np.testing.assert_allclose(total, np.full(4, 2.0))
+
+    def test_path_point_null_evidence_uses_baseline_probabilities(self):
+        value = differential.path_point_null_log_evidence(
+            (np.array([8.0, 2.0]),),
+            (sp.eye(2, format="csr"),),
+            np.array([0.8, 0.2]),
+        )
+        self.assertAlmostEqual(value, 8 * np.log(0.8) + 2 * np.log(0.2))
 
     def test_paired_measurement_error_downweights_noisy_subject(self):
         differences = np.array([[0.9], [1.1], [1.0], [-8.0]])

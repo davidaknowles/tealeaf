@@ -157,8 +157,8 @@ def path_laplace_log_evidence(
 ):
     """Return the Laplace evidence for one ILR smoothing prior.
 
-    Constants independent of ``alpha`` are omitted, which is sufficient for
-    empirical-Bayes selection within a fixed path dimension.
+    The normalization includes the ILR-to-simplex Jacobian constant, which is
+    required when one empirical-Bayes objective pools path dimensions.
     """
     alpha = float(path_pseudocount)
     if alpha <= 0:
@@ -184,6 +184,7 @@ def path_laplace_log_evidence(
     log_prior_normalizer = (
         scipy.special.gammaln(prior_counts.sum())
         - scipy.special.gammaln(prior_counts).sum()
+        + 0.5 * np.log(n_paths)
     )
     return float(
         -fit.objective
@@ -191,6 +192,24 @@ def path_laplace_log_evidence(
         + 0.5 * dimension * np.log(2 * np.pi)
         + 0.5 * covariance_log_determinant
     )
+
+
+def path_point_null_log_evidence(counts, designs, baseline):
+    """Return conditional-multinomial log evidence at the pooled baseline."""
+    baseline = np.asarray(baseline, dtype=float)
+    counts = tuple(np.asarray(value, dtype=float) for value in counts)
+    designs = tuple(sp.csr_matrix(value) for value in designs)
+    if len(counts) != len(designs):
+        raise ValueError("counts and designs must have the same length")
+    value = 0.0
+    for observed, design in zip(counts, designs):
+        probabilities = np.asarray(design @ baseline).ravel()
+        normalizer = float(probabilities.sum())
+        if normalizer <= 0 or np.any((observed > 0) & (probabilities <= 0)):
+            return -np.inf
+        probabilities = probabilities / normalizer
+        value += float(observed @ np.log(np.maximum(probabilities, 1e-300)))
+    return value
 
 
 @dataclass

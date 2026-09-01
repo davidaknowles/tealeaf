@@ -1,0 +1,4 @@
+method	center	scaling	fold0_eligible	fold1_eligible	fold0_bh	fold1_bh	fold0_null_rejection_0.05	fold1_null_rejection_0.05	leafcutter_replicated_genes	majiq_replicated_genes	scquint_replicated_genes	leafcutter_heldout_replication	majiq_heldout_replication	scquint_heldout_replication	leafcutter_spearman_logp	majiq_spearman_logp	scquint_spearman_logp
+production_alpha2	uniform	per_path	7523	5057	1163	770	0.05003822	0.05001112	50	103	101	0.798840	0.810372	0.818525	0.710540	0.622494	0.656071
+corrected_eb	baseline	per_path	7018	4660	97	31	0.05003206	0.04998659	4	0	0	0.916667	0.846154	0.789474	0.510519	0.315081	0.361746
+corrected_eb	baseline	total	7022	4668	98	30	0.05006141	0.04996787	4	0	0	0.857143	0.818182	0.733333	0.490744	0.309790	0.370550
