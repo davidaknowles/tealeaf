@@ -1,21 +1,17 @@
-scaling	subject_half	gene_fold	alpha	spike_weight	training_genes
-per_path	0	0	4	0.93820249	357
-per_path	0	1	8	0.92258700	368
-per_path	0	2	8	0.94279226	372
-per_path	0	3	4	0.92425579	356
-per_path	0	4	4	0.94146573	371
-per_path	1	0	8	0.96808653	332
-per_path	1	1	8	0.96504609	346
-per_path	1	2	8	0.97091684	353
-per_path	1	3	8	0.95212260	334
-per_path	1	4	8	0.96069789	347
-total	0	0	16	0.93506459	356
-total	0	1	32	0.91679773	367
-total	0	2	16	0.94657578	372
-total	0	3	16	0.91701251	355
-total	0	4	8	0.94701165	370
-total	1	0	16	0.96924455	332
-total	1	1	32	0.96332318	346
-total	1	2	16	0.97271470	353
-total	1	3	16	0.95183607	334
-total	1	4	16	0.96225822	347
+evidence_center	alpha_scope	scaling	subject_half	selected_alphas	global_alpha	global_spike_weight	global_training_genes
+baseline	cross_fitted	per_path	0	4;8;8;4;4	NA	NA	NA
+baseline	cross_fitted	per_path	1	8;8;8;8;8	NA	NA	NA
+baseline	cross_fitted	total	0	16;32;16;16;8	NA	NA	NA
+baseline	cross_fitted	total	1	16;32;16;16;16	NA	NA	NA
+baseline	global	per_path	0	4	4	0.9379	456
+baseline	global	per_path	1	8	8	0.9634	428
+baseline	global	total	0	16	16	0.9327	455
+baseline	global	total	1	16	16	0.9647	428
+uniform	cross_fitted	per_path	0	0.5;0.5;0.5;0.5;1	NA	NA	NA
+uniform	cross_fitted	per_path	1	2;1;2;2;1	NA	NA	NA
+uniform	cross_fitted	total	0	2;2;2;2;2	NA	NA	NA
+uniform	cross_fitted	total	1	4;4;4;4;4	NA	NA	NA
+uniform	global	per_path	0	0.5	0.5	0.9007	458
+uniform	global	per_path	1	2	2	0.9363	429
+uniform	global	total	0	2	2	0.9003	458
+uniform	global	total	1	4	4	0.9348	429

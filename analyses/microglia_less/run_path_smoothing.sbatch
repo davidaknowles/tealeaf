@@ -21,6 +21,7 @@ ARGS=(
   --output "${OUTPUT_ROOT:?}/evidence_${SLURM_ARRAY_TASK_ID}.tsv"
   --alpha-grid "${ALPHA_GRID:-0.25;0.5;1;2;4;8;16;32;64;128}"
   --path-pseudocount-scaling "${PATH_PSEUDOCOUNT_SCALING:-per_path}"
+  --path-prior-center "${PATH_PRIOR_CENTER:-uniform}"
   --shard-index "${SLURM_ARRAY_TASK_ID}"
   --shard-count "${SHARD_COUNT:-96}"
 )

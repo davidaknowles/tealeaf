@@ -38,6 +38,11 @@ def parse_args():
         choices=("per_path", "total"),
         default="per_path",
     )
+    parser.add_argument(
+        "--path-prior-center",
+        choices=("uniform", "baseline"),
+        default="uniform",
+    )
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--shard-count", type=int, default=1)
     parser.add_argument("--max-candidates", type=int)
@@ -129,16 +134,19 @@ def main():
                         baseline,
                         path_index,
                         path_pseudocount=alpha,
-                        path_prior_center="baseline",
+                        path_prior_center=args.path_prior_center,
                         path_pseudocount_scaling=args.path_pseudocount_scaling,
                     )
                     if fit.converged:
+                        prior_center = (
+                            differential.path_proportions(baseline, path_index)
+                            if args.path_prior_center == "baseline"
+                            else np.full(len(signatures), 1.0 / len(signatures))
+                        )
                         value = differential.path_laplace_log_evidence(
                             fit,
                             alpha,
-                            prior_center=differential.path_proportions(
-                                baseline, path_index
-                            ),
+                            prior_center=prior_center,
                             path_pseudocount_scaling=args.path_pseudocount_scaling,
                         )
                         if np.isfinite(value):
@@ -160,6 +168,7 @@ def main():
                         ),
                         "n_aggregates": len(evidence),
                         "path_pseudocount_scaling": args.path_pseudocount_scaling,
+                        "path_prior_center": args.path_prior_center,
                     })
         except (ValueError, np.linalg.LinAlgError):
             continue
@@ -172,10 +181,15 @@ def select_cross_fitted_alpha(
     output,
     folds=5,
     minimum_genes=25,
+    path_prior_center=None,
 ):
     """Select one global finite alpha against an exact point-null spike."""
+    if folds < 1:
+        raise ValueError("folds must be at least one")
     table = pd.concat([pd.read_csv(path, sep="\t") for path in tables], ignore_index=True)
-    required = {"mean_point_null_log_evidence", "path_pseudocount_scaling"}
+    if "path_prior_center" not in table and path_prior_center is not None:
+        table["path_prior_center"] = path_prior_center
+    required = {"mean_point_null_log_evidence", "path_pseudocount_scaling", "path_prior_center"}
     missing = required.difference(table.columns)
     if missing:
         raise ValueError(f"evidence table is missing columns: {sorted(missing)}")
@@ -183,6 +197,10 @@ def select_cross_fitted_alpha(
     if len(scalings) != 1:
         raise ValueError("evidence tables must use one concentration scaling")
     scaling = str(scalings[0])
+    centers = table.path_prior_center.unique()
+    if len(centers) != 1:
+        raise ValueError("evidence tables must use one prior center")
+    prior_center = str(centers[0])
     table["gene_fold"] = table.gene.map(lambda value: zlib.crc32(str(value).encode()) % folds)
     per_gene = table.groupby(["gene", "gene_fold", "n_paths", "alpha"], as_index=False).agg(
         mean_log_evidence=("mean_log_evidence", "mean"),
@@ -190,7 +208,7 @@ def select_cross_fitted_alpha(
     )
     records = []
     for held_out in range(folds):
-        training = per_gene.loc[per_gene.gene_fold.ne(held_out)]
+        training = per_gene if folds == 1 else per_gene.loc[per_gene.gene_fold.ne(held_out)]
         matrix = training.pivot(
             index=["gene", "n_paths"],
             columns="alpha",
@@ -245,6 +263,7 @@ def select_cross_fitted_alpha(
         "folds": folds,
         "selection_scope": "global",
         "path_pseudocount_scaling": scaling,
+        "path_prior_center": prior_center,
         "records": records,
     }, indent=2) + "\n")
 

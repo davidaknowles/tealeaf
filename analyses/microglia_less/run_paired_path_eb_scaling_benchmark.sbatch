@@ -15,13 +15,14 @@ export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export NULL_REPLICATES="${NULL_REPLICATES:-32}"
-export PATH_PRIOR_CENTER=baseline
+export PATH_PRIOR_CENTER="${PATH_PRIOR_CENTER:-uniform}"
 export RETAIN_UNCERTAINTY=0
 export SHARD_COUNT="${SHARD_COUNT:-96}"
 
 benchmark_root="${RUN_ROOT}/junction_benchmark"
 repro_root="${benchmark_root}/reproducibility"
-output_tag="${OUTPUT_TAG:-tealeaf_paired_path_eb3}"
+output_tag="${OUTPUT_TAG:-tealeaf_paired_path_eb_alpha_transfer}"
+map_tag="${SMOOTHING_MAP_TAG:-path_smoothing_eb3}"
 workers="${SLURM_CPUS_PER_TASK:-1}"
 
 for scaling in per_path total; do
@@ -29,7 +30,7 @@ for scaling in per_path total; do
   for fold in 0 1; do
     fold_root="${repro_root}/fold${fold}"
     export CANDIDATE_CACHE="${RUN_ROOT}/differential/ec_block_reproducibility_pairwise_fold${fold}_candidates.pkl"
-    export SMOOTHING_MAP="${fold_root}/path_smoothing_eb3_${scaling}.json"
+    export SMOOTHING_MAP="${fold_root}/${map_tag}_${scaling}.json"
     export OUTPUT_ROOT="${fold_root}/${output_tag}_${scaling}_shards"
     mkdir -p "${OUTPUT_ROOT}"
     seq 0 $((SHARD_COUNT - 1)) | xargs -P "${workers}" -I '{}' bash -c 'SLURM_ARRAY_TASK_ID="$1" bash "$REPO_ROOT/analyses/microglia_less/run_paired_path_test.sbatch"' _ '{}'

@@ -29,6 +29,11 @@ def parse_args():
     parser.add_argument("--leafcutter-map", type=Path, required=True)
     parser.add_argument("--tealeaf-subdir", default="tealeaf")
     parser.add_argument(
+        "--tealeaf-subdir-fold",
+        action="append",
+        help="Fold-specific Tealeaf result directory; provide exactly twice.",
+    )
+    parser.add_argument(
         "--comparison-input-subdir",
         default="comparison",
         help="Fold-relative directory containing external comparator summaries.",
@@ -166,6 +171,9 @@ def main():
     args = parse_args()
     if len(args.fold_dir) != 2:
         raise ValueError("provide exactly two --fold-dir values")
+    tealeaf_subdirs = args.tealeaf_subdir_fold or [args.tealeaf_subdir] * 2
+    if len(tealeaf_subdirs) != 2:
+        raise ValueError("provide exactly two --tealeaf-subdir-fold values")
     args.output_dir.mkdir(parents=True, exist_ok=True)
     if args.leafcutter_map.exists():
         leaf_map = pd.read_csv(args.leafcutter_map, sep="\t")
@@ -180,7 +188,7 @@ def main():
             load_pairwise_fold(
                 path,
                 leaf_map,
-                args.tealeaf_subdir,
+                tealeaf_subdir,
                 args.tealeaf_label,
                 args.tealeaf_fit_method,
                 args.min_median_gene_umis,
@@ -188,7 +196,7 @@ def main():
                 args.tealeaf_format,
                 args.comparison_input_subdir,
             )
-            for path in args.fold_dir
+            for path, tealeaf_subdir in zip(args.fold_dir, tealeaf_subdirs)
         ]
         if args.external_null_table is not None:
             null_table = pd.read_csv(args.external_null_table, sep="\t")
@@ -206,14 +214,14 @@ def main():
             load_fold(
                 path,
                 leaf_map,
-                args.tealeaf_subdir,
+                tealeaf_subdir,
                 args.tealeaf_label,
                 args.tealeaf_fit_method,
                 args.min_median_gene_umis,
                 args.min_paired_subjects,
                 args.comparison_input_subdir,
             )
-            for path in args.fold_dir
+            for path, tealeaf_subdir in zip(args.fold_dir, tealeaf_subdirs)
         ]
         metrics, topk, genes = shared_gene_reproducibility(
             folds, reference_method=args.tealeaf_label

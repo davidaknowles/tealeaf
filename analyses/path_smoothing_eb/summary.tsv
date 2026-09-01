@@ -1,4 +1,10 @@
-method	center	scaling	fold0_eligible	fold1_eligible	fold0_bh	fold1_bh	fold0_null_rejection_0.05	fold1_null_rejection_0.05	leafcutter_replicated_genes	majiq_replicated_genes	scquint_replicated_genes	leafcutter_heldout_replication	majiq_heldout_replication	scquint_heldout_replication	leafcutter_spearman_logp	majiq_spearman_logp	scquint_spearman_logp
-production_alpha2	uniform	per_path	7523	5057	1163	770	0.05003822	0.05001112	50	103	101	0.798840	0.810372	0.818525	0.710540	0.622494	0.656071
-corrected_eb	baseline	per_path	7018	4660	97	31	0.05003206	0.04998659	4	0	0	0.916667	0.846154	0.789474	0.510519	0.315081	0.361746
-corrected_eb	baseline	total	7022	4668	98	30	0.05006141	0.04996787	4	0	0	0.857143	0.818182	0.733333	0.490744	0.309790	0.370550
+method	evidence_center	alpha_scope	application_center	scaling	fold0_alphas	fold1_alphas	fold0_bh	fold1_bh	leafcutter_replicated_genes	majiq_replicated_genes	scquint_replicated_genes	leafcutter_heldout_replication	majiq_heldout_replication	scquint_heldout_replication	leafcutter_spearman_logp	majiq_spearman_logp	scquint_spearman_logp
+production_alpha2	fixed	global	uniform	per_path	2	2	1163	770	50	103	101	0.798840	0.810372	0.818525	0.710540	0.622494	0.656071
+eb_alpha_transfer	baseline	cross_fitted	uniform	per_path	4;8	8	1358	1022	70	137	142	0.846899	0.844920	0.851353	0.739079	0.744789	0.770667
+eb_alpha_transfer	baseline	cross_fitted	uniform	total	8;16;32	16;32	1397	1005	65	135	139	0.849469	0.864532	0.866585	0.761700	0.761046	0.777682
+eb_alpha_transfer	baseline	global	uniform	per_path	4	8	1362	1022	61	135	140	0.826651	0.827998	0.833660	0.720794	0.726202	0.749985
+eb_alpha_transfer	baseline	global	uniform	total	16	16	1442	1017	68	139	145	0.845022	0.854488	0.861429	0.770883	0.766653	0.785117
+uniform_eb	uniform	cross_fitted	uniform	per_path	0.5;1	1;2	488	636	20	41	45	0.755283	0.738713	0.733591	0.576230	0.474296	0.521857
+uniform_eb	uniform	cross_fitted	uniform	total	2	4	775	706	40	65	67	0.817593	0.791667	0.797119	0.688645	0.541869	0.574006
+uniform_eb	uniform	global	uniform	per_path	0.5	2	465	770	19	31	34	0.746032	0.735959	0.723718	0.573601	0.450541	0.492392
+uniform_eb	uniform	global	uniform	total	2	4	773	704	40	65	62	0.817593	0.791667	0.796207	0.689934	0.541703	0.572481

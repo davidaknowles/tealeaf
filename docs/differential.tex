@@ -380,24 +380,31 @@ Condition & 14,833 & 922 & 0 & 0.000148 & 0.0500 & 0.0100 & 0.0010\\
 
 \subsection*{Empirical-Bayes smoothing and path-estimate uncertainty}
 
-Two extensions were evaluated before fixing the production second stage. First, baseline-centered empirical-Bayes smoothing selected one finite global strength across block dimensions. For a block with \(S_b\in\mathbb N\) paths, let \(h>0\) denote the candidate strength and let \(\overline{\bm\psi}_b\in\Delta^{S_b-1}\) be induced by the label-independent pooled isoform baseline. The per-path rule uses prior counts \(\bm a_b(h)=hS_b\overline{\bm\psi}_b\in\mathbb R_+^{S_b}\), whereas the dimension-invariant rule interprets \(h\) as total concentration and uses \(\bm a_b(h)=h\overline{\bm\psi}_b\). A deterministic candidate sample was divided by subject. Each held-out subject fold was scored after fitting its baseline on the other subjects, and hyperparameters were then cross-fitted over five gene folds so that a gene never contributes to its applied strength.
+Two extensions were evaluated before fixing the production second stage. First, empirical-Bayes smoothing selected one finite global strength across block dimensions. For a block with \(S_b\in\mathbb N\) paths, let \(h>0\) denote the candidate strength and let \(\overline{\bm\psi}_b\in\Delta^{S_b-1}\) be induced by the label-independent pooled isoform baseline. The per-path evidence rule uses prior counts \(\bm a_b(h)=hS_b\overline{\bm\psi}_b\in\mathbb R_+^{S_b}\), whereas the dimension-invariant rule interprets \(h\) as total concentration and uses \(\bm a_b(h)=h\overline{\bm\psi}_b\). A deterministic candidate sample was divided by subject, and each held-out subject fold was scored after fitting its baseline on the other subjects.
 
-The corrected selector compares the finite slab with an exact point mass at no path perturbation rather than approximating the spike by an arbitrary large finite concentration. For held-out counts \(\bm c\), point-null weight \(w\in(0,1)\), and finite candidate \(h\in\{0.5,1,2,4,8,16,32,64,128\}\), it maximizes the gene-equal average of \(\ell_b(h,w)=\log\{w p(\bm c\mid\bm\delta_b=\bm0)+(1-w)p_h(\bm c)\}\), where \(p_h(\bm c)\) is the Laplace-integrated conditional-multinomial likelihood in the \(S_b-1\) dimensional orthonormal ILR coordinates. Its log normalization includes \(\tfrac12\log S_b\), the ILR-to-simplex Jacobian constant required when the same objective pools blocks of different dimensions. The fitted \(w\) is only a robust nuisance parameter for selecting \(h\). Downstream testing uses the selected finite strength for every block assigned to that held-out gene fold and uses neither spike membership nor a posterior probability of differential splicing.
+The selector compares the finite slab with an exact point mass at no path perturbation rather than approximating the spike by a large finite concentration. For held-out counts \(\bm c\), point-null weight \(w\in(0,1)\), and finite candidate \(h\in\{0.5,1,2,4,8,16,32,64,128\}\), it maximizes the gene-equal average of \(\ell_b(h,w)=\log\{w p(\bm c\mid\bm\delta_b=\bm0)+(1-w)p_h(\bm c)\}\), where \(p_h(\bm c)\) is the Laplace-integrated conditional-multinomial likelihood in the \(S_b-1\) dimensional orthonormal ILR coordinates. Its log normalization includes \(\tfrac12\log S_b\), the ILR-to-simplex Jacobian constant required when the objective pools dimensions. The fitted \(w\) only robustifies selection. Downstream testing transfers the selected scalar \(h\), not the evidence prior center or spike membership, to the uniform-centered production penalty and independently tests for differential splicing.
 
-Table~\ref{tab:path-eb-scaling} reports the complete calibrated subject-split sensitivity. Per-path scaling selects \(h=4\) or 8, while fixed-total scaling selects \(h=8\), 16, or 32; fitted point-null weights range from 0.917 to 0.973. Both EB fits retain pooled null rejection near 0.05 and make no fold-level null-family BH call, but both collapse discovery relative to production uniform add-two smoothing. Per-path and fixed-total EB respectively yield 97/31 and 98/30 fold-specific BH calls and each produces 4/0/0 independently replicated genes on the LeafCutter, MAJIQ Heterogen, and scQuint matched universes. The near equality rules out concentration scaling as the explanation. The predictive criterion instead favors preserving the pooled baseline composition for the null majority, suppressing deviations needed for differential-splicing discovery and losing about 500 eligible fits per subject half. Baseline-centered empirical-Bayes smoothing remains implemented as a sensitivity but is not used in production.
+Table~\ref{tab:path-eb-scaling} reports the complete calibrated subject-split sensitivity. Five-fold gene cross-fitting selects \(h=4\)--8 per path or total concentration 8--32. Alpha-only transfer restores the expected gain over uniform add-two smoothing, producing 70/137/142 replicated genes under per-path scaling and 65/135/139 under fixed-total scaling, compared with 50/103/101 at \(h=2\). Skipping gene-fold cross-validation gives one strength across all genes within each subject half. It selects per-path \(h=4\) and 8 in halves 0 and 1, whereas fixed-total evidence selects \(h=16\) in both. The latter is the cleanest configuration and gives 1,442/1,017 fold BH calls and 68/139/145 replicated genes while retaining pooled null rejection near 0.05 and zero fold-level null-family BH calls.
+
+Uniform-centered evidence was also tested. It selects weaker per-path strengths 0.5--2 or total concentrations 2--4 whether gene cross-fitting is used or omitted. The global uniform-EB results produce 19/31/34 and 40/65/62 replicated genes under per-path and fixed-total scaling, respectively; cross-fitting gives 20/41/45 and 40/65/67. Thus held-out count evidence and replicated-discovery power favor different strengths when the evidence slab is uniform centered. The preferred EB sensitivity uses baseline-centered evidence, transfers only the scalar strength to uniform-centered testing, fixes total concentration, and estimates one global value across genes. Its selected \(h=16\) remains internally evaluated on these subject splits and requires external confirmation before replacing the reported production setting.
 
 \begin{table}[htbp]
 \centering
-\caption{Corrected empirical-Bayes smoothing under per-path and fixed-total concentration. Fold BH gives block-by-cell-type-pair calls in subject halves 0 and 1. Replicated genes are reported on the LeafCutter, relaxed-coverage MAJIQ Heterogen, and scQuint matched universes.}
+\small
+\caption{Empirical-Bayes smoothing under alternative evidence centers, alpha scopes, and concentration scalings. Every EB row applies only the selected scalar to uniform-centered testing. Replicated genes are reported on the LeafCutter, relaxed-coverage MAJIQ Heterogen, and scQuint matched universes.}
 \label{tab:path-eb-scaling}
-\begin{tabular}{llrrccc}
+\begin{tabular}{lllrrccc}
 \toprule
-Center and selection & Scaling & \multicolumn{2}{c}{Fold BH} & \multicolumn{3}{c}{Replicated genes}\\
- & & Half 0 & Half 1 & LeafCutter & MAJIQ & scQuint\\
+Evidence center & Alpha scope & Scaling & \multicolumn{2}{c}{Fold BH} & \multicolumn{3}{c}{Replicated genes}\\
+ & & & Half 0 & Half 1 & LeafCutter & MAJIQ & scQuint\\
 \midrule
-Uniform, fixed \(h=2\) & Per path & 1,163 & 770 & 50 & 103 & 101\\
-Baseline, cross-fitted EB & Per path & 97 & 31 & 4 & 0 & 0\\
-Baseline, cross-fitted EB & Fixed total & 98 & 30 & 4 & 0 & 0\\
+Fixed \(h=2\) & Global & Per path & 1,163 & 770 & 50 & 103 & 101\\
+Baseline & Cross-fitted & Per path & 1,358 & 1,022 & 70 & 137 & 142\\
+Baseline & Cross-fitted & Fixed total & 1,397 & 1,005 & 65 & 135 & 139\\
+Baseline & Global & Per path & 1,362 & 1,022 & 61 & 135 & 140\\
+Baseline & Global & Fixed total & 1,442 & 1,017 & 68 & 139 & 145\\
+Uniform & Global & Per path & 465 & 770 & 19 & 31 & 34\\
+Uniform & Global & Fixed total & 773 & 704 & 40 & 65 & 62\\
 \bottomrule
 \end{tabular}
 \end{table}
