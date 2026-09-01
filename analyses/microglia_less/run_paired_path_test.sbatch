@@ -25,6 +25,7 @@ ARGS=(
   --null-replicates "${NULL_REPLICATES:-32}"
   --path-pseudocount "${PATH_PSEUDOCOUNT:-0}"
   --path-prior-center "${PATH_PRIOR_CENTER:-uniform}"
+  --path-pseudocount-scaling "${PATH_PSEUDOCOUNT_SCALING:-per_path}"
   --seed "${SEED:-20260830}"
   --shard-index "${SHARD_INDEX}"
   --shard-count "${SHARD_COUNT}"

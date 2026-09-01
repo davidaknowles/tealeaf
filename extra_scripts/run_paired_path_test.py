@@ -34,6 +34,11 @@ def parse_args():
         choices=("uniform", "baseline"),
         default="uniform",
     )
+    parser.add_argument(
+        "--path-pseudocount-scaling",
+        choices=("per_path", "total"),
+        default="per_path",
+    )
     parser.add_argument("--smoothing-map", type=Path)
     parser.add_argument("--retain-uncertainty", action="store_true")
     parser.add_argument("--uncertainty-scale", type=float, default=1.0)
@@ -252,6 +257,7 @@ def main():
                     max_iter=args.max_iter,
                     path_pseudocount=path_pseudocount,
                     path_prior_center=args.path_prior_center,
+                    path_pseudocount_scaling=args.path_pseudocount_scaling,
                     retain_uncertainty=args.retain_uncertainty,
                     uncertainty_scale=uncertainty_scale,
                 )
@@ -269,6 +275,7 @@ def main():
                     max_iter=args.max_iter,
                     path_pseudocount=path_pseudocount,
                     path_prior_center=args.path_prior_center,
+                    path_pseudocount_scaling=args.path_pseudocount_scaling,
                     uncertainty_scale=uncertainty_scale,
                 )
                 values = result.pop("values")
@@ -285,6 +292,7 @@ def main():
                     max_iter=args.max_iter,
                     path_pseudocount=path_pseudocount,
                     path_prior_center=args.path_prior_center,
+                    path_pseudocount_scaling=args.path_pseudocount_scaling,
                     uncertainty_scale=uncertainty_scale,
                 )
                 values = result.pop("values")
@@ -307,6 +315,7 @@ def main():
                 "method": "local_path",
                 "path_pseudocount": path_pseudocount,
                 "path_prior_center": args.path_prior_center,
+                "path_pseudocount_scaling": args.path_pseudocount_scaling,
                 "retain_uncertainty": args.retain_uncertainty,
                 "uncertainty_scale": uncertainty_scale,
                 "n_paths": len(signatures),

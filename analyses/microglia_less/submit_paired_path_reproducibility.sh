@@ -9,6 +9,7 @@ PARTITION=${PARTITION:-cpu}
 TIME_LIMIT=${TIME_LIMIT:-02:00:00}
 PATH_PSEUDOCOUNT=${PATH_PSEUDOCOUNT:-2}
 PATH_PRIOR_CENTER=${PATH_PRIOR_CENTER:-uniform}
+PATH_PSEUDOCOUNT_SCALING=${PATH_PSEUDOCOUNT_SCALING:-per_path}
 SMOOTHING_MAP_NAME=${SMOOTHING_MAP_NAME:-}
 UNCERTAINTY_SCALE_MAP_NAME=${UNCERTAINTY_SCALE_MAP_NAME:-}
 OUTPUT_TAG=${OUTPUT_TAG:-tealeaf_paired_path}
@@ -31,7 +32,7 @@ for fold in 0 1; do
   if [[ -n "${UNCERTAINTY_SCALE_MAP_NAME}" ]]; then
     uncertainty_scale_map="${fold_root}/${UNCERTAINTY_SCALE_MAP_NAME}"
   fi
-  fit_job=$(sbatch --parsable -p "${PARTITION}" --time="${TIME_LIMIT}" --array=0-95%48 --output="${fold_root}/logs/${OUTPUT_TAG}.%A_%a.out" --error="${fold_root}/logs/${OUTPUT_TAG}.%A_%a.err" --export="ALL,CONFIG=${REPO_ROOT}/analyses/microglia_less/config.env,CANDIDATE_CACHE=${candidate_cache},OUTPUT_ROOT=${output_root},PATH_PSEUDOCOUNT=${PATH_PSEUDOCOUNT},PATH_PRIOR_CENTER=${PATH_PRIOR_CENTER},SMOOTHING_MAP=${smoothing_map},NULL_REPLICATES=32,RETAIN_UNCERTAINTY=${RETAIN_UNCERTAINTY},UNCERTAINTY_SCALE_MAP=${uncertainty_scale_map}" "${REPO_ROOT}/analyses/microglia_less/run_paired_path_test.sbatch")
+  fit_job=$(sbatch --parsable -p "${PARTITION}" --time="${TIME_LIMIT}" --array=0-95%48 --output="${fold_root}/logs/${OUTPUT_TAG}.%A_%a.out" --error="${fold_root}/logs/${OUTPUT_TAG}.%A_%a.err" --export="ALL,CONFIG=${REPO_ROOT}/analyses/microglia_less/config.env,CANDIDATE_CACHE=${candidate_cache},OUTPUT_ROOT=${output_root},PATH_PSEUDOCOUNT=${PATH_PSEUDOCOUNT},PATH_PRIOR_CENTER=${PATH_PRIOR_CENTER},PATH_PSEUDOCOUNT_SCALING=${PATH_PSEUDOCOUNT_SCALING},SMOOTHING_MAP=${smoothing_map},NULL_REPLICATES=32,RETAIN_UNCERTAINTY=${RETAIN_UNCERTAINTY},UNCERTAINTY_SCALE_MAP=${uncertainty_scale_map}" "${REPO_ROOT}/analyses/microglia_less/run_paired_path_test.sbatch")
   moderation_flag="--moderate-variances"
   if [[ "${RETAIN_UNCERTAINTY}" == 1 ]]; then
     moderation_flag=""

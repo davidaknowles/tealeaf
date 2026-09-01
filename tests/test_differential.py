@@ -171,6 +171,14 @@ class CovarianceTest(unittest.TestCase):
         )
         self.assertGreater(fit.path_proportions[0], 0.8)
 
+    def test_total_concentration_is_invariant_to_path_dimension(self):
+        center = np.full(4, 0.25)
+        per_path = differential._path_prior_counts(8.0, 4, center, "per_path")
+        total = differential._path_prior_counts(8.0, 4, center, "total")
+        self.assertAlmostEqual(per_path.sum(), 32.0)
+        self.assertAlmostEqual(total.sum(), 8.0)
+        np.testing.assert_allclose(total, np.full(4, 2.0))
+
     def test_paired_measurement_error_downweights_noisy_subject(self):
         differences = np.array([[0.9], [1.1], [1.0], [-8.0]])
         covariances = np.array([[[0.01]], [[0.01]], [[0.01]], [[100.0]]])

@@ -113,6 +113,7 @@ def paired_path_test(
     max_iter=100,
     path_pseudocount=0.0,
     path_prior_center="uniform",
+    path_pseudocount_scaling="per_path",
     retain_uncertainty=False,
     uncertainty_scale=1.0,
 ):
@@ -165,6 +166,7 @@ def paired_path_test(
                     max_iter=max_iter,
                     path_pseudocount=path_pseudocount,
                     path_prior_center=path_prior_center,
+                    path_pseudocount_scaling=path_pseudocount_scaling,
                 )
             except (ValueError, np.linalg.LinAlgError):
                 local_fits = []
@@ -224,6 +226,7 @@ def independent_path_test(
     max_iter=100,
     path_pseudocount=0.0,
     path_prior_center="uniform",
+    path_pseudocount_scaling="per_path",
     uncertainty_scale=1.0,
 ):
     """Test an independent multi-level effect on EC-derived path ILRs."""
@@ -261,6 +264,7 @@ def independent_path_test(
             max_iter=max_iter,
             path_pseudocount=path_pseudocount,
             path_prior_center=path_prior_center,
+            path_pseudocount_scaling=path_pseudocount_scaling,
         )
         if not fit.converged or not fit.covariance.identifiable:
             continue
@@ -342,6 +346,7 @@ def blocked_multilevel_path_test(
     max_iter=100,
     path_pseudocount=0.0,
     path_prior_center="uniform",
+    path_pseudocount_scaling="per_path",
     uncertainty_scale=0.0,
 ):
     """Test a repeated multi-level effect on EC-derived path ILRs.
@@ -383,6 +388,7 @@ def blocked_multilevel_path_test(
                 max_iter=max_iter,
                 path_pseudocount=path_pseudocount,
                 path_prior_center=path_prior_center,
+                path_pseudocount_scaling=path_pseudocount_scaling,
             )
             if (
                 not fit.converged

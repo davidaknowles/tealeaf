@@ -273,6 +273,11 @@ def main():
         "minimum_path_pseudocount": float(table.path_pseudocount.min()),
         "median_path_pseudocount": float(table.path_pseudocount.median()),
         "maximum_path_pseudocount": float(table.path_pseudocount.max()),
+        "path_pseudocount_scaling": (
+            str(table.path_pseudocount_scaling.iloc[0])
+            if "path_pseudocount_scaling" in table
+            else "per_path"
+        ),
     }
     pd.DataFrame([summary]).to_csv(
         args.output_dir / "summary.tsv", sep="\t", index=False

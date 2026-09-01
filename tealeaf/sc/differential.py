@@ -134,15 +134,31 @@ class PathFit:
     objective: float
 
 
+def _path_prior_counts(path_pseudocount, n_paths, prior_center, scaling):
+    """Convert a smoothing strength into Dirichlet prior counts."""
+    alpha = float(path_pseudocount)
+    if alpha < 0:
+        raise ValueError("path_pseudocount must be nonnegative")
+    if scaling == "per_path":
+        concentration = alpha * int(n_paths)
+    elif scaling == "total":
+        concentration = alpha
+    else:
+        raise ValueError("path_pseudocount_scaling must be per_path or total")
+    return concentration * np.asarray(prior_center, dtype=float)
+
+
 def path_laplace_log_evidence(
-    fit, path_pseudocount, *, prior_center=None
+    fit,
+    path_pseudocount,
+    *,
+    prior_center=None,
+    path_pseudocount_scaling="per_path",
 ):
     """Return the Laplace evidence for one ILR smoothing prior.
 
-    The prior density with respect to orthonormal ILR coordinates is
-    proportional to ``prod(psi**alpha)``. Constants independent of ``alpha``
-    are omitted, which is sufficient for empirical-Bayes selection within a
-    fixed path dimension.
+    Constants independent of ``alpha`` are omitted, which is sufficient for
+    empirical-Bayes selection within a fixed path dimension.
     """
     alpha = float(path_pseudocount)
     if alpha <= 0:
@@ -162,7 +178,9 @@ def path_laplace_log_evidence(
     if prior_center.shape != (n_paths,) or np.any(prior_center <= 0):
         raise ValueError("prior_center must be a positive path composition")
     prior_center = prior_center / prior_center.sum()
-    prior_counts = alpha * n_paths * prior_center
+    prior_counts = _path_prior_counts(
+        alpha, n_paths, prior_center, path_pseudocount_scaling
+    )
     log_prior_normalizer = (
         scipy.special.gammaln(prior_counts.sum())
         - scipy.special.gammaln(prior_counts).sum()
@@ -825,6 +843,7 @@ def fit_path_perturbation(
     tolerance=1e-7,
     path_pseudocount=0.0,
     path_prior_center="uniform",
+    path_pseudocount_scaling="per_path",
 ):
     """Fit local path logits and return conditional Fisher covariance."""
     baseline = np.maximum(np.asarray(baseline, dtype=float), 1e-12)
@@ -837,15 +856,15 @@ def fit_path_perturbation(
     baseline_paths = path_proportions(baseline, path_index)
     baseline_logratios = basis.T @ np.log(baseline_paths)
     path_pseudocount = float(path_pseudocount)
-    if path_pseudocount < 0:
-        raise ValueError("path_pseudocount must be nonnegative")
     if path_prior_center == "uniform":
         prior_center = np.full(n_paths, 1.0 / n_paths)
     elif path_prior_center == "baseline":
         prior_center = baseline_paths
     else:
         raise ValueError("path_prior_center must be uniform or baseline")
-    prior_counts = path_pseudocount * n_paths * prior_center
+    prior_counts = _path_prior_counts(
+        path_pseudocount, n_paths, prior_center, path_pseudocount_scaling
+    )
 
     def objective(delta):
         theta, log_jacobian = _perturbed_theta(
