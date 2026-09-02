@@ -52,6 +52,8 @@ def parse_args():
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--shard-count", type=int, default=1)
     parser.add_argument("--max-candidates", type=int)
+    parser.add_argument("--test-id-file", type=Path)
+    parser.add_argument("--export-path-usage", action="store_true")
     return parser.parse_args()
 
 
@@ -204,6 +206,12 @@ def main():
     }:
         raise ValueError("unsupported local path test effect")
     candidates = cached["candidates"]
+    if args.test_id_file is not None:
+        requested = set(pd.read_csv(args.test_id_file, sep="\t")["test_id"])
+        candidates = [candidate for candidate in candidates if candidate[0] in requested]
+        missing = sorted(requested - {candidate[0] for candidate in candidates})
+        if missing:
+            raise ValueError(f"requested test identifiers not found: {missing}")
     if args.max_candidates is not None:
         candidates = candidates[: int(args.max_candidates)]
     candidates = partition_candidates(candidates, args.shard_count)[
@@ -216,6 +224,7 @@ def main():
     null_rows = []
     failures = []
     profile_rows = []
+    path_usage_rows = []
     pooled_cache = {}
     started = time.perf_counter()
     for candidate in candidates:
@@ -315,9 +324,27 @@ def main():
                 value_covariances = result.pop("covariances")
                 null_labels = result.pop("subject_labels")
                 null_subjects = None
-            result.pop("path_fits")
-            result.pop("subject_ids", None)
-            result.pop("levels")
+            path_fits = result.pop("path_fits")
+            subject_ids = result.pop("subject_ids", None)
+            fitted_levels = result.pop("levels")
+            if args.export_path_usage and test_effect == "cell_type_pairwise":
+                if len(fitted_levels) != len(tested_levels):
+                    raise ValueError("fitted and requested cell-type levels differ")
+                fitted_level_names = dict(zip(fitted_levels, tested_levels))
+                for subject_id, subject_fits in zip(subject_ids, path_fits):
+                    for level, fit in zip(fitted_levels, subject_fits):
+                        for path_number, (signature, proportion) in enumerate(zip(signatures, fit.path_proportions), start=1):
+                            path_usage_rows.append({
+                                "test_id": test_id,
+                                "block_id": block_id,
+                                "gene_id": gene_id,
+                                "subject": subject_id,
+                                "cell_type": fitted_level_names[level],
+                                "path": f"Path {path_number}",
+                                "path_number": path_number,
+                                "path_signature": json.dumps(signature),
+                                "proportion": float(proportion),
+                            })
             result.pop("mean", None)
             result.pop("mean_covariance", None)
             observed_rows.append({
@@ -444,6 +471,10 @@ def main():
     pd.DataFrame(profile_rows).to_csv(
         args.output_dir / "uncertainty_profiles.tsv", sep="\t", index=False
     )
+    if args.export_path_usage:
+        pd.DataFrame(path_usage_rows).to_csv(
+            args.output_dir / "path_usage.tsv", sep="\t", index=False
+        )
     (args.output_dir / "failures.json").write_text(
         json.dumps(failures, indent=2) + "\n"
     )

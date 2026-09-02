@@ -3,7 +3,7 @@ from collections import Counter
 import pandas as pd
 import pysam
 
-from tealeaf.sc.sashimi import SashimiEvent, collect_bam_event_support, select_strongest_significant_contrasts, write_ggsashimi_inputs
+from tealeaf.sc.sashimi import SashimiEvent, collect_bam_event_support, select_strongest_significant_contrasts, summarize_path_usage, write_ggsashimi_inputs
 
 
 def test_collect_and_write_sashimi_support(tmp_path):
@@ -59,3 +59,17 @@ def test_select_strongest_significant_contrasts(tmp_path):
     selected = select_strongest_significant_contrasts([fit_path], catalog_path, ["b1", "b2"])
     assert selected["test_id"].tolist() == ["t1", "t3"]
     assert selected["mean_difference_norm"].tolist() == [0.4, 0.7]
+
+
+def test_summarize_path_usage():
+    usage = pd.DataFrame([
+        {"test_id": "t1", "cell_type": "A", "path": "Path 1", "path_number": 1, "proportion": 0.2},
+        {"test_id": "t1", "cell_type": "A", "path": "Path 1", "path_number": 1, "proportion": 0.4},
+        {"test_id": "t1", "cell_type": "A", "path": "Path 2", "path_number": 2, "proportion": 0.8},
+        {"test_id": "t1", "cell_type": "A", "path": "Path 2", "path_number": 2, "proportion": 0.6},
+    ])
+    summary = summarize_path_usage(usage)
+    path_one = summary[summary["path_number"] == 1].iloc[0]
+    assert path_one.n_subjects == 2
+    assert abs(path_one.mean_proportion - 0.3) < 1e-12
+    assert abs(path_one.se_proportion - 0.1) < 1e-12

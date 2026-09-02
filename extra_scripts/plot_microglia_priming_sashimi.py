@@ -12,8 +12,9 @@ from pathlib import Path
 import subprocess
 
 import pandas as pd
+from plotnine import aes, element_text, geom_col, geom_errorbar, ggplot, labs, position_dodge, scale_fill_manual, scale_x_discrete, scale_y_continuous, theme, theme_bw
 
-from tealeaf.sc.sashimi import SashimiEvent, collect_bam_event_support, merge_support, read_primer_cell_groups, select_strongest_significant_contrasts, write_ggsashimi_inputs
+from tealeaf.sc.sashimi import SashimiEvent, collect_bam_event_support, merge_support, read_primer_cell_groups, select_strongest_significant_contrasts, summarize_path_usage, write_ggsashimi_inputs
 
 
 EVENTS = (
@@ -38,6 +39,29 @@ def _event_gtf(path, event, row):
     path.write_text("\n".join(lines) + "\n")
 
 
+def write_path_usage_plot(summary, event_id, test_id, cell_types, output_dir):
+    """Plot mean fitted path usage with subject-level standard errors."""
+    event_summary = summary[summary["test_id"] == test_id].copy()
+    if event_summary.empty:
+        raise ValueError(f"no fitted path usage for {test_id}")
+    event_summary["cell_type"] = pd.Categorical(event_summary["cell_type"], categories=cell_types, ordered=True)
+    dodge = position_dodge(width=0.78)
+    plot = (
+        ggplot(event_summary, aes("cell_type", "mean_proportion", fill="path"))
+        + geom_col(position=dodge, width=0.72, color="white")
+        + geom_errorbar(aes(ymin="mean_proportion - se_proportion", ymax="mean_proportion + se_proportion"), position=dodge, width=0.15)
+        + scale_fill_manual(values=["#7570B3", "#E7298A"])
+        + scale_x_discrete(labels=lambda values: [value.replace("_", " ") for value in values])
+        + scale_y_continuous(limits=(0, 1), breaks=[0, 0.25, 0.5, 0.75, 1], labels=lambda values: [f"{value:.0%}" for value in values], expand=(0, 0.02))
+        + labs(x=None, y="Estimated path usage", fill=None)
+        + theme_bw(base_size=11)
+        + theme(axis_text_x=element_text(rotation=15, ha="right"), legend_position="top", figure_size=(7.2, 2.8))
+    )
+    output_path = output_dir / event_id / f"{event_id}_path_usage.pdf"
+    plot.save(output_path, width=7.2, height=2.8, units="in", verbose=False)
+    return output_path
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--starsolo-root", type=Path, required=True)
@@ -50,6 +74,7 @@ def main():
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--ggsashimi", type=Path)
     parser.add_argument("--run-plots", action="store_true")
+    parser.add_argument("--path-usage", type=Path)
     args = parser.parse_args()
     block_ids = [event_id for _, event_id in EVENTS]
     selected_contrasts = select_strongest_significant_contrasts(sorted(args.pairwise_fit_root.glob("*/paired_path.tsv")), args.pairwise_event_catalog, block_ids)
@@ -77,6 +102,12 @@ def main():
         results = list(executor.map(collect_bam_event_support, bam_paths, repeat(barcode_groups), repeat(tuple(events))))
     exon_blocks, junctions, event_umis = merge_support(results)
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    path_usage_summary = None
+    if args.path_usage is not None:
+        path_usage = pd.read_csv(args.path_usage, sep="\t")
+        path_usage_summary = summarize_path_usage(path_usage)
+        path_usage.to_csv(args.output_dir / "path_usage.tsv", sep="\t", index=False)
+        path_usage_summary.to_csv(args.output_dir / "path_usage_summary.tsv", sep="\t", index=False)
     cell_sizes.to_csv(args.output_dir / "cell_counts.tsv", sep="\t", index=False)
     selected_contrasts.to_csv(args.output_dir / "selected_contrasts.tsv", sep="\t", index=False)
     support_rows = []
@@ -98,10 +129,13 @@ def main():
         prefix = event_dir / f"{event.event_id}_priming_sashimi"
         contrast = selected_contrasts[selected_contrasts["block_id"] == event_ids[event.event_id]].iloc[0]
         manifest["events"].append({"gene": event.event_id, "test_id": event_ids[event.event_id], "cell_types": list(cell_types), "mean_difference_norm": float(contrast.mean_difference_norm), "pairwise_fdr": float(contrast.fdr), "coordinates": coordinates, "intron_counts": str(intron.relative_to(args.output_dir)), "exon_counts": str(exon.relative_to(args.output_dir)), "path_annotation": str(gtf.relative_to(args.output_dir)), "figure": str(prefix.with_suffix('.pdf').relative_to(args.output_dir))})
+        if path_usage_summary is not None:
+            usage_figure = write_path_usage_plot(path_usage_summary, event.event_id, contrast.test_id, cell_types, args.output_dir)
+            manifest["events"][-1]["path_usage_figure"] = str(usage_figure.relative_to(args.output_dir))
         if args.run_plots:
             if args.ggsashimi is None:
                 raise ValueError("--ggsashimi is required with --run-plots")
-            subprocess.run(["python", str(args.ggsashimi), "--intron", str(intron), "--exon", str(exon), "--strand_info", str(strand), "--data_type", "sc", "--aggregation", "False", "-c", coordinates, "-g", str(gtf), "-o", str(prefix), "-M", "1", "--shrink", "--fix-y-scale", "--height", "0.8", "--ann-height", "0.7", "--width", "9", "--base-size", "11", "-P", str(palette), "-F", "pdf"], check=True)
+            subprocess.run(["python", str(args.ggsashimi), "--intron", str(intron), "--exon", str(exon), "--strand_info", str(strand), "--data_type", "sc", "--aggregation", "False", "-c", coordinates, "-g", str(gtf), "-o", str(prefix), "-M", "1", "--shrink", "--fix-y-scale", "--height", "1.1", "--ann-height", "0.9", "--width", "9", "--base-size", "11", "-P", str(palette), "-F", "pdf"], check=True)
     (args.output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
 

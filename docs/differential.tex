@@ -323,26 +323,29 @@ The complete omnibus discovery catalog, component annotations, coordinates, empi
 
 Figures~\ref{fig:app-sashimi}--\ref{fig:grin1-sashimi} provide a direct alignment-level check for three strong, high-confidence omnibus discoveries. For each block, we first restrict to secondary pairwise contrasts with BH FDR below 0.05 and display the pair that maximizes $\lVert\bar{\boldsymbol\Delta}\rVert_2$, where $\boldsymbol\Delta\in\mathbb R^{S-1}$ is a subject-specific paired difference in the $S-1$ local-path isometric log-ratio coordinates and $S\in\mathbb N$ is the number of tested paths. The selected effect norms are 0.927 for cortical excitatory versus hippocampal pyramidal cells in \emph{App}, 0.455 for cerebellar-granule versus cortical-excitatory cells in \emph{Gria2}, and 0.088 for medium-spiny versus midbrain-inhibitory cells in \emph{Grin1}. Each track pools unique-mapping, UMI-deduplicated spliced alignments within one cell type and priming strategy, then normalizes coverage and junction support per 1,000 primer-specific half-cells. Arc labels use the same units. The transcript models below each panel are the tested local paths, and long introns are compressed for display.
 
-Both priming strategies support the annotated alternatives, while their absolute coverage profiles differ. This is expected because poly(dT) and random-hexamer priming have different positional exposure and is why Tealeaf retains separate primer likelihoods. The plots are descriptive rather than a reconstruction of the test: they use spliced genomic alignments only, whereas production inference also uses exonic, unspliced, and ambiguous EC observations through the primer-specific compatibility maps and performs the omnibus test across every represented cell type.
+Both priming strategies support the annotated alternatives, while their absolute coverage profiles differ. This is expected because poly(dT) and random-hexamer priming have different positional exposure and is why Tealeaf retains separate primer likelihoods. Below each sashimi panel, grouped bars show the production-model mean fitted proportion for each tested path across paired subjects, with standard-error bars. These usage estimates jointly use both primer-specific likelihoods and all compatible observations, so they are indexed by cell type and path rather than priming strategy; Path 1 and Path 2 follow the transcript-model order shown below the read tracks. The read tracks are descriptive checks rather than a reconstruction of the test because they use spliced genomic alignments only. The fitted bars use the production likelihood for the displayed secondary pairwise localization, while the primary omnibus test also uses exonic, unspliced, and ambiguous EC observations through primer-specific compatibility maps and includes every represented cell type.
 
 \begin{figure}[p]
 \centering
 \includegraphics[width=\linewidth]{../analyses/priming_sashimi/App/App_priming_sashimi.pdf}
-\caption{Primer-separated spliced-read support for the \emph{App} exon-15 cassette, block B3. EXcortical and EXhippocampuspyramidal denote cortical excitatory and hippocampal pyramidal cells. Teal and orange tracks are poly(dT) and random-hexamer half-cells.}
+\includegraphics[width=.78\linewidth]{../analyses/priming_sashimi/App/App_path_usage.pdf}
+\caption{Primer-separated spliced-read support and fitted path usage for the \emph{App} exon-15 cassette, block B3. EXcortical and EXhippocampuspyramidal denote cortical excitatory and hippocampal pyramidal cells. Teal and orange tracks are poly(dT) and random-hexamer half-cells. The lower panel shows mean fitted path proportions with standard errors across four paired subjects.}
 \label{fig:app-sashimi}
 \end{figure}
 
 \begin{figure}[p]
 \centering
 \includegraphics[width=\linewidth]{../analyses/priming_sashimi/Gria2/Gria2_priming_sashimi.pdf}
-\caption{Primer-separated spliced-read support for the mutually exclusive \emph{Gria2} flip/flop exons, block B1. EXcerebellumgranule and EXcortical denote cerebellar-granule and cortical-excitatory cells. Track labels and normalization follow Figure~\ref{fig:app-sashimi}.}
+\includegraphics[width=.78\linewidth]{../analyses/priming_sashimi/Gria2/Gria2_path_usage.pdf}
+\caption{Primer-separated spliced-read support and fitted path usage for the mutually exclusive \emph{Gria2} flip/flop exons, block B1. EXcerebellumgranule and EXcortical denote cerebellar-granule and cortical-excitatory cells. Track labels and normalization follow Figure~\ref{fig:app-sashimi}; the lower panel shows mean fitted path proportions with standard errors across nine paired subjects.}
 \label{fig:gria2-sashimi}
 \end{figure}
 
 \begin{figure}[p]
 \centering
 \includegraphics[width=\linewidth]{../analyses/priming_sashimi/Grin1/Grin1_priming_sashimi.pdf}
-\caption{Primer-separated spliced-read support for the \emph{Grin1} C1 cassette, block B3. INHmediumspiny and INHmidbrain denote medium-spiny and midbrain inhibitory cells. Track labels and normalization follow Figure~\ref{fig:app-sashimi}.}
+\includegraphics[width=.78\linewidth]{../analyses/priming_sashimi/Grin1/Grin1_path_usage.pdf}
+\caption{Primer-separated spliced-read support and fitted path usage for the \emph{Grin1} C1 cassette, block B3. INHmediumspiny and INHmidbrain denote medium-spiny and midbrain inhibitory cells. Track labels and normalization follow Figure~\ref{fig:app-sashimi}; the lower panel shows mean fitted path proportions with standard errors across nine paired subjects.}
 \label{fig:grin1-sashimi}
 \end{figure}
 

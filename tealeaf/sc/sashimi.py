@@ -73,6 +73,18 @@ def select_strongest_significant_contrasts(fit_paths, event_catalog_path, block_
     return selected.sort_values("block_id").reset_index(drop=True)
 
 
+def summarize_path_usage(path_usage):
+    """Summarize subject-level fitted path proportions as means and standard errors."""
+    required = {"test_id", "cell_type", "path", "path_number", "proportion"}
+    missing = required - set(path_usage.columns)
+    if missing:
+        raise ValueError(f"path-usage table is missing columns: {sorted(missing)}")
+    summary = path_usage.groupby(["test_id", "cell_type", "path", "path_number"], sort=True)["proportion"].agg(n_subjects="count", mean_proportion="mean", sd_proportion="std").reset_index()
+    summary["sd_proportion"] = summary["sd_proportion"].fillna(0.0)
+    summary["se_proportion"] = summary["sd_proportion"] / np.sqrt(summary["n_subjects"])
+    return summary
+
+
 def _alignment_junctions(alignment):
     position = alignment.reference_start
     for operation, length in alignment.cigartuples or ():

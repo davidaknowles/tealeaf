@@ -1,6 +1,7 @@
 {
   "contrast_selection": "largest mean_difference_norm among pairwise contrasts with BH FDR < 0.05",
   "normalization": "UMI-deduplicated spliced alignments per 1000 primer-specific half-cells",
+  "path_usage": "Mean and standard error of subject-level production fitted path proportions",
   "runs": 16,
   "events": [
     {
@@ -16,7 +17,8 @@
       "intron_counts": "App/App_intron.tsv",
       "exon_counts": "App/App_exon.tsv",
       "path_annotation": "App/App_paths.gtf",
-      "figure": "App/App_priming_sashimi.pdf"
+      "figure": "App/App_priming_sashimi.pdf",
+      "path_usage_figure": "App/App_path_usage.pdf"
     },
     {
       "gene": "Gria2",
@@ -31,7 +33,8 @@
       "intron_counts": "Gria2/Gria2_intron.tsv",
       "exon_counts": "Gria2/Gria2_exon.tsv",
       "path_annotation": "Gria2/Gria2_paths.gtf",
-      "figure": "Gria2/Gria2_priming_sashimi.pdf"
+      "figure": "Gria2/Gria2_priming_sashimi.pdf",
+      "path_usage_figure": "Gria2/Gria2_path_usage.pdf"
     },
     {
       "gene": "Grin1",
@@ -46,7 +49,8 @@
       "intron_counts": "Grin1/Grin1_intron.tsv",
       "exon_counts": "Grin1/Grin1_exon.tsv",
       "path_annotation": "Grin1/Grin1_paths.gtf",
-      "figure": "Grin1/Grin1_priming_sashimi.pdf"
+      "figure": "Grin1/Grin1_priming_sashimi.pdf",
+      "path_usage_figure": "Grin1/Grin1_path_usage.pdf"
     }
   ]
 }

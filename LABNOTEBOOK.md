@@ -3609,3 +3609,10 @@ Corrected the bundled ggsashimi grob assembly so every primer/cell-type coverage
 ## 2026-09-02, effect-size-selected sashimi contrasts
 
 Changed the primer-separated sashimi workflow to select contrasts algorithmically from the selected fixed-total A=64 production pairwise fit. For each plotted block, the workflow first restricts to pairwise tests with BH FDR below 0.05 and then maximizes mean_difference_norm, the Euclidean norm of the across-subject mean paired difference in local-path ILR coordinates. This selects EX_cortical versus EX_hippocampus_pyramidal for App, effect norm 0.92698 and FDR 0.02109, EX_cerebellum_granule versus EX_cortical for Gria2, effect norm 0.45543 and FDR 0.00832, and INH_medium_spiny versus INH_midbrain for Grin1, effect norm 0.08811 and FDR 0.00577. Regenerated primer-specific alignment summaries and figures, added selected_contrasts.tsv as an audit table, and updated the manuscript.
+
+## 2026-09-02, fitted path-usage panels
+
+- Increased the three primer-separated sashimi track heights from 0.8 to 1.1 and annotation height from 0.7 to 0.9 while retaining the shared horizontal layout.
+- Exported subject-level fitted path proportions for the three strongest significant pairwise localizations by rerunning the production local-path likelihood with the selected EB prior setting. All three fits completed without failure.
+- Added plotnine grouped barplots of mean path usage by cell type with standard errors across paired subjects. App used four paired subjects, while Gria2 and Grin1 each used nine.
+- Added the bars below the read-support panels in `docs/differential.tex` and clarified that primer-separated tracks are descriptive while path usage is jointly fitted from both primer likelihoods.
