@@ -90,6 +90,7 @@ def test_summarize_path_ordered_coverage():
     negative = summarize_path_ordered_coverage(SashimiEvent("event", "chr1", 90, 160, "-"), paths, exon_blocks, junctions, sizes, ("A", "B"))
     negative_path_one = negative[(negative["path_number"] == 1) & (negative["cell_type"] == "A") & (negative["primer"] == "poly(dT)")].sort_values("column_order")
     assert negative_path_one["coordinate"].tolist() == ["chr1:121-130", "chr1:111-121", "chr1:101-110"]
+    assert negative_path_one["feature"].tolist() == ["E2", "J2", "E3"]
     usage = pd.DataFrame([
         {"test_id": "event", "cell_type": cell_type, "path": f"Path {path}", "path_number": path, "n_subjects": 1, "mean_proportion": value, "sd_proportion": 0.0, "se_proportion": 0.0}
         for cell_type, values in (("A", (0.25, 0.75)), ("B", (0.5, 0.5)))
@@ -97,4 +98,4 @@ def test_summarize_path_ordered_coverage():
     ])
     matrix = combine_path_usage_and_coverage(usage, coverage, "event")
     columns = matrix[["feature_id", "column_order"]].drop_duplicates().sort_values("column_order")
-    assert columns["feature_id"].tolist() == ["P1:path", "P1:E1", "P1:J1", "P1:E2", "P2:path", "P2:E1", "P2:J1", "P2:E2"]
+    assert columns["feature_id"].tolist() == ["P1:path", "P1:E1", "P1:J1", "P1:E2", "P2:path", "P2:E1", "P2:J2", "P2:E3"]

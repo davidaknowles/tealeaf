@@ -11,7 +11,6 @@ import json
 from pathlib import Path
 import subprocess
 
-import numpy as np
 import pandas as pd
 
 from tealeaf.sc.sashimi import SashimiEvent, collect_bam_event_support, combine_path_usage_and_coverage, merge_support, read_primer_cell_groups, select_strongest_significant_contrasts, summarize_path_ordered_coverage, summarize_path_usage, write_ggsashimi_inputs
@@ -66,7 +65,7 @@ def write_path_usage_plot(summary, event_id, test_id, cell_types, output_dir):
 
 def write_block_heatmap(matrix, event_id, primer, cell_types, output_dir):
     """Plot one primer-specific, path-ordered block evidence heatmap."""
-    from plotnine import aes, element_blank, element_text, geom_tile, geom_vline, ggplot, labs, scale_fill_gradient2, scale_x_discrete, theme, theme_bw
+    from plotnine import aes, element_blank, element_text, geom_text, geom_tile, geom_vline, ggplot, labs, scale_fill_cmap, scale_x_discrete, theme, theme_bw
 
     data = matrix[matrix["primer"] == primer].copy()
     if data.empty:
@@ -76,18 +75,16 @@ def write_block_heatmap(matrix, event_id, primer, cell_types, output_dir):
     feature_labels = dict(zip(columns["feature_id"], columns["feature"]))
     data["feature_id"] = pd.Categorical(data["feature_id"], categories=feature_ids, ordered=True)
     data["cell_type"] = pd.Categorical(data["cell_type"], categories=tuple(cell_types)[::-1], ordered=True)
-
-    def standardize(values):
-        deviation = values.std(ddof=0)
-        return values * 0.0 if not np.isfinite(deviation) or deviation == 0 else (values - values.mean()) / deviation
-    data["display_value"] = data.groupby("feature_id", observed=True)["raw_value"].transform(standardize).clip(-2, 2)
+    data["coverage"] = data["raw_value"].where(data["feature_type"] != "path")
+    data["label"] = data.apply(lambda row: f"{row.raw_value:.0%}" if row.feature_type == "path" else "", axis=1)
     path_positions = [index for index, value in enumerate(columns["feature_type"], start=1) if value == "path"]
     primer_slug = "oligodt" if primer == "poly(dT)" else "ranhex"
     plot = (
-        ggplot(data, aes("feature_id", "cell_type", fill="display_value"))
-        + geom_tile(color="white", size=0.15)
+        ggplot(data, aes("feature_id", "cell_type"))
+        + geom_tile(aes(fill="coverage"), color="white", size=0.15)
+        + geom_text(aes(label="label"), size=6)
         + geom_vline(xintercept=[position - 0.5 for position in path_positions[1:]], color="#25364A", size=0.7)
-        + scale_fill_gradient2(name="Within-feature z-score", low="#2166AC", mid="white", high="#B2182B", midpoint=0, limits=(-2, 2))
+        + scale_fill_cmap(name="Coverage per 1,000 half-cells", cmap_name="viridis", na_value="#F2F2F2")
         + scale_x_discrete(labels=lambda values: [feature_labels[value] for value in values])
         + labs(x="Path and ordered block components", y=None, title=f"{event_id}, {primer}")
         + theme_bw(base_size=9)
@@ -162,7 +159,7 @@ def main():
         event_id, subject, cell_type, primer = key
         support_rows.append({"event": event_id, "subject": subject, "cell_type": cell_type, "primer": primer, "spliced_umis": count})
     pd.DataFrame(support_rows).to_csv(args.output_dir / "spliced_umi_support.tsv", sep="\t", index=False)
-    manifest = {"contrast_selection": "largest mean_difference_norm among pairwise contrasts with BH FDR < 0.05", "normalization": "UMI-deduplicated spliced alignments per 1000 primer-specific half-cells", "block_heatmaps": "Path markers followed by each path's exon and junction components in 5-prime-to-3-prime RNA order; shared components are repeated under each path; colors are within-feature z-scores across all omnibus-eligible cell types", "runs": len(bam_paths), "events": []}
+    manifest = {"contrast_selection": "largest mean_difference_norm among pairwise contrasts with BH FDR < 0.05", "normalization": "UMI-deduplicated spliced alignments per 1000 primer-specific half-cells", "block_heatmaps": "Path markers followed by each path's exon and junction components in 5-prime-to-3-prime RNA order; shared components are repeated under each path; coverage colors are raw primer-specific values per 1000 half-cells; path columns show fitted percentages", "runs": len(bam_paths), "events": []}
     palette = args.output_dir / "palette.tsv"
     palette.write_text("#1B9E77\n#D95F02\n#1B9E77\n#D95F02\n")
     event_ids = dict(EVENTS)

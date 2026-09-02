@@ -101,16 +101,23 @@ def summarize_path_ordered_coverage(event, paths, exon_blocks, junctions, cell_s
     missing = [group for group in groups if denominators.get(group, 0) == 0]
     if missing:
         raise ValueError(f"groups without cells: {missing}")
+    ordered_paths = [sorted(set(tuple(exon) for exon in path), reverse=event.strand == "-") for path in paths]
+    exon_order = sorted({exon for path in ordered_paths for exon in path}, reverse=event.strand == "-")
+    exon_labels = {exon: f"E{index}" for index, exon in enumerate(exon_order, start=1)}
+
+    def junction_between(left_exon, right_exon):
+        left_start, left_end = left_exon
+        right_start, right_end = right_exon
+        return (left_end, right_start) if event.strand == "+" else (right_end, left_start)
+
+    junction_order = sorted({junction_between(left, right) for path in ordered_paths for left, right in zip(path, path[1:])}, reverse=event.strand == "-")
+    junction_labels = {junction: f"J{index}" for index, junction in enumerate(junction_order, start=1)}
     rows = []
     column_order = 0
-    for path_number, path in enumerate(paths, start=1):
-        ordered_exons = sorted(set(tuple(exon) for exon in path), reverse=event.strand == "-")
+    for path_number, ordered_exons in enumerate(ordered_paths, start=1):
         column_order += 1
-        exon_number = 0
-        junction_number = 0
         for exon_index, (exon_start, exon_end) in enumerate(ordered_exons):
-            exon_number += 1
-            feature = f"E{exon_number}"
+            feature = exon_labels[(exon_start, exon_end)]
             feature_id = f"P{path_number}:{feature}"
             coordinate = f"{event.chromosome}:{exon_start + 1}-{exon_end}"
             for cell_type, primer in groups:
@@ -124,13 +131,8 @@ def summarize_path_ordered_coverage(event, paths, exon_blocks, junctions, cell_s
             column_order += 1
             if exon_index == len(ordered_exons) - 1:
                 continue
-            junction_number += 1
-            next_start, next_end = ordered_exons[exon_index + 1]
-            if event.strand == "+":
-                junction_start, junction_end = exon_end, next_start
-            else:
-                junction_start, junction_end = next_end, exon_start
-            feature = f"J{junction_number}"
+            junction_start, junction_end = junction_between(ordered_exons[exon_index], ordered_exons[exon_index + 1])
+            feature = junction_labels[(junction_start, junction_end)]
             feature_id = f"P{path_number}:{feature}"
             coordinate = f"{event.chromosome}:{junction_start + 1}-{junction_end + 1}"
             for cell_type, primer in groups:
