@@ -3,7 +3,7 @@ from collections import Counter
 import pandas as pd
 import pysam
 
-from tealeaf.sc.sashimi import SashimiEvent, collect_bam_event_support, write_ggsashimi_inputs
+from tealeaf.sc.sashimi import SashimiEvent, collect_bam_event_support, select_strongest_significant_contrasts, write_ggsashimi_inputs
 
 
 def test_collect_and_write_sashimi_support(tmp_path):
@@ -39,3 +39,23 @@ def test_collect_and_write_sashimi_support(tmp_path):
     assert introns.loc[0, "cell_polydT_0"] == 100
     assert introns.loc[0, "cell_randomhexamer_0"] == 200
     assert not pd.read_csv(exon_path, sep=" ").empty
+
+
+def test_select_strongest_significant_contrasts(tmp_path):
+    fits = pd.DataFrame([
+        {"test_id": "t1", "block_id": "b1", "level_a": "A", "level_b": "B", "mean_difference_norm": 0.4},
+        {"test_id": "t2", "block_id": "b1", "level_a": "A", "level_b": "C", "mean_difference_norm": 0.9},
+        {"test_id": "t3", "block_id": "b2", "level_a": "D", "level_b": "E", "mean_difference_norm": 0.7},
+    ])
+    catalog = pd.DataFrame([
+        {"test_id": "t1", "block_id": "b1", "statistic": 4.0, "empirical_p_value": 0.01, "fdr": 0.02},
+        {"test_id": "t2", "block_id": "b1", "statistic": 9.0, "empirical_p_value": 0.001, "fdr": 0.10},
+        {"test_id": "t3", "block_id": "b2", "statistic": 5.0, "empirical_p_value": 0.005, "fdr": 0.03},
+    ])
+    fit_path = tmp_path / "fits.tsv"
+    catalog_path = tmp_path / "catalog.tsv"
+    fits.to_csv(fit_path, sep="\t", index=False)
+    catalog.to_csv(catalog_path, sep="\t", index=False)
+    selected = select_strongest_significant_contrasts([fit_path], catalog_path, ["b1", "b2"])
+    assert selected["test_id"].tolist() == ["t1", "t3"]
+    assert selected["mean_difference_norm"].tolist() == [0.4, 0.7]

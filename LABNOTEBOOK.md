@@ -3605,3 +3605,7 @@ App contains 2,210/5,122 cortical-excitatory and 531/1,699 midbrain-inhibitory s
 ## 2026-09-02, sashimi horizontal alignment correction
 
 Corrected the bundled ggsashimi grob assembly so every primer/cell-type coverage track, the shared genomic x-axis, and the local-path annotation receive the same complete vector of gtable column widths. The previous legacy adjustment modified only selected y-label columns, which shifted plotting-panel origins when track-label widths differed under the current ggplot2 release. Regenerated the App, Gria2, and Grin1 vector PDFs and rebuilt the manuscript.
+
+## 2026-09-02, effect-size-selected sashimi contrasts
+
+Changed the primer-separated sashimi workflow to select contrasts algorithmically from the selected fixed-total A=64 production pairwise fit. For each plotted block, the workflow first restricts to pairwise tests with BH FDR below 0.05 and then maximizes mean_difference_norm, the Euclidean norm of the across-subject mean paired difference in local-path ILR coordinates. This selects EX_cortical versus EX_hippocampus_pyramidal for App, effect norm 0.92698 and FDR 0.02109, EX_cerebellum_granule versus EX_cortical for Gria2, effect norm 0.45543 and FDR 0.00832, and INH_medium_spiny versus INH_midbrain for Grin1, effect norm 0.08811 and FDR 0.00577. Regenerated primer-specific alignment summaries and figures, added selected_contrasts.tsv as an audit table, and updated the manuscript.

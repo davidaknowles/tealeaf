@@ -321,21 +321,21 @@ The complete omnibus discovery catalog, component annotations, coordinates, empi
 \clearpage
 \subsection*{Primer-separated read support}
 
-Figures~\ref{fig:app-sashimi}--\ref{fig:grin1-sashimi} provide a direct alignment-level check for three strong, high-confidence omnibus discoveries. \emph{App} exon 15 and the \emph{Gria2} flip/flop pair are shown for cortical excitatory and midbrain inhibitory cells, which have strong secondary pairwise localizations for both events. The \emph{Grin1} C1 cassette is shown for medium-spiny and midbrain inhibitory cells, its strongest localized pair. Each track pools unique-mapping, UMI-deduplicated spliced alignments within one cell type and priming strategy, then normalizes coverage and junction support per 1,000 primer-specific half-cells. Arc labels use the same units. The transcript models below each panel are the tested local paths, and long introns are compressed for display.
+Figures~\ref{fig:app-sashimi}--\ref{fig:grin1-sashimi} provide a direct alignment-level check for three strong, high-confidence omnibus discoveries. For each block, we first restrict to secondary pairwise contrasts with BH FDR below 0.05 and display the pair that maximizes $\lVert\bar{\boldsymbol\Delta}\rVert_2$, where $\boldsymbol\Delta\in\mathbb R^{S-1}$ is a subject-specific paired difference in the $S-1$ local-path isometric log-ratio coordinates and $S\in\mathbb N$ is the number of tested paths. The selected effect norms are 0.927 for cortical excitatory versus hippocampal pyramidal cells in \emph{App}, 0.455 for cerebellar-granule versus cortical-excitatory cells in \emph{Gria2}, and 0.088 for medium-spiny versus midbrain-inhibitory cells in \emph{Grin1}. Each track pools unique-mapping, UMI-deduplicated spliced alignments within one cell type and priming strategy, then normalizes coverage and junction support per 1,000 primer-specific half-cells. Arc labels use the same units. The transcript models below each panel are the tested local paths, and long introns are compressed for display.
 
 Both priming strategies support the annotated alternatives, while their absolute coverage profiles differ. This is expected because poly(dT) and random-hexamer priming have different positional exposure and is why Tealeaf retains separate primer likelihoods. The plots are descriptive rather than a reconstruction of the test: they use spliced genomic alignments only, whereas production inference also uses exonic, unspliced, and ambiguous EC observations through the primer-specific compatibility maps and performs the omnibus test across every represented cell type.
 
 \begin{figure}[p]
 \centering
 \includegraphics[width=\linewidth]{../analyses/priming_sashimi/App/App_priming_sashimi.pdf}
-\caption{Primer-separated spliced-read support for the \emph{App} exon-15 cassette, block B3. EXcortical and INHmidbrain denote cortical excitatory and midbrain inhibitory cells. Teal and orange tracks are poly(dT) and random-hexamer half-cells.}
+\caption{Primer-separated spliced-read support for the \emph{App} exon-15 cassette, block B3. EXcortical and EXhippocampuspyramidal denote cortical excitatory and hippocampal pyramidal cells. Teal and orange tracks are poly(dT) and random-hexamer half-cells.}
 \label{fig:app-sashimi}
 \end{figure}
 
 \begin{figure}[p]
 \centering
 \includegraphics[width=\linewidth]{../analyses/priming_sashimi/Gria2/Gria2_priming_sashimi.pdf}
-\caption{Primer-separated spliced-read support for the mutually exclusive \emph{Gria2} flip/flop exons, block B1. Track labels and normalization follow Figure~\ref{fig:app-sashimi}.}
+\caption{Primer-separated spliced-read support for the mutually exclusive \emph{Gria2} flip/flop exons, block B1. EXcerebellumgranule and EXcortical denote cerebellar-granule and cortical-excitatory cells. Track labels and normalization follow Figure~\ref{fig:app-sashimi}.}
 \label{fig:gria2-sashimi}
 \end{figure}
 
@@ -346,7 +346,7 @@ Both priming strategies support the annotated alternatives, while their absolute
 \label{fig:grin1-sashimi}
 \end{figure}
 
-The plotted intervals contain 2,210 poly(dT) and 5,122 random-hexamer spliced UMIs from cortical excitatory cells and 531 and 1,699 from midbrain inhibitory cells for \emph{App}. Corresponding counts are 1,039/904 and 167/189 for \emph{Gria2}, and 555/384 medium-spiny plus 148/330 midbrain-inhibitory UMIs for \emph{Grin1}. These raw totals establish that the visible structures do not arise from a few alignments; normalization in the figures prevents unequal half-cell numbers from setting track scale.
+The plotted intervals contain 2,210 poly(dT) and 5,122 random-hexamer spliced UMIs from cortical excitatory cells and 186 and 478 from hippocampal pyramidal cells for \emph{App}. Corresponding counts are 97/132 for cerebellar-granule and 1,039/904 for cortical-excitatory cells in \emph{Gria2}, and 555/384 medium-spiny plus 148/330 midbrain-inhibitory UMIs for \emph{Grin1}. These raw totals establish that the visible structures do not arise from a few alignments; normalization in the figures prevents unequal half-cell numbers from setting track scale.
 
 \clearpage
 \appendix

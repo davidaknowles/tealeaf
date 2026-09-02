@@ -47,6 +47,32 @@ def read_primer_cell_groups(metadata_path, primer_pairs_path, cell_types):
     return lookup, sizes
 
 
+def select_strongest_significant_contrasts(fit_paths, event_catalog_path, block_ids, fdr_threshold=0.05):
+    """Select each block's largest fitted effect among BH-significant contrasts."""
+    columns = ["test_id", "block_id", "level_a", "level_b", "mean_difference_norm"]
+    fit_tables = [pd.read_csv(path, sep="\t", usecols=columns) for path in fit_paths]
+    if not fit_tables:
+        raise ValueError("no pairwise fit tables were provided")
+    fits = pd.concat(fit_tables, ignore_index=True)
+    if fits["test_id"].duplicated().any():
+        raise ValueError("pairwise fit tables contain duplicate test identifiers")
+    catalog_columns = ["test_id", "block_id", "statistic", "empirical_p_value", "fdr"]
+    catalog = pd.read_csv(event_catalog_path, sep="\t", usecols=catalog_columns)
+    catalog["fdr"] = pd.to_numeric(catalog["fdr"], errors="coerce")
+    significant = catalog[(catalog["block_id"].isin(block_ids)) & (catalog["fdr"] < fdr_threshold)]
+    candidates = significant.merge(fits, on=["test_id", "block_id"], how="inner", validate="one_to_one")
+    missing_fits = sorted(set(significant["test_id"]) - set(candidates["test_id"]))
+    if missing_fits:
+        raise ValueError(f"significant contrasts without fitted effects: {missing_fits}")
+    candidates["mean_difference_norm"] = pd.to_numeric(candidates["mean_difference_norm"], errors="coerce")
+    candidates = candidates.dropna(subset=["mean_difference_norm"])
+    selected = candidates.sort_values(["block_id", "mean_difference_norm", "test_id"], ascending=[True, False, True]).drop_duplicates("block_id")
+    missing = sorted(set(block_ids) - set(selected["block_id"]))
+    if missing:
+        raise ValueError(f"blocks without a significant fitted contrast: {missing}")
+    return selected.sort_values("block_id").reset_index(drop=True)
+
+
 def _alignment_junctions(alignment):
     position = alignment.reference_start
     for operation, length in alignment.cigartuples or ():

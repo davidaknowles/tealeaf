@@ -13,13 +13,13 @@ import subprocess
 
 import pandas as pd
 
-from tealeaf.sc.sashimi import SashimiEvent, collect_bam_event_support, merge_support, read_primer_cell_groups, write_ggsashimi_inputs
+from tealeaf.sc.sashimi import SashimiEvent, collect_bam_event_support, merge_support, read_primer_cell_groups, select_strongest_significant_contrasts, write_ggsashimi_inputs
 
 
 EVENTS = (
-    ("App", "ENSMUSG00000022892.12:B3", ("EX_cortical", "INH_midbrain")),
-    ("Gria2", "ENSMUSG00000033981.15:B1", ("EX_cortical", "INH_midbrain")),
-    ("Grin1", "ENSMUSG00000026959.14:B3", ("INH_medium_spiny", "INH_midbrain")),
+    ("App", "ENSMUSG00000022892.12:B3"),
+    ("Gria2", "ENSMUSG00000033981.15:B1"),
+    ("Grin1", "ENSMUSG00000026959.14:B3"),
 )
 
 
@@ -44,14 +44,20 @@ def main():
     parser.add_argument("--metadata", type=Path, required=True)
     parser.add_argument("--primer-pairs", type=Path, required=True)
     parser.add_argument("--event-catalog", type=Path, required=True)
+    parser.add_argument("--pairwise-event-catalog", type=Path, required=True)
+    parser.add_argument("--pairwise-fit-root", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--ggsashimi", type=Path)
     parser.add_argument("--run-plots", action="store_true")
     args = parser.parse_args()
+    block_ids = [event_id for _, event_id in EVENTS]
+    selected_contrasts = select_strongest_significant_contrasts(sorted(args.pairwise_fit_root.glob("*/paired_path.tsv")), args.pairwise_event_catalog, block_ids)
+    contrasts = {row.block_id: (row.level_a, row.level_b) for row in selected_contrasts.itertuples(index=False)}
     catalog = pd.read_csv(args.event_catalog, sep="\t", dtype=str)
     rows, events = {}, []
-    for gene, event_id, cell_types in EVENTS:
+    for gene, event_id in EVENTS:
+        cell_types = contrasts[event_id]
         matched = catalog[(catalog["gene_name"] == gene) & (catalog["test_id"] == event_id)]
         if len(matched) != 1:
             raise ValueError(f"expected one catalog row for {gene} {event_id}, found {len(matched)}")
@@ -62,7 +68,7 @@ def main():
         events.append(SashimiEvent(gene, row.chromosome, min(interval[0] for interval in intervals), max(interval[1] for interval in intervals), row.strand))
         rows[gene] = row
         rows[gene + "_cell_types"] = cell_types
-    selected_cell_types = {cell_type for _, _, cell_types in EVENTS for cell_type in cell_types}
+    selected_cell_types = {cell_type for cell_types in contrasts.values() for cell_type in cell_types}
     barcode_groups, cell_sizes = read_primer_cell_groups(args.metadata, args.primer_pairs, selected_cell_types)
     bam_paths = sorted(args.starsolo_root.glob("*/spliced_pseudobulk.bam"))
     if not bam_paths:
@@ -72,15 +78,16 @@ def main():
     exon_blocks, junctions, event_umis = merge_support(results)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     cell_sizes.to_csv(args.output_dir / "cell_counts.tsv", sep="\t", index=False)
+    selected_contrasts.to_csv(args.output_dir / "selected_contrasts.tsv", sep="\t", index=False)
     support_rows = []
     for key, count in sorted(event_umis.items()):
         event_id, subject, cell_type, primer = key
         support_rows.append({"event": event_id, "subject": subject, "cell_type": cell_type, "primer": primer, "spliced_umis": count})
     pd.DataFrame(support_rows).to_csv(args.output_dir / "spliced_umi_support.tsv", sep="\t", index=False)
-    manifest = {"normalization": "UMI-deduplicated spliced alignments per 1000 primer-specific half-cells", "runs": len(bam_paths), "events": []}
+    manifest = {"contrast_selection": "largest mean_difference_norm among pairwise contrasts with BH FDR < 0.05", "normalization": "UMI-deduplicated spliced alignments per 1000 primer-specific half-cells", "runs": len(bam_paths), "events": []}
     palette = args.output_dir / "palette.tsv"
     palette.write_text("#1B9E77\n#D95F02\n#1B9E77\n#D95F02\n")
-    event_ids = {gene: event_id for gene, event_id, _ in EVENTS}
+    event_ids = dict(EVENTS)
     for event in events:
         event_dir = args.output_dir / event.event_id
         cell_types = rows[event.event_id + "_cell_types"]
@@ -89,7 +96,8 @@ def main():
         _event_gtf(gtf, event, rows[event.event_id])
         coordinates = f"{event.chromosome}:{event.start + 1}-{event.end + 1}"
         prefix = event_dir / f"{event.event_id}_priming_sashimi"
-        manifest["events"].append({"gene": event.event_id, "test_id": event_ids[event.event_id], "cell_types": list(cell_types), "coordinates": coordinates, "intron_counts": str(intron.relative_to(args.output_dir)), "exon_counts": str(exon.relative_to(args.output_dir)), "path_annotation": str(gtf.relative_to(args.output_dir)), "figure": str(prefix.with_suffix('.pdf').relative_to(args.output_dir))})
+        contrast = selected_contrasts[selected_contrasts["block_id"] == event_ids[event.event_id]].iloc[0]
+        manifest["events"].append({"gene": event.event_id, "test_id": event_ids[event.event_id], "cell_types": list(cell_types), "mean_difference_norm": float(contrast.mean_difference_norm), "pairwise_fdr": float(contrast.fdr), "coordinates": coordinates, "intron_counts": str(intron.relative_to(args.output_dir)), "exon_counts": str(exon.relative_to(args.output_dir)), "path_annotation": str(gtf.relative_to(args.output_dir)), "figure": str(prefix.with_suffix('.pdf').relative_to(args.output_dir))})
         if args.run_plots:
             if args.ggsashimi is None:
                 raise ValueError("--ggsashimi is required with --run-plots")

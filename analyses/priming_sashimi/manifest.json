@@ -1,4 +1,5 @@
 {
+  "contrast_selection": "largest mean_difference_norm among pairwise contrasts with BH FDR < 0.05",
   "normalization": "UMI-deduplicated spliced alignments per 1000 primer-specific half-cells",
   "runs": 16,
   "events": [
@@ -7,8 +8,10 @@
       "test_id": "ENSMUSG00000022892.12:B3",
       "cell_types": [
         "EX_cortical",
-        "INH_midbrain"
+        "EX_hippocampus_pyramidal"
       ],
+      "mean_difference_norm": 0.9269816888576776,
+      "pairwise_fdr": 0.0210862361272968,
       "coordinates": "chr16:84751532-84810615",
       "intron_counts": "App/App_intron.tsv",
       "exon_counts": "App/App_exon.tsv",
@@ -19,9 +22,11 @@
       "gene": "Gria2",
       "test_id": "ENSMUSG00000033981.15:B1",
       "cell_types": [
-        "EX_cortical",
-        "INH_midbrain"
+        "EX_cerebellum_granule",
+        "EX_cortical"
       ],
+      "mean_difference_norm": 0.4554258005458194,
+      "pairwise_fdr": 0.0083235066134512,
       "coordinates": "chr3:80596410-80599840",
       "intron_counts": "Gria2/Gria2_intron.tsv",
       "exon_counts": "Gria2/Gria2_exon.tsv",
@@ -35,6 +40,8 @@
         "INH_medium_spiny",
         "INH_midbrain"
       ],
+      "mean_difference_norm": 0.0881067586450805,
+      "pairwise_fdr": 0.0057663880868445,
       "coordinates": "chr2:25181193-25185950",
       "intron_counts": "Grin1/Grin1_intron.tsv",
       "exon_counts": "Grin1/Grin1_exon.tsv",
