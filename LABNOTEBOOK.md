@@ -3623,3 +3623,11 @@ Changed the primer-separated sashimi workflow to select contrasts algorithmicall
 - Kept junction and exon evidence separate by priming strategy. Coverage is normalized per 1,000 primer-specific half-cells and displayed on a log1p scale.
 - Summarized exon evidence as mean normalized base coverage over each unique tested exon and retained all observed junctions. Event-level feature-coverage tables map J and E labels to genomic coordinates and untransformed values.
 - Integrated the heatmaps into `docs/differential.tex`; reusable feature summaries are in `tealeaf/sc/sashimi.py`.
+
+## 2026-09-02, path-ordered block evidence heatmaps
+
+Replaced the separate pairwise path-usage, all-junction, and unique-exon heatmaps with two combined block matrices per event, one for poly(dT) and one for random-hexamer priming. Each matrix includes every cell type represented in the production omnibus fit, nine for App, eight for Gria2, and five for Grin1. A path marker contains the across-subject mean fitted path proportion from the selected fixed-total A=64 omnibus likelihood. Its following columns alternate exon and exact annotated-junction evidence along that tested path. Shared features are deliberately duplicated under every path containing them; off-path and out-of-block features are excluded.
+
+Component order is 5'-to-3' in RNA space. All three displayed genes are on the minus strand, so their heatmap coordinates decrease from left to right within each path. Unit tests cover both strands, exact exon and junction normalization, shared-feature duplication, and marker/component interleaving. Matrix validation confirmed two primers for every event, 22/12/14 total columns for App/Gria2/Grin1, and 8/2/4 genomic coordinates repeated across paths.
+
+Junction evidence is annotated-junction UMI count per 1,000 primer-specific half-cells, while exon evidence is mean aligned-base depth over the exact exon per 1,000 half-cells. Since these and fitted proportions have different units, the display uses a within-feature z-score across cell types, computed separately by primer and truncated to [-2,2]. The event-level block-heatmap tables retain raw values, coordinates, feature types, path membership, and ordering. The superseded panels were archived outside the repository rather than deleted.

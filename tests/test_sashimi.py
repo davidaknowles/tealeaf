@@ -3,7 +3,7 @@ from collections import Counter
 import pandas as pd
 import pysam
 
-from tealeaf.sc.sashimi import coverage_group_columns, SashimiEvent, collect_bam_event_support, select_strongest_significant_contrasts, summarize_exon_coverage, summarize_junction_coverage, summarize_path_usage, write_ggsashimi_inputs
+from tealeaf.sc.sashimi import SashimiEvent, collect_bam_event_support, combine_path_usage_and_coverage, select_strongest_significant_contrasts, summarize_path_ordered_coverage, summarize_path_usage, write_ggsashimi_inputs
 
 
 def test_collect_and_write_sashimi_support(tmp_path):
@@ -75,18 +75,26 @@ def test_summarize_path_usage():
     assert abs(path_one.se_proportion - 0.1) < 1e-12
 
 
-def test_summarize_feature_coverage():
-    groups = coverage_group_columns(("cell_type",))
-    assert groups[("cell_type", "poly(dT)")] == "celltype_polydT_0"
-    table = pd.DataFrame([
-        {"Name": "chr1:101-111", "Chr": "chr1", "Start": 101, "End": 111, "celltype_polydT_0": 10.0, "celltype_randomhexamer_0": 4.0},
-        {"Name": "chr1:111-121", "Chr": "chr1", "Start": 111, "End": 121, "celltype_polydT_0": 20.0, "celltype_randomhexamer_0": 8.0},
+def test_summarize_path_ordered_coverage():
+    event = SashimiEvent("event", "chr1", 90, 160, "+")
+    groups = (("A", "poly(dT)"), ("A", "random hexamer"), ("B", "poly(dT)"), ("B", "random hexamer"))
+    sizes = pd.DataFrame([{"subject": "s1", "cell_type": cell_type, "primer": primer, "cells": 10} for cell_type, primer in groups])
+    exon_blocks = Counter({("event", "s1", "A", "poly(dT)", 100, 110): 1})
+    junctions = Counter({("event", "s1", "A", "poly(dT)", 110, 120): 2})
+    paths = (((100, 110), (120, 130)), ((100, 110), (140, 150)))
+    coverage = summarize_path_ordered_coverage(event, paths, exon_blocks, junctions, sizes, ("A", "B"))
+    a_polydt = coverage[(coverage["cell_type"] == "A") & (coverage["primer"] == "poly(dT)")]
+    assert a_polydt.loc[a_polydt["feature_id"] == "P1:E1", "raw_value"].iloc[0] == 100.0
+    assert a_polydt.loc[a_polydt["feature_id"] == "P1:J1", "raw_value"].iloc[0] == 200.0
+    assert set(coverage.loc[coverage["coordinate"] == "chr1:101-110", "feature_id"]) == {"P1:E1", "P2:E1"}
+    negative = summarize_path_ordered_coverage(SashimiEvent("event", "chr1", 90, 160, "-"), paths, exon_blocks, junctions, sizes, ("A", "B"))
+    negative_path_one = negative[(negative["path_number"] == 1) & (negative["cell_type"] == "A") & (negative["primer"] == "poly(dT)")].sort_values("column_order")
+    assert negative_path_one["coordinate"].tolist() == ["chr1:121-130", "chr1:111-121", "chr1:101-110"]
+    usage = pd.DataFrame([
+        {"test_id": "event", "cell_type": cell_type, "path": f"Path {path}", "path_number": path, "n_subjects": 1, "mean_proportion": value, "sd_proportion": 0.0, "se_proportion": 0.0}
+        for cell_type, values in (("A", (0.25, 0.75)), ("B", (0.5, 0.5)))
+        for path, value in enumerate(values, start=1)
     ])
-    junctions = summarize_junction_coverage(table.iloc[[0]], groups)
-    assert junctions["feature"].unique().tolist() == ["J1"]
-    assert sorted(junctions["coverage"]) == [4.0, 10.0]
-    exons = summarize_exon_coverage(table, [("chr1", 100, 120)], groups)
-    polydt = exons[exons["primer"] == "poly(dT)"].iloc[0]
-    assert polydt.feature == "E1"
-    assert polydt.coordinate == "chr1:101-120"
-    assert polydt.coverage == 15.0
+    matrix = combine_path_usage_and_coverage(usage, coverage, "event")
+    columns = matrix[["feature_id", "column_order"]].drop_duplicates().sort_values("column_order")
+    assert columns["feature_id"].tolist() == ["P1:path", "P1:E1", "P1:J1", "P1:E2", "P2:path", "P2:E1", "P2:J1", "P2:E2"]

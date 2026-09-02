@@ -351,32 +351,29 @@ Both priming strategies support the annotated alternatives, while their absolute
 
 The plotted intervals contain 2,210 poly(dT) and 5,122 random-hexamer spliced UMIs from cortical excitatory cells and 186 and 478 from hippocampal pyramidal cells for \emph{App}. Corresponding counts are 97/132 for cerebellar-granule and 1,039/904 for cortical-excitatory cells in \emph{Gria2}, and 555/384 medium-spiny plus 148/330 midbrain-inhibitory UMIs for \emph{Grin1}. These raw totals establish that the visible structures do not arise from a few alignments; normalization in the figures prevents unequal half-cell numbers from setting track scale.
 
-The heatmaps in Figures~\ref{fig:app-heatmaps}--\ref{fig:grin1-heatmaps} expose the same evidence as matrices. Path usage is the across-subject mean fitted proportion. Junction coverage is the UMI count per 1,000 primer-specific half-cells, and exon coverage is the mean aligned-base depth per 1,000 primer-specific half-cells over each unique tested exon. Coverage colors show $\log(1+x)$ to preserve low-support differences without allowing the largest features to set the full color range. Junctions labeled J1 onward and exons labeled E1 onward are ordered by genomic coordinate; their exact coordinate mappings and untransformed values are retained in the event-level feature-coverage tables.
+The heatmaps in Figures~\ref{fig:app-heatmaps}--\ref{fig:grin1-heatmaps} extend the read-level check to every cell type represented in each production omnibus fit. Each priming strategy has a separate matrix. Columns begin with the fitted mean proportion of path 1, followed by the exons and junctions in path 1, then repeat this arrangement for path 2 and any later paths. Within each path, exons and junctions are interleaved in 5$'$-to-3$'$ RNA order, which reverses genomic-coordinate order for minus-strand genes. A shared exon or junction is deliberately repeated under every path containing it, and no feature outside the visualized block is included. Path usage is the across-subject mean from the joint two-primer production fit. Junction evidence is the exact annotated-junction UMI count per 1,000 primer-specific half-cells, and exon evidence is the mean aligned-base depth per 1,000 primer-specific half-cells over the displayed exon. Because those three quantities have different units, color is a within-column z-score across cell types, computed separately for each primer and truncated to $[-2,2]$; exact coordinates, raw values, and measurement types are retained in each event's block-heatmap table.
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=.68\linewidth]{../analyses/priming_sashimi/App/App_path_usage_heatmap.pdf}
-\includegraphics[width=\linewidth]{../analyses/priming_sashimi/App/App_junction_coverage_heatmap.pdf}
-\includegraphics[width=\linewidth]{../analyses/priming_sashimi/App/App_exon_coverage_heatmap.pdf}
-\caption{Cell-type evidence heatmaps for the displayed \emph{App} contrast. From top to bottom, panels show fitted path usage, primer-specific junction coverage, and primer-specific mean exon coverage.}
+\includegraphics[width=\linewidth]{../analyses/priming_sashimi/App/App_oligodt_block_heatmap.pdf}
+\includegraphics[width=\linewidth]{../analyses/priming_sashimi/App/App_ranhex_block_heatmap.pdf}
+\caption{Path-ordered block evidence across all nine cell types represented in the \emph{App} omnibus fit. The upper and lower panels show poly(dT) and random-hexamer half-cells. P1 and P2 are fitted path usage; E and J columns are the corresponding exons and junctions in 5$'$-to-3$'$ RNA order.}
 \label{fig:app-heatmaps}
 \end{figure}
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=.68\linewidth]{../analyses/priming_sashimi/Gria2/Gria2_path_usage_heatmap.pdf}
-\includegraphics[width=\linewidth]{../analyses/priming_sashimi/Gria2/Gria2_junction_coverage_heatmap.pdf}
-\includegraphics[width=\linewidth]{../analyses/priming_sashimi/Gria2/Gria2_exon_coverage_heatmap.pdf}
-\caption{Cell-type evidence heatmaps for the displayed \emph{Gria2} contrast. Panel definitions and normalization follow Figure~\ref{fig:app-heatmaps}.}
+\includegraphics[width=\linewidth]{../analyses/priming_sashimi/Gria2/Gria2_oligodt_block_heatmap.pdf}
+\includegraphics[width=\linewidth]{../analyses/priming_sashimi/Gria2/Gria2_ranhex_block_heatmap.pdf}
+\caption{Path-ordered block evidence across all eight cell types represented in the \emph{Gria2} omnibus fit, separated into poly(dT) and random-hexamer panels. Column definitions and scaling follow Figure~\ref{fig:app-heatmaps}.}
 \label{fig:gria2-heatmaps}
 \end{figure}
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=.68\linewidth]{../analyses/priming_sashimi/Grin1/Grin1_path_usage_heatmap.pdf}
-\includegraphics[width=\linewidth]{../analyses/priming_sashimi/Grin1/Grin1_junction_coverage_heatmap.pdf}
-\includegraphics[width=\linewidth]{../analyses/priming_sashimi/Grin1/Grin1_exon_coverage_heatmap.pdf}
-\caption{Cell-type evidence heatmaps for the displayed \emph{Grin1} contrast. Panel definitions and normalization follow Figure~\ref{fig:app-heatmaps}.}
+\includegraphics[width=\linewidth]{../analyses/priming_sashimi/Grin1/Grin1_oligodt_block_heatmap.pdf}
+\includegraphics[width=\linewidth]{../analyses/priming_sashimi/Grin1/Grin1_ranhex_block_heatmap.pdf}
+\caption{Path-ordered block evidence across all five cell types represented in the \emph{Grin1} omnibus fit, separated into poly(dT) and random-hexamer panels. Column definitions and scaling follow Figure~\ref{fig:app-heatmaps}.}
 \label{fig:grin1-heatmaps}
 \end{figure}
 

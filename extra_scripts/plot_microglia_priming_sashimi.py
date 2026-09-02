@@ -13,9 +13,8 @@ import subprocess
 
 import numpy as np
 import pandas as pd
-from plotnine import aes, element_blank, element_text, geom_col, geom_errorbar, geom_text, geom_tile, ggplot, labs, position_dodge, scale_color_identity, scale_fill_cmap, scale_fill_manual, scale_x_discrete, scale_y_continuous, scale_y_discrete, theme, theme_bw
 
-from tealeaf.sc.sashimi import coverage_group_columns, SashimiEvent, collect_bam_event_support, merge_support, read_primer_cell_groups, select_strongest_significant_contrasts, summarize_exon_coverage, summarize_junction_coverage, summarize_path_usage, write_ggsashimi_inputs
+from tealeaf.sc.sashimi import SashimiEvent, collect_bam_event_support, combine_path_usage_and_coverage, merge_support, read_primer_cell_groups, select_strongest_significant_contrasts, summarize_path_ordered_coverage, summarize_path_usage, write_ggsashimi_inputs
 
 
 EVENTS = (
@@ -42,6 +41,8 @@ def _event_gtf(path, event, row):
 
 def write_path_usage_plot(summary, event_id, test_id, cell_types, output_dir):
     """Plot mean fitted path usage with subject-level standard errors."""
+    from plotnine import aes, element_text, geom_col, geom_errorbar, ggplot, labs, position_dodge, scale_fill_manual, scale_x_discrete, scale_y_continuous, theme, theme_bw
+
     event_summary = summary[summary["test_id"] == test_id].copy()
     if event_summary.empty:
         raise ValueError(f"no fitted path usage for {test_id}")
@@ -63,54 +64,38 @@ def write_path_usage_plot(summary, event_id, test_id, cell_types, output_dir):
     return output_path
 
 
-def _ordered_feature(values):
-    order = sorted(values.unique(), key=lambda value: int(value[1:]))
-    return pd.Categorical(values, categories=order, ordered=True)
+def write_block_heatmap(matrix, event_id, primer, cell_types, output_dir):
+    """Plot one primer-specific, path-ordered block evidence heatmap."""
+    from plotnine import aes, element_blank, element_text, geom_tile, geom_vline, ggplot, labs, scale_fill_gradient2, scale_x_discrete, theme, theme_bw
 
-
-def write_path_usage_heatmap(summary, event_id, test_id, cell_types, output_dir):
-    """Plot fitted path usage as a cell-type-by-path heatmap."""
-    data = summary[summary["test_id"] == test_id].copy()
+    data = matrix[matrix["primer"] == primer].copy()
     if data.empty:
-        raise ValueError(f"no fitted path usage for {test_id}")
-    data["cell_type"] = pd.Categorical(data["cell_type"], categories=cell_types[::-1], ordered=True)
-    data["path"] = _ordered_feature(data["path"].str.replace("Path ", "P", regex=False))
-    data["label"] = data["mean_proportion"].map(lambda value: f"{value:.0%}")
-    data["label_color"] = np.where(data["mean_proportion"] > 0.6, "black", "white")
-    plot = (
-        ggplot(data, aes("path", "cell_type", fill="mean_proportion"))
-        + geom_tile(color="white")
-        + geom_text(aes(label="label", color="label_color"), size=9)
-        + scale_color_identity()
-        + scale_fill_cmap(name="Path usage", cmap_name="viridis", limits=(0, 1))
-        + scale_y_discrete(labels=lambda values: [value.replace("_", " ") for value in values])
-        + labs(x="Tested path", y=None)
-        + theme_bw(base_size=10)
-        + theme(axis_text_y=element_text(size=8), panel_grid=element_blank(), legend_position="right")
-    )
-    output_path = output_dir / event_id / f"{event_id}_path_usage_heatmap.pdf"
-    plot.save(output_path, width=5.8, height=1.8, units="in", verbose=False)
-    return output_path
+        raise ValueError(f"no {primer} evidence for {event_id}")
+    columns = data[["feature_id", "feature", "feature_type", "column_order"]].drop_duplicates().sort_values("column_order")
+    feature_ids = columns["feature_id"].tolist()
+    feature_labels = dict(zip(columns["feature_id"], columns["feature"]))
+    data["feature_id"] = pd.Categorical(data["feature_id"], categories=feature_ids, ordered=True)
+    data["cell_type"] = pd.Categorical(data["cell_type"], categories=tuple(cell_types)[::-1], ordered=True)
 
-
-def write_coverage_heatmap(data, event_id, feature_type, cell_types, output_dir):
-    """Plot primer-specific normalized feature coverage on a log1p color scale."""
-    data = data.copy()
-    data["feature"] = _ordered_feature(data["feature"])
-    data["sample"] = data["cell_type"].str.replace("_", " ") + " | " + data["primer"]
-    sample_order = [f"{cell_type.replace(chr(95), chr(32))} | {primer}" for cell_type in cell_types[::-1] for primer in ("random hexamer", "poly(dT)")]
-    data["sample"] = pd.Categorical(data["sample"], categories=sample_order, ordered=True)
-    data["plot_value"] = np.log1p(data["coverage"])
+    def standardize(values):
+        deviation = values.std(ddof=0)
+        return values * 0.0 if not np.isfinite(deviation) or deviation == 0 else (values - values.mean()) / deviation
+    data["display_value"] = data.groupby("feature_id", observed=True)["raw_value"].transform(standardize).clip(-2, 2)
+    path_positions = [index for index, value in enumerate(columns["feature_type"], start=1) if value == "path"]
+    primer_slug = "oligodt" if primer == "poly(dT)" else "ranhex"
     plot = (
-        ggplot(data, aes("feature", "sample", fill="plot_value"))
-        + geom_tile(color="white")
-        + scale_fill_cmap(name="log(1 + coverage)", cmap_name="viridis")
-        + labs(x=f"{feature_type.capitalize()} feature", y=None)
+        ggplot(data, aes("feature_id", "cell_type", fill="display_value"))
+        + geom_tile(color="white", size=0.15)
+        + geom_vline(xintercept=[position - 0.5 for position in path_positions[1:]], color="#25364A", size=0.7)
+        + scale_fill_gradient2(name="Within-feature z-score", low="#2166AC", mid="white", high="#B2182B", midpoint=0, limits=(-2, 2))
+        + scale_x_discrete(labels=lambda values: [feature_labels[value] for value in values])
+        + labs(x="Path and ordered block components", y=None, title=f"{event_id}, {primer}")
         + theme_bw(base_size=9)
-        + theme(axis_text_x=element_text(size=7, rotation=90, va="top"), axis_text_y=element_text(size=7), panel_grid=element_blank(), legend_position="right")
+        + theme(axis_text_x=element_text(size=7, rotation=90, va="top"), axis_text_y=element_text(size=7), panel_grid=element_blank(), legend_position="right", plot_title=element_text(size=10))
     )
-    output_path = output_dir / event_id / f"{event_id}_{feature_type}_coverage_heatmap.pdf"
-    plot.save(output_path, width=8.5, height=2.4, units="in", verbose=False)
+    output_path = output_dir / event_id / f"{event_id}_{primer_slug}_block_heatmap.pdf"
+    height = max(3.0, 1.4 + 0.32 * len(cell_types))
+    plot.save(output_path, width=9.5, height=height, units="in", verbose=False)
     return output_path
 
 
@@ -126,8 +111,14 @@ def main():
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--ggsashimi", type=Path)
     parser.add_argument("--run-plots", action="store_true")
+    parser.add_argument("--skip-heatmap-plots", action="store_true")
+    parser.add_argument("--skip-path-usage-plot", action="store_true")
     parser.add_argument("--path-usage", type=Path)
+    parser.add_argument("--omnibus-path-usage", type=Path, required=True)
     args = parser.parse_args()
+    omnibus_path_usage = pd.read_csv(args.omnibus_path_usage, sep="\t")
+    omnibus_path_usage_summary = summarize_path_usage(omnibus_path_usage)
+    heatmap_levels = {block_id: tuple(sorted(group["cell_type"].unique())) for block_id, group in omnibus_path_usage.groupby("block_id")}
     block_ids = [event_id for _, event_id in EVENTS]
     selected_contrasts = select_strongest_significant_contrasts(sorted(args.pairwise_fit_root.glob("*/paired_path.tsv")), args.pairwise_event_catalog, block_ids)
     contrasts = {row.block_id: (row.level_a, row.level_b) for row in selected_contrasts.itertuples(index=False)}
@@ -145,8 +136,9 @@ def main():
         events.append(SashimiEvent(gene, row.chromosome, min(interval[0] for interval in intervals), max(interval[1] for interval in intervals), row.strand))
         rows[gene] = row
         rows[gene + "_cell_types"] = cell_types
-        rows[gene + "_exons"] = [(row.chromosome, *exon) for exon in sorted({tuple(exon) for exon in [*anchors, *(exon for local_path in paths for exon in local_path)]})]
-    selected_cell_types = {cell_type for cell_types in contrasts.values() for cell_type in cell_types}
+        rows[gene + "_paths"] = [sorted({tuple(exon) for exon in [*anchors, *local_path]}) for local_path in paths]
+        rows[gene + "_heatmap_cell_types"] = heatmap_levels[event_id]
+    selected_cell_types = {cell_type for levels in heatmap_levels.values() for cell_type in levels}
     barcode_groups, cell_sizes = read_primer_cell_groups(args.metadata, args.primer_pairs, selected_cell_types)
     bam_paths = sorted(args.starsolo_root.glob("*/spliced_pseudobulk.bam"))
     if not bam_paths:
@@ -155,6 +147,8 @@ def main():
         results = list(executor.map(collect_bam_event_support, bam_paths, repeat(barcode_groups), repeat(tuple(events))))
     exon_blocks, junctions, event_umis = merge_support(results)
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    omnibus_path_usage.to_csv(args.output_dir / "omnibus_path_usage.tsv", sep="\t", index=False)
+    omnibus_path_usage_summary.to_csv(args.output_dir / "omnibus_path_usage_summary.tsv", sep="\t", index=False)
     path_usage_summary = None
     if args.path_usage is not None:
         path_usage = pd.read_csv(args.path_usage, sep="\t")
@@ -168,7 +162,7 @@ def main():
         event_id, subject, cell_type, primer = key
         support_rows.append({"event": event_id, "subject": subject, "cell_type": cell_type, "primer": primer, "spliced_umis": count})
     pd.DataFrame(support_rows).to_csv(args.output_dir / "spliced_umi_support.tsv", sep="\t", index=False)
-    manifest = {"contrast_selection": "largest mean_difference_norm among pairwise contrasts with BH FDR < 0.05", "normalization": "UMI-deduplicated spliced alignments per 1000 primer-specific half-cells", "runs": len(bam_paths), "events": []}
+    manifest = {"contrast_selection": "largest mean_difference_norm among pairwise contrasts with BH FDR < 0.05", "normalization": "UMI-deduplicated spliced alignments per 1000 primer-specific half-cells", "block_heatmaps": "Path markers followed by each path's exon and junction components in 5-prime-to-3-prime RNA order; shared components are repeated under each path; colors are within-feature z-scores across all omnibus-eligible cell types", "runs": len(bam_paths), "events": []}
     palette = args.output_dir / "palette.tsv"
     palette.write_text("#1B9E77\n#D95F02\n#1B9E77\n#D95F02\n")
     event_ids = dict(EVENTS)
@@ -178,25 +172,28 @@ def main():
         intron, exon, strand = write_ggsashimi_inputs(event_dir, event, exon_blocks, junctions, cell_sizes, cell_types)
         gtf = event_dir / f"{event.event_id}_paths.gtf"
         _event_gtf(gtf, event, rows[event.event_id])
-        group_columns = coverage_group_columns(cell_types)
-        junction_coverage = summarize_junction_coverage(pd.read_csv(intron, sep=" "), group_columns)
-        exon_coverage = summarize_exon_coverage(pd.read_csv(exon, sep=" "), rows[event.event_id + "_exons"], group_columns)
-        feature_coverage = pd.concat([junction_coverage, exon_coverage], ignore_index=True)
-        feature_coverage.to_csv(event_dir / f"{event.event_id}_feature_coverage.tsv", sep="\t", index=False)
-        junction_heatmap = write_coverage_heatmap(junction_coverage, event.event_id, "junction", cell_types, args.output_dir)
-        exon_heatmap = write_coverage_heatmap(exon_coverage, event.event_id, "exon", cell_types, args.output_dir)
+        heatmap_cell_types = rows[event.event_id + "_heatmap_cell_types"]
+        coverage = summarize_path_ordered_coverage(event, rows[event.event_id + "_paths"], exon_blocks, junctions, cell_sizes, heatmap_cell_types)
+        matrix = combine_path_usage_and_coverage(omnibus_path_usage_summary, coverage, event_ids[event.event_id])
+        matrix.to_csv(event_dir / f"{event.event_id}_block_heatmap.tsv", sep="\t", index=False)
+        oligodt_heatmap = event_dir / f"{event.event_id}_oligodt_block_heatmap.pdf"
+        ranhex_heatmap = event_dir / f"{event.event_id}_ranhex_block_heatmap.pdf"
+        if not args.skip_heatmap_plots:
+            write_block_heatmap(matrix, event.event_id, "poly(dT)", heatmap_cell_types, args.output_dir)
+            write_block_heatmap(matrix, event.event_id, "random hexamer", heatmap_cell_types, args.output_dir)
         coordinates = f"{event.chromosome}:{event.start + 1}-{event.end + 1}"
         prefix = event_dir / f"{event.event_id}_priming_sashimi"
         contrast = selected_contrasts[selected_contrasts["block_id"] == event_ids[event.event_id]].iloc[0]
         manifest["events"].append({"gene": event.event_id, "test_id": event_ids[event.event_id], "cell_types": list(cell_types), "mean_difference_norm": float(contrast.mean_difference_norm), "pairwise_fdr": float(contrast.fdr), "coordinates": coordinates, "intron_counts": str(intron.relative_to(args.output_dir)), "exon_counts": str(exon.relative_to(args.output_dir)), "path_annotation": str(gtf.relative_to(args.output_dir)), "figure": str(prefix.with_suffix('.pdf').relative_to(args.output_dir))})
-        manifest["events"][-1]["feature_coverage"] = str((event_dir / f"{event.event_id}_feature_coverage.tsv").relative_to(args.output_dir))
+        manifest["events"][-1]["heatmap_cell_types"] = list(heatmap_cell_types)
+        manifest["events"][-1]["block_heatmap_data"] = str((event_dir / f"{event.event_id}_block_heatmap.tsv").relative_to(args.output_dir))
         if path_usage_summary is not None:
-            usage_figure = write_path_usage_plot(path_usage_summary, event.event_id, contrast.test_id, cell_types, args.output_dir)
+            usage_figure = event_dir / f"{event.event_id}_path_usage.pdf"
+            if not args.skip_path_usage_plot:
+                write_path_usage_plot(path_usage_summary, event.event_id, contrast.test_id, cell_types, args.output_dir)
             manifest["events"][-1]["path_usage_figure"] = str(usage_figure.relative_to(args.output_dir))
-            usage_heatmap = write_path_usage_heatmap(path_usage_summary, event.event_id, contrast.test_id, cell_types, args.output_dir)
-            manifest["events"][-1]["path_usage_heatmap"] = str(usage_heatmap.relative_to(args.output_dir))
-        manifest["events"][-1]["junction_coverage_heatmap"] = str(junction_heatmap.relative_to(args.output_dir))
-        manifest["events"][-1]["exon_coverage_heatmap"] = str(exon_heatmap.relative_to(args.output_dir))
+        manifest["events"][-1]["oligodt_block_heatmap"] = str(oligodt_heatmap.relative_to(args.output_dir))
+        manifest["events"][-1]["ranhex_block_heatmap"] = str(ranhex_heatmap.relative_to(args.output_dir))
         if args.run_plots:
             if args.ggsashimi is None:
                 raise ValueError("--ggsashimi is required with --run-plots")

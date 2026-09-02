@@ -1,7 +1,7 @@
 {
   "contrast_selection": "largest mean_difference_norm among pairwise contrasts with BH FDR < 0.05",
   "normalization": "UMI-deduplicated spliced alignments per 1000 primer-specific half-cells",
-  "path_usage": "Mean and standard error of subject-level production fitted path proportions",
+  "block_heatmaps": "Path markers followed by each path's exon and junction components in 5-prime-to-3-prime RNA order; shared components are repeated under each path; colors are within-feature z-scores across all omnibus-eligible cell types",
   "runs": 16,
   "events": [
     {
@@ -19,10 +19,20 @@
       "path_annotation": "App/App_paths.gtf",
       "figure": "App/App_priming_sashimi.pdf",
       "path_usage_figure": "App/App_path_usage.pdf",
-      "feature_coverage": "App/App_feature_coverage.tsv",
-      "path_usage_heatmap": "App/App_path_usage_heatmap.pdf",
-      "junction_coverage_heatmap": "App/App_junction_coverage_heatmap.pdf",
-      "exon_coverage_heatmap": "App/App_exon_coverage_heatmap.pdf"
+      "heatmap_cell_types": [
+        "ASC",
+        "EX_cerebellum_granule",
+        "EX_cortical",
+        "EX_hippocampus_pyramidal",
+        "EX_thalamus",
+        "INH_medium_spiny",
+        "INH_midbrain",
+        "INH_migrating_interneuron",
+        "ODC"
+      ],
+      "block_heatmap_data": "App/App_block_heatmap.tsv",
+      "oligodt_block_heatmap": "App/App_oligodt_block_heatmap.pdf",
+      "ranhex_block_heatmap": "App/App_ranhex_block_heatmap.pdf"
     },
     {
       "gene": "Gria2",
@@ -39,10 +49,19 @@
       "path_annotation": "Gria2/Gria2_paths.gtf",
       "figure": "Gria2/Gria2_priming_sashimi.pdf",
       "path_usage_figure": "Gria2/Gria2_path_usage.pdf",
-      "feature_coverage": "Gria2/Gria2_feature_coverage.tsv",
-      "path_usage_heatmap": "Gria2/Gria2_path_usage_heatmap.pdf",
-      "junction_coverage_heatmap": "Gria2/Gria2_junction_coverage_heatmap.pdf",
-      "exon_coverage_heatmap": "Gria2/Gria2_exon_coverage_heatmap.pdf"
+      "heatmap_cell_types": [
+        "ASC",
+        "EX_cerebellum_granule",
+        "EX_cortical",
+        "EX_hippocampus_granule",
+        "EX_hippocampus_pyramidal",
+        "INH_medium_spiny",
+        "INH_midbrain",
+        "INH_migrating_interneuron"
+      ],
+      "block_heatmap_data": "Gria2/Gria2_block_heatmap.tsv",
+      "oligodt_block_heatmap": "Gria2/Gria2_oligodt_block_heatmap.pdf",
+      "ranhex_block_heatmap": "Gria2/Gria2_ranhex_block_heatmap.pdf"
     },
     {
       "gene": "Grin1",
@@ -59,11 +78,16 @@
       "path_annotation": "Grin1/Grin1_paths.gtf",
       "figure": "Grin1/Grin1_priming_sashimi.pdf",
       "path_usage_figure": "Grin1/Grin1_path_usage.pdf",
-      "feature_coverage": "Grin1/Grin1_feature_coverage.tsv",
-      "path_usage_heatmap": "Grin1/Grin1_path_usage_heatmap.pdf",
-      "junction_coverage_heatmap": "Grin1/Grin1_junction_coverage_heatmap.pdf",
-      "exon_coverage_heatmap": "Grin1/Grin1_exon_coverage_heatmap.pdf"
+      "heatmap_cell_types": [
+        "EX_cerebellum_granule",
+        "EX_cortical",
+        "INH_medium_spiny",
+        "INH_midbrain",
+        "INH_migrating_interneuron"
+      ],
+      "block_heatmap_data": "Grin1/Grin1_block_heatmap.tsv",
+      "oligodt_block_heatmap": "Grin1/Grin1_oligodt_block_heatmap.pdf",
+      "ranhex_block_heatmap": "Grin1/Grin1_ranhex_block_heatmap.pdf"
     }
-  ],
-  "coverage_heatmaps": "log1p coverage per 1000 primer-specific half-cells; exons use mean base coverage"
+  ]
 }

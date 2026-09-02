@@ -345,6 +345,23 @@ def main():
                                 "path_signature": json.dumps(signature),
                                 "proportion": float(proportion),
                             })
+            elif args.export_path_usage and test_effect == "cell_type":
+                if len(fitted_levels) != len(tested_levels):
+                    raise ValueError("fitted and requested cell-type levels differ")
+                fitted_level_names = dict(zip(fitted_levels, tested_levels))
+                for subject_id, level, fit in zip(null_subjects, null_labels, path_fits):
+                    for path_number, (signature, proportion) in enumerate(zip(signatures, fit.path_proportions), start=1):
+                        path_usage_rows.append({
+                            "test_id": test_id,
+                            "block_id": block_id,
+                            "gene_id": gene_id,
+                            "subject": subject_id,
+                            "cell_type": fitted_level_names[level],
+                            "path": f"Path {path_number}",
+                            "path_number": path_number,
+                            "path_signature": json.dumps(signature),
+                            "proportion": float(proportion),
+                        })
             result.pop("mean", None)
             result.pop("mean_covariance", None)
             observed_rows.append({

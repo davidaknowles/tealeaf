@@ -1,481 +1,961 @@
 subject	cell_type	primer	cells
+A_1	ASC	poly(dT)	49
+A_1	ASC	random hexamer	49
 A_1	EX_cerebellum_granule	poly(dT)	159
 A_1	EX_cerebellum_granule	random hexamer	159
 A_1	EX_cortical	poly(dT)	139
 A_1	EX_cortical	random hexamer	139
+A_1	EX_hippocampus_granule	poly(dT)	19
+A_1	EX_hippocampus_granule	random hexamer	19
 A_1	EX_hippocampus_pyramidal	poly(dT)	13
 A_1	EX_hippocampus_pyramidal	random hexamer	13
+A_1	EX_thalamus	poly(dT)	13
+A_1	EX_thalamus	random hexamer	13
 A_1	INH_medium_spiny	poly(dT)	45
 A_1	INH_medium_spiny	random hexamer	45
 A_1	INH_midbrain	poly(dT)	58
 A_1	INH_midbrain	random hexamer	58
+A_1	INH_migrating_interneuron	poly(dT)	37
+A_1	INH_migrating_interneuron	random hexamer	37
+A_1	ODC	poly(dT)	63
+A_1	ODC	random hexamer	63
+A_2	ASC	poly(dT)	56
+A_2	ASC	random hexamer	56
 A_2	EX_cerebellum_granule	poly(dT)	31
 A_2	EX_cerebellum_granule	random hexamer	31
 A_2	EX_cortical	poly(dT)	575
 A_2	EX_cortical	random hexamer	575
+A_2	EX_hippocampus_granule	poly(dT)	62
+A_2	EX_hippocampus_granule	random hexamer	62
 A_2	EX_hippocampus_pyramidal	poly(dT)	71
 A_2	EX_hippocampus_pyramidal	random hexamer	71
+A_2	EX_thalamus	poly(dT)	66
+A_2	EX_thalamus	random hexamer	66
 A_2	INH_medium_spiny	poly(dT)	63
 A_2	INH_medium_spiny	random hexamer	63
 A_2	INH_midbrain	poly(dT)	136
 A_2	INH_midbrain	random hexamer	136
+A_2	INH_migrating_interneuron	poly(dT)	112
+A_2	INH_migrating_interneuron	random hexamer	112
+A_2	ODC	poly(dT)	38
+A_2	ODC	random hexamer	38
+A_4	ASC	poly(dT)	68
+A_4	ASC	random hexamer	68
 A_4	EX_cerebellum_granule	poly(dT)	28
 A_4	EX_cerebellum_granule	random hexamer	28
 A_4	EX_cortical	poly(dT)	220
 A_4	EX_cortical	random hexamer	220
+A_4	EX_hippocampus_granule	poly(dT)	19
+A_4	EX_hippocampus_granule	random hexamer	19
 A_4	EX_hippocampus_pyramidal	poly(dT)	15
 A_4	EX_hippocampus_pyramidal	random hexamer	15
+A_4	EX_thalamus	poly(dT)	2
+A_4	EX_thalamus	random hexamer	2
 A_4	INH_medium_spiny	poly(dT)	58
 A_4	INH_medium_spiny	random hexamer	58
 A_4	INH_midbrain	poly(dT)	64
 A_4	INH_midbrain	random hexamer	64
+A_4	INH_migrating_interneuron	poly(dT)	33
+A_4	INH_migrating_interneuron	random hexamer	33
+A_4	ODC	poly(dT)	25
+A_4	ODC	random hexamer	25
+A_5	ASC	poly(dT)	12
+A_5	ASC	random hexamer	12
 A_5	EX_cerebellum_granule	poly(dT)	2
 A_5	EX_cerebellum_granule	random hexamer	2
 A_5	EX_cortical	poly(dT)	182
 A_5	EX_cortical	random hexamer	182
+A_5	EX_hippocampus_granule	poly(dT)	3
+A_5	EX_hippocampus_granule	random hexamer	3
 A_5	EX_hippocampus_pyramidal	poly(dT)	17
 A_5	EX_hippocampus_pyramidal	random hexamer	17
+A_5	EX_thalamus	poly(dT)	6
+A_5	EX_thalamus	random hexamer	6
 A_5	INH_medium_spiny	poly(dT)	44
 A_5	INH_medium_spiny	random hexamer	44
 A_5	INH_midbrain	poly(dT)	68
 A_5	INH_midbrain	random hexamer	68
+A_5	INH_migrating_interneuron	poly(dT)	40
+A_5	INH_migrating_interneuron	random hexamer	40
+A_5	ODC	poly(dT)	7
+A_5	ODC	random hexamer	7
+A_6	ASC	poly(dT)	13
+A_6	ASC	random hexamer	13
 A_6	EX_cerebellum_granule	poly(dT)	3
 A_6	EX_cerebellum_granule	random hexamer	3
 A_6	EX_cortical	poly(dT)	67
 A_6	EX_cortical	random hexamer	67
+A_6	EX_hippocampus_granule	poly(dT)	5
+A_6	EX_hippocampus_granule	random hexamer	5
 A_6	EX_hippocampus_pyramidal	poly(dT)	8
 A_6	EX_hippocampus_pyramidal	random hexamer	8
+A_6	EX_thalamus	poly(dT)	1
+A_6	EX_thalamus	random hexamer	1
 A_6	INH_medium_spiny	poly(dT)	16
 A_6	INH_medium_spiny	random hexamer	16
 A_6	INH_midbrain	poly(dT)	19
 A_6	INH_midbrain	random hexamer	19
+A_6	INH_migrating_interneuron	poly(dT)	33
+A_6	INH_migrating_interneuron	random hexamer	33
+A_6	ODC	poly(dT)	13
+A_6	ODC	random hexamer	13
+A_7	ASC	poly(dT)	62
+A_7	ASC	random hexamer	62
 A_7	EX_cerebellum_granule	poly(dT)	21
 A_7	EX_cerebellum_granule	random hexamer	21
 A_7	EX_cortical	poly(dT)	381
 A_7	EX_cortical	random hexamer	381
+A_7	EX_hippocampus_granule	poly(dT)	57
+A_7	EX_hippocampus_granule	random hexamer	57
 A_7	EX_hippocampus_pyramidal	poly(dT)	65
 A_7	EX_hippocampus_pyramidal	random hexamer	65
+A_7	EX_thalamus	poly(dT)	42
+A_7	EX_thalamus	random hexamer	42
 A_7	INH_medium_spiny	poly(dT)	37
 A_7	INH_medium_spiny	random hexamer	37
 A_7	INH_midbrain	poly(dT)	77
 A_7	INH_midbrain	random hexamer	77
+A_7	INH_migrating_interneuron	poly(dT)	157
+A_7	INH_migrating_interneuron	random hexamer	157
+A_7	ODC	poly(dT)	86
+A_7	ODC	random hexamer	86
+A_8	ASC	poly(dT)	60
+A_8	ASC	random hexamer	60
 A_8	EX_cerebellum_granule	poly(dT)	116
 A_8	EX_cerebellum_granule	random hexamer	116
 A_8	EX_cortical	poly(dT)	285
 A_8	EX_cortical	random hexamer	285
+A_8	EX_hippocampus_granule	poly(dT)	25
+A_8	EX_hippocampus_granule	random hexamer	25
 A_8	EX_hippocampus_pyramidal	poly(dT)	29
 A_8	EX_hippocampus_pyramidal	random hexamer	29
+A_8	EX_thalamus	poly(dT)	13
+A_8	EX_thalamus	random hexamer	13
 A_8	INH_medium_spiny	poly(dT)	74
 A_8	INH_medium_spiny	random hexamer	74
 A_8	INH_midbrain	poly(dT)	106
 A_8	INH_midbrain	random hexamer	106
+A_8	INH_migrating_interneuron	poly(dT)	57
+A_8	INH_migrating_interneuron	random hexamer	57
+A_8	ODC	poly(dT)	71
+A_8	ODC	random hexamer	71
+A_9	ASC	poly(dT)	19
+A_9	ASC	random hexamer	19
 A_9	EX_cerebellum_granule	poly(dT)	17
 A_9	EX_cerebellum_granule	random hexamer	17
 A_9	EX_cortical	poly(dT)	121
 A_9	EX_cortical	random hexamer	121
+A_9	EX_hippocampus_granule	poly(dT)	5
+A_9	EX_hippocampus_granule	random hexamer	5
 A_9	EX_hippocampus_pyramidal	poly(dT)	13
 A_9	EX_hippocampus_pyramidal	random hexamer	13
+A_9	EX_thalamus	poly(dT)	10
+A_9	EX_thalamus	random hexamer	10
 A_9	INH_medium_spiny	poly(dT)	24
 A_9	INH_medium_spiny	random hexamer	24
 A_9	INH_midbrain	poly(dT)	27
 A_9	INH_midbrain	random hexamer	27
+A_9	INH_migrating_interneuron	poly(dT)	48
+A_9	INH_migrating_interneuron	random hexamer	48
+A_9	ODC	poly(dT)	10
+A_9	ODC	random hexamer	10
+B_1	ASC	poly(dT)	59
+B_1	ASC	random hexamer	59
 B_1	EX_cerebellum_granule	poly(dT)	35
 B_1	EX_cerebellum_granule	random hexamer	35
 B_1	EX_cortical	poly(dT)	305
 B_1	EX_cortical	random hexamer	305
+B_1	EX_hippocampus_granule	poly(dT)	7
+B_1	EX_hippocampus_granule	random hexamer	7
 B_1	EX_hippocampus_pyramidal	poly(dT)	8
 B_1	EX_hippocampus_pyramidal	random hexamer	8
+B_1	EX_thalamus	poly(dT)	20
+B_1	EX_thalamus	random hexamer	20
 B_1	INH_medium_spiny	poly(dT)	131
 B_1	INH_medium_spiny	random hexamer	131
 B_1	INH_midbrain	poly(dT)	122
 B_1	INH_midbrain	random hexamer	122
+B_1	INH_migrating_interneuron	poly(dT)	63
+B_1	INH_migrating_interneuron	random hexamer	63
+B_1	ODC	poly(dT)	35
+B_1	ODC	random hexamer	35
+B_2	ASC	poly(dT)	37
+B_2	ASC	random hexamer	37
 B_2	EX_cerebellum_granule	poly(dT)	26
 B_2	EX_cerebellum_granule	random hexamer	26
 B_2	EX_cortical	poly(dT)	162
 B_2	EX_cortical	random hexamer	162
+B_2	EX_hippocampus_granule	poly(dT)	32
+B_2	EX_hippocampus_granule	random hexamer	32
 B_2	EX_hippocampus_pyramidal	poly(dT)	20
 B_2	EX_hippocampus_pyramidal	random hexamer	20
+B_2	EX_thalamus	poly(dT)	6
+B_2	EX_thalamus	random hexamer	6
 B_2	INH_medium_spiny	poly(dT)	76
 B_2	INH_medium_spiny	random hexamer	76
 B_2	INH_midbrain	poly(dT)	87
 B_2	INH_midbrain	random hexamer	87
+B_2	INH_migrating_interneuron	poly(dT)	44
+B_2	INH_migrating_interneuron	random hexamer	44
+B_2	ODC	poly(dT)	73
+B_2	ODC	random hexamer	73
+B_3	ASC	poly(dT)	54
+B_3	ASC	random hexamer	54
 B_3	EX_cerebellum_granule	poly(dT)	22
 B_3	EX_cerebellum_granule	random hexamer	22
 B_3	EX_cortical	poly(dT)	250
 B_3	EX_cortical	random hexamer	250
+B_3	EX_hippocampus_granule	poly(dT)	4
+B_3	EX_hippocampus_granule	random hexamer	4
 B_3	EX_hippocampus_pyramidal	poly(dT)	15
 B_3	EX_hippocampus_pyramidal	random hexamer	15
+B_3	EX_thalamus	poly(dT)	8
+B_3	EX_thalamus	random hexamer	8
 B_3	INH_medium_spiny	poly(dT)	50
 B_3	INH_medium_spiny	random hexamer	50
 B_3	INH_midbrain	poly(dT)	52
 B_3	INH_midbrain	random hexamer	52
+B_3	INH_migrating_interneuron	poly(dT)	38
+B_3	INH_migrating_interneuron	random hexamer	38
+B_3	ODC	poly(dT)	23
+B_3	ODC	random hexamer	23
+B_4	ASC	poly(dT)	19
+B_4	ASC	random hexamer	19
 B_4	EX_cerebellum_granule	poly(dT)	12
 B_4	EX_cerebellum_granule	random hexamer	12
 B_4	EX_cortical	poly(dT)	39
 B_4	EX_cortical	random hexamer	39
+B_4	EX_hippocampus_granule	poly(dT)	1
+B_4	EX_hippocampus_granule	random hexamer	1
 B_4	EX_hippocampus_pyramidal	poly(dT)	4
 B_4	EX_hippocampus_pyramidal	random hexamer	4
+B_4	EX_thalamus	poly(dT)	1
+B_4	EX_thalamus	random hexamer	1
 B_4	INH_medium_spiny	poly(dT)	6
 B_4	INH_medium_spiny	random hexamer	6
 B_4	INH_midbrain	poly(dT)	30
 B_4	INH_midbrain	random hexamer	30
+B_4	INH_migrating_interneuron	poly(dT)	30
+B_4	INH_migrating_interneuron	random hexamer	30
+B_4	ODC	poly(dT)	27
+B_4	ODC	random hexamer	27
+B_5	ASC	poly(dT)	56
+B_5	ASC	random hexamer	56
 B_5	EX_cerebellum_granule	poly(dT)	86
 B_5	EX_cerebellum_granule	random hexamer	86
 B_5	EX_cortical	poly(dT)	94
 B_5	EX_cortical	random hexamer	94
+B_5	EX_hippocampus_granule	poly(dT)	4
+B_5	EX_hippocampus_granule	random hexamer	4
 B_5	EX_hippocampus_pyramidal	poly(dT)	8
 B_5	EX_hippocampus_pyramidal	random hexamer	8
+B_5	EX_thalamus	poly(dT)	6
+B_5	EX_thalamus	random hexamer	6
 B_5	INH_medium_spiny	poly(dT)	36
 B_5	INH_medium_spiny	random hexamer	36
 B_5	INH_midbrain	poly(dT)	35
 B_5	INH_midbrain	random hexamer	35
+B_5	INH_migrating_interneuron	poly(dT)	27
+B_5	INH_migrating_interneuron	random hexamer	27
+B_5	ODC	poly(dT)	32
+B_5	ODC	random hexamer	32
+B_6	ASC	poly(dT)	20
+B_6	ASC	random hexamer	20
 B_6	EX_cerebellum_granule	poly(dT)	10
 B_6	EX_cerebellum_granule	random hexamer	10
 B_6	EX_cortical	poly(dT)	89
 B_6	EX_cortical	random hexamer	89
+B_6	EX_hippocampus_granule	poly(dT)	4
+B_6	EX_hippocampus_granule	random hexamer	4
 B_6	EX_hippocampus_pyramidal	poly(dT)	7
 B_6	EX_hippocampus_pyramidal	random hexamer	7
+B_6	EX_thalamus	poly(dT)	13
+B_6	EX_thalamus	random hexamer	13
 B_6	INH_medium_spiny	poly(dT)	41
 B_6	INH_medium_spiny	random hexamer	41
 B_6	INH_midbrain	poly(dT)	27
 B_6	INH_midbrain	random hexamer	27
+B_6	INH_migrating_interneuron	poly(dT)	39
+B_6	INH_migrating_interneuron	random hexamer	39
+B_6	ODC	poly(dT)	15
+B_6	ODC	random hexamer	15
+B_7	ASC	poly(dT)	20
+B_7	ASC	random hexamer	20
 B_7	EX_cerebellum_granule	poly(dT)	19
 B_7	EX_cerebellum_granule	random hexamer	19
 B_7	EX_cortical	poly(dT)	207
 B_7	EX_cortical	random hexamer	207
+B_7	EX_hippocampus_granule	poly(dT)	8
+B_7	EX_hippocampus_granule	random hexamer	8
 B_7	EX_hippocampus_pyramidal	poly(dT)	19
 B_7	EX_hippocampus_pyramidal	random hexamer	19
+B_7	EX_thalamus	poly(dT)	4
+B_7	EX_thalamus	random hexamer	4
 B_7	INH_medium_spiny	poly(dT)	37
 B_7	INH_medium_spiny	random hexamer	37
 B_7	INH_midbrain	poly(dT)	32
 B_7	INH_midbrain	random hexamer	32
+B_7	INH_migrating_interneuron	poly(dT)	38
+B_7	INH_migrating_interneuron	random hexamer	38
+B_7	ODC	poly(dT)	17
+B_7	ODC	random hexamer	17
+B_8	ASC	poly(dT)	50
+B_8	ASC	random hexamer	50
 B_8	EX_cerebellum_granule	poly(dT)	15
 B_8	EX_cerebellum_granule	random hexamer	15
 B_8	EX_cortical	poly(dT)	191
 B_8	EX_cortical	random hexamer	191
+B_8	EX_hippocampus_granule	poly(dT)	21
+B_8	EX_hippocampus_granule	random hexamer	21
 B_8	EX_hippocampus_pyramidal	poly(dT)	6
 B_8	EX_hippocampus_pyramidal	random hexamer	6
+B_8	EX_thalamus	poly(dT)	9
+B_8	EX_thalamus	random hexamer	9
 B_8	INH_medium_spiny	poly(dT)	62
 B_8	INH_medium_spiny	random hexamer	62
 B_8	INH_midbrain	poly(dT)	42
 B_8	INH_midbrain	random hexamer	42
+B_8	INH_migrating_interneuron	poly(dT)	59
+B_8	INH_migrating_interneuron	random hexamer	59
+B_8	ODC	poly(dT)	36
+B_8	ODC	random hexamer	36
+C_1	ASC	poly(dT)	30
+C_1	ASC	random hexamer	30
 C_1	EX_cerebellum_granule	poly(dT)	7
 C_1	EX_cerebellum_granule	random hexamer	7
 C_1	EX_cortical	poly(dT)	126
 C_1	EX_cortical	random hexamer	126
+C_1	EX_hippocampus_granule	poly(dT)	7
+C_1	EX_hippocampus_granule	random hexamer	7
 C_1	EX_hippocampus_pyramidal	poly(dT)	14
 C_1	EX_hippocampus_pyramidal	random hexamer	14
+C_1	EX_thalamus	poly(dT)	12
+C_1	EX_thalamus	random hexamer	12
 C_1	INH_medium_spiny	poly(dT)	25
 C_1	INH_medium_spiny	random hexamer	25
 C_1	INH_midbrain	poly(dT)	35
 C_1	INH_midbrain	random hexamer	35
+C_1	INH_migrating_interneuron	poly(dT)	83
+C_1	INH_migrating_interneuron	random hexamer	83
+C_1	ODC	poly(dT)	35
+C_1	ODC	random hexamer	35
+C_2	ASC	poly(dT)	49
+C_2	ASC	random hexamer	49
 C_2	EX_cerebellum_granule	poly(dT)	24
 C_2	EX_cerebellum_granule	random hexamer	24
 C_2	EX_cortical	poly(dT)	343
 C_2	EX_cortical	random hexamer	343
+C_2	EX_hippocampus_granule	poly(dT)	9
+C_2	EX_hippocampus_granule	random hexamer	9
 C_2	EX_hippocampus_pyramidal	poly(dT)	26
 C_2	EX_hippocampus_pyramidal	random hexamer	26
+C_2	EX_thalamus	poly(dT)	4
+C_2	EX_thalamus	random hexamer	4
 C_2	INH_medium_spiny	poly(dT)	142
 C_2	INH_medium_spiny	random hexamer	142
 C_2	INH_midbrain	poly(dT)	46
 C_2	INH_midbrain	random hexamer	46
+C_2	INH_migrating_interneuron	poly(dT)	172
+C_2	INH_migrating_interneuron	random hexamer	172
+C_2	ODC	poly(dT)	19
+C_2	ODC	random hexamer	19
+C_3	ASC	poly(dT)	21
+C_3	ASC	random hexamer	21
 C_3	EX_cerebellum_granule	poly(dT)	32
 C_3	EX_cerebellum_granule	random hexamer	32
 C_3	EX_cortical	poly(dT)	199
 C_3	EX_cortical	random hexamer	199
+C_3	EX_hippocampus_granule	poly(dT)	8
+C_3	EX_hippocampus_granule	random hexamer	8
 C_3	EX_hippocampus_pyramidal	poly(dT)	18
 C_3	EX_hippocampus_pyramidal	random hexamer	18
+C_3	EX_thalamus	poly(dT)	12
+C_3	EX_thalamus	random hexamer	12
 C_3	INH_medium_spiny	poly(dT)	65
 C_3	INH_medium_spiny	random hexamer	65
 C_3	INH_midbrain	poly(dT)	30
 C_3	INH_midbrain	random hexamer	30
+C_3	INH_migrating_interneuron	poly(dT)	89
+C_3	INH_migrating_interneuron	random hexamer	89
+C_3	ODC	poly(dT)	17
+C_3	ODC	random hexamer	17
+C_4	ASC	poly(dT)	93
+C_4	ASC	random hexamer	93
 C_4	EX_cerebellum_granule	poly(dT)	23
 C_4	EX_cerebellum_granule	random hexamer	23
 C_4	EX_cortical	poly(dT)	573
 C_4	EX_cortical	random hexamer	573
+C_4	EX_hippocampus_granule	poly(dT)	32
+C_4	EX_hippocampus_granule	random hexamer	32
 C_4	EX_hippocampus_pyramidal	poly(dT)	24
 C_4	EX_hippocampus_pyramidal	random hexamer	24
+C_4	EX_thalamus	poly(dT)	8
+C_4	EX_thalamus	random hexamer	8
 C_4	INH_medium_spiny	poly(dT)	169
 C_4	INH_medium_spiny	random hexamer	169
 C_4	INH_midbrain	poly(dT)	112
 C_4	INH_midbrain	random hexamer	112
+C_4	INH_migrating_interneuron	poly(dT)	129
+C_4	INH_migrating_interneuron	random hexamer	129
+C_4	ODC	poly(dT)	50
+C_4	ODC	random hexamer	50
+C_5	ASC	poly(dT)	73
+C_5	ASC	random hexamer	73
 C_5	EX_cerebellum_granule	poly(dT)	68
 C_5	EX_cerebellum_granule	random hexamer	68
 C_5	EX_cortical	poly(dT)	281
 C_5	EX_cortical	random hexamer	281
+C_5	EX_hippocampus_granule	poly(dT)	48
+C_5	EX_hippocampus_granule	random hexamer	48
 C_5	EX_hippocampus_pyramidal	poly(dT)	19
 C_5	EX_hippocampus_pyramidal	random hexamer	19
+C_5	EX_thalamus	poly(dT)	14
+C_5	EX_thalamus	random hexamer	14
 C_5	INH_medium_spiny	poly(dT)	106
 C_5	INH_medium_spiny	random hexamer	106
 C_5	INH_midbrain	poly(dT)	99
 C_5	INH_midbrain	random hexamer	99
+C_5	INH_migrating_interneuron	poly(dT)	60
+C_5	INH_migrating_interneuron	random hexamer	60
+C_5	ODC	poly(dT)	46
+C_5	ODC	random hexamer	46
+C_6	ASC	poly(dT)	84
+C_6	ASC	random hexamer	84
 C_6	EX_cerebellum_granule	poly(dT)	56
 C_6	EX_cerebellum_granule	random hexamer	56
 C_6	EX_cortical	poly(dT)	342
 C_6	EX_cortical	random hexamer	342
+C_6	EX_hippocampus_granule	poly(dT)	24
+C_6	EX_hippocampus_granule	random hexamer	24
 C_6	EX_hippocampus_pyramidal	poly(dT)	18
 C_6	EX_hippocampus_pyramidal	random hexamer	18
+C_6	EX_thalamus	poly(dT)	13
+C_6	EX_thalamus	random hexamer	13
 C_6	INH_medium_spiny	poly(dT)	98
 C_6	INH_medium_spiny	random hexamer	98
 C_6	INH_midbrain	poly(dT)	90
 C_6	INH_midbrain	random hexamer	90
+C_6	INH_migrating_interneuron	poly(dT)	86
+C_6	INH_migrating_interneuron	random hexamer	86
+C_6	ODC	poly(dT)	44
+C_6	ODC	random hexamer	44
+C_7	ASC	poly(dT)	30
+C_7	ASC	random hexamer	30
 C_7	EX_cerebellum_granule	poly(dT)	27
 C_7	EX_cerebellum_granule	random hexamer	27
 C_7	EX_cortical	poly(dT)	62
 C_7	EX_cortical	random hexamer	62
+C_7	EX_hippocampus_granule	poly(dT)	6
+C_7	EX_hippocampus_granule	random hexamer	6
 C_7	EX_hippocampus_pyramidal	poly(dT)	4
 C_7	EX_hippocampus_pyramidal	random hexamer	4
+C_7	EX_thalamus	poly(dT)	2
+C_7	EX_thalamus	random hexamer	2
 C_7	INH_medium_spiny	poly(dT)	25
 C_7	INH_medium_spiny	random hexamer	25
 C_7	INH_midbrain	poly(dT)	29
 C_7	INH_midbrain	random hexamer	29
+C_7	INH_migrating_interneuron	poly(dT)	52
+C_7	INH_migrating_interneuron	random hexamer	52
+C_7	ODC	poly(dT)	32
+C_7	ODC	random hexamer	32
+C_8	ASC	poly(dT)	54
+C_8	ASC	random hexamer	54
 C_8	EX_cerebellum_granule	poly(dT)	25
 C_8	EX_cerebellum_granule	random hexamer	25
 C_8	EX_cortical	poly(dT)	486
 C_8	EX_cortical	random hexamer	486
+C_8	EX_hippocampus_granule	poly(dT)	24
+C_8	EX_hippocampus_granule	random hexamer	24
 C_8	EX_hippocampus_pyramidal	poly(dT)	49
 C_8	EX_hippocampus_pyramidal	random hexamer	49
+C_8	EX_thalamus	poly(dT)	35
+C_8	EX_thalamus	random hexamer	35
 C_8	INH_medium_spiny	poly(dT)	138
 C_8	INH_medium_spiny	random hexamer	138
 C_8	INH_midbrain	poly(dT)	168
 C_8	INH_midbrain	random hexamer	168
+C_8	INH_migrating_interneuron	poly(dT)	172
+C_8	INH_migrating_interneuron	random hexamer	172
+C_8	ODC	poly(dT)	27
+C_8	ODC	random hexamer	27
+D_1	ASC	poly(dT)	63
+D_1	ASC	random hexamer	63
 D_1	EX_cerebellum_granule	poly(dT)	55
 D_1	EX_cerebellum_granule	random hexamer	55
 D_1	EX_cortical	poly(dT)	170
 D_1	EX_cortical	random hexamer	170
+D_1	EX_hippocampus_granule	poly(dT)	17
+D_1	EX_hippocampus_granule	random hexamer	17
 D_1	EX_hippocampus_pyramidal	poly(dT)	27
 D_1	EX_hippocampus_pyramidal	random hexamer	27
+D_1	EX_thalamus	poly(dT)	8
+D_1	EX_thalamus	random hexamer	8
 D_1	INH_medium_spiny	poly(dT)	39
 D_1	INH_medium_spiny	random hexamer	39
 D_1	INH_midbrain	poly(dT)	41
 D_1	INH_midbrain	random hexamer	41
+D_1	INH_migrating_interneuron	poly(dT)	56
+D_1	INH_migrating_interneuron	random hexamer	56
+D_1	ODC	poly(dT)	59
+D_1	ODC	random hexamer	59
+D_2	ASC	poly(dT)	77
+D_2	ASC	random hexamer	77
 D_2	EX_cerebellum_granule	poly(dT)	40
 D_2	EX_cerebellum_granule	random hexamer	40
 D_2	EX_cortical	poly(dT)	378
 D_2	EX_cortical	random hexamer	378
+D_2	EX_hippocampus_granule	poly(dT)	104
+D_2	EX_hippocampus_granule	random hexamer	104
 D_2	EX_hippocampus_pyramidal	poly(dT)	37
 D_2	EX_hippocampus_pyramidal	random hexamer	37
+D_2	EX_thalamus	poly(dT)	37
+D_2	EX_thalamus	random hexamer	37
 D_2	INH_medium_spiny	poly(dT)	13
 D_2	INH_medium_spiny	random hexamer	13
 D_2	INH_midbrain	poly(dT)	125
 D_2	INH_midbrain	random hexamer	125
+D_2	INH_migrating_interneuron	poly(dT)	78
+D_2	INH_migrating_interneuron	random hexamer	78
+D_2	ODC	poly(dT)	98
+D_2	ODC	random hexamer	98
+D_3	ASC	poly(dT)	88
+D_3	ASC	random hexamer	88
 D_3	EX_cerebellum_granule	poly(dT)	41
 D_3	EX_cerebellum_granule	random hexamer	41
 D_3	EX_cortical	poly(dT)	119
 D_3	EX_cortical	random hexamer	119
+D_3	EX_hippocampus_granule	poly(dT)	31
+D_3	EX_hippocampus_granule	random hexamer	31
 D_3	EX_hippocampus_pyramidal	poly(dT)	11
 D_3	EX_hippocampus_pyramidal	random hexamer	11
+D_3	EX_thalamus	poly(dT)	3
+D_3	EX_thalamus	random hexamer	3
 D_3	INH_medium_spiny	poly(dT)	85
 D_3	INH_medium_spiny	random hexamer	85
 D_3	INH_midbrain	poly(dT)	45
 D_3	INH_midbrain	random hexamer	45
+D_3	INH_migrating_interneuron	poly(dT)	59
+D_3	INH_migrating_interneuron	random hexamer	59
+D_3	ODC	poly(dT)	92
+D_3	ODC	random hexamer	92
+D_4	ASC	poly(dT)	58
+D_4	ASC	random hexamer	58
 D_4	EX_cerebellum_granule	poly(dT)	23
 D_4	EX_cerebellum_granule	random hexamer	23
 D_4	EX_cortical	poly(dT)	259
 D_4	EX_cortical	random hexamer	259
+D_4	EX_hippocampus_granule	poly(dT)	17
+D_4	EX_hippocampus_granule	random hexamer	17
 D_4	EX_hippocampus_pyramidal	poly(dT)	17
 D_4	EX_hippocampus_pyramidal	random hexamer	17
+D_4	EX_thalamus	poly(dT)	7
+D_4	EX_thalamus	random hexamer	7
 D_4	INH_medium_spiny	poly(dT)	74
 D_4	INH_medium_spiny	random hexamer	74
 D_4	INH_midbrain	poly(dT)	75
 D_4	INH_midbrain	random hexamer	75
+D_4	INH_migrating_interneuron	poly(dT)	160
+D_4	INH_migrating_interneuron	random hexamer	160
+D_4	ODC	poly(dT)	33
+D_4	ODC	random hexamer	33
+D_5	ASC	poly(dT)	29
+D_5	ASC	random hexamer	29
 D_5	EX_cerebellum_granule	poly(dT)	9
 D_5	EX_cerebellum_granule	random hexamer	9
 D_5	EX_cortical	poly(dT)	231
 D_5	EX_cortical	random hexamer	231
+D_5	EX_hippocampus_granule	poly(dT)	6
+D_5	EX_hippocampus_granule	random hexamer	6
 D_5	EX_hippocampus_pyramidal	poly(dT)	18
 D_5	EX_hippocampus_pyramidal	random hexamer	18
+D_5	EX_thalamus	poly(dT)	10
+D_5	EX_thalamus	random hexamer	10
 D_5	INH_medium_spiny	poly(dT)	55
 D_5	INH_medium_spiny	random hexamer	55
 D_5	INH_midbrain	poly(dT)	53
 D_5	INH_midbrain	random hexamer	53
+D_5	INH_migrating_interneuron	poly(dT)	115
+D_5	INH_migrating_interneuron	random hexamer	115
+D_5	ODC	poly(dT)	23
+D_5	ODC	random hexamer	23
+D_6	ASC	poly(dT)	106
+D_6	ASC	random hexamer	106
 D_6	EX_cerebellum_granule	poly(dT)	201
 D_6	EX_cerebellum_granule	random hexamer	201
 D_6	EX_cortical	poly(dT)	479
 D_6	EX_cortical	random hexamer	479
+D_6	EX_hippocampus_granule	poly(dT)	59
+D_6	EX_hippocampus_granule	random hexamer	59
 D_6	EX_hippocampus_pyramidal	poly(dT)	38
 D_6	EX_hippocampus_pyramidal	random hexamer	38
+D_6	EX_thalamus	poly(dT)	38
+D_6	EX_thalamus	random hexamer	38
 D_6	INH_medium_spiny	poly(dT)	114
 D_6	INH_medium_spiny	random hexamer	114
 D_6	INH_midbrain	poly(dT)	144
 D_6	INH_midbrain	random hexamer	144
+D_6	INH_migrating_interneuron	poly(dT)	104
+D_6	INH_migrating_interneuron	random hexamer	104
+D_6	ODC	poly(dT)	81
+D_6	ODC	random hexamer	81
+D_7	ASC	poly(dT)	15
+D_7	ASC	random hexamer	15
 D_7	EX_cerebellum_granule	poly(dT)	16
 D_7	EX_cerebellum_granule	random hexamer	16
 D_7	EX_cortical	poly(dT)	133
 D_7	EX_cortical	random hexamer	133
+D_7	EX_hippocampus_granule	poly(dT)	15
+D_7	EX_hippocampus_granule	random hexamer	15
 D_7	EX_hippocampus_pyramidal	poly(dT)	21
 D_7	EX_hippocampus_pyramidal	random hexamer	21
+D_7	EX_thalamus	poly(dT)	9
+D_7	EX_thalamus	random hexamer	9
 D_7	INH_medium_spiny	poly(dT)	42
 D_7	INH_medium_spiny	random hexamer	42
 D_7	INH_midbrain	poly(dT)	53
 D_7	INH_midbrain	random hexamer	53
+D_7	INH_migrating_interneuron	poly(dT)	32
+D_7	INH_migrating_interneuron	random hexamer	32
+D_7	ODC	poly(dT)	28
+D_7	ODC	random hexamer	28
+D_8	ASC	poly(dT)	33
+D_8	ASC	random hexamer	33
 D_8	EX_cerebellum_granule	poly(dT)	25
 D_8	EX_cerebellum_granule	random hexamer	25
 D_8	EX_cortical	poly(dT)	282
 D_8	EX_cortical	random hexamer	282
+D_8	EX_hippocampus_granule	poly(dT)	27
+D_8	EX_hippocampus_granule	random hexamer	27
 D_8	EX_hippocampus_pyramidal	poly(dT)	25
 D_8	EX_hippocampus_pyramidal	random hexamer	25
+D_8	EX_thalamus	poly(dT)	22
+D_8	EX_thalamus	random hexamer	22
 D_8	INH_medium_spiny	poly(dT)	75
 D_8	INH_medium_spiny	random hexamer	75
 D_8	INH_midbrain	poly(dT)	99
 D_8	INH_midbrain	random hexamer	99
+D_8	INH_migrating_interneuron	poly(dT)	192
+D_8	INH_migrating_interneuron	random hexamer	192
+D_8	ODC	poly(dT)	49
+D_8	ODC	random hexamer	49
+E_1	ASC	poly(dT)	61
+E_1	ASC	random hexamer	61
 E_1	EX_cerebellum_granule	poly(dT)	41
 E_1	EX_cerebellum_granule	random hexamer	41
 E_1	EX_cortical	poly(dT)	341
 E_1	EX_cortical	random hexamer	341
+E_1	EX_hippocampus_granule	poly(dT)	21
+E_1	EX_hippocampus_granule	random hexamer	21
 E_1	EX_hippocampus_pyramidal	poly(dT)	25
 E_1	EX_hippocampus_pyramidal	random hexamer	25
+E_1	EX_thalamus	poly(dT)	15
+E_1	EX_thalamus	random hexamer	15
 E_1	INH_medium_spiny	poly(dT)	116
 E_1	INH_medium_spiny	random hexamer	116
 E_1	INH_midbrain	poly(dT)	63
 E_1	INH_midbrain	random hexamer	63
+E_1	INH_migrating_interneuron	poly(dT)	159
+E_1	INH_migrating_interneuron	random hexamer	159
+E_1	ODC	poly(dT)	66
+E_1	ODC	random hexamer	66
+E_2	ASC	poly(dT)	17
+E_2	ASC	random hexamer	17
 E_2	EX_cerebellum_granule	poly(dT)	28
 E_2	EX_cerebellum_granule	random hexamer	28
 E_2	EX_cortical	poly(dT)	68
 E_2	EX_cortical	random hexamer	68
+E_2	EX_hippocampus_granule	poly(dT)	6
+E_2	EX_hippocampus_granule	random hexamer	6
 E_2	EX_hippocampus_pyramidal	poly(dT)	6
 E_2	EX_hippocampus_pyramidal	random hexamer	6
+E_2	EX_thalamus	poly(dT)	5
+E_2	EX_thalamus	random hexamer	5
 E_2	INH_medium_spiny	poly(dT)	22
 E_2	INH_medium_spiny	random hexamer	22
 E_2	INH_midbrain	poly(dT)	20
 E_2	INH_midbrain	random hexamer	20
+E_2	INH_migrating_interneuron	poly(dT)	101
+E_2	INH_migrating_interneuron	random hexamer	101
+E_2	ODC	poly(dT)	52
+E_2	ODC	random hexamer	52
+E_3	ASC	poly(dT)	116
+E_3	ASC	random hexamer	116
 E_3	EX_cerebellum_granule	poly(dT)	116
 E_3	EX_cerebellum_granule	random hexamer	116
 E_3	EX_cortical	poly(dT)	522
 E_3	EX_cortical	random hexamer	522
+E_3	EX_hippocampus_granule	poly(dT)	46
+E_3	EX_hippocampus_granule	random hexamer	46
 E_3	EX_hippocampus_pyramidal	poly(dT)	16
 E_3	EX_hippocampus_pyramidal	random hexamer	16
+E_3	EX_thalamus	poly(dT)	14
+E_3	EX_thalamus	random hexamer	14
 E_3	INH_medium_spiny	poly(dT)	125
 E_3	INH_medium_spiny	random hexamer	125
 E_3	INH_midbrain	poly(dT)	82
 E_3	INH_midbrain	random hexamer	82
+E_3	INH_migrating_interneuron	poly(dT)	99
+E_3	INH_migrating_interneuron	random hexamer	99
+E_3	ODC	poly(dT)	49
+E_3	ODC	random hexamer	49
+E_4	ASC	poly(dT)	41
+E_4	ASC	random hexamer	41
 E_4	EX_cerebellum_granule	poly(dT)	53
 E_4	EX_cerebellum_granule	random hexamer	53
 E_4	EX_cortical	poly(dT)	92
 E_4	EX_cortical	random hexamer	92
+E_4	EX_hippocampus_granule	poly(dT)	15
+E_4	EX_hippocampus_granule	random hexamer	15
 E_4	EX_hippocampus_pyramidal	poly(dT)	7
 E_4	EX_hippocampus_pyramidal	random hexamer	7
+E_4	EX_thalamus	poly(dT)	2
+E_4	EX_thalamus	random hexamer	2
 E_4	INH_medium_spiny	poly(dT)	45
 E_4	INH_medium_spiny	random hexamer	45
 E_4	INH_midbrain	poly(dT)	20
 E_4	INH_midbrain	random hexamer	20
+E_4	INH_migrating_interneuron	poly(dT)	34
+E_4	INH_migrating_interneuron	random hexamer	34
+E_4	ODC	poly(dT)	32
+E_4	ODC	random hexamer	32
+E_5	ASC	poly(dT)	126
+E_5	ASC	random hexamer	126
 E_5	EX_cerebellum_granule	poly(dT)	62
 E_5	EX_cerebellum_granule	random hexamer	62
 E_5	EX_cortical	poly(dT)	483
 E_5	EX_cortical	random hexamer	483
+E_5	EX_hippocampus_granule	poly(dT)	25
+E_5	EX_hippocampus_granule	random hexamer	25
 E_5	EX_hippocampus_pyramidal	poly(dT)	23
 E_5	EX_hippocampus_pyramidal	random hexamer	23
+E_5	EX_thalamus	poly(dT)	32
+E_5	EX_thalamus	random hexamer	32
 E_5	INH_medium_spiny	poly(dT)	282
 E_5	INH_medium_spiny	random hexamer	282
 E_5	INH_midbrain	poly(dT)	76
 E_5	INH_midbrain	random hexamer	76
+E_5	INH_migrating_interneuron	poly(dT)	109
+E_5	INH_migrating_interneuron	random hexamer	109
+E_5	ODC	poly(dT)	82
+E_5	ODC	random hexamer	82
+E_6	ASC	poly(dT)	45
+E_6	ASC	random hexamer	45
 E_6	EX_cerebellum_granule	poly(dT)	11
 E_6	EX_cerebellum_granule	random hexamer	11
 E_6	EX_cortical	poly(dT)	197
 E_6	EX_cortical	random hexamer	197
+E_6	EX_hippocampus_granule	poly(dT)	5
+E_6	EX_hippocampus_granule	random hexamer	5
 E_6	EX_hippocampus_pyramidal	poly(dT)	8
 E_6	EX_hippocampus_pyramidal	random hexamer	8
+E_6	EX_thalamus	poly(dT)	4
+E_6	EX_thalamus	random hexamer	4
 E_6	INH_medium_spiny	poly(dT)	31
 E_6	INH_medium_spiny	random hexamer	31
 E_6	INH_midbrain	poly(dT)	33
 E_6	INH_midbrain	random hexamer	33
+E_6	INH_migrating_interneuron	poly(dT)	87
+E_6	INH_migrating_interneuron	random hexamer	87
+E_6	ODC	poly(dT)	18
+E_6	ODC	random hexamer	18
+E_7	ASC	poly(dT)	42
+E_7	ASC	random hexamer	42
 E_7	EX_cerebellum_granule	poly(dT)	58
 E_7	EX_cerebellum_granule	random hexamer	58
 E_7	EX_cortical	poly(dT)	93
 E_7	EX_cortical	random hexamer	93
+E_7	EX_hippocampus_granule	poly(dT)	5
+E_7	EX_hippocampus_granule	random hexamer	5
 E_7	EX_hippocampus_pyramidal	poly(dT)	4
 E_7	EX_hippocampus_pyramidal	random hexamer	4
+E_7	EX_thalamus	poly(dT)	4
+E_7	EX_thalamus	random hexamer	4
 E_7	INH_medium_spiny	poly(dT)	21
 E_7	INH_medium_spiny	random hexamer	21
 E_7	INH_midbrain	poly(dT)	25
 E_7	INH_midbrain	random hexamer	25
+E_7	INH_migrating_interneuron	poly(dT)	40
+E_7	INH_migrating_interneuron	random hexamer	40
+E_7	ODC	poly(dT)	29
+E_7	ODC	random hexamer	29
+E_8	ASC	poly(dT)	60
+E_8	ASC	random hexamer	60
 E_8	EX_cerebellum_granule	poly(dT)	47
 E_8	EX_cerebellum_granule	random hexamer	47
 E_8	EX_cortical	poly(dT)	217
 E_8	EX_cortical	random hexamer	217
+E_8	EX_hippocampus_granule	poly(dT)	22
+E_8	EX_hippocampus_granule	random hexamer	22
 E_8	EX_hippocampus_pyramidal	poly(dT)	12
 E_8	EX_hippocampus_pyramidal	random hexamer	12
+E_8	EX_thalamus	poly(dT)	12
+E_8	EX_thalamus	random hexamer	12
 E_8	INH_medium_spiny	poly(dT)	33
 E_8	INH_medium_spiny	random hexamer	33
 E_8	INH_midbrain	poly(dT)	64
 E_8	INH_midbrain	random hexamer	64
+E_8	INH_migrating_interneuron	poly(dT)	179
+E_8	INH_migrating_interneuron	random hexamer	179
+E_8	ODC	poly(dT)	27
+E_8	ODC	random hexamer	27
+F_1	ASC	poly(dT)	76
+F_1	ASC	random hexamer	76
 F_1	EX_cerebellum_granule	poly(dT)	64
 F_1	EX_cerebellum_granule	random hexamer	64
 F_1	EX_cortical	poly(dT)	393
 F_1	EX_cortical	random hexamer	393
+F_1	EX_hippocampus_granule	poly(dT)	38
+F_1	EX_hippocampus_granule	random hexamer	38
 F_1	EX_hippocampus_pyramidal	poly(dT)	25
 F_1	EX_hippocampus_pyramidal	random hexamer	25
+F_1	EX_thalamus	poly(dT)	30
+F_1	EX_thalamus	random hexamer	30
 F_1	INH_medium_spiny	poly(dT)	145
 F_1	INH_medium_spiny	random hexamer	145
 F_1	INH_midbrain	poly(dT)	160
 F_1	INH_midbrain	random hexamer	160
+F_1	INH_migrating_interneuron	poly(dT)	220
+F_1	INH_migrating_interneuron	random hexamer	220
+F_1	ODC	poly(dT)	37
+F_1	ODC	random hexamer	37
+F_2	ASC	poly(dT)	73
+F_2	ASC	random hexamer	73
 F_2	EX_cerebellum_granule	poly(dT)	64
 F_2	EX_cerebellum_granule	random hexamer	64
 F_2	EX_cortical	poly(dT)	170
 F_2	EX_cortical	random hexamer	170
+F_2	EX_hippocampus_granule	poly(dT)	23
+F_2	EX_hippocampus_granule	random hexamer	23
 F_2	EX_hippocampus_pyramidal	poly(dT)	17
 F_2	EX_hippocampus_pyramidal	random hexamer	17
+F_2	EX_thalamus	poly(dT)	7
+F_2	EX_thalamus	random hexamer	7
 F_2	INH_medium_spiny	poly(dT)	58
 F_2	INH_medium_spiny	random hexamer	58
 F_2	INH_midbrain	poly(dT)	37
 F_2	INH_midbrain	random hexamer	37
+F_2	INH_migrating_interneuron	poly(dT)	65
+F_2	INH_migrating_interneuron	random hexamer	65
+F_2	ODC	poly(dT)	43
+F_2	ODC	random hexamer	43
+F_3	ASC	poly(dT)	52
+F_3	ASC	random hexamer	52
 F_3	EX_cerebellum_granule	poly(dT)	17
 F_3	EX_cerebellum_granule	random hexamer	17
 F_3	EX_cortical	poly(dT)	95
 F_3	EX_cortical	random hexamer	95
+F_3	EX_hippocampus_granule	poly(dT)	12
+F_3	EX_hippocampus_granule	random hexamer	12
 F_3	EX_hippocampus_pyramidal	poly(dT)	5
 F_3	EX_hippocampus_pyramidal	random hexamer	5
+F_3	EX_thalamus	poly(dT)	3
+F_3	EX_thalamus	random hexamer	3
 F_3	INH_medium_spiny	poly(dT)	27
 F_3	INH_medium_spiny	random hexamer	27
 F_3	INH_midbrain	poly(dT)	37
 F_3	INH_midbrain	random hexamer	37
+F_3	INH_migrating_interneuron	poly(dT)	62
+F_3	INH_migrating_interneuron	random hexamer	62
+F_3	ODC	poly(dT)	34
+F_3	ODC	random hexamer	34
+F_4	ASC	poly(dT)	116
+F_4	ASC	random hexamer	116
 F_4	EX_cerebellum_granule	poly(dT)	205
 F_4	EX_cerebellum_granule	random hexamer	205
 F_4	EX_cortical	poly(dT)	236
 F_4	EX_cortical	random hexamer	236
+F_4	EX_hippocampus_granule	poly(dT)	17
+F_4	EX_hippocampus_granule	random hexamer	17
 F_4	EX_hippocampus_pyramidal	poly(dT)	15
 F_4	EX_hippocampus_pyramidal	random hexamer	15
+F_4	EX_thalamus	poly(dT)	19
+F_4	EX_thalamus	random hexamer	19
 F_4	INH_medium_spiny	poly(dT)	98
 F_4	INH_medium_spiny	random hexamer	98
 F_4	INH_midbrain	poly(dT)	129
 F_4	INH_midbrain	random hexamer	129
+F_4	INH_migrating_interneuron	poly(dT)	149
+F_4	INH_migrating_interneuron	random hexamer	149
+F_4	ODC	poly(dT)	68
+F_4	ODC	random hexamer	68
+F_5	ASC	poly(dT)	61
+F_5	ASC	random hexamer	61
 F_5	EX_cerebellum_granule	poly(dT)	68
 F_5	EX_cerebellum_granule	random hexamer	68
 F_5	EX_cortical	poly(dT)	519
 F_5	EX_cortical	random hexamer	519
+F_5	EX_hippocampus_granule	poly(dT)	54
+F_5	EX_hippocampus_granule	random hexamer	54
 F_5	EX_hippocampus_pyramidal	poly(dT)	69
 F_5	EX_hippocampus_pyramidal	random hexamer	69
+F_5	EX_thalamus	poly(dT)	67
+F_5	EX_thalamus	random hexamer	67
 F_5	INH_medium_spiny	poly(dT)	32
 F_5	INH_medium_spiny	random hexamer	32
 F_5	INH_midbrain	poly(dT)	108
 F_5	INH_midbrain	random hexamer	108
+F_5	INH_migrating_interneuron	poly(dT)	115
+F_5	INH_migrating_interneuron	random hexamer	115
+F_5	ODC	poly(dT)	58
+F_5	ODC	random hexamer	58
+F_6	ASC	poly(dT)	91
+F_6	ASC	random hexamer	91
 F_6	EX_cerebellum_granule	poly(dT)	64
 F_6	EX_cerebellum_granule	random hexamer	64
 F_6	EX_cortical	poly(dT)	349
 F_6	EX_cortical	random hexamer	349
+F_6	EX_hippocampus_granule	poly(dT)	50
+F_6	EX_hippocampus_granule	random hexamer	50
 F_6	EX_hippocampus_pyramidal	poly(dT)	29
 F_6	EX_hippocampus_pyramidal	random hexamer	29
+F_6	EX_thalamus	poly(dT)	19
+F_6	EX_thalamus	random hexamer	19
 F_6	INH_medium_spiny	poly(dT)	53
 F_6	INH_medium_spiny	random hexamer	53
 F_6	INH_midbrain	poly(dT)	52
 F_6	INH_midbrain	random hexamer	52
+F_6	INH_migrating_interneuron	poly(dT)	116
+F_6	INH_migrating_interneuron	random hexamer	116
+F_6	ODC	poly(dT)	20
+F_6	ODC	random hexamer	20
+F_7	ASC	poly(dT)	103
+F_7	ASC	random hexamer	103
 F_7	EX_cerebellum_granule	poly(dT)	159
 F_7	EX_cerebellum_granule	random hexamer	159
 F_7	EX_cortical	poly(dT)	263
 F_7	EX_cortical	random hexamer	263
+F_7	EX_hippocampus_granule	poly(dT)	18
+F_7	EX_hippocampus_granule	random hexamer	18
 F_7	EX_hippocampus_pyramidal	poly(dT)	16
 F_7	EX_hippocampus_pyramidal	random hexamer	16
+F_7	EX_thalamus	poly(dT)	18
+F_7	EX_thalamus	random hexamer	18
 F_7	INH_medium_spiny	poly(dT)	63
 F_7	INH_medium_spiny	random hexamer	63
 F_7	INH_midbrain	poly(dT)	75
 F_7	INH_midbrain	random hexamer	75
+F_7	INH_migrating_interneuron	poly(dT)	165
+F_7	INH_migrating_interneuron	random hexamer	165
+F_7	ODC	poly(dT)	73
+F_7	ODC	random hexamer	73
+F_8	ASC	poly(dT)	11
+F_8	ASC	random hexamer	11
 F_8	EX_cerebellum_granule	poly(dT)	8
 F_8	EX_cerebellum_granule	random hexamer	8
 F_8	EX_cortical	poly(dT)	124
 F_8	EX_cortical	random hexamer	124
+F_8	EX_hippocampus_granule	poly(dT)	5
+F_8	EX_hippocampus_granule	random hexamer	5
 F_8	EX_hippocampus_pyramidal	poly(dT)	7
 F_8	EX_hippocampus_pyramidal	random hexamer	7
+F_8	EX_thalamus	poly(dT)	5
+F_8	EX_thalamus	random hexamer	5
 F_8	INH_medium_spiny	poly(dT)	19
 F_8	INH_medium_spiny	random hexamer	19
 F_8	INH_midbrain	poly(dT)	28
 F_8	INH_midbrain	random hexamer	28
+F_8	INH_migrating_interneuron	poly(dT)	41
+F_8	INH_migrating_interneuron	random hexamer	41
+F_8	ODC	poly(dT)	13
+F_8	ODC	random hexamer	13

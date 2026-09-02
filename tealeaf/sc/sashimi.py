@@ -94,37 +94,68 @@ def coverage_group_columns(cell_types):
     return {(cell_type, primer): f"{compact(cell_type)}_{compact(primer)}_0" for cell_type in cell_types for primer in primers}
 
 
-def summarize_junction_coverage(table, group_columns):
-    """Return long-form normalized coverage for ordered junction features."""
-    ordered = table.sort_values(["Start", "End"]).reset_index(drop=True).copy()
-    ordered["feature"] = [f"J{index}" for index in range(1, len(ordered) + 1)]
-    ordered["coordinate"] = ordered["Chr"].astype(str) + ":" + ordered["Start"].astype(str) + "-" + ordered["End"].astype(str)
+def summarize_path_ordered_coverage(event, paths, exon_blocks, junctions, cell_sizes, cell_types, scale=1000.0):
+    """Summarize path-ordered exon and junction coverage by cell type and primer."""
+    groups = coverage_group_columns(cell_types)
+    denominators = cell_sizes.groupby(["cell_type", "primer"])["cells"].sum().to_dict()
+    missing = [group for group in groups if denominators.get(group, 0) == 0]
+    if missing:
+        raise ValueError(f"groups without cells: {missing}")
     rows = []
-    for (cell_type, primer), column in group_columns.items():
-        if column not in ordered:
-            raise ValueError(f"coverage table is missing column {column!r}")
-        for record in ordered[["feature", "coordinate", column]].itertuples(index=False, name=None):
-            feature, coordinate, value = record
-            rows.append({"feature_type": "junction", "feature": feature, "coordinate": coordinate, "cell_type": cell_type, "primer": primer, "coverage": float(value)})
+    column_order = 0
+    for path_number, path in enumerate(paths, start=1):
+        ordered_exons = sorted(set(tuple(exon) for exon in path), reverse=event.strand == "-")
+        column_order += 1
+        exon_number = 0
+        junction_number = 0
+        for exon_index, (exon_start, exon_end) in enumerate(ordered_exons):
+            exon_number += 1
+            feature = f"E{exon_number}"
+            feature_id = f"P{path_number}:{feature}"
+            coordinate = f"{event.chromosome}:{exon_start + 1}-{exon_end}"
+            for cell_type, primer in groups:
+                aligned_bases = 0.0
+                for key, count in exon_blocks.items():
+                    event_id, _, local_cell_type, local_primer, start, end = key
+                    if event_id == event.event_id and local_cell_type == cell_type and local_primer == primer:
+                        aligned_bases += max(0, min(end, exon_end) - max(start, exon_start)) * count
+                coverage = aligned_bases * scale / (denominators[(cell_type, primer)] * (exon_end - exon_start))
+                rows.append({"path_number": path_number, "feature_type": "exon", "feature": feature, "feature_id": feature_id, "coordinate": coordinate, "column_order": column_order, "cell_type": cell_type, "primer": primer, "raw_value": coverage})
+            column_order += 1
+            if exon_index == len(ordered_exons) - 1:
+                continue
+            junction_number += 1
+            next_start, next_end = ordered_exons[exon_index + 1]
+            if event.strand == "+":
+                junction_start, junction_end = exon_end, next_start
+            else:
+                junction_start, junction_end = next_end, exon_start
+            feature = f"J{junction_number}"
+            feature_id = f"P{path_number}:{feature}"
+            coordinate = f"{event.chromosome}:{junction_start + 1}-{junction_end + 1}"
+            for cell_type, primer in groups:
+                count = sum(value for key, value in junctions.items() if key[0] == event.event_id and key[2] == cell_type and key[3] == primer and key[4] == junction_start and key[5] == junction_end)
+                coverage = count * scale / denominators[(cell_type, primer)]
+                rows.append({"path_number": path_number, "feature_type": "junction", "feature": feature, "feature_id": feature_id, "coordinate": coordinate, "column_order": column_order, "cell_type": cell_type, "primer": primer, "raw_value": coverage})
+            column_order += 1
     return pd.DataFrame(rows)
 
 
-def summarize_exon_coverage(table, exon_intervals, group_columns):
-    """Average normalized base coverage over ordered, zero-based half-open exons."""
-    segments = table.copy()
-    segments["segment_start"] = segments["Start"].astype(int) - 1
-    segments["segment_end"] = segments["End"].astype(int) - 1
-    rows = []
-    for exon_index, (chromosome, exon_start, exon_end) in enumerate(sorted(set(exon_intervals), key=lambda value: (value[1], value[2])), start=1):
-        feature = f"E{exon_index}"
-        coordinate = f"{chromosome}:{exon_start + 1}-{exon_end}"
-        overlap = np.maximum(0, np.minimum(segments["segment_end"].to_numpy(), exon_end) - np.maximum(segments["segment_start"].to_numpy(), exon_start))
-        for (cell_type, primer), column in group_columns.items():
-            if column not in segments:
-                raise ValueError(f"coverage table is missing column {column!r}")
-            coverage = float(np.dot(overlap, segments[column].to_numpy(dtype=float)) / (exon_end - exon_start))
-            rows.append({"feature_type": "exon", "feature": feature, "coordinate": coordinate, "cell_type": cell_type, "primer": primer, "coverage": coverage})
-    return pd.DataFrame(rows)
+def combine_path_usage_and_coverage(path_usage_summary, coverage, test_id):
+    """Interleave fitted path usage with path-ordered coverage features."""
+    usage = path_usage_summary[path_usage_summary["test_id"] == test_id]
+    if usage.empty:
+        raise ValueError(f"no fitted path usage for {test_id}")
+    markers = []
+    primers = tuple(coverage["primer"].drop_duplicates())
+    for path_number in sorted(coverage["path_number"].unique()):
+        path_usage = usage[usage["path_number"] == path_number]
+        marker_order = int(coverage.loc[coverage["path_number"] == path_number, "column_order"].min()) - 1
+        for primer in primers:
+            for record in path_usage.itertuples(index=False):
+                markers.append({"path_number": path_number, "feature_type": "path", "feature": f"P{path_number}", "feature_id": f"P{path_number}:path", "coordinate": "", "column_order": marker_order, "cell_type": record.cell_type, "primer": primer, "raw_value": float(record.mean_proportion)})
+    combined = pd.concat([pd.DataFrame(markers), coverage], ignore_index=True)
+    return combined.sort_values(["primer", "column_order", "cell_type"]).reset_index(drop=True)
 
 
 def _alignment_junctions(alignment):
