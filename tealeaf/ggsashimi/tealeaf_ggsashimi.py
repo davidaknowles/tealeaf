@@ -1138,8 +1138,6 @@ if __name__ == "__main__":
                         gpGrob = ggplotGrob(gp);
                         gpGrob$layout$clip[gpGrob$layout$name=="panel"] <- "off"
                         if (bam_index == 1) {
-                                maxWidth = gpGrob$widths[2+vs] + gpGrob$widths[3+vs];    # fix problems ggplot2 vs
-                                maxYtextWidth = gpGrob$widths[3+vs];                     # fix problems ggplot2 vs
                                 # Extract x axis grob (trim=F --> keep empty cells)
                                 xaxisGrob <- gtable_filter(gpGrob, "axis-b", trim=F)
                                 xaxisGrob$heights[8+vs] = gpGrob$heights[1]              # fix problems ggplot2 vs
@@ -1151,9 +1149,6 @@ if __name__ == "__main__":
                         kept_names = gpGrob$layout$name[gpGrob$layout$name != "axis-b"]
                         gpGrob <- gtable_filter(gpGrob, paste(kept_names, sep="", collapse="|"), trim=F)
 
-                        # Find max width of y text and y label and max width of y text
-                        maxWidth = grid::unit.pmax(maxWidth, gpGrob$widths[2+vs] + gpGrob$widths[3+vs]); # fix problems ggplot2 vs
-                        maxYtextWidth = grid::unit.pmax(maxYtextWidth, gpGrob$widths[3+vs]); # fix problems ggplot2 vs
                         density_grobs[[id]] = gpGrob;
                 }
 
@@ -1163,14 +1158,18 @@ if __name__ == "__main__":
                 # Annotation grob
                 if (%(args.gtf)s == 1) {
                         gtfGrob = ggplotGrob(gtfp);
-                        maxWidth = grid::unit.pmax(maxWidth, gtfGrob$widths[2+vs] + gtfGrob$widths[3+vs]); # fix problems ggplot2 vs
                         density_grobs[['gtf']] = gtfGrob;
                 }
 
-                # Reassign grob widths to align the plots
+                # Give every track, the shared x axis, and the annotation exactly
+                # the same gtable column widths. Adjusting only the y-label
+                # columns leaves panel origins offset when labels differ in width.
+                common_widths = density_grobs[[1]]$widths
                 for (id in names(density_grobs)) {
-                        density_grobs[[id]]$widths[1] <- density_grobs[[id]]$widths[1] + maxWidth - (density_grobs[[id]]$widths[2+vs] + maxYtextWidth); # fix problems ggplot2 vs
-                        density_grobs[[id]]$widths[3+vs] <- maxYtextWidth # fix problems ggplot2 vs
+                        common_widths = grid::unit.pmax(common_widths, density_grobs[[id]]$widths)
+                }
+                for (id in names(density_grobs)) {
+                        density_grobs[[id]]$widths = common_widths
                 }
 
                 # Heights for density, x axis and annotation
