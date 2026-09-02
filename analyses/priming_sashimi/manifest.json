@@ -1,7 +1,7 @@
 {
   "contrast_selection": "largest mean_difference_norm among pairwise contrasts with BH FDR < 0.05",
   "normalization": "UMI-deduplicated spliced alignments per 1000 primer-specific half-cells",
-  "block_heatmaps": "Path markers followed by each path's exon and junction components in 5-prime-to-3-prime RNA order; shared components are repeated under each path; coverage colors are raw primer-specific values per 1000 half-cells; path columns show fitted percentages",
+  "block_heatmaps": "Path markers followed by each path's exon and junction components in 5-prime-to-3-prime RNA order; shared components are repeated under each path; coverage colors are raw primer-specific values per 1000 half-cells; path columns show fitted percentages on an independent 0-to-1 color scale",
   "runs": 16,
   "events": [
     {
