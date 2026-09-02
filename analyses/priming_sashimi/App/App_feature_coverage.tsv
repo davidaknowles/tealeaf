@@ -1,0 +1,125 @@
+feature_type	feature	coordinate	cell_type	primer	coverage
+junction	J1	chr16:84752309-84759718	EX_cortical	poly(dT)	0.0
+junction	J2	chr16:84752321-84759610	EX_cortical	poly(dT)	53.63727790814617
+junction	J3	chr16:84759623-84762565	EX_cortical	poly(dT)	0.0
+junction	J4	chr16:84759648-84762628	EX_cortical	poly(dT)	0.0
+junction	J5	chr16:84759757-84762558	EX_cortical	poly(dT)	28.99765336909153
+junction	J6	chr16:84762617-84774952	EX_cortical	poly(dT)	0.0
+junction	J7	chr16:84762651-84768341	EX_cortical	poly(dT)	0.1676164934629567
+junction	J8	chr16:84762659-84768296	EX_cortical	poly(dT)	21.035869929601084
+junction	J9	chr16:84762659-84774952	EX_cortical	poly(dT)	0.4190412336573919
+junction	J10	chr16:84763629-84766271	EX_cortical	poly(dT)	0.0
+junction	J11	chr16:84768350-84774952	EX_cortical	poly(dT)	29.165269862554485
+junction	J12	chr16:84768395-84774952	EX_cortical	poly(dT)	0.0
+junction	J13	chr16:84770265-84771336	EX_cortical	poly(dT)	0.0
+junction	J14	chr16:84771920-84772479	EX_cortical	poly(dT)	0.0838082467314783
+junction	J15	chr16:84771930-84774650	EX_cortical	poly(dT)	0.0838082467314783
+junction	J16	chr16:84771932-84774650	EX_cortical	poly(dT)	0.1676164934629567
+junction	J17	chr16:84774022-84774165	EX_cortical	poly(dT)	0.0838082467314783
+junction	J18	chr16:84775174-84810515	EX_cortical	poly(dT)	40.31176667784111
+junction	J19	chr16:84775192-84804375	EX_cortical	poly(dT)	0.0
+junction	J20	chr16:84786810-84791413	EX_cortical	poly(dT)	0.0838082467314783
+junction	J21	chr16:84789221-84790524	EX_cortical	poly(dT)	0.0838082467314783
+junction	J22	chr16:84797838-84797887	EX_cortical	poly(dT)	0.0
+junction	J23	chr16:84797970-84810592	EX_cortical	poly(dT)	0.5028494803888702
+junction	J24	chr16:84799169-84799243	EX_cortical	poly(dT)	0.0
+junction	J25	chr16:84800396-84801948	EX_cortical	poly(dT)	0.0
+junction	J1	chr16:84752309-84759718	EX_cortical	random hexamer	0.0838082467314783
+junction	J2	chr16:84752321-84759610	EX_cortical	random hexamer	128.4780422393564
+junction	J3	chr16:84759623-84762565	EX_cortical	random hexamer	0.0838082467314783
+junction	J4	chr16:84759648-84762628	EX_cortical	random hexamer	0.1676164934629567
+junction	J5	chr16:84759757-84762558	EX_cortical	random hexamer	57.24103251759975
+junction	J6	chr16:84762617-84774952	EX_cortical	random hexamer	0.0838082467314783
+junction	J7	chr16:84762651-84768341	EX_cortical	random hexamer	0.0
+junction	J8	chr16:84762659-84768296	EX_cortical	random hexamer	42.90982232651695
+junction	J9	chr16:84762659-84774952	EX_cortical	random hexamer	0.4190412336573919
+junction	J10	chr16:84763629-84766271	EX_cortical	random hexamer	0.0
+junction	J11	chr16:84768350-84774952	EX_cortical	random hexamer	77.94166946027491
+junction	J12	chr16:84768395-84774952	EX_cortical	random hexamer	0.1676164934629567
+junction	J13	chr16:84770265-84771336	EX_cortical	random hexamer	0.0838082467314783
+junction	J14	chr16:84771920-84772479	EX_cortical	random hexamer	0.0
+junction	J15	chr16:84771930-84774650	EX_cortical	random hexamer	0.0
+junction	J16	chr16:84771932-84774650	EX_cortical	random hexamer	0.0
+junction	J17	chr16:84774022-84774165	EX_cortical	random hexamer	0.0
+junction	J18	chr16:84775174-84810515	EX_cortical	random hexamer	61.26382836071067
+junction	J19	chr16:84775192-84804375	EX_cortical	random hexamer	0.2514247401944351
+junction	J20	chr16:84786810-84791413	EX_cortical	random hexamer	0.0
+junction	J21	chr16:84789221-84790524	EX_cortical	random hexamer	0.0
+junction	J22	chr16:84797838-84797887	EX_cortical	random hexamer	0.0
+junction	J23	chr16:84797970-84810592	EX_cortical	random hexamer	0.921890714046262
+junction	J24	chr16:84799169-84799243	EX_cortical	random hexamer	0.0838082467314783
+junction	J25	chr16:84800396-84801948	EX_cortical	random hexamer	0.1676164934629567
+junction	J1	chr16:84752309-84759718	EX_hippocampus_pyramidal	poly(dT)	0.0
+junction	J2	chr16:84752321-84759610	EX_hippocampus_pyramidal	poly(dT)	49.58677685950412
+junction	J3	chr16:84759623-84762565	EX_hippocampus_pyramidal	poly(dT)	0.0
+junction	J4	chr16:84759648-84762628	EX_hippocampus_pyramidal	poly(dT)	0.0
+junction	J5	chr16:84759757-84762558	EX_hippocampus_pyramidal	poly(dT)	39.25619834710744
+junction	J6	chr16:84762617-84774952	EX_hippocampus_pyramidal	poly(dT)	0.0
+junction	J7	chr16:84762651-84768341	EX_hippocampus_pyramidal	poly(dT)	0.0
+junction	J8	chr16:84762659-84768296	EX_hippocampus_pyramidal	poly(dT)	27.89256198347107
+junction	J9	chr16:84762659-84774952	EX_hippocampus_pyramidal	poly(dT)	0.0
+junction	J10	chr16:84763629-84766271	EX_hippocampus_pyramidal	poly(dT)	2.066115702479338
+junction	J11	chr16:84768350-84774952	EX_hippocampus_pyramidal	poly(dT)	27.89256198347107
+junction	J12	chr16:84768395-84774952	EX_hippocampus_pyramidal	poly(dT)	0.0
+junction	J13	chr16:84770265-84771336	EX_hippocampus_pyramidal	poly(dT)	0.0
+junction	J14	chr16:84771920-84772479	EX_hippocampus_pyramidal	poly(dT)	0.0
+junction	J15	chr16:84771930-84774650	EX_hippocampus_pyramidal	poly(dT)	0.0
+junction	J16	chr16:84771932-84774650	EX_hippocampus_pyramidal	poly(dT)	0.0
+junction	J17	chr16:84774022-84774165	EX_hippocampus_pyramidal	poly(dT)	0.0
+junction	J18	chr16:84775174-84810515	EX_hippocampus_pyramidal	poly(dT)	44.42148760330578
+junction	J19	chr16:84775192-84804375	EX_hippocampus_pyramidal	poly(dT)	0.0
+junction	J20	chr16:84786810-84791413	EX_hippocampus_pyramidal	poly(dT)	0.0
+junction	J21	chr16:84789221-84790524	EX_hippocampus_pyramidal	poly(dT)	0.0
+junction	J22	chr16:84797838-84797887	EX_hippocampus_pyramidal	poly(dT)	2.066115702479338
+junction	J23	chr16:84797970-84810592	EX_hippocampus_pyramidal	poly(dT)	0.0
+junction	J24	chr16:84799169-84799243	EX_hippocampus_pyramidal	poly(dT)	0.0
+junction	J25	chr16:84800396-84801948	EX_hippocampus_pyramidal	poly(dT)	0.0
+junction	J1	chr16:84752309-84759718	EX_hippocampus_pyramidal	random hexamer	0.0
+junction	J2	chr16:84752321-84759610	EX_hippocampus_pyramidal	random hexamer	127.06611570247937
+junction	J3	chr16:84759623-84762565	EX_hippocampus_pyramidal	random hexamer	0.0
+junction	J4	chr16:84759648-84762628	EX_hippocampus_pyramidal	random hexamer	0.0
+junction	J5	chr16:84759757-84762558	EX_hippocampus_pyramidal	random hexamer	48.55371900826445
+junction	J6	chr16:84762617-84774952	EX_hippocampus_pyramidal	random hexamer	0.0
+junction	J7	chr16:84762651-84768341	EX_hippocampus_pyramidal	random hexamer	0.0
+junction	J8	chr16:84762659-84768296	EX_hippocampus_pyramidal	random hexamer	39.25619834710743
+junction	J9	chr16:84762659-84774952	EX_hippocampus_pyramidal	random hexamer	2.066115702479338
+junction	J10	chr16:84763629-84766271	EX_hippocampus_pyramidal	random hexamer	0.0
+junction	J11	chr16:84768350-84774952	EX_hippocampus_pyramidal	random hexamer	79.54545454545456
+junction	J12	chr16:84768395-84774952	EX_hippocampus_pyramidal	random hexamer	0.0
+junction	J13	chr16:84770265-84771336	EX_hippocampus_pyramidal	random hexamer	0.0
+junction	J14	chr16:84771920-84772479	EX_hippocampus_pyramidal	random hexamer	0.0
+junction	J15	chr16:84771930-84774650	EX_hippocampus_pyramidal	random hexamer	0.0
+junction	J16	chr16:84771932-84774650	EX_hippocampus_pyramidal	random hexamer	0.0
+junction	J17	chr16:84774022-84774165	EX_hippocampus_pyramidal	random hexamer	0.0
+junction	J18	chr16:84775174-84810515	EX_hippocampus_pyramidal	random hexamer	86.77685950413226
+junction	J19	chr16:84775192-84804375	EX_hippocampus_pyramidal	random hexamer	0.0
+junction	J20	chr16:84786810-84791413	EX_hippocampus_pyramidal	random hexamer	0.0
+junction	J21	chr16:84789221-84790524	EX_hippocampus_pyramidal	random hexamer	0.0
+junction	J22	chr16:84797838-84797887	EX_hippocampus_pyramidal	random hexamer	0.0
+junction	J23	chr16:84797970-84810592	EX_hippocampus_pyramidal	random hexamer	3.099173553719008
+junction	J24	chr16:84799169-84799243	EX_hippocampus_pyramidal	random hexamer	0.0
+junction	J25	chr16:84800396-84801948	EX_hippocampus_pyramidal	random hexamer	0.0
+exon	E1	chr16:84751532-84752320	EX_cortical	poly(dT)	4.861409414650915
+exon	E1	chr16:84751532-84752320	EX_cortical	random hexamer	9.20722284750893
+exon	E1	chr16:84751532-84752320	EX_hippocampus_pyramidal	poly(dT)	5.059233887439901
+exon	E1	chr16:84751532-84752320	EX_hippocampus_pyramidal	random hexamer	9.48344488786936
+exon	E2	chr16:84759610-84759756	EX_cortical	poly(dT)	37.18463583891485
+exon	E2	chr16:84759610-84759756	EX_cortical	random hexamer	97.89943466491526
+exon	E2	chr16:84759610-84759756	EX_hippocampus_pyramidal	poly(dT)	37.86473266992747
+exon	E2	chr16:84759610-84759756	EX_hippocampus_pyramidal	random hexamer	88.09804913701016
+exon	E3	chr16:84762558-84762658	EX_cortical	poly(dT)	27.729742468044993
+exon	E3	chr16:84762558-84762658	EX_cortical	random hexamer	52.587600362449926
+exon	E3	chr16:84762558-84762658	EX_hippocampus_pyramidal	poly(dT)	38.38679322477702
+exon	E3	chr16:84762558-84762658	EX_hippocampus_pyramidal	random hexamer	46.559201374682914
+exon	E4	chr16:84768296-84768349	EX_cortical	poly(dT)	31.36290833240213
+exon	E4	chr16:84768296-84768349	EX_cortical	random hexamer	75.52364634161484
+exon	E4	chr16:84768296-84768349	EX_hippocampus_pyramidal	poly(dT)	31.163911845730027
+exon	E4	chr16:84768296-84768349	EX_hippocampus_pyramidal	random hexamer	73.86363636363636
+exon	E5	chr16:84774952-84775173	EX_cortical	poly(dT)	25.85786423366041
+exon	E5	chr16:84774952-84775173	EX_cortical	random hexamer	45.45993361782836
+exon	E5	chr16:84774952-84775173	EX_hippocampus_pyramidal	poly(dT)	28.776710594892414
+exon	E5	chr16:84774952-84775173	EX_hippocampus_pyramidal	random hexamer	53.635246817064996
+exon	E6	chr16:84810515-84810614	EX_cortical	poly(dT)	36.262990278243386
+exon	E6	chr16:84810515-84810614	EX_cortical	random hexamer	97.08179684880992
+exon	E6	chr16:84810515-84810614	EX_hippocampus_pyramidal	poly(dT)	30.929752066115697
+exon	E6	chr16:84810515-84810614	EX_hippocampus_pyramidal	random hexamer	141.7665289256198

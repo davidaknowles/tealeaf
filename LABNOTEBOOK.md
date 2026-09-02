@@ -3616,3 +3616,10 @@ Changed the primer-separated sashimi workflow to select contrasts algorithmicall
 - Exported subject-level fitted path proportions for the three strongest significant pairwise localizations by rerunning the production local-path likelihood with the selected EB prior setting. All three fits completed without failure.
 - Added plotnine grouped barplots of mean path usage by cell type with standard errors across paired subjects. App used four paired subjects, while Gria2 and Grin1 each used nine.
 - Added the bars below the read-support panels in `docs/differential.tex` and clarified that primer-separated tracks are descriptive while path usage is jointly fitted from both primer likelihoods.
+
+## 2026-09-02, cell-type evidence heatmaps
+
+- Added plotnine heatmaps of fitted path usage, observed junction coverage, and tested-exon coverage for each cell type in the three displayed contrasts.
+- Kept junction and exon evidence separate by priming strategy. Coverage is normalized per 1,000 primer-specific half-cells and displayed on a log1p scale.
+- Summarized exon evidence as mean normalized base coverage over each unique tested exon and retained all observed junctions. Event-level feature-coverage tables map J and E labels to genomic coordinates and untransformed values.
+- Integrated the heatmaps into `docs/differential.tex`; reusable feature summaries are in `tealeaf/sc/sashimi.py`.

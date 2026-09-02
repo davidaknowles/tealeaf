@@ -3,7 +3,7 @@ from collections import Counter
 import pandas as pd
 import pysam
 
-from tealeaf.sc.sashimi import SashimiEvent, collect_bam_event_support, select_strongest_significant_contrasts, summarize_path_usage, write_ggsashimi_inputs
+from tealeaf.sc.sashimi import coverage_group_columns, SashimiEvent, collect_bam_event_support, select_strongest_significant_contrasts, summarize_exon_coverage, summarize_junction_coverage, summarize_path_usage, write_ggsashimi_inputs
 
 
 def test_collect_and_write_sashimi_support(tmp_path):
@@ -73,3 +73,20 @@ def test_summarize_path_usage():
     assert path_one.n_subjects == 2
     assert abs(path_one.mean_proportion - 0.3) < 1e-12
     assert abs(path_one.se_proportion - 0.1) < 1e-12
+
+
+def test_summarize_feature_coverage():
+    groups = coverage_group_columns(("cell_type",))
+    assert groups[("cell_type", "poly(dT)")] == "celltype_polydT_0"
+    table = pd.DataFrame([
+        {"Name": "chr1:101-111", "Chr": "chr1", "Start": 101, "End": 111, "celltype_polydT_0": 10.0, "celltype_randomhexamer_0": 4.0},
+        {"Name": "chr1:111-121", "Chr": "chr1", "Start": 111, "End": 121, "celltype_polydT_0": 20.0, "celltype_randomhexamer_0": 8.0},
+    ])
+    junctions = summarize_junction_coverage(table.iloc[[0]], groups)
+    assert junctions["feature"].unique().tolist() == ["J1"]
+    assert sorted(junctions["coverage"]) == [4.0, 10.0]
+    exons = summarize_exon_coverage(table, [("chr1", 100, 120)], groups)
+    polydt = exons[exons["primer"] == "poly(dT)"].iloc[0]
+    assert polydt.feature == "E1"
+    assert polydt.coordinate == "chr1:101-120"
+    assert polydt.coverage == 15.0

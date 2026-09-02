@@ -1,0 +1,93 @@
+feature_type	feature	coordinate	cell_type	primer	coverage
+junction	J1	chr3:80596659-80597711	EX_cerebellum_granule	poly(dT)	7.268063274903805
+junction	J2	chr3:80596659-80598627	EX_cerebellum_granule	poly(dT)	5.557930739632321
+junction	J3	chr3:80597760-80598675	EX_cerebellum_granule	poly(dT)	0.0
+junction	J4	chr3:80597806-80598627	EX_cerebellum_granule	poly(dT)	0.0
+junction	J5	chr3:80597826-80598627	EX_cerebellum_granule	poly(dT)	1.2825994014536126
+junction	J6	chr3:80597826-80599512	EX_cerebellum_granule	poly(dT)	0.0
+junction	J7	chr3:80597826-80599592	EX_cerebellum_granule	poly(dT)	7.268063274903805
+junction	J8	chr3:80598198-80598729	EX_cerebellum_granule	poly(dT)	0.0
+junction	J9	chr3:80598222-80598472	EX_cerebellum_granule	poly(dT)	0.0
+junction	J10	chr3:80598391-80598465	EX_cerebellum_granule	poly(dT)	0.0
+junction	J11	chr3:80598538-80598578	EX_cerebellum_granule	poly(dT)	0.0
+junction	J12	chr3:80598596-80598894	EX_cerebellum_granule	poly(dT)	0.0
+junction	J13	chr3:80598742-80599010	EX_cerebellum_granule	poly(dT)	0.0
+junction	J14	chr3:80598742-80599512	EX_cerebellum_granule	poly(dT)	0.4275331338178709
+junction	J15	chr3:80598742-80599592	EX_cerebellum_granule	poly(dT)	15.391192817443352
+junction	J16	chr3:80598868-80598903	EX_cerebellum_granule	poly(dT)	0.0
+junction	J17	chr3:80598879-80599296	EX_cerebellum_granule	poly(dT)	0.0
+junction	J18	chr3:80599051-80599592	EX_cerebellum_granule	poly(dT)	0.0
+junction	J19	chr3:80599543-80599611	EX_cerebellum_granule	poly(dT)	0.0
+junction	J1	chr3:80596659-80597711	EX_cerebellum_granule	random hexamer	11.970927746900385
+junction	J2	chr3:80596659-80598627	EX_cerebellum_granule	random hexamer	17.956391620350576
+junction	J3	chr3:80597760-80598675	EX_cerebellum_granule	random hexamer	0.0
+junction	J4	chr3:80597806-80598627	EX_cerebellum_granule	random hexamer	0.0
+junction	J5	chr3:80597826-80598627	EX_cerebellum_granule	random hexamer	0.4275331338178709
+junction	J6	chr3:80597826-80599512	EX_cerebellum_granule	random hexamer	0.0
+junction	J7	chr3:80597826-80599592	EX_cerebellum_granule	random hexamer	3.847798204360838
+junction	J8	chr3:80598198-80598729	EX_cerebellum_granule	random hexamer	0.0
+junction	J9	chr3:80598222-80598472	EX_cerebellum_granule	random hexamer	0.0
+junction	J10	chr3:80598391-80598465	EX_cerebellum_granule	random hexamer	0.0
+junction	J11	chr3:80598538-80598578	EX_cerebellum_granule	random hexamer	0.0
+junction	J12	chr3:80598596-80598894	EX_cerebellum_granule	random hexamer	0.0
+junction	J13	chr3:80598742-80599010	EX_cerebellum_granule	random hexamer	0.0
+junction	J14	chr3:80598742-80599512	EX_cerebellum_granule	random hexamer	0.0
+junction	J15	chr3:80598742-80599592	EX_cerebellum_granule	random hexamer	6.840530141085934
+junction	J16	chr3:80598868-80598903	EX_cerebellum_granule	random hexamer	0.0
+junction	J17	chr3:80598879-80599296	EX_cerebellum_granule	random hexamer	0.0
+junction	J18	chr3:80599051-80599592	EX_cerebellum_granule	random hexamer	0.0
+junction	J19	chr3:80599543-80599611	EX_cerebellum_granule	random hexamer	0.0
+junction	J1	chr3:80596659-80597711	EX_cortical	poly(dT)	13.241702983573589
+junction	J2	chr3:80596659-80598627	EX_cortical	poly(dT)	12.57123700972176
+junction	J3	chr3:80597760-80598675	EX_cortical	poly(dT)	0.0838082467314783
+junction	J4	chr3:80597806-80598627	EX_cortical	poly(dT)	0.0
+junction	J5	chr3:80597826-80598627	EX_cortical	poly(dT)	3.4361381159906133
+junction	J6	chr3:80597826-80599512	EX_cortical	poly(dT)	0.0
+junction	J7	chr3:80597826-80599592	EX_cortical	poly(dT)	7.0398927254441785
+junction	J8	chr3:80598198-80598729	EX_cortical	poly(dT)	0.0838082467314783
+junction	J9	chr3:80598222-80598472	EX_cortical	poly(dT)	0.0
+junction	J10	chr3:80598391-80598465	EX_cortical	poly(dT)	0.0
+junction	J11	chr3:80598538-80598578	EX_cortical	poly(dT)	0.0
+junction	J12	chr3:80598596-80598894	EX_cortical	poly(dT)	0.0
+junction	J13	chr3:80598742-80599010	EX_cortical	poly(dT)	0.3352329869259135
+junction	J14	chr3:80598742-80599512	EX_cortical	poly(dT)	0.0838082467314783
+junction	J15	chr3:80598742-80599592	EX_cortical	poly(dT)	26.231981226952733
+junction	J16	chr3:80598868-80598903	EX_cortical	poly(dT)	0.0838082467314783
+junction	J17	chr3:80598879-80599296	EX_cortical	poly(dT)	0.0838082467314783
+junction	J18	chr3:80599051-80599592	EX_cortical	poly(dT)	0.5028494803888702
+junction	J19	chr3:80599543-80599611	EX_cortical	poly(dT)	0.1676164934629567
+junction	J1	chr3:80596659-80597711	EX_cortical	random hexamer	13.99597720415689
+junction	J2	chr3:80596659-80598627	EX_cortical	random hexamer	15.253100905129068
+junction	J3	chr3:80597760-80598675	EX_cortical	random hexamer	0.0
+junction	J4	chr3:80597806-80598627	EX_cortical	random hexamer	0.2514247401944351
+junction	J5	chr3:80597826-80598627	EX_cortical	random hexamer	0.8380824673147836
+junction	J6	chr3:80597826-80599512	EX_cortical	random hexamer	0.0838082467314783
+junction	J7	chr3:80597826-80599592	EX_cortical	random hexamer	3.1009051290646994
+junction	J8	chr3:80598198-80598729	EX_cortical	random hexamer	0.0
+junction	J9	chr3:80598222-80598472	EX_cortical	random hexamer	0.0838082467314783
+junction	J10	chr3:80598391-80598465	EX_cortical	random hexamer	0.0838082467314783
+junction	J11	chr3:80598538-80598578	EX_cortical	random hexamer	0.0838082467314783
+junction	J12	chr3:80598596-80598894	EX_cortical	random hexamer	0.0838082467314783
+junction	J13	chr3:80598742-80599010	EX_cortical	random hexamer	0.0
+junction	J14	chr3:80598742-80599512	EX_cortical	random hexamer	0.1676164934629567
+junction	J15	chr3:80598742-80599592	EX_cortical	random hexamer	6.620851491786791
+junction	J16	chr3:80598868-80598903	EX_cortical	random hexamer	0.0
+junction	J17	chr3:80598879-80599296	EX_cortical	random hexamer	0.0
+junction	J18	chr3:80599051-80599592	EX_cortical	random hexamer	0.0
+junction	J19	chr3:80599543-80599611	EX_cortical	random hexamer	0.0
+exon	E1	chr3:80596410-80596658	EX_cerebellum_granule	poly(dT)	4.5260134166422
+exon	E1	chr3:80596410-80596658	EX_cerebellum_granule	random hexamer	9.240896892400727
+exon	E1	chr3:80596410-80596658	EX_cortical	poly(dT)	8.801885382630084
+exon	E1	chr3:80596410-80596658	EX_cortical	random hexamer	9.765848509694157
+exon	E2	chr3:80597711-80597825	EX_cerebellum_granule	poly(dT)	6.926036767849508
+exon	E2	chr3:80597711-80597825	EX_cerebellum_granule	random hexamer	8.331319590311727
+exon	E2	chr3:80597711-80597825	EX_cortical	poly(dT)	9.924353947732806
+exon	E2	chr3:80597711-80597825	EX_cortical	random hexamer	9.229109883542977
+exon	E3	chr3:80598627-80598741	EX_cerebellum_granule	poly(dT)	9.323939996654088
+exon	E3	chr3:80598627-80598741	EX_cerebellum_granule	random hexamer	12.51742662230236
+exon	E3	chr3:80598627-80598741	EX_cortical	poly(dT)	19.16002273754172
+exon	E3	chr3:80598627-80598741	EX_cortical	random hexamer	12.448075325394628
+exon	E4	chr3:80599592-80599839	EX_cerebellum_granule	poly(dT)	9.566053869174862
+exon	E4	chr3:80599592-80599839	EX_cerebellum_granule	random hexamer	7.702492104428416
+exon	E4	chr3:80599592-80599839	EX_cortical	poly(dT)	17.401701037059464
+exon	E4	chr3:80599592-80599839	EX_cortical	random hexamer	10.917713819168839

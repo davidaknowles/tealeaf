@@ -18,7 +18,11 @@
       "exon_counts": "App/App_exon.tsv",
       "path_annotation": "App/App_paths.gtf",
       "figure": "App/App_priming_sashimi.pdf",
-      "path_usage_figure": "App/App_path_usage.pdf"
+      "path_usage_figure": "App/App_path_usage.pdf",
+      "feature_coverage": "App/App_feature_coverage.tsv",
+      "path_usage_heatmap": "App/App_path_usage_heatmap.pdf",
+      "junction_coverage_heatmap": "App/App_junction_coverage_heatmap.pdf",
+      "exon_coverage_heatmap": "App/App_exon_coverage_heatmap.pdf"
     },
     {
       "gene": "Gria2",
@@ -34,7 +38,11 @@
       "exon_counts": "Gria2/Gria2_exon.tsv",
       "path_annotation": "Gria2/Gria2_paths.gtf",
       "figure": "Gria2/Gria2_priming_sashimi.pdf",
-      "path_usage_figure": "Gria2/Gria2_path_usage.pdf"
+      "path_usage_figure": "Gria2/Gria2_path_usage.pdf",
+      "feature_coverage": "Gria2/Gria2_feature_coverage.tsv",
+      "path_usage_heatmap": "Gria2/Gria2_path_usage_heatmap.pdf",
+      "junction_coverage_heatmap": "Gria2/Gria2_junction_coverage_heatmap.pdf",
+      "exon_coverage_heatmap": "Gria2/Gria2_exon_coverage_heatmap.pdf"
     },
     {
       "gene": "Grin1",
@@ -50,7 +58,12 @@
       "exon_counts": "Grin1/Grin1_exon.tsv",
       "path_annotation": "Grin1/Grin1_paths.gtf",
       "figure": "Grin1/Grin1_priming_sashimi.pdf",
-      "path_usage_figure": "Grin1/Grin1_path_usage.pdf"
+      "path_usage_figure": "Grin1/Grin1_path_usage.pdf",
+      "feature_coverage": "Grin1/Grin1_feature_coverage.tsv",
+      "path_usage_heatmap": "Grin1/Grin1_path_usage_heatmap.pdf",
+      "junction_coverage_heatmap": "Grin1/Grin1_junction_coverage_heatmap.pdf",
+      "exon_coverage_heatmap": "Grin1/Grin1_exon_coverage_heatmap.pdf"
     }
-  ]
+  ],
+  "coverage_heatmaps": "log1p coverage per 1000 primer-specific half-cells; exons use mean base coverage"
 }

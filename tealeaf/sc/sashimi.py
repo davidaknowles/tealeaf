@@ -85,6 +85,48 @@ def summarize_path_usage(path_usage):
     return summary
 
 
+def coverage_group_columns(cell_types):
+    """Map cell-type and primer labels to ggsashimi coverage columns."""
+    primers = ("poly(dT)", "random hexamer")
+
+    def compact(value):
+        return value.translate(str.maketrans("", "", "_ ()"))
+    return {(cell_type, primer): f"{compact(cell_type)}_{compact(primer)}_0" for cell_type in cell_types for primer in primers}
+
+
+def summarize_junction_coverage(table, group_columns):
+    """Return long-form normalized coverage for ordered junction features."""
+    ordered = table.sort_values(["Start", "End"]).reset_index(drop=True).copy()
+    ordered["feature"] = [f"J{index}" for index in range(1, len(ordered) + 1)]
+    ordered["coordinate"] = ordered["Chr"].astype(str) + ":" + ordered["Start"].astype(str) + "-" + ordered["End"].astype(str)
+    rows = []
+    for (cell_type, primer), column in group_columns.items():
+        if column not in ordered:
+            raise ValueError(f"coverage table is missing column {column!r}")
+        for record in ordered[["feature", "coordinate", column]].itertuples(index=False, name=None):
+            feature, coordinate, value = record
+            rows.append({"feature_type": "junction", "feature": feature, "coordinate": coordinate, "cell_type": cell_type, "primer": primer, "coverage": float(value)})
+    return pd.DataFrame(rows)
+
+
+def summarize_exon_coverage(table, exon_intervals, group_columns):
+    """Average normalized base coverage over ordered, zero-based half-open exons."""
+    segments = table.copy()
+    segments["segment_start"] = segments["Start"].astype(int) - 1
+    segments["segment_end"] = segments["End"].astype(int) - 1
+    rows = []
+    for exon_index, (chromosome, exon_start, exon_end) in enumerate(sorted(set(exon_intervals), key=lambda value: (value[1], value[2])), start=1):
+        feature = f"E{exon_index}"
+        coordinate = f"{chromosome}:{exon_start + 1}-{exon_end}"
+        overlap = np.maximum(0, np.minimum(segments["segment_end"].to_numpy(), exon_end) - np.maximum(segments["segment_start"].to_numpy(), exon_start))
+        for (cell_type, primer), column in group_columns.items():
+            if column not in segments:
+                raise ValueError(f"coverage table is missing column {column!r}")
+            coverage = float(np.dot(overlap, segments[column].to_numpy(dtype=float)) / (exon_end - exon_start))
+            rows.append({"feature_type": "exon", "feature": feature, "coordinate": coordinate, "cell_type": cell_type, "primer": primer, "coverage": coverage})
+    return pd.DataFrame(rows)
+
+
 def _alignment_junctions(alignment):
     position = alignment.reference_start
     for operation, length in alignment.cigartuples or ():
@@ -149,8 +191,7 @@ def write_ggsashimi_inputs(output_dir, event, exon_blocks, junctions, cell_sizes
     """Write ggsashimi tables normalized per scale primer-specific half-cells."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    primers = ("poly(dT)", "random hexamer")
-    group_names = {(cell_type, primer): f"{cell_type.replace('_', '')}_{primer.replace(' ', '').replace('(', '').replace(')', '')}_0" for cell_type in cell_types for primer in primers}
+    group_names = coverage_group_columns(cell_types)
     denominators = cell_sizes.groupby(["cell_type", "primer"])["cells"].sum().to_dict()
     missing = [group for group in group_names if denominators.get(group, 0) == 0]
     if missing:
