@@ -3,7 +3,7 @@ from collections import Counter
 import pandas as pd
 import pysam
 
-from tealeaf.sc.sashimi import SashimiEvent, collect_bam_event_support, combine_path_usage_and_coverage, select_strongest_significant_contrasts, summarize_path_ordered_coverage, summarize_path_usage, write_ggsashimi_inputs
+from tealeaf.sc.sashimi import SashimiEvent, collect_bam_event_support, combine_path_usage_and_coverage, select_strongest_significant_contrasts, summarize_path_ordered_coverage, summarize_path_ordered_psi, summarize_path_usage, write_ggsashimi_inputs
 
 
 def test_collect_and_write_sashimi_support(tmp_path):
@@ -39,6 +39,27 @@ def test_collect_and_write_sashimi_support(tmp_path):
     assert introns.loc[0, "cell_polydT_0"] == 100
     assert introns.loc[0, "cell_randomhexamer_0"] == 200
     assert not pd.read_csv(exon_path, sep=" ").empty
+
+
+def test_collects_junction_competitors_outside_event_interval(tmp_path):
+    bam_path = tmp_path / "reads.bam"
+    header = {"HD": {"VN": "1.6"}, "SQ": [{"SN": "chr1", "LN": 1000}]}
+    with pysam.AlignmentFile(bam_path, "wb", header=header) as target:
+        alignment = pysam.AlignedSegment()
+        alignment.query_name = "read"
+        alignment.query_sequence = "A" * 20
+        alignment.flag = 0
+        alignment.reference_id = 0
+        alignment.reference_start = 50
+        alignment.mapping_quality = 60
+        alignment.cigar = ((0, 10), (3, 150), (0, 10))
+        alignment.query_qualities = pysam.qualitystring_to_array("I" * 20)
+        alignment.set_tag("CB", "AAAA_CCCC")
+        target.write(alignment)
+    event = SashimiEvent("event", "chr1", 100, 230, "+", frozenset({210}))
+    groups = {"AAAACCCC": ("subject", "cell", "poly(dT)")}
+    _, junctions, _ = collect_bam_event_support(bam_path, groups, (event,))
+    assert junctions == Counter({("event", "subject", "cell", "poly(dT)", 60, 210): 1})
 
 
 def test_select_strongest_significant_contrasts(tmp_path):
@@ -99,3 +120,25 @@ def test_summarize_path_ordered_coverage():
     matrix = combine_path_usage_and_coverage(usage, coverage, "event")
     columns = matrix[["feature_id", "column_order"]].drop_duplicates().sort_values("column_order")
     assert columns["feature_id"].tolist() == ["P1:path", "P1:E1", "P1:J1", "P1:E2", "P2:path", "P2:E1", "P2:J2", "P2:E3"]
+
+
+def test_summarize_path_ordered_psi():
+    event = SashimiEvent("event", "chr1", 90, 180, "+")
+    paths = (((100, 110), (120, 130), (160, 170)), ((100, 110), (140, 150), (160, 170)))
+    exon_blocks = Counter()
+    junctions = Counter()
+    for primer in ("poly(dT)", "random hexamer"):
+        for exon, count in (((100, 110), 10), ((120, 130), 8), ((140, 150), 2), ((160, 170), 10)):
+            exon_blocks[("event", "s1", "A", primer, *exon)] = count
+        for junction, count in (((110, 120), 8), ((110, 140), 2), ((130, 160), 8), ((150, 160), 2)):
+            junctions[("event", "s1", "A", primer, *junction)] = count
+    psi = summarize_path_ordered_psi(event, paths, exon_blocks, junctions, ("A",))
+    polydt = psi[psi["primer"] == "poly(dT)"]
+    values = polydt.drop_duplicates(["feature_type", "feature"]).set_index(["feature_type", "feature"])["raw_value"]
+    assert values[("exon", "E1")] == 1.0
+    assert values[("exon", "E2")] == 0.8
+    assert values[("exon", "E3")] == 0.2
+    assert values[("junction", "J1")] == 0.8
+    assert values[("junction", "J2")] == 0.2
+    assert values[("junction", "J3")] == 0.8
+    assert values[("junction", "J4")] == 0.2

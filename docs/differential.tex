@@ -351,30 +351,32 @@ Both priming strategies support the annotated alternatives, while their absolute
 
 The plotted intervals contain 2,210 poly(dT) and 5,122 random-hexamer spliced UMIs from cortical excitatory cells and 186 and 478 from hippocampal pyramidal cells for \emph{App}. Corresponding counts are 97/132 for cerebellar-granule and 1,039/904 for cortical-excitatory cells in \emph{Gria2}, and 555/384 medium-spiny plus 148/330 midbrain-inhibitory UMIs for \emph{Grin1}. These raw totals establish that the visible structures do not arise from a few alignments; normalization in the figures prevents unequal half-cell numbers from setting track scale.
 
-The heatmaps in Figures~\ref{fig:app-heatmaps}--\ref{fig:grin1-heatmaps} extend the read-level check to every cell type represented in each production omnibus fit. Each priming strategy has a separate matrix. Columns begin with the fitted mean proportion of path 1, followed by the exons and junctions in path 1, then repeat this arrangement for path 2 and any later paths. Within each path, exons and junctions are interleaved in 5$'$-to-3$'$ RNA order, which reverses genomic-coordinate order for minus-strand genes. A shared exon or junction is deliberately repeated under every path containing it, retains the same gene-wide E or J label in each occurrence, and no feature outside the visualized block is included. Path usage is the across-subject mean from the joint two-primer production fit. Junction evidence is the exact annotated-junction UMI count per 1,000 primer-specific half-cells, and exon evidence is the mean aligned-base depth per 1,000 primer-specific half-cells over the displayed exon. Coverage tiles show these raw normalized values on the primer panel's common color scale. Path proportions have different units, so their colored markers use a separate 0--1 path-usage scale and retain fitted percentage labels; exact coordinates, values, and measurement types are retained in each event's block-heatmap table.
+We also searched all 791 significant omnibus blocks for isoform switches. For each tested path, we computed the range of its production fitted mean usage across cell types and asked whether the identity of the most-used path changed. Ninety-two blocks change dominant path, but none contains a path whose cell-type means span from at most 0.1 to at least 0.9. Figures~\ref{fig:agtpbp1-switch}--\ref{fig:ntrk2-switch} therefore show the three largest non-whole-gene dominant-path changes with at least one displayed splice junction, rather than describing them as complete 0-to-1 switches. The largest path ranges are 0.326--0.639 for \emph{Agtpbp1} path 2, 0.179--0.430 for \emph{Dlg4} path 3, and 0.255--0.480 for \emph{Ntrk2} path 3; all three omnibus FDR values are 0.000959.
+
+Each figure contains separate poly(dT) and random-hexamer matrices and every cell type represented in that block's omnibus fit. Columns begin with a fitted mean path proportion and then follow that path's exons and junctions in 5$'$-to-3$'$ RNA order. Shared features are repeated but keep gene-global E and J labels. The path markers use their own 0--1 colorbar and retain percentages. Empirical exon and junction PSI use a second 0--1 colorbar. For exon \(e\), cell type \(c\), and primer \(p\), let \(d_{ecp}\in\mathbb R_+\) be pooled mean aligned depth and let \(F_e\) contain the nearest path-shared exon on each available side. Variable-exon PSI is \(\widehat{\operatorname{PSI}}^{\rm exon}_{ecp}=\min\{1,d_{ecp}/(|F_e|^{-1}\sum_{f\in F_e}d_{fcp})\}\), while exons present in every displayed path have PSI one by definition; a zero anchor denominator is shown as missing. This is a local depth-ratio estimate, not an additional fitted model. For junction \(j\), let \(c_{jcp}\in\mathbb N_0\) be its pooled UMI count, \(d_j\) and \(a_j\) its donor and acceptor, and \(\mathcal J_j=\{h:d_h=d_j\text{ or }a_h=a_j\}\) the set of all observed junctions sharing either splice site, including junctions whose other endpoint lies outside the displayed block. Junction PSI is \(\widehat{\operatorname{PSI}}^{\rm junction}_{jcp}=c_{jcp}/\sum_{h\in\mathcal J_j}c_{hcp}\); a zero denominator is missing. Thus absolute depth and unequal half-cell counts do not determine the PSI colors, while the two primer panels can reveal protocol-specific support.
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=\linewidth]{../analyses/priming_sashimi/App/App_oligodt_block_heatmap.pdf}
-\includegraphics[width=\linewidth]{../analyses/priming_sashimi/App/App_ranhex_block_heatmap.pdf}
-\caption{Path-ordered block evidence across all nine cell types represented in the \emph{App} omnibus fit. The upper and lower panels show poly(dT) and random-hexamer half-cells. P1 and P2 are fitted path usage; E and J columns are the corresponding exons and junctions in 5$'$-to-3$'$ RNA order.}
-\label{fig:app-heatmaps}
+\includegraphics[width=\linewidth]{../analyses/isoform_switch_examples/Agtpbp1/Agtpbp1_oligodt_psi_heatmap.pdf}
+\includegraphics[width=\linewidth]{../analyses/isoform_switch_examples/Agtpbp1/Agtpbp1_ranhex_psi_heatmap.pdf}
+\caption{Strongest fitted dominant-path change, the \emph{Agtpbp1} alternative-first-region block. Path 2 rises from 0.326 in cerebellar-granule excitatory cells to 0.639 in cortical excitatory cells. P columns show joint-model fitted path usage; E and J columns show primer-specific exon and junction PSI.}
+\label{fig:agtpbp1-switch}
 \end{figure}
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=\linewidth]{../analyses/priming_sashimi/Gria2/Gria2_oligodt_block_heatmap.pdf}
-\includegraphics[width=\linewidth]{../analyses/priming_sashimi/Gria2/Gria2_ranhex_block_heatmap.pdf}
-\caption{Path-ordered block evidence across all eight cell types represented in the \emph{Gria2} omnibus fit, separated into poly(dT) and random-hexamer panels. Column definitions and scaling follow Figure~\ref{fig:app-heatmaps}.}
-\label{fig:gria2-heatmaps}
+\includegraphics[width=\linewidth]{../analyses/isoform_switch_examples/Dlg4/Dlg4_oligodt_psi_heatmap.pdf}
+\includegraphics[width=\linewidth]{../analyses/isoform_switch_examples/Dlg4/Dlg4_ranhex_psi_heatmap.pdf}
+\caption{Second-largest eligible fitted dominant-path change, the six-path \emph{Dlg4} alternative-first-region block. Path 3 rises from 0.179 in cerebellar-granule excitatory cells to 0.430 in cortical excitatory cells. Definitions and panel order follow Figure~\ref{fig:agtpbp1-switch}.}
+\label{fig:dlg4-switch}
 \end{figure}
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=\linewidth]{../analyses/priming_sashimi/Grin1/Grin1_oligodt_block_heatmap.pdf}
-\includegraphics[width=\linewidth]{../analyses/priming_sashimi/Grin1/Grin1_ranhex_block_heatmap.pdf}
-\caption{Path-ordered block evidence across all five cell types represented in the \emph{Grin1} omnibus fit, separated into poly(dT) and random-hexamer panels. Column definitions and scaling follow Figure~\ref{fig:app-heatmaps}.}
-\label{fig:grin1-heatmaps}
+\includegraphics[width=\linewidth]{../analyses/isoform_switch_examples/Ntrk2/Ntrk2_oligodt_psi_heatmap.pdf}
+\includegraphics[width=\linewidth]{../analyses/isoform_switch_examples/Ntrk2/Ntrk2_ranhex_psi_heatmap.pdf}
+\caption{Third-largest eligible fitted dominant-path change, the three-path \emph{Ntrk2} alternative-first-region block. Path 3 rises from 0.255 in cortical excitatory cells to 0.480 in astrocytes. Definitions and panel order follow Figure~\ref{fig:agtpbp1-switch}.}
+\label{fig:ntrk2-switch}
 \end{figure}
 
 \clearpage

@@ -1,0 +1,44 @@
+{
+  "selection": "three non-whole-gene BH-significant blocks with the largest fitted cell-type mean path-usage span among blocks whose dominant fitted path changes between cell types and whose displayed paths contain at least one splice junction",
+  "literal_zero_to_one_switches": 0,
+  "exon_psi": "mean aligned depth divided by the mean depth of the nearest path-shared exon on each available side, clipped to [0,1]; path-shared exons are 1",
+  "junction_psi": "junction UMI count divided by the total UMI count of unique observed junctions sharing its donor or acceptor splice site",
+  "events": [
+    {
+      "gene_name": "Agtpbp1",
+      "test_id": "ENSMUSG00000021557.16:B1",
+      "event_type": "alternative first region",
+      "path_number": 2,
+      "min_cell_type": "EX_cerebellum_granule",
+      "min_usage": 0.32603078220944587,
+      "max_cell_type": "EX_cortical",
+      "max_usage": 0.6385197405324028,
+      "usage_span": 0.3124889583229569,
+      "fdr": 0.0009589405456861
+    },
+    {
+      "gene_name": "Dlg4",
+      "test_id": "ENSMUSG00000020886.18:B1",
+      "event_type": "alternative first region",
+      "path_number": 3,
+      "min_cell_type": "EX_cerebellum_granule",
+      "min_usage": 0.17917180292465826,
+      "max_cell_type": "EX_cortical",
+      "max_usage": 0.43004645776852385,
+      "usage_span": 0.2508746548438656,
+      "fdr": 0.0009589405456861
+    },
+    {
+      "gene_name": "Ntrk2",
+      "test_id": "ENSMUSG00000055254.16:B1",
+      "event_type": "alternative first region",
+      "path_number": 3,
+      "min_cell_type": "EX_cortical",
+      "min_usage": 0.2550451229520333,
+      "max_cell_type": "ASC",
+      "max_usage": 0.47953733933628073,
+      "usage_span": 0.22449221638424743,
+      "fdr": 0.0009589405456861
+    }
+  ]
+}

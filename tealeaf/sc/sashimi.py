@@ -9,7 +9,11 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pysam
+
+try:
+    import pysam
+except ModuleNotFoundError:
+    pysam = None
 
 from tealeaf.sc.junction_benchmark import normalize_starsolo_barcode
 
@@ -23,6 +27,7 @@ class SashimiEvent:
     start: int
     end: int
     strand: str
+    splice_sites: frozenset[int] | None = None
 
 
 def read_primer_cell_groups(metadata_path, primer_pairs_path, cell_types):
@@ -143,6 +148,72 @@ def summarize_path_ordered_coverage(event, paths, exon_blocks, junctions, cell_s
     return pd.DataFrame(rows)
 
 
+def summarize_path_ordered_psi(event, paths, exon_blocks, junctions, cell_types):
+    """Summarize exon and splice-site-normalized junction PSI along tested paths."""
+    groups = tuple(coverage_group_columns(cell_types))
+    ordered_paths = [sorted(set(tuple(exon) for exon in path), reverse=event.strand == "-") for path in paths]
+    exon_order = sorted({exon for path in ordered_paths for exon in path}, reverse=event.strand == "-")
+    exon_labels = {exon: f"E{index}" for index, exon in enumerate(exon_order, start=1)}
+    shared_exons = set.intersection(*(set(path) for path in ordered_paths))
+
+    def junction_between(left_exon, right_exon):
+        left_start, left_end = left_exon
+        right_start, right_end = right_exon
+        return (left_end, right_start) if event.strand == "+" else (right_end, left_start)
+
+    junction_order = sorted({junction_between(left, right) for path in ordered_paths for left, right in zip(path, path[1:]) if junction_between(left, right)[0] < junction_between(left, right)[1]}, reverse=event.strand == "-")
+    junction_labels = {junction: f"J{index}" for index, junction in enumerate(junction_order, start=1)}
+    exon_depths = {}
+    junction_counts = {}
+    for cell_type, primer in groups:
+        for exon_start, exon_end in exon_order:
+            aligned_bases = sum(max(0, min(end, exon_end) - max(start, exon_start)) * count for key, count in exon_blocks.items() for event_id, _, local_cell_type, local_primer, start, end in (key,) if event_id == event.event_id and local_cell_type == cell_type and local_primer == primer)
+            exon_depths[(cell_type, primer, (exon_start, exon_end))] = aligned_bases / (exon_end - exon_start)
+        counts = {}
+        for key, count in junctions.items():
+            event_id, _, local_cell_type, local_primer, start, end = key
+            if event_id == event.event_id and local_cell_type == cell_type and local_primer == primer:
+                counts[(start, end)] = counts.get((start, end), 0.0) + count
+        junction_counts[(cell_type, primer)] = counts
+    rows = []
+    column_order = 0
+    exon_positions = {exon: index for index, exon in enumerate(exon_order)}
+    shared_positions = sorted(exon_positions[exon] for exon in shared_exons)
+    for path_number, ordered_exons in enumerate(ordered_paths, start=1):
+        column_order += 1
+        for exon_index, exon in enumerate(ordered_exons):
+            feature = exon_labels[exon]
+            coordinate = f"{event.chromosome}:{exon[0] + 1}-{exon[1]}"
+            position = exon_positions[exon]
+            left = [index for index in shared_positions if index < position]
+            right = [index for index in shared_positions if index > position]
+            reference_exons = [exon_order[index] for index in ([max(left)] if left else []) + ([min(right)] if right else [])]
+            for cell_type, primer in groups:
+                depth = exon_depths[(cell_type, primer, exon)]
+                if exon in shared_exons:
+                    psi = 1.0
+                else:
+                    reference_depths = [exon_depths[(cell_type, primer, reference)] for reference in reference_exons]
+                    reference_depth = float(np.mean(reference_depths)) if reference_depths else np.nan
+                    psi = np.clip(depth / reference_depth, 0.0, 1.0) if reference_depth > 0 else np.nan
+                rows.append({"path_number": path_number, "feature_type": "exon", "feature": feature, "feature_id": f"P{path_number}:{feature}", "coordinate": coordinate, "column_order": column_order, "cell_type": cell_type, "primer": primer, "raw_value": psi})
+            column_order += 1
+            if exon_index == len(ordered_exons) - 1:
+                continue
+            junction = junction_between(ordered_exons[exon_index], ordered_exons[exon_index + 1])
+            if junction[0] >= junction[1]:
+                continue
+            feature = junction_labels[junction]
+            coordinate = f"{event.chromosome}:{junction[0] + 1}-{junction[1] + 1}"
+            for cell_type, primer in groups:
+                counts = junction_counts[(cell_type, primer)]
+                denominator = sum(count for alternative, count in counts.items() if alternative[0] == junction[0] or alternative[1] == junction[1])
+                psi = counts.get(junction, 0.0) / denominator if denominator > 0 else np.nan
+                rows.append({"path_number": path_number, "feature_type": "junction", "feature": feature, "feature_id": f"P{path_number}:{feature}", "coordinate": coordinate, "column_order": column_order, "cell_type": cell_type, "primer": primer, "raw_value": psi})
+            column_order += 1
+    return pd.DataFrame(rows)
+
+
 def combine_path_usage_and_coverage(path_usage_summary, coverage, test_id):
     """Interleave fitted path usage with path-ordered coverage features."""
     usage = path_usage_summary[path_usage_summary["test_id"] == test_id]
@@ -160,6 +231,44 @@ def combine_path_usage_and_coverage(path_usage_summary, coverage, test_id):
     return combined.sort_values(["primer", "column_order", "cell_type"]).reset_index(drop=True)
 
 
+def write_path_evidence_heatmap(matrix, event_id, primer, cell_types, output_dir, evidence_name="Coverage per 1,000 half-cells", evidence_limits=None, output_suffix="block_heatmap"):
+    """Plot one primer-specific matrix of path usage and ordered evidence."""
+    from plotnine import aes, element_blank, element_text, geom_point, geom_text, geom_tile, geom_vline, ggplot, labs, scale_color_cmap, scale_fill_cmap, scale_x_discrete, theme, theme_bw
+
+    data = matrix[matrix["primer"] == primer].copy()
+    if data.empty:
+        raise ValueError(f"no {primer} evidence for {event_id}")
+    columns = data[["feature_id", "feature", "feature_type", "column_order"]].drop_duplicates().sort_values("column_order")
+    feature_ids = columns["feature_id"].tolist()
+    feature_labels = dict(zip(columns["feature_id"], columns["feature"]))
+    data["feature_id"] = pd.Categorical(data["feature_id"], categories=feature_ids, ordered=True)
+    data["cell_type"] = pd.Categorical(data["cell_type"], categories=tuple(cell_types)[::-1], ordered=True)
+    data["evidence"] = data["raw_value"].where(data["feature_type"] != "path")
+    data["label"] = data.apply(lambda row: f"{row.raw_value:.0%}" if row.feature_type == "path" else "", axis=1)
+    path_data = data[data["feature_type"] == "path"]
+    path_positions = [index for index, value in enumerate(columns["feature_type"], start=1) if value == "path"]
+    marker_size = min(14, 270 / len(feature_ids))
+    primer_slug = "oligodt" if primer == "poly(dT)" else "ranhex"
+    plot = (
+        ggplot(data, aes("feature_id", "cell_type"))
+        + geom_tile(aes(fill="evidence"), color="white", size=0.15)
+        + geom_point(data=path_data, mapping=aes(color="raw_value"), shape="s", size=marker_size)
+        + geom_text(data=path_data, mapping=aes(label="label"), size=6, fontweight="bold")
+        + geom_vline(xintercept=[position - 0.5 for position in path_positions[1:]], color="#25364A", size=0.7)
+        + scale_fill_cmap(name=evidence_name, cmap_name="viridis", limits=evidence_limits, na_value="#F2F2F2")
+        + scale_color_cmap(name="Path usage", cmap_name="magma", limits=(0, 1))
+        + scale_x_discrete(labels=lambda values: [feature_labels[value] for value in values])
+        + labs(x="Path and ordered block components", y=None, title=f"{event_id}, {primer}")
+        + theme_bw(base_size=9)
+        + theme(axis_text_x=element_text(size=7, rotation=90, va="top"), axis_text_y=element_text(size=7), panel_grid=element_blank(), legend_position="right", plot_title=element_text(size=10))
+    )
+    output_path = Path(output_dir) / event_id / f"{event_id}_{primer_slug}_{output_suffix}.pdf"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    height = max(3.0, 1.4 + 0.32 * len(cell_types))
+    plot.save(output_path, width=9.5, height=height, units="in", verbose=False)
+    return output_path
+
+
 def _alignment_junctions(alignment):
     position = alignment.reference_start
     for operation, length in alignment.cigartuples or ():
@@ -171,6 +280,8 @@ def _alignment_junctions(alignment):
 
 def collect_bam_event_support(bam_path, barcode_groups, events):
     """Collect UMI-deduplicated aligned blocks and junctions from one BAM."""
+    if pysam is None:
+        raise ImportError("pysam is required to collect BAM event support")
     by_chromosome = {}
     for event in events:
         by_chromosome.setdefault(event.chromosome, []).append(event)
@@ -197,7 +308,9 @@ def collect_bam_event_support(bam_path, barcode_groups, events):
                     if start < end:
                         exon_blocks[(event.event_id, subject, cell_type, primer, start, end)] += 1
                 for start, end in _alignment_junctions(alignment):
-                    if event.start <= start and end <= event.end:
+                    within_interval = event.start <= start and end <= event.end
+                    shares_target_site = event.splice_sites is not None and (start in event.splice_sites or end in event.splice_sites)
+                    if shares_target_site or (event.splice_sites is None and within_interval):
                         junctions[(event.event_id, subject, cell_type, primer, start, end)] += 1
     return exon_blocks, junctions, event_umis
 

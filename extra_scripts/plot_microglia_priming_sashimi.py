@@ -13,7 +13,7 @@ import subprocess
 
 import pandas as pd
 
-from tealeaf.sc.sashimi import SashimiEvent, collect_bam_event_support, combine_path_usage_and_coverage, merge_support, read_primer_cell_groups, select_strongest_significant_contrasts, summarize_path_ordered_coverage, summarize_path_usage, write_ggsashimi_inputs
+from tealeaf.sc.sashimi import SashimiEvent, collect_bam_event_support, combine_path_usage_and_coverage, merge_support, read_primer_cell_groups, select_strongest_significant_contrasts, summarize_path_ordered_coverage, summarize_path_usage, write_ggsashimi_inputs, write_path_evidence_heatmap
 
 
 EVENTS = (
@@ -60,43 +60,6 @@ def write_path_usage_plot(summary, event_id, test_id, cell_types, output_dir):
     )
     output_path = output_dir / event_id / f"{event_id}_path_usage.pdf"
     plot.save(output_path, width=7.2, height=2.8, units="in", verbose=False)
-    return output_path
-
-
-def write_block_heatmap(matrix, event_id, primer, cell_types, output_dir):
-    """Plot one primer-specific, path-ordered block evidence heatmap."""
-    from plotnine import aes, element_blank, element_text, geom_point, geom_text, geom_tile, geom_vline, ggplot, labs, scale_color_cmap, scale_fill_cmap, scale_x_discrete, theme, theme_bw
-
-    data = matrix[matrix["primer"] == primer].copy()
-    if data.empty:
-        raise ValueError(f"no {primer} evidence for {event_id}")
-    columns = data[["feature_id", "feature", "feature_type", "column_order"]].drop_duplicates().sort_values("column_order")
-    feature_ids = columns["feature_id"].tolist()
-    feature_labels = dict(zip(columns["feature_id"], columns["feature"]))
-    data["feature_id"] = pd.Categorical(data["feature_id"], categories=feature_ids, ordered=True)
-    data["cell_type"] = pd.Categorical(data["cell_type"], categories=tuple(cell_types)[::-1], ordered=True)
-    data["coverage"] = data["raw_value"].where(data["feature_type"] != "path")
-    data["label"] = data.apply(lambda row: f"{row.raw_value:.0%}" if row.feature_type == "path" else "", axis=1)
-    path_data = data[data["feature_type"] == "path"]
-    path_positions = [index for index, value in enumerate(columns["feature_type"], start=1) if value == "path"]
-    marker_size = min(14, 270 / len(feature_ids))
-    primer_slug = "oligodt" if primer == "poly(dT)" else "ranhex"
-    plot = (
-        ggplot(data, aes("feature_id", "cell_type"))
-        + geom_tile(aes(fill="coverage"), color="white", size=0.15)
-        + geom_point(data=path_data, mapping=aes(color="raw_value"), shape="s", size=marker_size)
-        + geom_text(data=path_data, mapping=aes(label="label"), size=6, fontweight="bold")
-        + geom_vline(xintercept=[position - 0.5 for position in path_positions[1:]], color="#25364A", size=0.7)
-        + scale_fill_cmap(name="Coverage per 1,000 half-cells", cmap_name="viridis", na_value="#F2F2F2")
-        + scale_color_cmap(name="Path usage", cmap_name="magma", limits=(0, 1))
-        + scale_x_discrete(labels=lambda values: [feature_labels[value] for value in values])
-        + labs(x="Path and ordered block components", y=None, title=f"{event_id}, {primer}")
-        + theme_bw(base_size=9)
-        + theme(axis_text_x=element_text(size=7, rotation=90, va="top"), axis_text_y=element_text(size=7), panel_grid=element_blank(), legend_position="right", plot_title=element_text(size=10))
-    )
-    output_path = output_dir / event_id / f"{event_id}_{primer_slug}_block_heatmap.pdf"
-    height = max(3.0, 1.4 + 0.32 * len(cell_types))
-    plot.save(output_path, width=9.5, height=height, units="in", verbose=False)
     return output_path
 
 
@@ -180,8 +143,8 @@ def main():
         oligodt_heatmap = event_dir / f"{event.event_id}_oligodt_block_heatmap.pdf"
         ranhex_heatmap = event_dir / f"{event.event_id}_ranhex_block_heatmap.pdf"
         if not args.skip_heatmap_plots:
-            write_block_heatmap(matrix, event.event_id, "poly(dT)", heatmap_cell_types, args.output_dir)
-            write_block_heatmap(matrix, event.event_id, "random hexamer", heatmap_cell_types, args.output_dir)
+            write_path_evidence_heatmap(matrix, event.event_id, "poly(dT)", heatmap_cell_types, args.output_dir)
+            write_path_evidence_heatmap(matrix, event.event_id, "random hexamer", heatmap_cell_types, args.output_dir)
         coordinates = f"{event.chromosome}:{event.start + 1}-{event.end + 1}"
         prefix = event_dir / f"{event.event_id}_priming_sashimi"
         contrast = selected_contrasts[selected_contrasts["block_id"] == event_ids[event.event_id]].iloc[0]
