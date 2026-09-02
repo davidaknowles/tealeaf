@@ -1,0 +1,13 @@
+{
+  "selection_method": "gene_equal_beta_uniform_mixture",
+  "selection_scope": "global",
+  "strength": 64.0,
+  "mean_log_evidence": 1.5453037051174985,
+  "null_weight": 0.05201332113944458,
+  "alternative_shape": 0.24556874523917088,
+  "path_prior_center": "uniform",
+  "path_prior_family": "dirichlet",
+  "path_pseudocount_scaling": "total",
+  "null_replicates": 32,
+  "null_families_with_bh": 0
+}

@@ -171,19 +171,20 @@
 \begin{columns}[T,onlytextwidth]
 \begin{column}{0.49\textwidth}
 \centering
-\metric{tlTeal}{3,537}{nominal cell-type tests}
+\metric{tlTeal}{894}{nominal omnibus blocks}
 \hspace{0.15cm}
-\metric{tlOrange}{1,111}{nominal condition tests}
+\metric{tlOrange}{1,243}{nominal condition tests}
 \vspace{0.55cm}
-\metric{tlNavy}{2,222}{cell-type BH calls}
+\metric{tlNavy}{791}{omnibus BH blocks}
 \hspace{0.15cm}
 \metric{tlGold}{0}{condition BH calls}
 \end{column}
 \begin{column}{0.48\textwidth}
 \vspace{0.05cm}
 \begin{itemize}\small
-\item 11,315 eligible cell-type-pair tests and 14,833 condition-within-cell-type tests
-\item Cell-type calls span 585 blocks and 440 genes
+\item 1,781 eligible omnibus blocks and 14,833 condition-within-cell-type tests
+\item Omnibus calls span 791 blocks and 572 genes
+\item Testing-level EB independently selects fixed-total $A=64$ for both families
 \item Every one of 32 null families has zero BH calls for both contrasts
 \item Pooled null rejection is 0.0500, 0.0100, and approximately 0.0010
 \end{itemize}
@@ -206,17 +207,17 @@
 \cmidrule(lr){2-4}\cmidrule(lr){5-7}
 Comparator & Rep. & held & $\rho$ & Rep. & held & $\rho$\\
 \midrule
-LeafCutter & \textbf{50} & \textbf{0.799} & \textbf{0.711} & 26 & 0.750 & 0.542\\
-MAJIQ Heterogen & \textbf{103} & \textbf{0.810} & \textbf{0.622} & 38 & 0.698 & 0.437\\
-scQuint & \textbf{101} & \textbf{0.819} & \textbf{0.656} & 56 & 0.775 & 0.458\\
+LeafCutter & \textbf{73} & \textbf{0.878} & \textbf{0.790} & 26 & 0.750 & 0.542\\
+MAJIQ Heterogen & \textbf{156} & \textbf{0.888} & \textbf{0.791} & 38 & 0.698 & 0.437\\
+scQuint & \textbf{160} & \textbf{0.875} & \textbf{0.813} & 56 & 0.775 & 0.458\\
 \bottomrule
 \end{tabular}
 \vspace{0.4cm}
 \begin{block}{What the paired local-path test changes}
-\scriptsize Subject-level path ILRs are estimated directly from both primer-specific EC vectors, stabilized by add-two smoothing, variance-moderated across scalar tests, and empirically calibrated with 32 sign-flip families. ``Rep.'' applies BH to the conjunction p-value on each pairwise shared gene universe; $\rho$ is fold correlation of gene--pair $-\log_{10}p$.
+\scriptsize Subject-level path ILRs are estimated directly from both primer-specific EC vectors, stabilized with a globally selected fixed-total concentration, variance-moderated across scalar tests, and empirically calibrated with 32 sign-flip families. Testing-level EB selects $A=32$ for this benchmark. ``Rep.'' applies BH to the conjunction p-value on each pairwise shared gene universe; $\rho$ is fold correlation of gene--pair $-\log_{10}p$.
 \end{block}
 \begin{alertblock}{Interpretation}
-\scriptsize Every aggregated replicated-gene null family has zero BH calls. Add-two smoothing was selected on these splits, so independent-data confirmation remains necessary.
+\scriptsize Every aggregated replicated-gene null family has zero BH calls. The complete EB selector was rerun inside each null family. Because $A$ was selected on this benchmark, independent-data confirmation remains necessary.
 \end{alertblock}
 \end{frame}
 
@@ -226,11 +227,11 @@ scQuint & \textbf{101} & \textbf{0.819} & \textbf{0.656} & 56 & 0.775 & 0.458\\
 \centering
 \metric{tlTeal}{2.52 h}{both subject-half fits}
 \hspace{0.12cm}
-\metric{tlNavy}{1.03 h}{full cell-type fit}
+\metric{tlNavy}{0.49 h}{selected omnibus fit}
 \vspace{0.45cm}
-\metric{tlOrange}{0.288 GiB}{peak split worker memory}
+\metric{tlOrange}{0.500 GiB}{peak full worker memory}
 \hspace{0.12cm}
-\metric{tlGold}{49$\times$}{less worker time\\than former full GLMM}
+\metric{tlGold}{5.02 h}{eight-value EB grid}
 \end{column}
 \begin{column}{0.42\textwidth}
 \begin{itemize}\small
@@ -241,15 +242,15 @@ scQuint & \textbf{101} & \textbf{0.819} & \textbf{0.656} & 56 & 0.775 & 0.458\\
 \end{itemize}
 \end{column}
 \end{columns}
-\source{Worker time starts from prepared inputs and excludes shared read processing. The 49-fold comparison is 51.0 versus 1.03 mouse worker hours.}
+\source{Worker time starts from prepared inputs and excludes shared read processing. Full-data values are for the primary omnibus family; the eight EB candidates run independently.}
 \end{frame}
 
-\begin{frame}{Production cell-type blocks include 110 cassette exons}
+\begin{frame}{Production cell-type blocks include 139 cassette exons}
 \begin{columns}[T,onlytextwidth]
 \begin{column}{0.52\textwidth}
 \resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[x=.032cm,y=.63cm]
-\foreach \i/\name/\v/\pct/\clr in {0/Alternative first region/347/59.3/tlTeal,1/Cassette exon/110/18.8/tlOrange,2/Alternative last region/66/11.3/tlNavy,3/Whole-gene complex/24/4.1/tlGold,4/Other/38/6.5/tlGray}{\node[anchor=east,font=\scriptsize] at (-2,4.6-\i*.85) {\name};\fill[\clr!80] (0,4.35-\i*.85) rectangle (\v,4.85-\i*.85);\node[anchor=west,font=\scriptsize] at (\v+2,4.6-\i*.85) {\v\; (\pct\%)};}
+\foreach \i/\name/\v/\pct/\clr in {0/Alternative first region/462/58.4/tlTeal,1/Cassette exon/139/17.6/tlOrange,2/Alternative last region/94/11.9/tlNavy,3/Whole-gene complex/41/5.2/tlGold,4/Other/55/7.0/tlGray}{\node[anchor=east,font=\scriptsize] at (-2,4.6-\i*.85) {\name};\fill[\clr!80] (0,4.35-\i*.85) rectangle (\v,4.85-\i*.85);\node[anchor=west,font=\scriptsize] at (\v+2,4.6-\i*.85) {\v\; (\pct\%)};}
 \end{tikzpicture}
 }
 \end{column}

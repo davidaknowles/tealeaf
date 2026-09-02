@@ -1,3 +1,4 @@
-contrast	worker_hours	maximum_shard_seconds	peak_worker_gib
-cell_type_pairwise	1.034817	151.642407	0.384
-condition_within_cell_type	2.245875	283.215588	0.410
+contrast	selected_fit_worker_hours	eb_grid_worker_hours	maximum_selected_shard_seconds	peak_worker_gib
+cell_type_omnibus	0.488160	5.020333	35.984523	0.500
+cell_type_pairwise	1.239793	11.210567	147.164628	0.396
+condition_within_cell_type	1.669866	12.800981	178.451626	0.399

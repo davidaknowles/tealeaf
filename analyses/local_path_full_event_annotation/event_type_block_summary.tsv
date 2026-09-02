@@ -1,10 +1,10 @@
 event_type	n_blocks	fraction
-alternative first region	347	0.5931623931623932
-cassette exon	110	0.18803418803418803
-alternative last region	66	0.11282051282051282
-whole-gene complex	24	0.041025641025641026
-compound internal	16	0.02735042735042735
-multi-exon skipping	9	0.015384615384615385
-mutually exclusive exons	9	0.015384615384615385
-alternative acceptor	2	0.003418803418803419
-complex internal	2	0.003418803418803419
+alternative first region	426	0.5949720670391061
+cassette exon	137	0.19134078212290503
+alternative last region	83	0.11592178770949721
+whole-gene complex	27	0.03770949720670391
+compound internal	20	0.027932960893854747
+multi-exon skipping	10	0.013966480446927373
+mutually exclusive exons	9	0.012569832402234637
+alternative acceptor	2	0.002793296089385475
+complex internal	2	0.002793296089385475

@@ -1,5 +1,1 @@
-gene_name	block_id	event_type	significant_cell_type_pairs	mapping_confidence	characterized_function	reference	doi
-Ntrk2	ENSMUSG00000055254.16:B2	alternative last region	12	high	Astrocytes predominantly express TrkB.T1, and loss reduces morphological maturation and support of excitatory synaptogenesis.	Holt et al., 2019	10.7554/eLife.44667
-Grin1	ENSMUSG00000026959.14:B3	cassette exon	5	high	The C1 cassette contains endoplasmic-reticulum retention motifs and changes surface trafficking of full-length GluN1 receptors.	Horak and Wenthold, 2009	10.1074/jbc.M807050200
-Dlg4	ENSMUSG00000020886.18:B1	alternative first region	7	moderate	The PSD-95 beta L27 domain binds CASK and Hrs; Hrs disruption selectively blocks beta synaptic clustering while sparing palmitoylated alpha.	Chetkovich et al., 2002	10.1523/JNEUROSCI.22-15-06415.2002
-App	ENSMUSG00000022892.12:B3	cassette exon	17	high	Exon-15 exclusion changes polarized APP secretion and decreases beta-amyloid production relative to p3.	Hartmann et al., 1996	10.1074/jbc.271.22.13208
+gene_name	test_id	event_type	mapping_confidence	literature_match	characterized_function	functional_context	reference	doi	pmid	n_tested_paths	n_cell_types	statistic	empirical_p_value	fdr
