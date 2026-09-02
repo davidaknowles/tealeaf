@@ -1,0 +1,9 @@
+chr2	Tealeaf	transcript	25181193	25185949	.	-	.	gene_id "Grin1"; transcript_id "Grin1.path1";
+chr2	Tealeaf	exon	25181193	25182140	.	-	.	gene_id "Grin1"; transcript_id "Grin1.path1"; exon_number "1";
+chr2	Tealeaf	exon	25182141	25182496	.	-	.	gene_id "Grin1"; transcript_id "Grin1.path1"; exon_number "2";
+chr2	Tealeaf	exon	25185804	25185949	.	-	.	gene_id "Grin1"; transcript_id "Grin1.path1"; exon_number "3";
+chr2	Tealeaf	transcript	25181193	25185949	.	-	.	gene_id "Grin1"; transcript_id "Grin1.path2";
+chr2	Tealeaf	exon	25181193	25182140	.	-	.	gene_id "Grin1"; transcript_id "Grin1.path2"; exon_number "1";
+chr2	Tealeaf	exon	25182141	25182496	.	-	.	gene_id "Grin1"; transcript_id "Grin1.path2"; exon_number "2";
+chr2	Tealeaf	exon	25184450	25184560	.	-	.	gene_id "Grin1"; transcript_id "Grin1.path2"; exon_number "3";
+chr2	Tealeaf	exon	25185804	25185949	.	-	.	gene_id "Grin1"; transcript_id "Grin1.path2"; exon_number "4";

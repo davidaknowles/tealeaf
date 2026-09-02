@@ -1,0 +1,45 @@
+{
+  "normalization": "UMI-deduplicated spliced alignments per 1000 primer-specific half-cells",
+  "runs": 16,
+  "events": [
+    {
+      "gene": "App",
+      "test_id": "ENSMUSG00000022892.12:B3",
+      "cell_types": [
+        "EX_cortical",
+        "INH_midbrain"
+      ],
+      "coordinates": "chr16:84751532-84810615",
+      "intron_counts": "App/App_intron.tsv",
+      "exon_counts": "App/App_exon.tsv",
+      "path_annotation": "App/App_paths.gtf",
+      "figure": "App/App_priming_sashimi.pdf"
+    },
+    {
+      "gene": "Gria2",
+      "test_id": "ENSMUSG00000033981.15:B1",
+      "cell_types": [
+        "EX_cortical",
+        "INH_midbrain"
+      ],
+      "coordinates": "chr3:80596410-80599840",
+      "intron_counts": "Gria2/Gria2_intron.tsv",
+      "exon_counts": "Gria2/Gria2_exon.tsv",
+      "path_annotation": "Gria2/Gria2_paths.gtf",
+      "figure": "Gria2/Gria2_priming_sashimi.pdf"
+    },
+    {
+      "gene": "Grin1",
+      "test_id": "ENSMUSG00000026959.14:B3",
+      "cell_types": [
+        "INH_medium_spiny",
+        "INH_midbrain"
+      ],
+      "coordinates": "chr2:25181193-25185950",
+      "intron_counts": "Grin1/Grin1_intron.tsv",
+      "exon_counts": "Grin1/Grin1_exon.tsv",
+      "path_annotation": "Grin1/Grin1_paths.gtf",
+      "figure": "Grin1/Grin1_priming_sashimi.pdf"
+    }
+  ]
+}

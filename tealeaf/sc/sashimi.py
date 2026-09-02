@@ -1,0 +1,154 @@
+"""Read-level support summaries for single-cell sashimi plots."""
+
+from __future__ import annotations
+
+from collections import Counter
+from dataclasses import dataclass
+import csv
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import pysam
+
+from tealeaf.sc.junction_benchmark import normalize_starsolo_barcode
+
+
+@dataclass(frozen=True)
+class SashimiEvent:
+    """A zero-based, half-open genomic interval to summarize."""
+
+    event_id: str
+    chromosome: str
+    start: int
+    end: int
+    strand: str
+
+
+def read_primer_cell_groups(metadata_path, primer_pairs_path, cell_types):
+    """Map half-cell barcodes to subject, cell type, and primer."""
+    primer_pairs = pd.read_csv(primer_pairs_path, sep="\t", dtype=str)
+    primer_by_barcode = {}
+    for primer, column in (("poly(dT)", "polydt_barcode"), ("random hexamer", "ranhex_barcode")):
+        for barcode in primer_pairs[column].dropna():
+            if barcode in primer_by_barcode:
+                raise ValueError(f"barcode {barcode!r} occurs in both primer groups")
+            primer_by_barcode[barcode] = primer
+    metadata = pd.read_csv(metadata_path, sep="\t", dtype=str)
+    metadata = metadata[metadata["cell_type"].isin(cell_types)].copy()
+    metadata["primer"] = metadata["barcode"].map(primer_by_barcode)
+    metadata = metadata.dropna(subset=["primer"])
+    if metadata.empty:
+        raise ValueError("no selected cells have a primer assignment")
+    if metadata["barcode"].duplicated().any():
+        raise ValueError("selected metadata contains duplicate barcodes")
+    lookup = {row.barcode: (row.subject, row.cell_type, row.primer) for row in metadata.itertuples(index=False)}
+    sizes = metadata.groupby(["subject", "cell_type", "primer"], sort=True).size().rename("cells").reset_index()
+    return lookup, sizes
+
+
+def _alignment_junctions(alignment):
+    position = alignment.reference_start
+    for operation, length in alignment.cigartuples or ():
+        if operation == 3:
+            yield position, position + length
+        if operation in {0, 2, 3, 7, 8}:
+            position += length
+
+
+def collect_bam_event_support(bam_path, barcode_groups, events):
+    """Collect UMI-deduplicated aligned blocks and junctions from one BAM."""
+    by_chromosome = {}
+    for event in events:
+        by_chromosome.setdefault(event.chromosome, []).append(event)
+    exon_blocks, junctions, event_umis = Counter(), Counter(), Counter()
+    with pysam.AlignmentFile(bam_path, "rb") as alignments:
+        for alignment in alignments.fetch(until_eof=True):
+            if alignment.is_unmapped or alignment.is_secondary or alignment.is_supplementary:
+                continue
+            local_events = by_chromosome.get(alignment.reference_name, ())
+            if not local_events or not alignment.has_tag("CB") or alignment.reference_end is None:
+                continue
+            overlapping = [event for event in local_events if alignment.reference_start < event.end and alignment.reference_end > event.start]
+            if not overlapping:
+                continue
+            barcode = normalize_starsolo_barcode(alignment.get_tag("CB"))
+            group = barcode_groups.get(barcode)
+            if group is None:
+                continue
+            subject, cell_type, primer = group
+            for event in overlapping:
+                event_umis[(event.event_id, subject, cell_type, primer)] += 1
+                for start, end in alignment.get_blocks():
+                    start, end = max(start, event.start), min(end, event.end)
+                    if start < end:
+                        exon_blocks[(event.event_id, subject, cell_type, primer, start, end)] += 1
+                for start, end in _alignment_junctions(alignment):
+                    if event.start <= start and end <= event.end:
+                        junctions[(event.event_id, subject, cell_type, primer, start, end)] += 1
+    return exon_blocks, junctions, event_umis
+
+
+def merge_support(results):
+    """Add support counters returned for independent BAMs."""
+    merged = Counter(), Counter(), Counter()
+    for result in results:
+        for target, source in zip(merged, result):
+            target.update(source)
+    return merged
+
+
+def _constant_segments(values):
+    changes = np.flatnonzero(np.diff(values) != 0) + 1
+    boundaries = np.concatenate(([0], changes, [len(values)]))
+    for start, end in zip(boundaries[:-1], boundaries[1:]):
+        value = float(values[start])
+        if value > 0:
+            yield int(start), int(end), value
+
+
+def write_ggsashimi_inputs(output_dir, event, exon_blocks, junctions, cell_sizes, cell_types, scale=1000.0):
+    """Write ggsashimi tables normalized per scale primer-specific half-cells."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    primers = ("poly(dT)", "random hexamer")
+    group_names = {(cell_type, primer): f"{cell_type.replace('_', '')}_{primer.replace(' ', '').replace('(', '').replace(')', '')}_0" for cell_type in cell_types for primer in primers}
+    denominators = cell_sizes.groupby(["cell_type", "primer"])["cells"].sum().to_dict()
+    missing = [group for group in group_names if denominators.get(group, 0) == 0]
+    if missing:
+        raise ValueError(f"groups without cells: {missing}")
+    exon_rows, junction_rows = {}, {}
+    for group, name in group_names.items():
+        cell_type, primer = group
+        denominator = denominators[group]
+        coverage = np.zeros(event.end - event.start, dtype=float)
+        for key, count in exon_blocks.items():
+            event_id, _, local_cell_type, local_primer, start, end = key
+            if event_id == event.event_id and local_cell_type == cell_type and local_primer == primer:
+                coverage[start - event.start : end - event.start] += count
+        coverage *= scale / denominator
+        for start, end, value in _constant_segments(coverage):
+            genomic_start, genomic_end = event.start + start + 1, event.start + end + 1
+            row = exon_rows.setdefault((genomic_start, genomic_end), {"Name": f"{event.chromosome}:{genomic_start}-{genomic_end}", "Chr": event.chromosome, "Start": genomic_start, "End": genomic_end})
+            row[name] = value
+        for key, count in junctions.items():
+            event_id, _, local_cell_type, local_primer, start, end = key
+            if event_id == event.event_id and local_cell_type == cell_type and local_primer == primer:
+                genomic_start, genomic_end = start + 1, end + 1
+                row = junction_rows.setdefault((genomic_start, genomic_end), {"Name": f"{event.chromosome}:{genomic_start}-{genomic_end}", "Chr": event.chromosome, "Start": genomic_start, "End": genomic_end})
+                row[name] = row.get(name, 0.0) + count * scale / denominator
+    columns = ["Name", "Chr", "Start", "End", *group_names.values()]
+    for rows in (exon_rows, junction_rows):
+        for row in rows.values():
+            for column in group_names.values():
+                row.setdefault(column, 0.0)
+    exon_path = output_dir / f"{event.event_id}_exon.tsv"
+    intron_path = output_dir / f"{event.event_id}_intron.tsv"
+    strand_path = output_dir / f"{event.event_id}_strand.tsv"
+    pd.DataFrame(exon_rows.values(), columns=columns).sort_values(["Start", "End"]).to_csv(exon_path, sep=" ", index=False)
+    pd.DataFrame(junction_rows.values(), columns=columns).sort_values(["Start", "End"]).to_csv(intron_path, sep=" ", index=False)
+    with open(strand_path, "w", newline="") as handle:
+        writer = csv.writer(handle, delimiter=" ", lineterminator="\n")
+        writer.writerow(("intron", "near_exons", "strand"))
+        writer.writerow(("dummy", "dummy", event.strand))
+    return intron_path, exon_path, strand_path

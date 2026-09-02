@@ -1,0 +1,11 @@
+# Primer-separated sashimi plots
+
+These plots provide direct read-level support for three high-confidence cell-type differential-splicing events from the production omnibus analysis. App block B3 is the exon-15 cassette, Gria2 block B1 is the flip/flop mutually exclusive pair, and Grin1 block B3 is the C1 cassette. App and Gria2 show cortical excitatory and midbrain inhibitory cells. Grin1 shows medium-spiny and midbrain inhibitory cells, its strongest pairwise localization.
+
+The workflow streams the 16 production spliced-pseudobulk BAM files. Those files retain unique genomic mappings and one alignment per cell barcode, UMI, locus, start, and CIGAR. Each alignment is assigned to poly(dT) or random-hexamer priming from its half-cell barcode. Coverage and junction arcs are pooled within cell type and primer, then divided by the number of primer-specific half-cells and multiplied by 1,000. Arc labels therefore report junction UMIs per 1,000 half-cells rather than raw read counts. Introns are compressed for display, and the bottom annotation contains only the local paths tested by Tealeaf.
+
+The plotted intervals contain 2,210/5,122 cortical-excitatory and 531/1,699 midbrain-inhibitory spliced UMIs for App under poly(dT)/random-hexamer priming. The corresponding values are 1,039/904 and 167/189 for Gria2, and 555/384 medium-spiny plus 148/330 midbrain-inhibitory UMIs for Grin1. Both priming strategies recover the tested structures, while their coverage and absolute support differ as expected from primer-specific positional exposure.
+
+The figures are descriptive checks rather than inputs to the statistical test. They omit unspliced and exonic-only EC observations and do not resolve ambiguous reads through the primer-specific EC maps. Production Tealeaf uses that larger observation set and all represented cell types in the omnibus test.
+
+The spliced-UMI support and cell-count tables retain the audit data. Event subdirectories contain the ggsashimi inputs, tested-path GTF, and PDF. The manifest records event identifiers and coordinates. Reusable BAM summarization is in the package sashimi module; dataset-specific selection and plotting are in the microglia priming-sashimi script.

@@ -1,0 +1,289 @@
+subject	cell_type	primer	cells
+A_1	EX_cortical	poly(dT)	139
+A_1	EX_cortical	random hexamer	139
+A_1	INH_medium_spiny	poly(dT)	45
+A_1	INH_medium_spiny	random hexamer	45
+A_1	INH_midbrain	poly(dT)	58
+A_1	INH_midbrain	random hexamer	58
+A_2	EX_cortical	poly(dT)	575
+A_2	EX_cortical	random hexamer	575
+A_2	INH_medium_spiny	poly(dT)	63
+A_2	INH_medium_spiny	random hexamer	63
+A_2	INH_midbrain	poly(dT)	136
+A_2	INH_midbrain	random hexamer	136
+A_4	EX_cortical	poly(dT)	220
+A_4	EX_cortical	random hexamer	220
+A_4	INH_medium_spiny	poly(dT)	58
+A_4	INH_medium_spiny	random hexamer	58
+A_4	INH_midbrain	poly(dT)	64
+A_4	INH_midbrain	random hexamer	64
+A_5	EX_cortical	poly(dT)	182
+A_5	EX_cortical	random hexamer	182
+A_5	INH_medium_spiny	poly(dT)	44
+A_5	INH_medium_spiny	random hexamer	44
+A_5	INH_midbrain	poly(dT)	68
+A_5	INH_midbrain	random hexamer	68
+A_6	EX_cortical	poly(dT)	67
+A_6	EX_cortical	random hexamer	67
+A_6	INH_medium_spiny	poly(dT)	16
+A_6	INH_medium_spiny	random hexamer	16
+A_6	INH_midbrain	poly(dT)	19
+A_6	INH_midbrain	random hexamer	19
+A_7	EX_cortical	poly(dT)	381
+A_7	EX_cortical	random hexamer	381
+A_7	INH_medium_spiny	poly(dT)	37
+A_7	INH_medium_spiny	random hexamer	37
+A_7	INH_midbrain	poly(dT)	77
+A_7	INH_midbrain	random hexamer	77
+A_8	EX_cortical	poly(dT)	285
+A_8	EX_cortical	random hexamer	285
+A_8	INH_medium_spiny	poly(dT)	74
+A_8	INH_medium_spiny	random hexamer	74
+A_8	INH_midbrain	poly(dT)	106
+A_8	INH_midbrain	random hexamer	106
+A_9	EX_cortical	poly(dT)	121
+A_9	EX_cortical	random hexamer	121
+A_9	INH_medium_spiny	poly(dT)	24
+A_9	INH_medium_spiny	random hexamer	24
+A_9	INH_midbrain	poly(dT)	27
+A_9	INH_midbrain	random hexamer	27
+B_1	EX_cortical	poly(dT)	305
+B_1	EX_cortical	random hexamer	305
+B_1	INH_medium_spiny	poly(dT)	131
+B_1	INH_medium_spiny	random hexamer	131
+B_1	INH_midbrain	poly(dT)	122
+B_1	INH_midbrain	random hexamer	122
+B_2	EX_cortical	poly(dT)	162
+B_2	EX_cortical	random hexamer	162
+B_2	INH_medium_spiny	poly(dT)	76
+B_2	INH_medium_spiny	random hexamer	76
+B_2	INH_midbrain	poly(dT)	87
+B_2	INH_midbrain	random hexamer	87
+B_3	EX_cortical	poly(dT)	250
+B_3	EX_cortical	random hexamer	250
+B_3	INH_medium_spiny	poly(dT)	50
+B_3	INH_medium_spiny	random hexamer	50
+B_3	INH_midbrain	poly(dT)	52
+B_3	INH_midbrain	random hexamer	52
+B_4	EX_cortical	poly(dT)	39
+B_4	EX_cortical	random hexamer	39
+B_4	INH_medium_spiny	poly(dT)	6
+B_4	INH_medium_spiny	random hexamer	6
+B_4	INH_midbrain	poly(dT)	30
+B_4	INH_midbrain	random hexamer	30
+B_5	EX_cortical	poly(dT)	94
+B_5	EX_cortical	random hexamer	94
+B_5	INH_medium_spiny	poly(dT)	36
+B_5	INH_medium_spiny	random hexamer	36
+B_5	INH_midbrain	poly(dT)	35
+B_5	INH_midbrain	random hexamer	35
+B_6	EX_cortical	poly(dT)	89
+B_6	EX_cortical	random hexamer	89
+B_6	INH_medium_spiny	poly(dT)	41
+B_6	INH_medium_spiny	random hexamer	41
+B_6	INH_midbrain	poly(dT)	27
+B_6	INH_midbrain	random hexamer	27
+B_7	EX_cortical	poly(dT)	207
+B_7	EX_cortical	random hexamer	207
+B_7	INH_medium_spiny	poly(dT)	37
+B_7	INH_medium_spiny	random hexamer	37
+B_7	INH_midbrain	poly(dT)	32
+B_7	INH_midbrain	random hexamer	32
+B_8	EX_cortical	poly(dT)	191
+B_8	EX_cortical	random hexamer	191
+B_8	INH_medium_spiny	poly(dT)	62
+B_8	INH_medium_spiny	random hexamer	62
+B_8	INH_midbrain	poly(dT)	42
+B_8	INH_midbrain	random hexamer	42
+C_1	EX_cortical	poly(dT)	126
+C_1	EX_cortical	random hexamer	126
+C_1	INH_medium_spiny	poly(dT)	25
+C_1	INH_medium_spiny	random hexamer	25
+C_1	INH_midbrain	poly(dT)	35
+C_1	INH_midbrain	random hexamer	35
+C_2	EX_cortical	poly(dT)	343
+C_2	EX_cortical	random hexamer	343
+C_2	INH_medium_spiny	poly(dT)	142
+C_2	INH_medium_spiny	random hexamer	142
+C_2	INH_midbrain	poly(dT)	46
+C_2	INH_midbrain	random hexamer	46
+C_3	EX_cortical	poly(dT)	199
+C_3	EX_cortical	random hexamer	199
+C_3	INH_medium_spiny	poly(dT)	65
+C_3	INH_medium_spiny	random hexamer	65
+C_3	INH_midbrain	poly(dT)	30
+C_3	INH_midbrain	random hexamer	30
+C_4	EX_cortical	poly(dT)	573
+C_4	EX_cortical	random hexamer	573
+C_4	INH_medium_spiny	poly(dT)	169
+C_4	INH_medium_spiny	random hexamer	169
+C_4	INH_midbrain	poly(dT)	112
+C_4	INH_midbrain	random hexamer	112
+C_5	EX_cortical	poly(dT)	281
+C_5	EX_cortical	random hexamer	281
+C_5	INH_medium_spiny	poly(dT)	106
+C_5	INH_medium_spiny	random hexamer	106
+C_5	INH_midbrain	poly(dT)	99
+C_5	INH_midbrain	random hexamer	99
+C_6	EX_cortical	poly(dT)	342
+C_6	EX_cortical	random hexamer	342
+C_6	INH_medium_spiny	poly(dT)	98
+C_6	INH_medium_spiny	random hexamer	98
+C_6	INH_midbrain	poly(dT)	90
+C_6	INH_midbrain	random hexamer	90
+C_7	EX_cortical	poly(dT)	62
+C_7	EX_cortical	random hexamer	62
+C_7	INH_medium_spiny	poly(dT)	25
+C_7	INH_medium_spiny	random hexamer	25
+C_7	INH_midbrain	poly(dT)	29
+C_7	INH_midbrain	random hexamer	29
+C_8	EX_cortical	poly(dT)	486
+C_8	EX_cortical	random hexamer	486
+C_8	INH_medium_spiny	poly(dT)	138
+C_8	INH_medium_spiny	random hexamer	138
+C_8	INH_midbrain	poly(dT)	168
+C_8	INH_midbrain	random hexamer	168
+D_1	EX_cortical	poly(dT)	170
+D_1	EX_cortical	random hexamer	170
+D_1	INH_medium_spiny	poly(dT)	39
+D_1	INH_medium_spiny	random hexamer	39
+D_1	INH_midbrain	poly(dT)	41
+D_1	INH_midbrain	random hexamer	41
+D_2	EX_cortical	poly(dT)	378
+D_2	EX_cortical	random hexamer	378
+D_2	INH_medium_spiny	poly(dT)	13
+D_2	INH_medium_spiny	random hexamer	13
+D_2	INH_midbrain	poly(dT)	125
+D_2	INH_midbrain	random hexamer	125
+D_3	EX_cortical	poly(dT)	119
+D_3	EX_cortical	random hexamer	119
+D_3	INH_medium_spiny	poly(dT)	85
+D_3	INH_medium_spiny	random hexamer	85
+D_3	INH_midbrain	poly(dT)	45
+D_3	INH_midbrain	random hexamer	45
+D_4	EX_cortical	poly(dT)	259
+D_4	EX_cortical	random hexamer	259
+D_4	INH_medium_spiny	poly(dT)	74
+D_4	INH_medium_spiny	random hexamer	74
+D_4	INH_midbrain	poly(dT)	75
+D_4	INH_midbrain	random hexamer	75
+D_5	EX_cortical	poly(dT)	231
+D_5	EX_cortical	random hexamer	231
+D_5	INH_medium_spiny	poly(dT)	55
+D_5	INH_medium_spiny	random hexamer	55
+D_5	INH_midbrain	poly(dT)	53
+D_5	INH_midbrain	random hexamer	53
+D_6	EX_cortical	poly(dT)	479
+D_6	EX_cortical	random hexamer	479
+D_6	INH_medium_spiny	poly(dT)	114
+D_6	INH_medium_spiny	random hexamer	114
+D_6	INH_midbrain	poly(dT)	144
+D_6	INH_midbrain	random hexamer	144
+D_7	EX_cortical	poly(dT)	133
+D_7	EX_cortical	random hexamer	133
+D_7	INH_medium_spiny	poly(dT)	42
+D_7	INH_medium_spiny	random hexamer	42
+D_7	INH_midbrain	poly(dT)	53
+D_7	INH_midbrain	random hexamer	53
+D_8	EX_cortical	poly(dT)	282
+D_8	EX_cortical	random hexamer	282
+D_8	INH_medium_spiny	poly(dT)	75
+D_8	INH_medium_spiny	random hexamer	75
+D_8	INH_midbrain	poly(dT)	99
+D_8	INH_midbrain	random hexamer	99
+E_1	EX_cortical	poly(dT)	341
+E_1	EX_cortical	random hexamer	341
+E_1	INH_medium_spiny	poly(dT)	116
+E_1	INH_medium_spiny	random hexamer	116
+E_1	INH_midbrain	poly(dT)	63
+E_1	INH_midbrain	random hexamer	63
+E_2	EX_cortical	poly(dT)	68
+E_2	EX_cortical	random hexamer	68
+E_2	INH_medium_spiny	poly(dT)	22
+E_2	INH_medium_spiny	random hexamer	22
+E_2	INH_midbrain	poly(dT)	20
+E_2	INH_midbrain	random hexamer	20
+E_3	EX_cortical	poly(dT)	522
+E_3	EX_cortical	random hexamer	522
+E_3	INH_medium_spiny	poly(dT)	125
+E_3	INH_medium_spiny	random hexamer	125
+E_3	INH_midbrain	poly(dT)	82
+E_3	INH_midbrain	random hexamer	82
+E_4	EX_cortical	poly(dT)	92
+E_4	EX_cortical	random hexamer	92
+E_4	INH_medium_spiny	poly(dT)	45
+E_4	INH_medium_spiny	random hexamer	45
+E_4	INH_midbrain	poly(dT)	20
+E_4	INH_midbrain	random hexamer	20
+E_5	EX_cortical	poly(dT)	483
+E_5	EX_cortical	random hexamer	483
+E_5	INH_medium_spiny	poly(dT)	282
+E_5	INH_medium_spiny	random hexamer	282
+E_5	INH_midbrain	poly(dT)	76
+E_5	INH_midbrain	random hexamer	76
+E_6	EX_cortical	poly(dT)	197
+E_6	EX_cortical	random hexamer	197
+E_6	INH_medium_spiny	poly(dT)	31
+E_6	INH_medium_spiny	random hexamer	31
+E_6	INH_midbrain	poly(dT)	33
+E_6	INH_midbrain	random hexamer	33
+E_7	EX_cortical	poly(dT)	93
+E_7	EX_cortical	random hexamer	93
+E_7	INH_medium_spiny	poly(dT)	21
+E_7	INH_medium_spiny	random hexamer	21
+E_7	INH_midbrain	poly(dT)	25
+E_7	INH_midbrain	random hexamer	25
+E_8	EX_cortical	poly(dT)	217
+E_8	EX_cortical	random hexamer	217
+E_8	INH_medium_spiny	poly(dT)	33
+E_8	INH_medium_spiny	random hexamer	33
+E_8	INH_midbrain	poly(dT)	64
+E_8	INH_midbrain	random hexamer	64
+F_1	EX_cortical	poly(dT)	393
+F_1	EX_cortical	random hexamer	393
+F_1	INH_medium_spiny	poly(dT)	145
+F_1	INH_medium_spiny	random hexamer	145
+F_1	INH_midbrain	poly(dT)	160
+F_1	INH_midbrain	random hexamer	160
+F_2	EX_cortical	poly(dT)	170
+F_2	EX_cortical	random hexamer	170
+F_2	INH_medium_spiny	poly(dT)	58
+F_2	INH_medium_spiny	random hexamer	58
+F_2	INH_midbrain	poly(dT)	37
+F_2	INH_midbrain	random hexamer	37
+F_3	EX_cortical	poly(dT)	95
+F_3	EX_cortical	random hexamer	95
+F_3	INH_medium_spiny	poly(dT)	27
+F_3	INH_medium_spiny	random hexamer	27
+F_3	INH_midbrain	poly(dT)	37
+F_3	INH_midbrain	random hexamer	37
+F_4	EX_cortical	poly(dT)	236
+F_4	EX_cortical	random hexamer	236
+F_4	INH_medium_spiny	poly(dT)	98
+F_4	INH_medium_spiny	random hexamer	98
+F_4	INH_midbrain	poly(dT)	129
+F_4	INH_midbrain	random hexamer	129
+F_5	EX_cortical	poly(dT)	519
+F_5	EX_cortical	random hexamer	519
+F_5	INH_medium_spiny	poly(dT)	32
+F_5	INH_medium_spiny	random hexamer	32
+F_5	INH_midbrain	poly(dT)	108
+F_5	INH_midbrain	random hexamer	108
+F_6	EX_cortical	poly(dT)	349
+F_6	EX_cortical	random hexamer	349
+F_6	INH_medium_spiny	poly(dT)	53
+F_6	INH_medium_spiny	random hexamer	53
+F_6	INH_midbrain	poly(dT)	52
+F_6	INH_midbrain	random hexamer	52
+F_7	EX_cortical	poly(dT)	263
+F_7	EX_cortical	random hexamer	263
+F_7	INH_medium_spiny	poly(dT)	63
+F_7	INH_medium_spiny	random hexamer	63
+F_7	INH_midbrain	poly(dT)	75
+F_7	INH_midbrain	random hexamer	75
+F_8	EX_cortical	poly(dT)	124
+F_8	EX_cortical	random hexamer	124
+F_8	INH_medium_spiny	poly(dT)	19
+F_8	INH_medium_spiny	random hexamer	19
+F_8	INH_midbrain	poly(dT)	28
+F_8	INH_midbrain	random hexamer	28

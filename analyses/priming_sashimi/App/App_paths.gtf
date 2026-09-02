@@ -1,0 +1,13 @@
+chr16	Tealeaf	transcript	84751532	84810614	.	-	.	gene_id "App"; transcript_id "App.path1";
+chr16	Tealeaf	exon	84751532	84752320	.	-	.	gene_id "App"; transcript_id "App.path1"; exon_number "1";
+chr16	Tealeaf	exon	84759610	84759756	.	-	.	gene_id "App"; transcript_id "App.path1"; exon_number "2";
+chr16	Tealeaf	exon	84762558	84762658	.	-	.	gene_id "App"; transcript_id "App.path1"; exon_number "3";
+chr16	Tealeaf	exon	84774952	84775173	.	-	.	gene_id "App"; transcript_id "App.path1"; exon_number "4";
+chr16	Tealeaf	exon	84810515	84810614	.	-	.	gene_id "App"; transcript_id "App.path1"; exon_number "5";
+chr16	Tealeaf	transcript	84751532	84810614	.	-	.	gene_id "App"; transcript_id "App.path2";
+chr16	Tealeaf	exon	84751532	84752320	.	-	.	gene_id "App"; transcript_id "App.path2"; exon_number "1";
+chr16	Tealeaf	exon	84759610	84759756	.	-	.	gene_id "App"; transcript_id "App.path2"; exon_number "2";
+chr16	Tealeaf	exon	84762558	84762658	.	-	.	gene_id "App"; transcript_id "App.path2"; exon_number "3";
+chr16	Tealeaf	exon	84768296	84768349	.	-	.	gene_id "App"; transcript_id "App.path2"; exon_number "4";
+chr16	Tealeaf	exon	84774952	84775173	.	-	.	gene_id "App"; transcript_id "App.path2"; exon_number "5";
+chr16	Tealeaf	exon	84810515	84810614	.	-	.	gene_id "App"; transcript_id "App.path2"; exon_number "6";

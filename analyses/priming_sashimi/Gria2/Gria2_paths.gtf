@@ -1,0 +1,8 @@
+chr3	Tealeaf	transcript	80596410	80599839	.	-	.	gene_id "Gria2"; transcript_id "Gria2.path1";
+chr3	Tealeaf	exon	80596410	80596658	.	-	.	gene_id "Gria2"; transcript_id "Gria2.path1"; exon_number "1";
+chr3	Tealeaf	exon	80597711	80597825	.	-	.	gene_id "Gria2"; transcript_id "Gria2.path1"; exon_number "2";
+chr3	Tealeaf	exon	80599592	80599839	.	-	.	gene_id "Gria2"; transcript_id "Gria2.path1"; exon_number "3";
+chr3	Tealeaf	transcript	80596410	80599839	.	-	.	gene_id "Gria2"; transcript_id "Gria2.path2";
+chr3	Tealeaf	exon	80596410	80596658	.	-	.	gene_id "Gria2"; transcript_id "Gria2.path2"; exon_number "1";
+chr3	Tealeaf	exon	80598627	80598741	.	-	.	gene_id "Gria2"; transcript_id "Gria2.path2"; exon_number "2";
+chr3	Tealeaf	exon	80599592	80599839	.	-	.	gene_id "Gria2"; transcript_id "Gria2.path2"; exon_number "3";
