@@ -8,3 +8,4 @@ uniform_eb	uniform	cross_fitted	uniform	per_path	0.5;1	1;2	488	636	20	41	45	0.75
 uniform_eb	uniform	cross_fitted	uniform	total	2	4	775	706	40	65	67	0.817593	0.791667	0.797119	0.688645	0.541869	0.574006
 uniform_eb	uniform	global	uniform	per_path	0.5	2	465	770	19	31	34	0.746032	0.735959	0.723718	0.573601	0.450541	0.492392
 uniform_eb	uniform	global	uniform	total	2	4	773	704	40	65	62	0.817593	0.791667	0.796207	0.689934	0.541703	0.572481
+testing_level_eb	uniform_test_mixture	global	uniform	total	32	32	1471	1047	73	156	160	0.878449	0.887649	0.875489	0.790015	0.790790	0.812610
