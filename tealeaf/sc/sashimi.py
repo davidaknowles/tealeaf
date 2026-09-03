@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections import Counter
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 import csv
 from pathlib import Path
@@ -88,6 +88,111 @@ def summarize_path_usage(path_usage):
     summary["sd_proportion"] = summary["sd_proportion"].fillna(0.0)
     summary["se_proportion"] = summary["sd_proportion"] / np.sqrt(summary["n_subjects"])
     return summary
+
+
+def variable_path_features(event, paths):
+    """Return variable exon segments and junctions with their path membership.
+
+    Exons are split at every boundary before path membership is assigned, so an
+    alternative donor or acceptor contributes only its discriminating segment.
+    """
+    ordered_paths = [tuple(sorted(set(tuple(exon) for exon in path), reverse=event.strand == "-")) for path in paths]
+    n_paths = len(ordered_paths)
+    if n_paths < 2:
+        raise ValueError("at least two paths are required")
+    boundaries = sorted({coordinate for path in ordered_paths for exon in path for coordinate in exon})
+    exon_segments = []
+    for start, end in zip(boundaries, boundaries[1:]):
+        membership = tuple(index + 1 for index, path in enumerate(ordered_paths) if any(exon_start <= start and end <= exon_end for exon_start, exon_end in path))
+        if membership and len(membership) < n_paths:
+            if exon_segments and exon_segments[-1][1] == start and exon_segments[-1][2] == membership:
+                exon_segments[-1] = (exon_segments[-1][0], end, membership)
+            else:
+                exon_segments.append((start, end, membership))
+
+    def junction_between(left_exon, right_exon):
+        return (left_exon[1], right_exon[0]) if event.strand == "+" else (right_exon[1], left_exon[0])
+
+    junction_membership = defaultdict(list)
+    for path_number, path in enumerate(ordered_paths, start=1):
+        for left, right in zip(path, path[1:]):
+            start, end = junction_between(left, right)
+            if start < end:
+                junction_membership[(start, end)].append(path_number)
+    rows = []
+    for start, end, membership in exon_segments:
+        rows.append({"feature_type": "exon", "start": start, "end": end, "path_numbers": membership})
+    for (start, end), membership in sorted(junction_membership.items()):
+        if len(membership) < n_paths:
+            rows.append({"feature_type": "junction", "start": start, "end": end, "path_numbers": tuple(membership)})
+    features = pd.DataFrame(rows)
+    if features.empty:
+        return pd.DataFrame(columns=["feature_type", "start", "end", "path_numbers", "feature_id"])
+    features = features.sort_values(["feature_type", "start", "end"]).reset_index(drop=True)
+    features["feature_id"] = features.apply(lambda row: f"{row.feature_type[0].upper()}:{int(row.start)}-{int(row.end)}", axis=1)
+    return features
+
+
+def summarize_subject_feature_evidence(event, paths, anchors, exon_blocks, junctions, path_usage, primers=("poly(dT)", "random hexamer")):
+    """Compare fitted path inclusion with subject-level read evidence.
+
+    For each subject, cell type, primer, and variable feature, the fitted value
+    is the sum of the proportions of paths containing that feature. Exon depth
+    is divided by mean depth across the explicit block endpoint anchors and
+    clipped to [0, 1]. Junction counts are divided by counts over unique
+    junctions sharing their donor or acceptor site.
+    """
+    required = {"subject", "cell_type", "path_number", "proportion"}
+    missing = required - set(path_usage.columns)
+    if missing:
+        raise ValueError(f"path usage is missing columns: {sorted(missing)}")
+    anchors = tuple(tuple(anchor) for anchor in anchors)
+    if not anchors:
+        raise ValueError("at least one explicit endpoint anchor is required")
+    features = variable_path_features(event, paths)
+    if features.empty:
+        return pd.DataFrame()
+    exon_by_group = defaultdict(list)
+    for key, count in exon_blocks.items():
+        event_id, subject, cell_type, primer, start, end = key
+        if event_id == event.event_id:
+            exon_by_group[(subject, cell_type, primer)].append((start, end, count))
+    junction_by_group = defaultdict(dict)
+    for key, count in junctions.items():
+        event_id, subject, cell_type, primer, start, end = key
+        if event_id == event.event_id:
+            group_counts = junction_by_group[(subject, cell_type, primer)]
+            group_counts[(start, end)] = group_counts.get((start, end), 0.0) + count
+
+    def mean_depth(blocks, interval):
+        start, end = interval
+        aligned_bases = sum(max(0, min(block_end, end) - max(block_start, start)) * count for block_start, block_end, count in blocks)
+        return aligned_bases / (end - start)
+
+    rows = []
+    usage_groups = path_usage.groupby(["subject", "cell_type"], sort=True)
+    for (subject, cell_type), group_usage in usage_groups:
+        proportions = dict(zip(group_usage["path_number"].astype(int), group_usage["proportion"].astype(float)))
+        for primer in primers:
+            group = (subject, cell_type, primer)
+            blocks = exon_by_group.get(group, ())
+            counts = junction_by_group.get(group, {})
+            anchor_depth = float(np.mean([mean_depth(blocks, anchor) for anchor in anchors]))
+            for feature in features.itertuples(index=False):
+                fitted = sum(proportions.get(path_number, 0.0) for path_number in feature.path_numbers)
+                if feature.feature_type == "exon":
+                    feature_signal = mean_depth(blocks, (feature.start, feature.end))
+                    raw_ratio = feature_signal / anchor_depth if anchor_depth > 0 else np.nan
+                    observed = np.clip(raw_ratio, 0.0, 1.0) if np.isfinite(raw_ratio) else np.nan
+                    denominator = anchor_depth
+                else:
+                    feature_signal = counts.get((feature.start, feature.end), 0.0)
+                    denominator = sum(count for (start, end), count in counts.items() if start == feature.start or end == feature.end)
+                    raw_ratio = feature_signal / denominator if denominator > 0 else np.nan
+                    observed = raw_ratio
+                endpoint_ratio = feature_signal / anchor_depth if anchor_depth > 0 else np.nan
+                rows.append({"test_id": event.event_id, "subject": subject, "cell_type": cell_type, "primer": primer, "feature_id": feature.feature_id, "feature_type": feature.feature_type, "start": feature.start, "end": feature.end, "path_numbers": ",".join(map(str, feature.path_numbers)), "fitted_inclusion": fitted, "observed_inclusion": observed, "unclipped_observed_ratio": raw_ratio, "evidence_denominator": denominator, "feature_signal": feature_signal, "endpoint_depth": anchor_depth, "endpoint_normalized_signal": endpoint_ratio})
+    return pd.DataFrame(rows)
 
 
 def coverage_group_columns(cell_types):
@@ -285,28 +390,41 @@ def _alignment_junctions(alignment):
             position += length
 
 
-def collect_bam_event_support(bam_path, barcode_groups, events):
-    """Collect UMI-deduplicated aligned blocks and junctions from one BAM."""
+def collect_bam_event_support(bam_path, barcode_groups, events, deduplicate=False):
+    """Collect aligned blocks and junctions, optionally deduplicating cell UMIs."""
     if pysam is None:
         raise ImportError("pysam is required to collect BAM event support")
-    by_chromosome = {}
+    bin_size = 1_000_000
+    by_chromosome = defaultdict(lambda: defaultdict(list))
     for event in events:
-        by_chromosome.setdefault(event.chromosome, []).append(event)
+        for bin_index in range(event.start // bin_size, (event.end - 1) // bin_size + 1):
+            by_chromosome[event.chromosome][bin_index].append(event)
     exon_blocks, junctions, event_umis = Counter(), Counter(), Counter()
+    seen = set()
     with pysam.AlignmentFile(bam_path, "rb") as alignments:
         for alignment in alignments.fetch(until_eof=True):
             if alignment.is_unmapped or alignment.is_secondary or alignment.is_supplementary:
                 continue
-            local_events = by_chromosome.get(alignment.reference_name, ())
-            if not local_events or not alignment.has_tag("CB") or alignment.reference_end is None:
+            chromosome_bins = by_chromosome.get(alignment.reference_name)
+            if chromosome_bins is None or not alignment.has_tag("CB") or alignment.reference_end is None:
                 continue
-            overlapping = [event for event in local_events if alignment.reference_start < event.end and alignment.reference_end > event.start]
+            local_events = {}
+            for bin_index in range(alignment.reference_start // bin_size, (alignment.reference_end - 1) // bin_size + 1):
+                local_events.update((event.event_id, event) for event in chromosome_bins.get(bin_index, ()))
+            overlapping = [event for event in local_events.values() if alignment.reference_start < event.end and alignment.reference_end > event.start]
             if not overlapping:
                 continue
             barcode = normalize_starsolo_barcode(alignment.get_tag("CB"))
             group = barcode_groups.get(barcode)
             if group is None:
                 continue
+            if deduplicate:
+                if not alignment.has_tag("NH") or alignment.get_tag("NH") != 1 or not alignment.has_tag("UB"):
+                    continue
+                key = (barcode, alignment.get_tag("UB"), alignment.reference_id, alignment.reference_start, alignment.cigarstring)
+                if key in seen:
+                    continue
+                seen.add(key)
             subject, cell_type, primer = group
             for event in overlapping:
                 event_umis[(event.event_id, subject, cell_type, primer)] += 1

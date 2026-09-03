@@ -1,0 +1,15 @@
+{
+  "selection": "all BH-significant full-data omnibus local blocks with at least one explicit endpoint anchor",
+  "n_significant_blocks": 791,
+  "n_blocks_with_endpoint_anchors": 750,
+  "n_bam_files": 16,
+  "bam_name": "Aligned.sortedByCoord.out.bam",
+  "deduplicated_in_collector": true,
+  "reporting_concentration": 1.0,
+  "endpoint_normalized_evidence": "variable atomic-exon aligned depth or variable-junction count divided by mean aligned depth over the explicit block endpoint anchor exon or exons",
+  "splice_site_psi": "the complementary contrast table uses junction count divided by the total count over unique observed junctions sharing its donor or acceptor splice site",
+  "contrast": "for each variable feature and primer, choose the largest fitted difference among cell-type pairs with at least three common support-qualified subjects, orient it high-minus-low without inspecting raw evidence, and then calculate the raw contrast",
+  "rank_concordance": "rank cell types by fitted feature inclusion and endpoint-normalized feature signal; require at least three cell types, total endpoint depth at least 20, and fitted range at least 0.05; average feature Spearman correlations within each block",
+  "support": "endpoint depth at least one for each exon observation, junction denominator at least five for each junction observation, and paired fitted difference at least 0.05",
+  "interpretation": "same-read descriptive concordance check, not independent validation or an input to statistical calibration"
+}

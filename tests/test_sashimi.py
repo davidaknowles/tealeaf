@@ -3,7 +3,7 @@ from collections import Counter
 import pandas as pd
 import pysam
 
-from tealeaf.sc.sashimi import SashimiEvent, collect_bam_event_support, combine_path_usage_and_coverage, select_strongest_significant_contrasts, summarize_path_ordered_coverage, summarize_path_ordered_psi, summarize_path_usage, write_ggsashimi_inputs
+from tealeaf.sc.sashimi import SashimiEvent, collect_bam_event_support, combine_path_usage_and_coverage, select_strongest_significant_contrasts, summarize_path_ordered_coverage, summarize_path_ordered_psi, summarize_path_usage, summarize_subject_feature_evidence, variable_path_features, write_ggsashimi_inputs
 
 
 def test_collect_and_write_sashimi_support(tmp_path):
@@ -60,6 +60,31 @@ def test_collects_junction_competitors_outside_event_interval(tmp_path):
     groups = {"AAAACCCC": ("subject", "cell", "poly(dT)")}
     _, junctions, _ = collect_bam_event_support(bam_path, groups, (event,))
     assert junctions == Counter({("event", "subject", "cell", "poly(dT)", 60, 210): 1})
+
+
+def test_collect_can_deduplicate_cell_umis(tmp_path):
+    bam_path = tmp_path / "reads.bam"
+    header = {"HD": {"VN": "1.6"}, "SQ": [{"SN": "chr1", "LN": 1000}]}
+    with pysam.AlignmentFile(bam_path, "wb", header=header) as target:
+        for name in ("read1", "read2"):
+            alignment = pysam.AlignedSegment()
+            alignment.query_name = name
+            alignment.query_sequence = "A" * 20
+            alignment.flag = 0
+            alignment.reference_id = 0
+            alignment.reference_start = 100
+            alignment.mapping_quality = 60
+            alignment.cigar = ((0, 20),)
+            alignment.query_qualities = pysam.qualitystring_to_array("I" * 20)
+            alignment.set_tag("CB", "AAAA_CCCC")
+            alignment.set_tag("UB", "UMI")
+            alignment.set_tag("NH", 1)
+            target.write(alignment)
+    event = SashimiEvent("event", "chr1", 90, 130, "+")
+    groups = {"AAAACCCC": ("subject", "cell", "poly(dT)")}
+    exon_blocks, _, event_umis = collect_bam_event_support(bam_path, groups, (event,), deduplicate=True)
+    assert sum(exon_blocks.values()) == 1
+    assert sum(event_umis.values()) == 1
 
 
 def test_select_strongest_significant_contrasts(tmp_path):
@@ -155,3 +180,36 @@ def test_psi_matrix_retains_path_with_no_nonconstitutive_components():
     matrix = combine_path_usage_and_coverage(usage, psi, "event")
     columns = matrix[["feature_id", "column_order"]].drop_duplicates().sort_values("column_order")
     assert columns["feature_id"].tolist() == ["P1:path", "P2:path", "P2:E1", "P2:J1"]
+
+
+def test_variable_path_features_split_alternative_acceptor_segment():
+    event = SashimiEvent("event", "chr1", 100, 300, "+")
+    paths = (((100, 150), (200, 250)), ((100, 150), (220, 250)))
+    features = variable_path_features(event, paths)
+    exon = features[features["feature_type"] == "exon"].iloc[0]
+    assert (exon.start, exon.end, exon.path_numbers) == (200, 220, (1,))
+    junctions = features[features["feature_type"] == "junction"]
+    assert set(zip(junctions.start, junctions.end, junctions.path_numbers)) == {(150, 200, (1,)), (150, 220, (2,))}
+
+
+def test_summarize_subject_feature_evidence_uses_endpoint_depth_and_splice_sites():
+    event = SashimiEvent("event", "chr1", 100, 400, "+")
+    paths = (((100, 150), (200, 250), (350, 400)), ((100, 150), (280, 300), (350, 400)))
+    usage = pd.DataFrame([
+        {"subject": "s1", "cell_type": "A", "path_number": 1, "proportion": 0.8},
+        {"subject": "s1", "cell_type": "A", "path_number": 2, "proportion": 0.2},
+    ])
+    exon_blocks = Counter()
+    junctions = Counter()
+    for primer in ("poly(dT)", "random hexamer"):
+        for interval, count in (((100, 150), 10), ((200, 250), 8), ((280, 300), 2), ((350, 400), 10)):
+            exon_blocks[("event", "s1", "A", primer, *interval)] = count
+        for interval, count in (((150, 200), 8), ((150, 280), 2), ((250, 350), 8), ((300, 350), 2)):
+            junctions[("event", "s1", "A", primer, *interval)] = count
+    evidence = summarize_subject_feature_evidence(event, paths, ((100, 150), (350, 400)), exon_blocks, junctions, usage)
+    polydt = evidence[evidence["primer"] == "poly(dT)"].set_index("feature_id")
+    assert polydt.loc["E:200-250", "fitted_inclusion"] == 0.8
+    assert polydt.loc["E:200-250", "observed_inclusion"] == 0.8
+    assert polydt.loc["J:150-200", "observed_inclusion"] == 0.8
+    assert polydt.loc["J:150-200", "evidence_denominator"] == 10
+    assert polydt.loc["J:150-200", "endpoint_normalized_signal"] == 0.8
