@@ -83,6 +83,8 @@ def main():
     parser.add_argument("--primer-pairs", type=Path)
     parser.add_argument("--event-catalog", type=Path)
     parser.add_argument("--path-usage-root", type=Path)
+    parser.add_argument("--testing-concentration", type=float, default=64.0)
+    parser.add_argument("--reporting-concentration", type=float)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--n-events", type=int, default=3)
@@ -92,9 +94,9 @@ def main():
     if args.plot_only:
         render_selected(args.output_dir)
         return
-    required = (args.starsolo_root, args.metadata, args.primer_pairs, args.event_catalog, args.path_usage_root)
+    required = (args.starsolo_root, args.metadata, args.primer_pairs, args.event_catalog, args.path_usage_root, args.reporting_concentration)
     if any(value is None for value in required):
-        parser.error("BAM, metadata, catalog, and path-usage inputs are required unless --plot-only is used")
+        parser.error("BAM, metadata, catalog, path-usage, and reporting-concentration inputs are required unless --plot-only is used")
     usage = load_path_usage(args.path_usage_root)
     catalog = pd.read_csv(args.event_catalog, sep="\t")
     ranking, usage_summary = rank_switches(usage, catalog)
@@ -102,6 +104,7 @@ def main():
     selected = interpretable.drop_duplicates("gene_name").head(args.n_events).copy()
     if len(selected) < args.n_events:
         raise ValueError(f"only {len(selected)} significant dominant-path switches were found")
+    selected["testing_fdr"] = selected["fdr"]
     args.output_dir.mkdir(parents=True, exist_ok=True)
     ranking.to_csv(args.output_dir / "switch_ranking.tsv", sep="\t", index=False)
     selected.to_csv(args.output_dir / "selected_switches.tsv", sep="\t", index=False)
@@ -130,14 +133,16 @@ def main():
         matrix = combine_path_usage_and_coverage(usage_summary, psi, row.test_id)
         event_dir = args.output_dir / event.event_id
         event_dir.mkdir(parents=True, exist_ok=True)
-        matrix.to_csv(event_dir / f"{event.event_id}_psi_heatmap.tsv", sep="\t", index=False)
+        matrix.to_csv(event_dir / f"{event.event_id}_psi_heatmap.tsv", sep="\t", index=False, na_rep="NA")
     manifest = {
         "selection": "three unique-gene, non-whole-gene BH-significant blocks with the largest fitted cell-type mean path-usage span among blocks whose dominant fitted path changes between cell types",
+        "testing_concentration": args.testing_concentration,
+        "reporting_concentration": args.reporting_concentration,
         "literal_zero_to_one_switches": int(((ranking["min_usage"] <= 0.1) & (ranking["max_usage"] >= 0.9)).sum()),
         "exon_psi": "mean aligned depth divided by the mean depth of the nearest path-shared exon on each available side, clipped to [0,1]; path-shared exons are omitted from the display",
         "junction_psi": "junction UMI count divided by the total UMI count of unique observed junctions sharing its donor or acceptor splice site",
         "display": "path usage, exon PSI, and junction PSI share one 0-to-1 viridis scale; exons and junctions present in every displayed path are omitted",
-        "events": selected[["gene_name", "test_id", "event_type", "path_number", "min_cell_type", "min_usage", "max_cell_type", "max_usage", "usage_span", "fdr"]].to_dict("records"),
+        "events": selected[["gene_name", "test_id", "event_type", "path_number", "min_cell_type", "min_usage", "max_cell_type", "max_usage", "usage_span", "testing_fdr"]].to_dict("records"),
     }
     (args.output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     if not args.skip_plots:

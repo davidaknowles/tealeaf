@@ -44,5 +44,8 @@ fi
 if [[ -n "${UNCERTAINTY_SCALE_GRID:-}" ]]; then
   ARGS+=(--uncertainty-scale-grid "${UNCERTAINTY_SCALE_GRID}")
 fi
+if [[ "${EXPORT_PATH_USAGE:-0}" == 1 ]]; then
+  ARGS+=(--export-path-usage)
+fi
 
 python "${REPO_ROOT}/extra_scripts/run_paired_path_test.py" "${ARGS[@]}"

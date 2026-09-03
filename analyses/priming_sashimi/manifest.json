@@ -1,5 +1,7 @@
 {
-  "contrast_selection": "largest mean_difference_norm among pairwise contrasts with BH FDR < 0.05",
+  "contrast_selection": "largest reporting-fit mean_difference_norm among pairwise contrasts with testing-fit BH FDR < 0.05",
+  "testing_concentration": 64.0,
+  "reporting_concentration": 1.0,
   "normalization": "UMI-deduplicated spliced alignments per 1000 primer-specific half-cells",
   "block_heatmaps": "Path markers followed by each path's exon and junction components in 5-prime-to-3-prime RNA order; shared components are repeated under each path; coverage colors are raw primer-specific values per 1000 half-cells; path columns show fitted percentages on an independent 0-to-1 color scale",
   "runs": 16,
@@ -11,14 +13,11 @@
         "EX_cortical",
         "EX_hippocampus_pyramidal"
       ],
-      "mean_difference_norm": 0.9269816888576776,
-      "pairwise_fdr": 0.0210862361272968,
       "coordinates": "chr16:84751532-84810615",
       "intron_counts": "App/App_intron.tsv",
       "exon_counts": "App/App_exon.tsv",
       "path_annotation": "App/App_paths.gtf",
       "figure": "App/App_priming_sashimi.pdf",
-      "path_usage_figure": "App/App_path_usage.pdf",
       "heatmap_cell_types": [
         "ASC",
         "EX_cerebellum_granule",
@@ -31,24 +30,24 @@
         "ODC"
       ],
       "block_heatmap_data": "App/App_block_heatmap.tsv",
+      "path_usage_figure": "App/App_path_usage.pdf",
       "oligodt_block_heatmap": "App/App_oligodt_block_heatmap.pdf",
-      "ranhex_block_heatmap": "App/App_ranhex_block_heatmap.pdf"
+      "ranhex_block_heatmap": "App/App_ranhex_block_heatmap.pdf",
+      "reporting_mean_difference_norm": 1.1515221311460473,
+      "testing_pairwise_fdr": 0.0210862361272968
     },
     {
       "gene": "Gria2",
       "test_id": "ENSMUSG00000033981.15:B1",
       "cell_types": [
-        "EX_cerebellum_granule",
-        "EX_cortical"
+        "EX_cortical",
+        "INH_midbrain"
       ],
-      "mean_difference_norm": 0.4554258005458194,
-      "pairwise_fdr": 0.0083235066134512,
       "coordinates": "chr3:80596410-80599840",
       "intron_counts": "Gria2/Gria2_intron.tsv",
       "exon_counts": "Gria2/Gria2_exon.tsv",
       "path_annotation": "Gria2/Gria2_paths.gtf",
       "figure": "Gria2/Gria2_priming_sashimi.pdf",
-      "path_usage_figure": "Gria2/Gria2_path_usage.pdf",
       "heatmap_cell_types": [
         "ASC",
         "EX_cerebellum_granule",
@@ -60,8 +59,11 @@
         "INH_migrating_interneuron"
       ],
       "block_heatmap_data": "Gria2/Gria2_block_heatmap.tsv",
+      "path_usage_figure": "Gria2/Gria2_path_usage.pdf",
       "oligodt_block_heatmap": "Gria2/Gria2_oligodt_block_heatmap.pdf",
-      "ranhex_block_heatmap": "Gria2/Gria2_ranhex_block_heatmap.pdf"
+      "ranhex_block_heatmap": "Gria2/Gria2_ranhex_block_heatmap.pdf",
+      "reporting_mean_difference_norm": 0.2941216539800365,
+      "testing_pairwise_fdr": 0.001049508388176
     },
     {
       "gene": "Grin1",
@@ -70,14 +72,11 @@
         "INH_medium_spiny",
         "INH_midbrain"
       ],
-      "mean_difference_norm": 0.0881067586450805,
-      "pairwise_fdr": 0.0057663880868445,
       "coordinates": "chr2:25181193-25185950",
       "intron_counts": "Grin1/Grin1_intron.tsv",
       "exon_counts": "Grin1/Grin1_exon.tsv",
       "path_annotation": "Grin1/Grin1_paths.gtf",
       "figure": "Grin1/Grin1_priming_sashimi.pdf",
-      "path_usage_figure": "Grin1/Grin1_path_usage.pdf",
       "heatmap_cell_types": [
         "EX_cerebellum_granule",
         "EX_cortical",
@@ -86,8 +85,11 @@
         "INH_migrating_interneuron"
       ],
       "block_heatmap_data": "Grin1/Grin1_block_heatmap.tsv",
+      "path_usage_figure": "Grin1/Grin1_path_usage.pdf",
       "oligodt_block_heatmap": "Grin1/Grin1_oligodt_block_heatmap.pdf",
-      "ranhex_block_heatmap": "Grin1/Grin1_ranhex_block_heatmap.pdf"
+      "ranhex_block_heatmap": "Grin1/Grin1_ranhex_block_heatmap.pdf",
+      "reporting_mean_difference_norm": 1.4984890395172632,
+      "testing_pairwise_fdr": 0.0057663880868445
     }
   ]
 }

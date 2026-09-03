@@ -1,0 +1,889 @@
+path_number	feature_type	feature	feature_id	coordinate	column_order	cell_type	primer	raw_value
+1	path	P1	P1:path		0	ASC	poly(dT)	0.21768151604134447
+1	path	P1	P1:path		0	EX_cerebellum_granule	poly(dT)	0.014799111036210753
+1	path	P1	P1:path		0	EX_cortical	poly(dT)	0.02526453300148173
+1	path	P1	P1:path		0	INH_medium_spiny	poly(dT)	0.0159744461969322
+1	path	P1	P1:path		0	INH_midbrain	poly(dT)	0.02979998484129141
+1	path	P1	P1:path		0	INH_migrating_interneuron	poly(dT)	0.06068192882815687
+1	junction	J1	P1:J1	chr3:55370517-55373994	1	ASC	poly(dT)	0.9195402298850575
+1	junction	J1	P1:J1	chr3:55370517-55373994	1	EX_cerebellum_granule	poly(dT)	0.08641975308641975
+1	junction	J1	P1:J1	chr3:55370517-55373994	1	EX_cortical	poly(dT)	0.136986301369863
+1	junction	J1	P1:J1	chr3:55370517-55373994	1	INH_medium_spiny	poly(dT)	0.20588235294117646
+1	junction	J1	P1:J1	chr3:55370517-55373994	1	INH_midbrain	poly(dT)	0.16666666666666666
+1	junction	J1	P1:J1	chr3:55370517-55373994	1	INH_migrating_interneuron	poly(dT)	0.3563218390804598
+1	exon	E2	P1:E2	chr3:55373994-55378737	2	ASC	poly(dT)	0.024246796249151645
+1	exon	E2	P1:E2	chr3:55373994-55378737	2	EX_cerebellum_granule	poly(dT)	0.0028180585868537345
+1	exon	E2	P1:E2	chr3:55373994-55378737	2	EX_cortical	poly(dT)	0.0037447164350087247
+1	exon	E2	P1:E2	chr3:55373994-55378737	2	INH_medium_spiny	poly(dT)	0.00405250616710262
+1	exon	E2	P1:E2	chr3:55373994-55378737	2	INH_midbrain	poly(dT)	0.003570343551807014
+1	exon	E2	P1:E2	chr3:55373994-55378737	2	INH_migrating_interneuron	poly(dT)	0.007516055644815055
+2	path	P2	P2:path		3	ASC	poly(dT)	0.381409609300807
+2	path	P2	P2:path		3	EX_cerebellum_granule	poly(dT)	0.3766206970322282
+2	path	P2	P2:path		3	EX_cortical	poly(dT)	0.20187881276682498
+2	path	P2	P2:path		3	INH_medium_spiny	poly(dT)	0.30867566166418997
+2	path	P2	P2:path		3	INH_midbrain	poly(dT)	0.14494752952436413
+2	path	P2	P2:path		3	INH_migrating_interneuron	poly(dT)	0.19983458796956324
+2	junction	J2	P2:J2	chr3:55370517-55385226	4	ASC	poly(dT)	0.08
+2	junction	J2	P2:J2	chr3:55370517-55385226	4	EX_cerebellum_granule	poly(dT)	0.9135802469135802
+2	junction	J2	P2:J2	chr3:55370517-55385226	4	EX_cortical	poly(dT)	0.8469387755102041
+2	junction	J2	P2:J2	chr3:55370517-55385226	4	INH_medium_spiny	poly(dT)	0.7941176470588235
+2	junction	J2	P2:J2	chr3:55370517-55385226	4	INH_midbrain	poly(dT)	0.8333333333333334
+2	junction	J2	P2:J2	chr3:55370517-55385226	4	INH_migrating_interneuron	poly(dT)	0.6436781609195402
+2	exon	E3	P2:E3	chr3:55385226-55385310	5	ASC	poly(dT)	0.1650444536338261
+2	exon	E3	P2:E3	chr3:55385226-55385310	5	EX_cerebellum_granule	poly(dT)	1.0
+2	exon	E3	P2:E3	chr3:55385226-55385310	5	EX_cortical	poly(dT)	1.0
+2	exon	E3	P2:E3	chr3:55385226-55385310	5	INH_medium_spiny	poly(dT)	1.0
+2	exon	E3	P2:E3	chr3:55385226-55385310	5	INH_midbrain	poly(dT)	1.0
+2	exon	E3	P2:E3	chr3:55385226-55385310	5	INH_migrating_interneuron	poly(dT)	1.0
+2	junction	J3	P2:J3	chr3:55385311-55387755	6	ASC	poly(dT)	0.4657534246575342
+2	junction	J3	P2:J3	chr3:55385311-55387755	6	EX_cerebellum_granule	poly(dT)	0.5227272727272727
+2	junction	J3	P2:J3	chr3:55385311-55387755	6	EX_cortical	poly(dT)	0.575925925925926
+2	junction	J3	P2:J3	chr3:55385311-55387755	6	INH_medium_spiny	poly(dT)	0.6595744680851063
+2	junction	J3	P2:J3	chr3:55385311-55387755	6	INH_midbrain	poly(dT)	0.5670103092783505
+2	junction	J3	P2:J3	chr3:55385311-55387755	6	INH_migrating_interneuron	poly(dT)	0.5983606557377049
+2	exon	E5	P2:E5	chr3:55387755-55387863	7	ASC	poly(dT)	0.2955490882120572
+2	exon	E5	P2:E5	chr3:55387755-55387863	7	EX_cerebellum_granule	poly(dT)	1.0
+2	exon	E5	P2:E5	chr3:55387755-55387863	7	EX_cortical	poly(dT)	1.0
+2	exon	E5	P2:E5	chr3:55387755-55387863	7	INH_medium_spiny	poly(dT)	1.0
+2	exon	E5	P2:E5	chr3:55387755-55387863	7	INH_midbrain	poly(dT)	1.0
+2	exon	E5	P2:E5	chr3:55387755-55387863	7	INH_migrating_interneuron	poly(dT)	1.0
+2	junction	J5	P2:J5	chr3:55387864-55394728	8	ASC	poly(dT)	1.0
+2	junction	J5	P2:J5	chr3:55387864-55394728	8	EX_cerebellum_granule	poly(dT)	1.0
+2	junction	J5	P2:J5	chr3:55387864-55394728	8	EX_cortical	poly(dT)	1.0
+2	junction	J5	P2:J5	chr3:55387864-55394728	8	INH_medium_spiny	poly(dT)	1.0
+2	junction	J5	P2:J5	chr3:55387864-55394728	8	INH_midbrain	poly(dT)	1.0
+2	junction	J5	P2:J5	chr3:55387864-55394728	8	INH_migrating_interneuron	poly(dT)	1.0
+2	exon	E6	P2:E6	chr3:55394728-55394785	9	ASC	poly(dT)	0.1694063996121447
+2	exon	E6	P2:E6	chr3:55394728-55394785	9	EX_cerebellum_granule	poly(dT)	0.8108166066220621
+2	exon	E6	P2:E6	chr3:55394728-55394785	9	EX_cortical	poly(dT)	0.8396973978105934
+2	exon	E6	P2:E6	chr3:55394728-55394785	9	INH_medium_spiny	poly(dT)	0.567507750506441
+2	exon	E6	P2:E6	chr3:55394728-55394785	9	INH_midbrain	poly(dT)	1.0
+2	exon	E6	P2:E6	chr3:55394728-55394785	9	INH_migrating_interneuron	poly(dT)	0.6465265836023371
+2	junction	J6	P2:J6	chr3:55394786-55395213	10	ASC	poly(dT)	1.0
+2	junction	J6	P2:J6	chr3:55394786-55395213	10	EX_cerebellum_granule	poly(dT)	1.0
+2	junction	J6	P2:J6	chr3:55394786-55395213	10	EX_cortical	poly(dT)	1.0
+2	junction	J6	P2:J6	chr3:55394786-55395213	10	INH_medium_spiny	poly(dT)	1.0
+2	junction	J6	P2:J6	chr3:55394786-55395213	10	INH_midbrain	poly(dT)	1.0
+2	junction	J6	P2:J6	chr3:55394786-55395213	10	INH_migrating_interneuron	poly(dT)	1.0
+2	exon	E7	P2:E7	chr3:55395213-55395332	11	ASC	poly(dT)	0.06723601347393088
+2	exon	E7	P2:E7	chr3:55395213-55395332	11	EX_cerebellum_granule	poly(dT)	0.30186863302534944
+2	exon	E7	P2:E7	chr3:55395213-55395332	11	EX_cortical	poly(dT)	0.20156786449988556
+2	exon	E7	P2:E7	chr3:55395213-55395332	11	INH_medium_spiny	poly(dT)	0.23729443903494538
+2	exon	E7	P2:E7	chr3:55395213-55395332	11	INH_midbrain	poly(dT)	0.3245213228894691
+2	exon	E7	P2:E7	chr3:55395213-55395332	11	INH_migrating_interneuron	poly(dT)	0.28813065033537477
+2	junction	J7	P2:J7	chr3:55395333-55397171	12	ASC	poly(dT)	1.0
+2	junction	J7	P2:J7	chr3:55395333-55397171	12	EX_cerebellum_granule	poly(dT)	1.0
+2	junction	J7	P2:J7	chr3:55395333-55397171	12	EX_cortical	poly(dT)	1.0
+2	junction	J7	P2:J7	chr3:55395333-55397171	12	INH_medium_spiny	poly(dT)	1.0
+2	junction	J7	P2:J7	chr3:55395333-55397171	12	INH_midbrain	poly(dT)	1.0
+2	junction	J7	P2:J7	chr3:55395333-55397171	12	INH_migrating_interneuron	poly(dT)	1.0
+2	exon	E8	P2:E8	chr3:55397171-55397317	13	ASC	poly(dT)	0.028820403381036072
+2	exon	E8	P2:E8	chr3:55397171-55397317	13	EX_cerebellum_granule	poly(dT)	0.023769635786084157
+2	exon	E8	P2:E8	chr3:55397171-55397317	13	EX_cortical	poly(dT)	0.09839577854488099
+2	exon	E8	P2:E8	chr3:55397171-55397317	13	INH_medium_spiny	poly(dT)	0.15270243118344384
+2	exon	E8	P2:E8	chr3:55397171-55397317	13	INH_midbrain	poly(dT)	0.19452838949828347
+2	exon	E8	P2:E8	chr3:55397171-55397317	13	INH_migrating_interneuron	poly(dT)	0.1167562388034829
+2	junction	J8	P2:J8	chr3:55397318-55407456	14	ASC	poly(dT)	NA
+2	junction	J8	P2:J8	chr3:55397318-55407456	14	EX_cerebellum_granule	poly(dT)	NA
+2	junction	J8	P2:J8	chr3:55397318-55407456	14	EX_cortical	poly(dT)	0.9629629629629629
+2	junction	J8	P2:J8	chr3:55397318-55407456	14	INH_medium_spiny	poly(dT)	1.0
+2	junction	J8	P2:J8	chr3:55397318-55407456	14	INH_midbrain	poly(dT)	1.0
+2	junction	J8	P2:J8	chr3:55397318-55407456	14	INH_migrating_interneuron	poly(dT)	1.0
+2	exon	E9	P2:E9	chr3:55407456-55407589	15	ASC	poly(dT)	0.0013705637017023846
+2	exon	E9	P2:E9	chr3:55407456-55407589	15	EX_cerebellum_granule	poly(dT)	0.00680234223339592
+2	exon	E9	P2:E9	chr3:55407456-55407589	15	EX_cortical	poly(dT)	0.07506584723441616
+2	exon	E9	P2:E9	chr3:55407456-55407589	15	INH_medium_spiny	poly(dT)	0.08939600924297693
+2	exon	E9	P2:E9	chr3:55407456-55407589	15	INH_midbrain	poly(dT)	0.14358921542975167
+2	exon	E9	P2:E9	chr3:55407456-55407589	15	INH_migrating_interneuron	poly(dT)	0.10141223018764446
+2	junction	J9	P2:J9	chr3:55407590-55409794	16	ASC	poly(dT)	1.0
+2	junction	J9	P2:J9	chr3:55407590-55409794	16	EX_cerebellum_granule	poly(dT)	1.0
+2	junction	J9	P2:J9	chr3:55407590-55409794	16	EX_cortical	poly(dT)	1.0
+2	junction	J9	P2:J9	chr3:55407590-55409794	16	INH_medium_spiny	poly(dT)	1.0
+2	junction	J9	P2:J9	chr3:55407590-55409794	16	INH_midbrain	poly(dT)	NA
+2	junction	J9	P2:J9	chr3:55407590-55409794	16	INH_migrating_interneuron	poly(dT)	1.0
+2	exon	E10	P2:E10	chr3:55409794-55409871	17	ASC	poly(dT)	0.013431684016042542
+2	exon	E10	P2:E10	chr3:55409794-55409871	17	EX_cerebellum_granule	poly(dT)	0.09305578335429081
+2	exon	E10	P2:E10	chr3:55409794-55409871	17	EX_cortical	poly(dT)	0.08703217892963831
+2	exon	E10	P2:E10	chr3:55409794-55409871	17	INH_medium_spiny	poly(dT)	0.07787598099185246
+2	exon	E10	P2:E10	chr3:55409794-55409871	17	INH_midbrain	poly(dT)	0.08358916975104966
+2	exon	E10	P2:E10	chr3:55409794-55409871	17	INH_migrating_interneuron	poly(dT)	0.07530041650776559
+2	junction	J10	P2:J10	chr3:55409872-55410230	18	ASC	poly(dT)	1.0
+2	junction	J10	P2:J10	chr3:55409872-55410230	18	EX_cerebellum_granule	poly(dT)	1.0
+2	junction	J10	P2:J10	chr3:55409872-55410230	18	EX_cortical	poly(dT)	1.0
+2	junction	J10	P2:J10	chr3:55409872-55410230	18	INH_medium_spiny	poly(dT)	1.0
+2	junction	J10	P2:J10	chr3:55409872-55410230	18	INH_midbrain	poly(dT)	1.0
+2	junction	J10	P2:J10	chr3:55409872-55410230	18	INH_migrating_interneuron	poly(dT)	1.0
+2	exon	E11	P2:E11	chr3:55410230-55410326	19	ASC	poly(dT)	0.08847136412226188
+2	exon	E11	P2:E11	chr3:55410230-55410326	19	EX_cerebellum_granule	poly(dT)	0.4000707068486727
+2	exon	E11	P2:E11	chr3:55410230-55410326	19	EX_cortical	poly(dT)	0.5276868659935393
+2	exon	E11	P2:E11	chr3:55410230-55410326	19	INH_medium_spiny	poly(dT)	0.49668403283175566
+2	exon	E11	P2:E11	chr3:55410230-55410326	19	INH_midbrain	poly(dT)	0.7349927131359664
+2	exon	E11	P2:E11	chr3:55410230-55410326	19	INH_migrating_interneuron	poly(dT)	0.38515481956508013
+2	junction	J12	P2:J12	chr3:55410327-55414122	20	ASC	poly(dT)	1.0
+2	junction	J12	P2:J12	chr3:55410327-55414122	20	EX_cerebellum_granule	poly(dT)	1.0
+2	junction	J12	P2:J12	chr3:55410327-55414122	20	EX_cortical	poly(dT)	0.9940476190476191
+2	junction	J12	P2:J12	chr3:55410327-55414122	20	INH_medium_spiny	poly(dT)	1.0
+2	junction	J12	P2:J12	chr3:55410327-55414122	20	INH_midbrain	poly(dT)	1.0
+2	junction	J12	P2:J12	chr3:55410327-55414122	20	INH_migrating_interneuron	poly(dT)	1.0
+2	exon	E13	P2:E13	chr3:55414122-55414202	21	ASC	poly(dT)	0.10826607216472478
+2	exon	E13	P2:E13	chr3:55414122-55414202	21	EX_cerebellum_granule	poly(dT)	0.5399479673940702
+2	exon	E13	P2:E13	chr3:55414122-55414202	21	EX_cortical	poly(dT)	0.6745504946466265
+2	exon	E13	P2:E13	chr3:55414122-55414202	21	INH_medium_spiny	poly(dT)	0.5957461302046393
+2	exon	E13	P2:E13	chr3:55414122-55414202	21	INH_midbrain	poly(dT)	0.803182891955738
+2	exon	E13	P2:E13	chr3:55414122-55414202	21	INH_migrating_interneuron	poly(dT)	0.4839801403425395
+2	junction	J13	P2:J13	chr3:55414203-55424294	22	ASC	poly(dT)	1.0
+2	junction	J13	P2:J13	chr3:55414203-55424294	22	EX_cerebellum_granule	poly(dT)	1.0
+2	junction	J13	P2:J13	chr3:55414203-55424294	22	EX_cortical	poly(dT)	1.0
+2	junction	J13	P2:J13	chr3:55414203-55424294	22	INH_medium_spiny	poly(dT)	1.0
+2	junction	J13	P2:J13	chr3:55414203-55424294	22	INH_midbrain	poly(dT)	1.0
+2	junction	J13	P2:J13	chr3:55414203-55424294	22	INH_migrating_interneuron	poly(dT)	1.0
+2	exon	E14	P2:E14	chr3:55424294-55424407	23	ASC	poly(dT)	0.043607205623901586
+2	exon	E14	P2:E14	chr3:55424294-55424407	23	EX_cerebellum_granule	poly(dT)	0.17605425254678986
+2	exon	E14	P2:E14	chr3:55424294-55424407	23	EX_cortical	poly(dT)	0.27138170443274584
+2	exon	E14	P2:E14	chr3:55424294-55424407	23	INH_medium_spiny	poly(dT)	0.2589797684734394
+2	exon	E14	P2:E14	chr3:55424294-55424407	23	INH_midbrain	poly(dT)	0.20234986945169714
+2	exon	E14	P2:E14	chr3:55424294-55424407	23	INH_migrating_interneuron	poly(dT)	0.16914552347623216
+2	junction	J14	P2:J14	chr3:55424408-55429271	24	ASC	poly(dT)	0.75
+2	junction	J14	P2:J14	chr3:55424408-55429271	24	EX_cerebellum_granule	poly(dT)	0.5
+2	junction	J14	P2:J14	chr3:55424408-55429271	24	EX_cortical	poly(dT)	0.85
+2	junction	J14	P2:J14	chr3:55424408-55429271	24	INH_medium_spiny	poly(dT)	0.9090909090909091
+2	junction	J14	P2:J14	chr3:55424408-55429271	24	INH_midbrain	poly(dT)	1.0
+2	junction	J14	P2:J14	chr3:55424408-55429271	24	INH_migrating_interneuron	poly(dT)	0.5
+2	exon	E15	P2:E15	chr3:55429271-55429344	25	ASC	poly(dT)	0.003948368403552938
+2	exon	E15	P2:E15	chr3:55429271-55429344	25	EX_cerebellum_granule	poly(dT)	0.04562131427803069
+2	exon	E15	P2:E15	chr3:55429271-55429344	25	EX_cortical	poly(dT)	0.09649681725671655
+2	exon	E15	P2:E15	chr3:55429271-55429344	25	INH_medium_spiny	poly(dT)	0.1064611349421476
+2	exon	E15	P2:E15	chr3:55429271-55429344	25	INH_midbrain	poly(dT)	0.016759579422764802
+2	exon	E15	P2:E15	chr3:55429271-55429344	25	INH_migrating_interneuron	poly(dT)	0.043429256027681225
+2	junction	J16	P2:J16	chr3:55429345-55440991	26	ASC	poly(dT)	0.0
+2	junction	J16	P2:J16	chr3:55429345-55440991	26	EX_cerebellum_granule	poly(dT)	0.5
+2	junction	J16	P2:J16	chr3:55429345-55440991	26	EX_cortical	poly(dT)	0.7272727272727273
+2	junction	J16	P2:J16	chr3:55429345-55440991	26	INH_medium_spiny	poly(dT)	0.8
+2	junction	J16	P2:J16	chr3:55429345-55440991	26	INH_midbrain	poly(dT)	1.0
+2	junction	J16	P2:J16	chr3:55429345-55440991	26	INH_migrating_interneuron	poly(dT)	0.4
+2	exon	E17	P2:E17	chr3:55440991-55446485	27	ASC	poly(dT)	0.00023091770598291145
+2	exon	E17	P2:E17	chr3:55440991-55446485	27	EX_cerebellum_granule	poly(dT)	0.0007495345319418764
+2	exon	E17	P2:E17	chr3:55440991-55446485	27	EX_cortical	poly(dT)	0.0031078837145902005
+2	exon	E17	P2:E17	chr3:55440991-55446485	27	INH_medium_spiny	poly(dT)	0.002283802896557875
+2	exon	E17	P2:E17	chr3:55440991-55446485	27	INH_midbrain	poly(dT)	0.004881518887843175
+2	exon	E17	P2:E17	chr3:55440991-55446485	27	INH_migrating_interneuron	poly(dT)	0.0038922947795007575
+3	path	P3	P3:path		28	ASC	poly(dT)	0.23031945957429825
+3	path	P3	P3:path		28	EX_cerebellum_granule	poly(dT)	0.10636339804066727
+3	path	P3	P3:path		28	EX_cortical	poly(dT)	0.14496215219002273
+3	path	P3	P3:path		28	INH_medium_spiny	poly(dT)	0.2421144113150228
+3	path	P3	P3:path		28	INH_midbrain	poly(dT)	0.08631131438101364
+3	path	P3	P3:path		28	INH_migrating_interneuron	poly(dT)	0.10523384604336247
+3	junction	J2	P3:J2	chr3:55370517-55385226	29	ASC	poly(dT)	0.08
+3	junction	J2	P3:J2	chr3:55370517-55385226	29	EX_cerebellum_granule	poly(dT)	0.9135802469135802
+3	junction	J2	P3:J2	chr3:55370517-55385226	29	EX_cortical	poly(dT)	0.8469387755102041
+3	junction	J2	P3:J2	chr3:55370517-55385226	29	INH_medium_spiny	poly(dT)	0.7941176470588235
+3	junction	J2	P3:J2	chr3:55370517-55385226	29	INH_midbrain	poly(dT)	0.8333333333333334
+3	junction	J2	P3:J2	chr3:55370517-55385226	29	INH_migrating_interneuron	poly(dT)	0.6436781609195402
+3	exon	E3	P3:E3	chr3:55385226-55385310	30	ASC	poly(dT)	0.1650444536338261
+3	exon	E3	P3:E3	chr3:55385226-55385310	30	EX_cerebellum_granule	poly(dT)	1.0
+3	exon	E3	P3:E3	chr3:55385226-55385310	30	EX_cortical	poly(dT)	1.0
+3	exon	E3	P3:E3	chr3:55385226-55385310	30	INH_medium_spiny	poly(dT)	1.0
+3	exon	E3	P3:E3	chr3:55385226-55385310	30	INH_midbrain	poly(dT)	1.0
+3	exon	E3	P3:E3	chr3:55385226-55385310	30	INH_migrating_interneuron	poly(dT)	1.0
+3	junction	J3	P3:J3	chr3:55385311-55387755	31	ASC	poly(dT)	0.4657534246575342
+3	junction	J3	P3:J3	chr3:55385311-55387755	31	EX_cerebellum_granule	poly(dT)	0.5227272727272727
+3	junction	J3	P3:J3	chr3:55385311-55387755	31	EX_cortical	poly(dT)	0.575925925925926
+3	junction	J3	P3:J3	chr3:55385311-55387755	31	INH_medium_spiny	poly(dT)	0.6595744680851063
+3	junction	J3	P3:J3	chr3:55385311-55387755	31	INH_midbrain	poly(dT)	0.5670103092783505
+3	junction	J3	P3:J3	chr3:55385311-55387755	31	INH_migrating_interneuron	poly(dT)	0.5983606557377049
+3	exon	E5	P3:E5	chr3:55387755-55387863	32	ASC	poly(dT)	0.2955490882120572
+3	exon	E5	P3:E5	chr3:55387755-55387863	32	EX_cerebellum_granule	poly(dT)	1.0
+3	exon	E5	P3:E5	chr3:55387755-55387863	32	EX_cortical	poly(dT)	1.0
+3	exon	E5	P3:E5	chr3:55387755-55387863	32	INH_medium_spiny	poly(dT)	1.0
+3	exon	E5	P3:E5	chr3:55387755-55387863	32	INH_midbrain	poly(dT)	1.0
+3	exon	E5	P3:E5	chr3:55387755-55387863	32	INH_migrating_interneuron	poly(dT)	1.0
+3	junction	J5	P3:J5	chr3:55387864-55394728	33	ASC	poly(dT)	1.0
+3	junction	J5	P3:J5	chr3:55387864-55394728	33	EX_cerebellum_granule	poly(dT)	1.0
+3	junction	J5	P3:J5	chr3:55387864-55394728	33	EX_cortical	poly(dT)	1.0
+3	junction	J5	P3:J5	chr3:55387864-55394728	33	INH_medium_spiny	poly(dT)	1.0
+3	junction	J5	P3:J5	chr3:55387864-55394728	33	INH_midbrain	poly(dT)	1.0
+3	junction	J5	P3:J5	chr3:55387864-55394728	33	INH_migrating_interneuron	poly(dT)	1.0
+3	exon	E6	P3:E6	chr3:55394728-55394785	34	ASC	poly(dT)	0.1694063996121447
+3	exon	E6	P3:E6	chr3:55394728-55394785	34	EX_cerebellum_granule	poly(dT)	0.8108166066220621
+3	exon	E6	P3:E6	chr3:55394728-55394785	34	EX_cortical	poly(dT)	0.8396973978105934
+3	exon	E6	P3:E6	chr3:55394728-55394785	34	INH_medium_spiny	poly(dT)	0.567507750506441
+3	exon	E6	P3:E6	chr3:55394728-55394785	34	INH_midbrain	poly(dT)	1.0
+3	exon	E6	P3:E6	chr3:55394728-55394785	34	INH_migrating_interneuron	poly(dT)	0.6465265836023371
+3	junction	J6	P3:J6	chr3:55394786-55395213	35	ASC	poly(dT)	1.0
+3	junction	J6	P3:J6	chr3:55394786-55395213	35	EX_cerebellum_granule	poly(dT)	1.0
+3	junction	J6	P3:J6	chr3:55394786-55395213	35	EX_cortical	poly(dT)	1.0
+3	junction	J6	P3:J6	chr3:55394786-55395213	35	INH_medium_spiny	poly(dT)	1.0
+3	junction	J6	P3:J6	chr3:55394786-55395213	35	INH_midbrain	poly(dT)	1.0
+3	junction	J6	P3:J6	chr3:55394786-55395213	35	INH_migrating_interneuron	poly(dT)	1.0
+3	exon	E7	P3:E7	chr3:55395213-55395332	36	ASC	poly(dT)	0.06723601347393088
+3	exon	E7	P3:E7	chr3:55395213-55395332	36	EX_cerebellum_granule	poly(dT)	0.30186863302534944
+3	exon	E7	P3:E7	chr3:55395213-55395332	36	EX_cortical	poly(dT)	0.20156786449988556
+3	exon	E7	P3:E7	chr3:55395213-55395332	36	INH_medium_spiny	poly(dT)	0.23729443903494538
+3	exon	E7	P3:E7	chr3:55395213-55395332	36	INH_midbrain	poly(dT)	0.3245213228894691
+3	exon	E7	P3:E7	chr3:55395213-55395332	36	INH_migrating_interneuron	poly(dT)	0.28813065033537477
+3	junction	J7	P3:J7	chr3:55395333-55397171	37	ASC	poly(dT)	1.0
+3	junction	J7	P3:J7	chr3:55395333-55397171	37	EX_cerebellum_granule	poly(dT)	1.0
+3	junction	J7	P3:J7	chr3:55395333-55397171	37	EX_cortical	poly(dT)	1.0
+3	junction	J7	P3:J7	chr3:55395333-55397171	37	INH_medium_spiny	poly(dT)	1.0
+3	junction	J7	P3:J7	chr3:55395333-55397171	37	INH_midbrain	poly(dT)	1.0
+3	junction	J7	P3:J7	chr3:55395333-55397171	37	INH_migrating_interneuron	poly(dT)	1.0
+3	exon	E8	P3:E8	chr3:55397171-55397317	38	ASC	poly(dT)	0.028820403381036072
+3	exon	E8	P3:E8	chr3:55397171-55397317	38	EX_cerebellum_granule	poly(dT)	0.023769635786084157
+3	exon	E8	P3:E8	chr3:55397171-55397317	38	EX_cortical	poly(dT)	0.09839577854488099
+3	exon	E8	P3:E8	chr3:55397171-55397317	38	INH_medium_spiny	poly(dT)	0.15270243118344384
+3	exon	E8	P3:E8	chr3:55397171-55397317	38	INH_midbrain	poly(dT)	0.19452838949828347
+3	exon	E8	P3:E8	chr3:55397171-55397317	38	INH_migrating_interneuron	poly(dT)	0.1167562388034829
+3	junction	J8	P3:J8	chr3:55397318-55407456	39	ASC	poly(dT)	NA
+3	junction	J8	P3:J8	chr3:55397318-55407456	39	EX_cerebellum_granule	poly(dT)	NA
+3	junction	J8	P3:J8	chr3:55397318-55407456	39	EX_cortical	poly(dT)	0.9629629629629629
+3	junction	J8	P3:J8	chr3:55397318-55407456	39	INH_medium_spiny	poly(dT)	1.0
+3	junction	J8	P3:J8	chr3:55397318-55407456	39	INH_midbrain	poly(dT)	1.0
+3	junction	J8	P3:J8	chr3:55397318-55407456	39	INH_migrating_interneuron	poly(dT)	1.0
+3	exon	E9	P3:E9	chr3:55407456-55407589	40	ASC	poly(dT)	0.0013705637017023846
+3	exon	E9	P3:E9	chr3:55407456-55407589	40	EX_cerebellum_granule	poly(dT)	0.00680234223339592
+3	exon	E9	P3:E9	chr3:55407456-55407589	40	EX_cortical	poly(dT)	0.07506584723441616
+3	exon	E9	P3:E9	chr3:55407456-55407589	40	INH_medium_spiny	poly(dT)	0.08939600924297693
+3	exon	E9	P3:E9	chr3:55407456-55407589	40	INH_midbrain	poly(dT)	0.14358921542975167
+3	exon	E9	P3:E9	chr3:55407456-55407589	40	INH_migrating_interneuron	poly(dT)	0.10141223018764446
+3	junction	J9	P3:J9	chr3:55407590-55409794	41	ASC	poly(dT)	1.0
+3	junction	J9	P3:J9	chr3:55407590-55409794	41	EX_cerebellum_granule	poly(dT)	1.0
+3	junction	J9	P3:J9	chr3:55407590-55409794	41	EX_cortical	poly(dT)	1.0
+3	junction	J9	P3:J9	chr3:55407590-55409794	41	INH_medium_spiny	poly(dT)	1.0
+3	junction	J9	P3:J9	chr3:55407590-55409794	41	INH_midbrain	poly(dT)	NA
+3	junction	J9	P3:J9	chr3:55407590-55409794	41	INH_migrating_interneuron	poly(dT)	1.0
+3	exon	E10	P3:E10	chr3:55409794-55409871	42	ASC	poly(dT)	0.013431684016042542
+3	exon	E10	P3:E10	chr3:55409794-55409871	42	EX_cerebellum_granule	poly(dT)	0.09305578335429081
+3	exon	E10	P3:E10	chr3:55409794-55409871	42	EX_cortical	poly(dT)	0.08703217892963831
+3	exon	E10	P3:E10	chr3:55409794-55409871	42	INH_medium_spiny	poly(dT)	0.07787598099185246
+3	exon	E10	P3:E10	chr3:55409794-55409871	42	INH_midbrain	poly(dT)	0.08358916975104966
+3	exon	E10	P3:E10	chr3:55409794-55409871	42	INH_migrating_interneuron	poly(dT)	0.07530041650776559
+3	junction	J11	P3:J11	chr3:55409872-55410233	43	ASC	poly(dT)	0.0
+3	junction	J11	P3:J11	chr3:55409872-55410233	43	EX_cerebellum_granule	poly(dT)	0.0
+3	junction	J11	P3:J11	chr3:55409872-55410233	43	EX_cortical	poly(dT)	0.0
+3	junction	J11	P3:J11	chr3:55409872-55410233	43	INH_medium_spiny	poly(dT)	0.0
+3	junction	J11	P3:J11	chr3:55409872-55410233	43	INH_midbrain	poly(dT)	0.0
+3	junction	J11	P3:J11	chr3:55409872-55410233	43	INH_migrating_interneuron	poly(dT)	0.0
+3	exon	E12	P3:E12	chr3:55410233-55410326	44	ASC	poly(dT)	0.09045123957671167
+3	exon	E12	P3:E12	chr3:55410233-55410326	44	EX_cerebellum_granule	poly(dT)	0.40745172314718203
+3	exon	E12	P3:E12	chr3:55410233-55410326	44	EX_cortical	poly(dT)	0.5393926259965034
+3	exon	E12	P3:E12	chr3:55410233-55410326	44	INH_medium_spiny	poly(dT)	0.5074512972439178
+3	exon	E12	P3:E12	chr3:55410233-55410326	44	INH_midbrain	poly(dT)	0.7505337005087019
+3	exon	E12	P3:E12	chr3:55410233-55410326	44	INH_migrating_interneuron	poly(dT)	0.39332073739009576
+3	junction	J12	P3:J12	chr3:55410327-55414122	45	ASC	poly(dT)	1.0
+3	junction	J12	P3:J12	chr3:55410327-55414122	45	EX_cerebellum_granule	poly(dT)	1.0
+3	junction	J12	P3:J12	chr3:55410327-55414122	45	EX_cortical	poly(dT)	0.9940476190476191
+3	junction	J12	P3:J12	chr3:55410327-55414122	45	INH_medium_spiny	poly(dT)	1.0
+3	junction	J12	P3:J12	chr3:55410327-55414122	45	INH_midbrain	poly(dT)	1.0
+3	junction	J12	P3:J12	chr3:55410327-55414122	45	INH_migrating_interneuron	poly(dT)	1.0
+3	exon	E13	P3:E13	chr3:55414122-55414202	46	ASC	poly(dT)	0.10826607216472478
+3	exon	E13	P3:E13	chr3:55414122-55414202	46	EX_cerebellum_granule	poly(dT)	0.5399479673940702
+3	exon	E13	P3:E13	chr3:55414122-55414202	46	EX_cortical	poly(dT)	0.6745504946466265
+3	exon	E13	P3:E13	chr3:55414122-55414202	46	INH_medium_spiny	poly(dT)	0.5957461302046393
+3	exon	E13	P3:E13	chr3:55414122-55414202	46	INH_midbrain	poly(dT)	0.803182891955738
+3	exon	E13	P3:E13	chr3:55414122-55414202	46	INH_migrating_interneuron	poly(dT)	0.4839801403425395
+3	junction	J13	P3:J13	chr3:55414203-55424294	47	ASC	poly(dT)	1.0
+3	junction	J13	P3:J13	chr3:55414203-55424294	47	EX_cerebellum_granule	poly(dT)	1.0
+3	junction	J13	P3:J13	chr3:55414203-55424294	47	EX_cortical	poly(dT)	1.0
+3	junction	J13	P3:J13	chr3:55414203-55424294	47	INH_medium_spiny	poly(dT)	1.0
+3	junction	J13	P3:J13	chr3:55414203-55424294	47	INH_midbrain	poly(dT)	1.0
+3	junction	J13	P3:J13	chr3:55414203-55424294	47	INH_migrating_interneuron	poly(dT)	1.0
+3	exon	E14	P3:E14	chr3:55424294-55424407	48	ASC	poly(dT)	0.043607205623901586
+3	exon	E14	P3:E14	chr3:55424294-55424407	48	EX_cerebellum_granule	poly(dT)	0.17605425254678986
+3	exon	E14	P3:E14	chr3:55424294-55424407	48	EX_cortical	poly(dT)	0.27138170443274584
+3	exon	E14	P3:E14	chr3:55424294-55424407	48	INH_medium_spiny	poly(dT)	0.2589797684734394
+3	exon	E14	P3:E14	chr3:55424294-55424407	48	INH_midbrain	poly(dT)	0.20234986945169714
+3	exon	E14	P3:E14	chr3:55424294-55424407	48	INH_migrating_interneuron	poly(dT)	0.16914552347623216
+3	junction	J15	P3:J15	chr3:55424408-55440991	49	ASC	poly(dT)	0.25
+3	junction	J15	P3:J15	chr3:55424408-55440991	49	EX_cerebellum_granule	poly(dT)	0.3333333333333333
+3	junction	J15	P3:J15	chr3:55424408-55440991	49	EX_cortical	poly(dT)	0.10714285714285714
+3	junction	J15	P3:J15	chr3:55424408-55440991	49	INH_medium_spiny	poly(dT)	0.06666666666666667
+3	junction	J15	P3:J15	chr3:55424408-55440991	49	INH_midbrain	poly(dT)	0.0
+3	junction	J15	P3:J15	chr3:55424408-55440991	49	INH_migrating_interneuron	poly(dT)	0.3
+3	exon	E16	P3:E16	chr3:55440991-55443973	50	ASC	poly(dT)	0.0002490680935376625
+3	exon	E16	P3:E16	chr3:55440991-55443973	50	EX_cerebellum_granule	poly(dT)	0.0013807215062087198
+3	exon	E16	P3:E16	chr3:55440991-55443973	50	EX_cortical	poly(dT)	0.00461123754069275
+3	exon	E16	P3:E16	chr3:55440991-55443973	50	INH_medium_spiny	poly(dT)	0.002904590907493431
+3	exon	E16	P3:E16	chr3:55440991-55443973	50	INH_midbrain	poly(dT)	0.007317357103657016
+3	exon	E16	P3:E16	chr3:55440991-55443973	50	INH_migrating_interneuron	poly(dT)	0.004527698368914077
+4	path	P4	P4:path		51	ASC	poly(dT)	0.17058941508355016
+4	path	P4	P4:path		51	EX_cerebellum_granule	poly(dT)	0.5022167938908937
+4	path	P4	P4:path		51	EX_cortical	poly(dT)	0.6278945020416704
+4	path	P4	P4:path		51	INH_medium_spiny	poly(dT)	0.43323548082385493
+4	path	P4	P4:path		51	INH_midbrain	poly(dT)	0.7389411712533307
+4	path	P4	P4:path		51	INH_migrating_interneuron	poly(dT)	0.6342496371589174
+4	junction	J2	P4:J2	chr3:55370517-55385226	52	ASC	poly(dT)	0.08
+4	junction	J2	P4:J2	chr3:55370517-55385226	52	EX_cerebellum_granule	poly(dT)	0.9135802469135802
+4	junction	J2	P4:J2	chr3:55370517-55385226	52	EX_cortical	poly(dT)	0.8469387755102041
+4	junction	J2	P4:J2	chr3:55370517-55385226	52	INH_medium_spiny	poly(dT)	0.7941176470588235
+4	junction	J2	P4:J2	chr3:55370517-55385226	52	INH_midbrain	poly(dT)	0.8333333333333334
+4	junction	J2	P4:J2	chr3:55370517-55385226	52	INH_migrating_interneuron	poly(dT)	0.6436781609195402
+4	exon	E4	P4:E4	chr3:55385226-55385358	53	ASC	poly(dT)	0.13761611850364047
+4	exon	E4	P4:E4	chr3:55385226-55385358	53	EX_cerebellum_granule	poly(dT)	1.0
+4	exon	E4	P4:E4	chr3:55385226-55385358	53	EX_cortical	poly(dT)	1.0
+4	exon	E4	P4:E4	chr3:55385226-55385358	53	INH_medium_spiny	poly(dT)	1.0
+4	exon	E4	P4:E4	chr3:55385226-55385358	53	INH_midbrain	poly(dT)	1.0
+4	exon	E4	P4:E4	chr3:55385226-55385358	53	INH_migrating_interneuron	poly(dT)	0.8484356122151397
+4	junction	J4	P4:J4	chr3:55385359-55387755	54	ASC	poly(dT)	0.5211267605633803
+4	junction	J4	P4:J4	chr3:55385359-55387755	54	EX_cerebellum_granule	poly(dT)	0.46923076923076923
+4	junction	J4	P4:J4	chr3:55385359-55387755	54	EX_cortical	poly(dT)	0.4102079395085066
+4	junction	J4	P4:J4	chr3:55385359-55387755	54	INH_medium_spiny	poly(dT)	0.3357142857142857
+4	junction	J4	P4:J4	chr3:55385359-55387755	54	INH_midbrain	poly(dT)	0.4270833333333333
+4	junction	J4	P4:J4	chr3:55385359-55387755	54	INH_migrating_interneuron	poly(dT)	0.39669421487603307
+4	exon	E5	P4:E5	chr3:55387755-55387863	55	ASC	poly(dT)	0.2955490882120572
+4	exon	E5	P4:E5	chr3:55387755-55387863	55	EX_cerebellum_granule	poly(dT)	1.0
+4	exon	E5	P4:E5	chr3:55387755-55387863	55	EX_cortical	poly(dT)	1.0
+4	exon	E5	P4:E5	chr3:55387755-55387863	55	INH_medium_spiny	poly(dT)	1.0
+4	exon	E5	P4:E5	chr3:55387755-55387863	55	INH_midbrain	poly(dT)	1.0
+4	exon	E5	P4:E5	chr3:55387755-55387863	55	INH_migrating_interneuron	poly(dT)	1.0
+4	junction	J5	P4:J5	chr3:55387864-55394728	56	ASC	poly(dT)	1.0
+4	junction	J5	P4:J5	chr3:55387864-55394728	56	EX_cerebellum_granule	poly(dT)	1.0
+4	junction	J5	P4:J5	chr3:55387864-55394728	56	EX_cortical	poly(dT)	1.0
+4	junction	J5	P4:J5	chr3:55387864-55394728	56	INH_medium_spiny	poly(dT)	1.0
+4	junction	J5	P4:J5	chr3:55387864-55394728	56	INH_midbrain	poly(dT)	1.0
+4	junction	J5	P4:J5	chr3:55387864-55394728	56	INH_migrating_interneuron	poly(dT)	1.0
+4	exon	E6	P4:E6	chr3:55394728-55394785	57	ASC	poly(dT)	0.1694063996121447
+4	exon	E6	P4:E6	chr3:55394728-55394785	57	EX_cerebellum_granule	poly(dT)	0.8108166066220621
+4	exon	E6	P4:E6	chr3:55394728-55394785	57	EX_cortical	poly(dT)	0.8396973978105934
+4	exon	E6	P4:E6	chr3:55394728-55394785	57	INH_medium_spiny	poly(dT)	0.567507750506441
+4	exon	E6	P4:E6	chr3:55394728-55394785	57	INH_midbrain	poly(dT)	1.0
+4	exon	E6	P4:E6	chr3:55394728-55394785	57	INH_migrating_interneuron	poly(dT)	0.6465265836023371
+4	junction	J6	P4:J6	chr3:55394786-55395213	58	ASC	poly(dT)	1.0
+4	junction	J6	P4:J6	chr3:55394786-55395213	58	EX_cerebellum_granule	poly(dT)	1.0
+4	junction	J6	P4:J6	chr3:55394786-55395213	58	EX_cortical	poly(dT)	1.0
+4	junction	J6	P4:J6	chr3:55394786-55395213	58	INH_medium_spiny	poly(dT)	1.0
+4	junction	J6	P4:J6	chr3:55394786-55395213	58	INH_midbrain	poly(dT)	1.0
+4	junction	J6	P4:J6	chr3:55394786-55395213	58	INH_migrating_interneuron	poly(dT)	1.0
+4	exon	E7	P4:E7	chr3:55395213-55395332	59	ASC	poly(dT)	0.06723601347393088
+4	exon	E7	P4:E7	chr3:55395213-55395332	59	EX_cerebellum_granule	poly(dT)	0.30186863302534944
+4	exon	E7	P4:E7	chr3:55395213-55395332	59	EX_cortical	poly(dT)	0.20156786449988556
+4	exon	E7	P4:E7	chr3:55395213-55395332	59	INH_medium_spiny	poly(dT)	0.23729443903494538
+4	exon	E7	P4:E7	chr3:55395213-55395332	59	INH_midbrain	poly(dT)	0.3245213228894691
+4	exon	E7	P4:E7	chr3:55395213-55395332	59	INH_migrating_interneuron	poly(dT)	0.28813065033537477
+4	junction	J7	P4:J7	chr3:55395333-55397171	60	ASC	poly(dT)	1.0
+4	junction	J7	P4:J7	chr3:55395333-55397171	60	EX_cerebellum_granule	poly(dT)	1.0
+4	junction	J7	P4:J7	chr3:55395333-55397171	60	EX_cortical	poly(dT)	1.0
+4	junction	J7	P4:J7	chr3:55395333-55397171	60	INH_medium_spiny	poly(dT)	1.0
+4	junction	J7	P4:J7	chr3:55395333-55397171	60	INH_midbrain	poly(dT)	1.0
+4	junction	J7	P4:J7	chr3:55395333-55397171	60	INH_migrating_interneuron	poly(dT)	1.0
+4	exon	E8	P4:E8	chr3:55397171-55397317	61	ASC	poly(dT)	0.028820403381036072
+4	exon	E8	P4:E8	chr3:55397171-55397317	61	EX_cerebellum_granule	poly(dT)	0.023769635786084157
+4	exon	E8	P4:E8	chr3:55397171-55397317	61	EX_cortical	poly(dT)	0.09839577854488099
+4	exon	E8	P4:E8	chr3:55397171-55397317	61	INH_medium_spiny	poly(dT)	0.15270243118344384
+4	exon	E8	P4:E8	chr3:55397171-55397317	61	INH_midbrain	poly(dT)	0.19452838949828347
+4	exon	E8	P4:E8	chr3:55397171-55397317	61	INH_migrating_interneuron	poly(dT)	0.1167562388034829
+4	junction	J8	P4:J8	chr3:55397318-55407456	62	ASC	poly(dT)	NA
+4	junction	J8	P4:J8	chr3:55397318-55407456	62	EX_cerebellum_granule	poly(dT)	NA
+4	junction	J8	P4:J8	chr3:55397318-55407456	62	EX_cortical	poly(dT)	0.9629629629629629
+4	junction	J8	P4:J8	chr3:55397318-55407456	62	INH_medium_spiny	poly(dT)	1.0
+4	junction	J8	P4:J8	chr3:55397318-55407456	62	INH_midbrain	poly(dT)	1.0
+4	junction	J8	P4:J8	chr3:55397318-55407456	62	INH_migrating_interneuron	poly(dT)	1.0
+4	exon	E9	P4:E9	chr3:55407456-55407589	63	ASC	poly(dT)	0.0013705637017023846
+4	exon	E9	P4:E9	chr3:55407456-55407589	63	EX_cerebellum_granule	poly(dT)	0.00680234223339592
+4	exon	E9	P4:E9	chr3:55407456-55407589	63	EX_cortical	poly(dT)	0.07506584723441616
+4	exon	E9	P4:E9	chr3:55407456-55407589	63	INH_medium_spiny	poly(dT)	0.08939600924297693
+4	exon	E9	P4:E9	chr3:55407456-55407589	63	INH_midbrain	poly(dT)	0.14358921542975167
+4	exon	E9	P4:E9	chr3:55407456-55407589	63	INH_migrating_interneuron	poly(dT)	0.10141223018764446
+4	junction	J9	P4:J9	chr3:55407590-55409794	64	ASC	poly(dT)	1.0
+4	junction	J9	P4:J9	chr3:55407590-55409794	64	EX_cerebellum_granule	poly(dT)	1.0
+4	junction	J9	P4:J9	chr3:55407590-55409794	64	EX_cortical	poly(dT)	1.0
+4	junction	J9	P4:J9	chr3:55407590-55409794	64	INH_medium_spiny	poly(dT)	1.0
+4	junction	J9	P4:J9	chr3:55407590-55409794	64	INH_midbrain	poly(dT)	NA
+4	junction	J9	P4:J9	chr3:55407590-55409794	64	INH_migrating_interneuron	poly(dT)	1.0
+4	exon	E10	P4:E10	chr3:55409794-55409871	65	ASC	poly(dT)	0.013431684016042542
+4	exon	E10	P4:E10	chr3:55409794-55409871	65	EX_cerebellum_granule	poly(dT)	0.09305578335429081
+4	exon	E10	P4:E10	chr3:55409794-55409871	65	EX_cortical	poly(dT)	0.08703217892963831
+4	exon	E10	P4:E10	chr3:55409794-55409871	65	INH_medium_spiny	poly(dT)	0.07787598099185246
+4	exon	E10	P4:E10	chr3:55409794-55409871	65	INH_midbrain	poly(dT)	0.08358916975104966
+4	exon	E10	P4:E10	chr3:55409794-55409871	65	INH_migrating_interneuron	poly(dT)	0.07530041650776559
+4	junction	J10	P4:J10	chr3:55409872-55410230	66	ASC	poly(dT)	1.0
+4	junction	J10	P4:J10	chr3:55409872-55410230	66	EX_cerebellum_granule	poly(dT)	1.0
+4	junction	J10	P4:J10	chr3:55409872-55410230	66	EX_cortical	poly(dT)	1.0
+4	junction	J10	P4:J10	chr3:55409872-55410230	66	INH_medium_spiny	poly(dT)	1.0
+4	junction	J10	P4:J10	chr3:55409872-55410230	66	INH_midbrain	poly(dT)	1.0
+4	junction	J10	P4:J10	chr3:55409872-55410230	66	INH_migrating_interneuron	poly(dT)	1.0
+4	exon	E11	P4:E11	chr3:55410230-55410326	67	ASC	poly(dT)	0.08847136412226188
+4	exon	E11	P4:E11	chr3:55410230-55410326	67	EX_cerebellum_granule	poly(dT)	0.4000707068486727
+4	exon	E11	P4:E11	chr3:55410230-55410326	67	EX_cortical	poly(dT)	0.5276868659935393
+4	exon	E11	P4:E11	chr3:55410230-55410326	67	INH_medium_spiny	poly(dT)	0.49668403283175566
+4	exon	E11	P4:E11	chr3:55410230-55410326	67	INH_midbrain	poly(dT)	0.7349927131359664
+4	exon	E11	P4:E11	chr3:55410230-55410326	67	INH_migrating_interneuron	poly(dT)	0.38515481956508013
+4	junction	J12	P4:J12	chr3:55410327-55414122	68	ASC	poly(dT)	1.0
+4	junction	J12	P4:J12	chr3:55410327-55414122	68	EX_cerebellum_granule	poly(dT)	1.0
+4	junction	J12	P4:J12	chr3:55410327-55414122	68	EX_cortical	poly(dT)	0.9940476190476191
+4	junction	J12	P4:J12	chr3:55410327-55414122	68	INH_medium_spiny	poly(dT)	1.0
+4	junction	J12	P4:J12	chr3:55410327-55414122	68	INH_midbrain	poly(dT)	1.0
+4	junction	J12	P4:J12	chr3:55410327-55414122	68	INH_migrating_interneuron	poly(dT)	1.0
+4	exon	E13	P4:E13	chr3:55414122-55414202	69	ASC	poly(dT)	0.10826607216472478
+4	exon	E13	P4:E13	chr3:55414122-55414202	69	EX_cerebellum_granule	poly(dT)	0.5399479673940702
+4	exon	E13	P4:E13	chr3:55414122-55414202	69	EX_cortical	poly(dT)	0.6745504946466265
+4	exon	E13	P4:E13	chr3:55414122-55414202	69	INH_medium_spiny	poly(dT)	0.5957461302046393
+4	exon	E13	P4:E13	chr3:55414122-55414202	69	INH_midbrain	poly(dT)	0.803182891955738
+4	exon	E13	P4:E13	chr3:55414122-55414202	69	INH_migrating_interneuron	poly(dT)	0.4839801403425395
+4	junction	J13	P4:J13	chr3:55414203-55424294	70	ASC	poly(dT)	1.0
+4	junction	J13	P4:J13	chr3:55414203-55424294	70	EX_cerebellum_granule	poly(dT)	1.0
+4	junction	J13	P4:J13	chr3:55414203-55424294	70	EX_cortical	poly(dT)	1.0
+4	junction	J13	P4:J13	chr3:55414203-55424294	70	INH_medium_spiny	poly(dT)	1.0
+4	junction	J13	P4:J13	chr3:55414203-55424294	70	INH_midbrain	poly(dT)	1.0
+4	junction	J13	P4:J13	chr3:55414203-55424294	70	INH_migrating_interneuron	poly(dT)	1.0
+4	exon	E14	P4:E14	chr3:55424294-55424407	71	ASC	poly(dT)	0.043607205623901586
+4	exon	E14	P4:E14	chr3:55424294-55424407	71	EX_cerebellum_granule	poly(dT)	0.17605425254678986
+4	exon	E14	P4:E14	chr3:55424294-55424407	71	EX_cortical	poly(dT)	0.27138170443274584
+4	exon	E14	P4:E14	chr3:55424294-55424407	71	INH_medium_spiny	poly(dT)	0.2589797684734394
+4	exon	E14	P4:E14	chr3:55424294-55424407	71	INH_midbrain	poly(dT)	0.20234986945169714
+4	exon	E14	P4:E14	chr3:55424294-55424407	71	INH_migrating_interneuron	poly(dT)	0.16914552347623216
+4	junction	J15	P4:J15	chr3:55424408-55440991	72	ASC	poly(dT)	0.25
+4	junction	J15	P4:J15	chr3:55424408-55440991	72	EX_cerebellum_granule	poly(dT)	0.3333333333333333
+4	junction	J15	P4:J15	chr3:55424408-55440991	72	EX_cortical	poly(dT)	0.10714285714285714
+4	junction	J15	P4:J15	chr3:55424408-55440991	72	INH_medium_spiny	poly(dT)	0.06666666666666667
+4	junction	J15	P4:J15	chr3:55424408-55440991	72	INH_midbrain	poly(dT)	0.0
+4	junction	J15	P4:J15	chr3:55424408-55440991	72	INH_migrating_interneuron	poly(dT)	0.3
+4	exon	E17	P4:E17	chr3:55440991-55446485	73	ASC	poly(dT)	0.00023091770598291145
+4	exon	E17	P4:E17	chr3:55440991-55446485	73	EX_cerebellum_granule	poly(dT)	0.0007495345319418764
+4	exon	E17	P4:E17	chr3:55440991-55446485	73	EX_cortical	poly(dT)	0.0031078837145902005
+4	exon	E17	P4:E17	chr3:55440991-55446485	73	INH_medium_spiny	poly(dT)	0.002283802896557875
+4	exon	E17	P4:E17	chr3:55440991-55446485	73	INH_midbrain	poly(dT)	0.004881518887843175
+4	exon	E17	P4:E17	chr3:55440991-55446485	73	INH_migrating_interneuron	poly(dT)	0.0038922947795007575
+1	path	P1	P1:path		0	ASC	random hexamer	0.21768151604134447
+1	path	P1	P1:path		0	EX_cerebellum_granule	random hexamer	0.014799111036210753
+1	path	P1	P1:path		0	EX_cortical	random hexamer	0.02526453300148173
+1	path	P1	P1:path		0	INH_medium_spiny	random hexamer	0.0159744461969322
+1	path	P1	P1:path		0	INH_midbrain	random hexamer	0.02979998484129141
+1	path	P1	P1:path		0	INH_migrating_interneuron	random hexamer	0.06068192882815687
+1	junction	J1	P1:J1	chr3:55370517-55373994	1	ASC	random hexamer	0.8012048192771084
+1	junction	J1	P1:J1	chr3:55370517-55373994	1	EX_cerebellum_granule	random hexamer	0.0364963503649635
+1	junction	J1	P1:J1	chr3:55370517-55373994	1	EX_cortical	random hexamer	0.026041666666666668
+1	junction	J1	P1:J1	chr3:55370517-55373994	1	INH_medium_spiny	random hexamer	0.007936507936507936
+1	junction	J1	P1:J1	chr3:55370517-55373994	1	INH_midbrain	random hexamer	0.07272727272727272
+1	junction	J1	P1:J1	chr3:55370517-55373994	1	INH_migrating_interneuron	random hexamer	0.12727272727272726
+1	exon	E2	P1:E2	chr3:55373994-55378737	2	ASC	random hexamer	0.005437614103728815
+1	exon	E2	P1:E2	chr3:55373994-55378737	2	EX_cerebellum_granule	random hexamer	0.0006075227081244093
+1	exon	E2	P1:E2	chr3:55373994-55378737	2	EX_cortical	random hexamer	0.0003155738826422119
+1	exon	E2	P1:E2	chr3:55373994-55378737	2	INH_medium_spiny	random hexamer	0.00016995421661655024
+1	exon	E2	P1:E2	chr3:55373994-55378737	2	INH_midbrain	random hexamer	0.00025694571780716355
+1	exon	E2	P1:E2	chr3:55373994-55378737	2	INH_migrating_interneuron	random hexamer	0.001198585479803942
+2	path	P2	P2:path		3	ASC	random hexamer	0.381409609300807
+2	path	P2	P2:path		3	EX_cerebellum_granule	random hexamer	0.3766206970322282
+2	path	P2	P2:path		3	EX_cortical	random hexamer	0.20187881276682498
+2	path	P2	P2:path		3	INH_medium_spiny	random hexamer	0.30867566166418997
+2	path	P2	P2:path		3	INH_midbrain	random hexamer	0.14494752952436413
+2	path	P2	P2:path		3	INH_migrating_interneuron	random hexamer	0.19983458796956324
+2	junction	J2	P2:J2	chr3:55370517-55385226	4	ASC	random hexamer	0.19879518072289157
+2	junction	J2	P2:J2	chr3:55370517-55385226	4	EX_cerebellum_granule	random hexamer	0.9635036496350365
+2	junction	J2	P2:J2	chr3:55370517-55385226	4	EX_cortical	random hexamer	0.9657894736842105
+2	junction	J2	P2:J2	chr3:55370517-55385226	4	INH_medium_spiny	random hexamer	0.9453125
+2	junction	J2	P2:J2	chr3:55370517-55385226	4	INH_midbrain	random hexamer	0.9272727272727272
+2	junction	J2	P2:J2	chr3:55370517-55385226	4	INH_migrating_interneuron	random hexamer	0.8727272727272727
+2	exon	E3	P2:E3	chr3:55385226-55385310	5	ASC	random hexamer	0.17910296648779994
+2	exon	E3	P2:E3	chr3:55385226-55385310	5	EX_cerebellum_granule	random hexamer	0.9419631217915868
+2	exon	E3	P2:E3	chr3:55385226-55385310	5	EX_cortical	random hexamer	0.6939179692491163
+2	exon	E3	P2:E3	chr3:55385226-55385310	5	INH_medium_spiny	random hexamer	0.8498467868271101
+2	exon	E3	P2:E3	chr3:55385226-55385310	5	INH_midbrain	random hexamer	0.805831067416274
+2	exon	E3	P2:E3	chr3:55385226-55385310	5	INH_migrating_interneuron	random hexamer	0.5869566182575378
+2	junction	J3	P2:J3	chr3:55385311-55387755	6	ASC	random hexamer	0.7857142857142857
+2	junction	J3	P2:J3	chr3:55385311-55387755	6	EX_cerebellum_granule	random hexamer	0.5540540540540541
+2	junction	J3	P2:J3	chr3:55385311-55387755	6	EX_cortical	random hexamer	0.6472148541114059
+2	junction	J3	P2:J3	chr3:55385311-55387755	6	INH_medium_spiny	random hexamer	0.6074074074074074
+2	junction	J3	P2:J3	chr3:55385311-55387755	6	INH_midbrain	random hexamer	0.6428571428571429
+2	junction	J3	P2:J3	chr3:55385311-55387755	6	INH_migrating_interneuron	random hexamer	0.5584415584415584
+2	exon	E5	P2:E5	chr3:55387755-55387863	7	ASC	random hexamer	0.2153042050245543
+2	exon	E5	P2:E5	chr3:55387755-55387863	7	EX_cerebellum_granule	random hexamer	1.0
+2	exon	E5	P2:E5	chr3:55387755-55387863	7	EX_cortical	random hexamer	0.7461840778271116
+2	exon	E5	P2:E5	chr3:55387755-55387863	7	INH_medium_spiny	random hexamer	0.9173439333285006
+2	exon	E5	P2:E5	chr3:55387755-55387863	7	INH_midbrain	random hexamer	0.8844631314602384
+2	exon	E5	P2:E5	chr3:55387755-55387863	7	INH_migrating_interneuron	random hexamer	0.6278334317770911
+2	junction	J5	P2:J5	chr3:55387864-55394728	8	ASC	random hexamer	1.0
+2	junction	J5	P2:J5	chr3:55387864-55394728	8	EX_cerebellum_granule	random hexamer	1.0
+2	junction	J5	P2:J5	chr3:55387864-55394728	8	EX_cortical	random hexamer	1.0
+2	junction	J5	P2:J5	chr3:55387864-55394728	8	INH_medium_spiny	random hexamer	1.0
+2	junction	J5	P2:J5	chr3:55387864-55394728	8	INH_midbrain	random hexamer	1.0
+2	junction	J5	P2:J5	chr3:55387864-55394728	8	INH_migrating_interneuron	random hexamer	1.0
+2	exon	E6	P2:E6	chr3:55394728-55394785	9	ASC	random hexamer	0.2661879043266662
+2	exon	E6	P2:E6	chr3:55394728-55394785	9	EX_cerebellum_granule	random hexamer	1.0
+2	exon	E6	P2:E6	chr3:55394728-55394785	9	EX_cortical	random hexamer	0.9085742064442034
+2	exon	E6	P2:E6	chr3:55394728-55394785	9	INH_medium_spiny	random hexamer	1.0
+2	exon	E6	P2:E6	chr3:55394728-55394785	9	INH_midbrain	random hexamer	1.0
+2	exon	E6	P2:E6	chr3:55394728-55394785	9	INH_migrating_interneuron	random hexamer	0.9801130078782783
+2	junction	J6	P2:J6	chr3:55394786-55395213	10	ASC	random hexamer	1.0
+2	junction	J6	P2:J6	chr3:55394786-55395213	10	EX_cerebellum_granule	random hexamer	1.0
+2	junction	J6	P2:J6	chr3:55394786-55395213	10	EX_cortical	random hexamer	1.0
+2	junction	J6	P2:J6	chr3:55394786-55395213	10	INH_medium_spiny	random hexamer	1.0
+2	junction	J6	P2:J6	chr3:55394786-55395213	10	INH_midbrain	random hexamer	1.0
+2	junction	J6	P2:J6	chr3:55394786-55395213	10	INH_migrating_interneuron	random hexamer	1.0
+2	exon	E7	P2:E7	chr3:55395213-55395332	11	ASC	random hexamer	0.23895582329317266
+2	exon	E7	P2:E7	chr3:55395213-55395332	11	EX_cerebellum_granule	random hexamer	0.8039476030363237
+2	exon	E7	P2:E7	chr3:55395213-55395332	11	EX_cortical	random hexamer	0.7546105030026833
+2	exon	E7	P2:E7	chr3:55395213-55395332	11	INH_medium_spiny	random hexamer	0.9811847624621988
+2	exon	E7	P2:E7	chr3:55395213-55395332	11	INH_midbrain	random hexamer	1.0
+2	exon	E7	P2:E7	chr3:55395213-55395332	11	INH_migrating_interneuron	random hexamer	0.8355850756031902
+2	junction	J7	P2:J7	chr3:55395333-55397171	12	ASC	random hexamer	1.0
+2	junction	J7	P2:J7	chr3:55395333-55397171	12	EX_cerebellum_granule	random hexamer	1.0
+2	junction	J7	P2:J7	chr3:55395333-55397171	12	EX_cortical	random hexamer	1.0
+2	junction	J7	P2:J7	chr3:55395333-55397171	12	INH_medium_spiny	random hexamer	1.0
+2	junction	J7	P2:J7	chr3:55395333-55397171	12	INH_midbrain	random hexamer	1.0
+2	junction	J7	P2:J7	chr3:55395333-55397171	12	INH_migrating_interneuron	random hexamer	1.0
+2	exon	E8	P2:E8	chr3:55397171-55397317	13	ASC	random hexamer	0.24986242345475193
+2	exon	E8	P2:E8	chr3:55397171-55397317	13	EX_cerebellum_granule	random hexamer	0.7107559514712196
+2	exon	E8	P2:E8	chr3:55397171-55397317	13	EX_cortical	random hexamer	0.6681408455029868
+2	exon	E8	P2:E8	chr3:55397171-55397317	13	INH_medium_spiny	random hexamer	0.7483889078019268
+2	exon	E8	P2:E8	chr3:55397171-55397317	13	INH_midbrain	random hexamer	1.0
+2	exon	E8	P2:E8	chr3:55397171-55397317	13	INH_migrating_interneuron	random hexamer	0.6041143908691864
+2	junction	J8	P2:J8	chr3:55397318-55407456	14	ASC	random hexamer	1.0
+2	junction	J8	P2:J8	chr3:55397318-55407456	14	EX_cerebellum_granule	random hexamer	1.0
+2	junction	J8	P2:J8	chr3:55397318-55407456	14	EX_cortical	random hexamer	1.0
+2	junction	J8	P2:J8	chr3:55397318-55407456	14	INH_medium_spiny	random hexamer	1.0
+2	junction	J8	P2:J8	chr3:55397318-55407456	14	INH_midbrain	random hexamer	1.0
+2	junction	J8	P2:J8	chr3:55397318-55407456	14	INH_migrating_interneuron	random hexamer	1.0
+2	exon	E9	P2:E9	chr3:55407456-55407589	15	ASC	random hexamer	0.12044981632286074
+2	exon	E9	P2:E9	chr3:55407456-55407589	15	EX_cerebellum_granule	random hexamer	0.3088067229191046
+2	exon	E9	P2:E9	chr3:55407456-55407589	15	EX_cortical	random hexamer	0.2674547849364278
+2	exon	E9	P2:E9	chr3:55407456-55407589	15	INH_medium_spiny	random hexamer	0.3409396171032459
+2	exon	E9	P2:E9	chr3:55407456-55407589	15	INH_midbrain	random hexamer	0.26018738352979304
+2	exon	E9	P2:E9	chr3:55407456-55407589	15	INH_migrating_interneuron	random hexamer	0.3026530867438038
+2	junction	J9	P2:J9	chr3:55407590-55409794	16	ASC	random hexamer	1.0
+2	junction	J9	P2:J9	chr3:55407590-55409794	16	EX_cerebellum_granule	random hexamer	1.0
+2	junction	J9	P2:J9	chr3:55407590-55409794	16	EX_cortical	random hexamer	1.0
+2	junction	J9	P2:J9	chr3:55407590-55409794	16	INH_medium_spiny	random hexamer	1.0
+2	junction	J9	P2:J9	chr3:55407590-55409794	16	INH_midbrain	random hexamer	1.0
+2	junction	J9	P2:J9	chr3:55407590-55409794	16	INH_migrating_interneuron	random hexamer	1.0
+2	exon	E10	P2:E10	chr3:55409794-55409871	17	ASC	random hexamer	0.04998014034158612
+2	exon	E10	P2:E10	chr3:55409794-55409871	17	EX_cerebellum_granule	random hexamer	0.1624117769234688
+2	exon	E10	P2:E10	chr3:55409794-55409871	17	EX_cortical	random hexamer	0.14306838298490412
+2	exon	E10	P2:E10	chr3:55409794-55409871	17	INH_medium_spiny	random hexamer	0.16413970869633734
+2	exon	E10	P2:E10	chr3:55409794-55409871	17	INH_midbrain	random hexamer	0.2085679577865793
+2	exon	E10	P2:E10	chr3:55409794-55409871	17	INH_migrating_interneuron	random hexamer	0.1791668843899201
+2	junction	J10	P2:J10	chr3:55409872-55410230	18	ASC	random hexamer	1.0
+2	junction	J10	P2:J10	chr3:55409872-55410230	18	EX_cerebellum_granule	random hexamer	1.0
+2	junction	J10	P2:J10	chr3:55409872-55410230	18	EX_cortical	random hexamer	0.9879518072289156
+2	junction	J10	P2:J10	chr3:55409872-55410230	18	INH_medium_spiny	random hexamer	1.0
+2	junction	J10	P2:J10	chr3:55409872-55410230	18	INH_midbrain	random hexamer	1.0
+2	junction	J10	P2:J10	chr3:55409872-55410230	18	INH_migrating_interneuron	random hexamer	1.0
+2	exon	E11	P2:E11	chr3:55410230-55410326	19	ASC	random hexamer	0.21434781837216318
+2	exon	E11	P2:E11	chr3:55410230-55410326	19	EX_cerebellum_granule	random hexamer	0.7136926060903996
+2	exon	E11	P2:E11	chr3:55410230-55410326	19	EX_cortical	random hexamer	0.5782684504643983
+2	exon	E11	P2:E11	chr3:55410230-55410326	19	INH_medium_spiny	random hexamer	0.6015442798137874
+2	exon	E11	P2:E11	chr3:55410230-55410326	19	INH_midbrain	random hexamer	0.5799923006870027
+2	exon	E11	P2:E11	chr3:55410230-55410326	19	INH_migrating_interneuron	random hexamer	0.44108755922446585
+2	junction	J12	P2:J12	chr3:55410327-55414122	20	ASC	random hexamer	1.0
+2	junction	J12	P2:J12	chr3:55410327-55414122	20	EX_cerebellum_granule	random hexamer	1.0
+2	junction	J12	P2:J12	chr3:55410327-55414122	20	EX_cortical	random hexamer	1.0
+2	junction	J12	P2:J12	chr3:55410327-55414122	20	INH_medium_spiny	random hexamer	1.0
+2	junction	J12	P2:J12	chr3:55410327-55414122	20	INH_midbrain	random hexamer	1.0
+2	junction	J12	P2:J12	chr3:55410327-55414122	20	INH_migrating_interneuron	random hexamer	1.0
+2	exon	E13	P2:E13	chr3:55414122-55414202	21	ASC	random hexamer	0.36633305709610925
+2	exon	E13	P2:E13	chr3:55414122-55414202	21	EX_cerebellum_granule	random hexamer	1.0
+2	exon	E13	P2:E13	chr3:55414122-55414202	21	EX_cortical	random hexamer	0.959516489387154
+2	exon	E13	P2:E13	chr3:55414122-55414202	21	INH_medium_spiny	random hexamer	0.8507119449954296
+2	exon	E13	P2:E13	chr3:55414122-55414202	21	INH_midbrain	random hexamer	0.8813177930905628
+2	exon	E13	P2:E13	chr3:55414122-55414202	21	INH_migrating_interneuron	random hexamer	0.6491382065639242
+2	junction	J13	P2:J13	chr3:55414203-55424294	22	ASC	random hexamer	0.9866666666666667
+2	junction	J13	P2:J13	chr3:55414203-55424294	22	EX_cerebellum_granule	random hexamer	0.9882352941176471
+2	junction	J13	P2:J13	chr3:55414203-55424294	22	EX_cortical	random hexamer	0.9973333333333333
+2	junction	J13	P2:J13	chr3:55414203-55424294	22	INH_medium_spiny	random hexamer	1.0
+2	junction	J13	P2:J13	chr3:55414203-55424294	22	INH_midbrain	random hexamer	0.9787234042553191
+2	junction	J13	P2:J13	chr3:55414203-55424294	22	INH_migrating_interneuron	random hexamer	1.0
+2	exon	E14	P2:E14	chr3:55424294-55424407	23	ASC	random hexamer	0.3343448983905547
+2	exon	E14	P2:E14	chr3:55424294-55424407	23	EX_cerebellum_granule	random hexamer	1.0
+2	exon	E14	P2:E14	chr3:55424294-55424407	23	EX_cortical	random hexamer	0.8839991765691327
+2	exon	E14	P2:E14	chr3:55424294-55424407	23	INH_medium_spiny	random hexamer	0.7613281631060385
+2	exon	E14	P2:E14	chr3:55424294-55424407	23	INH_midbrain	random hexamer	1.0
+2	exon	E14	P2:E14	chr3:55424294-55424407	23	INH_migrating_interneuron	random hexamer	0.7196140589226859
+2	junction	J14	P2:J14	chr3:55424408-55429271	24	ASC	random hexamer	0.43478260869565216
+2	junction	J14	P2:J14	chr3:55424408-55429271	24	EX_cerebellum_granule	random hexamer	0.5602836879432624
+2	junction	J14	P2:J14	chr3:55424408-55429271	24	EX_cortical	random hexamer	0.6605263157894737
+2	junction	J14	P2:J14	chr3:55424408-55429271	24	INH_medium_spiny	random hexamer	0.64
+2	junction	J14	P2:J14	chr3:55424408-55429271	24	INH_midbrain	random hexamer	0.6666666666666666
+2	junction	J14	P2:J14	chr3:55424408-55429271	24	INH_migrating_interneuron	random hexamer	0.4367816091954023
+2	exon	E15	P2:E15	chr3:55429271-55429344	25	ASC	random hexamer	0.13147183327906217
+2	exon	E15	P2:E15	chr3:55429271-55429344	25	EX_cerebellum_granule	random hexamer	0.477372145185075
+2	exon	E15	P2:E15	chr3:55429271-55429344	25	EX_cortical	random hexamer	0.38657316543938636
+2	exon	E15	P2:E15	chr3:55429271-55429344	25	INH_medium_spiny	random hexamer	0.33306243029684646
+2	exon	E15	P2:E15	chr3:55429271-55429344	25	INH_midbrain	random hexamer	0.6819111429244675
+2	exon	E15	P2:E15	chr3:55429271-55429344	25	INH_migrating_interneuron	random hexamer	0.2305171425482392
+2	junction	J16	P2:J16	chr3:55429345-55440991	26	ASC	random hexamer	0.5074626865671642
+2	junction	J16	P2:J16	chr3:55429345-55440991	26	EX_cerebellum_granule	random hexamer	0.5041322314049587
+2	junction	J16	P2:J16	chr3:55429345-55440991	26	EX_cortical	random hexamer	0.55
+2	junction	J16	P2:J16	chr3:55429345-55440991	26	INH_medium_spiny	random hexamer	0.5142857142857142
+2	junction	J16	P2:J16	chr3:55429345-55440991	26	INH_midbrain	random hexamer	0.6212121212121212
+2	junction	J16	P2:J16	chr3:55429345-55440991	26	INH_migrating_interneuron	random hexamer	0.34782608695652173
+2	exon	E17	P2:E17	chr3:55440991-55446485	27	ASC	random hexamer	0.004513569682343046
+2	exon	E17	P2:E17	chr3:55440991-55446485	27	EX_cerebellum_granule	random hexamer	0.012494025316110668
+2	exon	E17	P2:E17	chr3:55440991-55446485	27	EX_cortical	random hexamer	0.007338697454108896
+2	exon	E17	P2:E17	chr3:55440991-55446485	27	INH_medium_spiny	random hexamer	0.006004407657159261
+2	exon	E17	P2:E17	chr3:55440991-55446485	27	INH_midbrain	random hexamer	0.012098213677630339
+2	exon	E17	P2:E17	chr3:55440991-55446485	27	INH_migrating_interneuron	random hexamer	0.005964637158050145
+3	path	P3	P3:path		28	ASC	random hexamer	0.23031945957429825
+3	path	P3	P3:path		28	EX_cerebellum_granule	random hexamer	0.10636339804066727
+3	path	P3	P3:path		28	EX_cortical	random hexamer	0.14496215219002273
+3	path	P3	P3:path		28	INH_medium_spiny	random hexamer	0.2421144113150228
+3	path	P3	P3:path		28	INH_midbrain	random hexamer	0.08631131438101364
+3	path	P3	P3:path		28	INH_migrating_interneuron	random hexamer	0.10523384604336247
+3	junction	J2	P3:J2	chr3:55370517-55385226	29	ASC	random hexamer	0.19879518072289157
+3	junction	J2	P3:J2	chr3:55370517-55385226	29	EX_cerebellum_granule	random hexamer	0.9635036496350365
+3	junction	J2	P3:J2	chr3:55370517-55385226	29	EX_cortical	random hexamer	0.9657894736842105
+3	junction	J2	P3:J2	chr3:55370517-55385226	29	INH_medium_spiny	random hexamer	0.9453125
+3	junction	J2	P3:J2	chr3:55370517-55385226	29	INH_midbrain	random hexamer	0.9272727272727272
+3	junction	J2	P3:J2	chr3:55370517-55385226	29	INH_migrating_interneuron	random hexamer	0.8727272727272727
+3	exon	E3	P3:E3	chr3:55385226-55385310	30	ASC	random hexamer	0.17910296648779994
+3	exon	E3	P3:E3	chr3:55385226-55385310	30	EX_cerebellum_granule	random hexamer	0.9419631217915868
+3	exon	E3	P3:E3	chr3:55385226-55385310	30	EX_cortical	random hexamer	0.6939179692491163
+3	exon	E3	P3:E3	chr3:55385226-55385310	30	INH_medium_spiny	random hexamer	0.8498467868271101
+3	exon	E3	P3:E3	chr3:55385226-55385310	30	INH_midbrain	random hexamer	0.805831067416274
+3	exon	E3	P3:E3	chr3:55385226-55385310	30	INH_migrating_interneuron	random hexamer	0.5869566182575378
+3	junction	J3	P3:J3	chr3:55385311-55387755	31	ASC	random hexamer	0.7857142857142857
+3	junction	J3	P3:J3	chr3:55385311-55387755	31	EX_cerebellum_granule	random hexamer	0.5540540540540541
+3	junction	J3	P3:J3	chr3:55385311-55387755	31	EX_cortical	random hexamer	0.6472148541114059
+3	junction	J3	P3:J3	chr3:55385311-55387755	31	INH_medium_spiny	random hexamer	0.6074074074074074
+3	junction	J3	P3:J3	chr3:55385311-55387755	31	INH_midbrain	random hexamer	0.6428571428571429
+3	junction	J3	P3:J3	chr3:55385311-55387755	31	INH_migrating_interneuron	random hexamer	0.5584415584415584
+3	exon	E5	P3:E5	chr3:55387755-55387863	32	ASC	random hexamer	0.2153042050245543
+3	exon	E5	P3:E5	chr3:55387755-55387863	32	EX_cerebellum_granule	random hexamer	1.0
+3	exon	E5	P3:E5	chr3:55387755-55387863	32	EX_cortical	random hexamer	0.7461840778271116
+3	exon	E5	P3:E5	chr3:55387755-55387863	32	INH_medium_spiny	random hexamer	0.9173439333285006
+3	exon	E5	P3:E5	chr3:55387755-55387863	32	INH_midbrain	random hexamer	0.8844631314602384
+3	exon	E5	P3:E5	chr3:55387755-55387863	32	INH_migrating_interneuron	random hexamer	0.6278334317770911
+3	junction	J5	P3:J5	chr3:55387864-55394728	33	ASC	random hexamer	1.0
+3	junction	J5	P3:J5	chr3:55387864-55394728	33	EX_cerebellum_granule	random hexamer	1.0
+3	junction	J5	P3:J5	chr3:55387864-55394728	33	EX_cortical	random hexamer	1.0
+3	junction	J5	P3:J5	chr3:55387864-55394728	33	INH_medium_spiny	random hexamer	1.0
+3	junction	J5	P3:J5	chr3:55387864-55394728	33	INH_midbrain	random hexamer	1.0
+3	junction	J5	P3:J5	chr3:55387864-55394728	33	INH_migrating_interneuron	random hexamer	1.0
+3	exon	E6	P3:E6	chr3:55394728-55394785	34	ASC	random hexamer	0.2661879043266662
+3	exon	E6	P3:E6	chr3:55394728-55394785	34	EX_cerebellum_granule	random hexamer	1.0
+3	exon	E6	P3:E6	chr3:55394728-55394785	34	EX_cortical	random hexamer	0.9085742064442034
+3	exon	E6	P3:E6	chr3:55394728-55394785	34	INH_medium_spiny	random hexamer	1.0
+3	exon	E6	P3:E6	chr3:55394728-55394785	34	INH_midbrain	random hexamer	1.0
+3	exon	E6	P3:E6	chr3:55394728-55394785	34	INH_migrating_interneuron	random hexamer	0.9801130078782783
+3	junction	J6	P3:J6	chr3:55394786-55395213	35	ASC	random hexamer	1.0
+3	junction	J6	P3:J6	chr3:55394786-55395213	35	EX_cerebellum_granule	random hexamer	1.0
+3	junction	J6	P3:J6	chr3:55394786-55395213	35	EX_cortical	random hexamer	1.0
+3	junction	J6	P3:J6	chr3:55394786-55395213	35	INH_medium_spiny	random hexamer	1.0
+3	junction	J6	P3:J6	chr3:55394786-55395213	35	INH_midbrain	random hexamer	1.0
+3	junction	J6	P3:J6	chr3:55394786-55395213	35	INH_migrating_interneuron	random hexamer	1.0
+3	exon	E7	P3:E7	chr3:55395213-55395332	36	ASC	random hexamer	0.23895582329317266
+3	exon	E7	P3:E7	chr3:55395213-55395332	36	EX_cerebellum_granule	random hexamer	0.8039476030363237
+3	exon	E7	P3:E7	chr3:55395213-55395332	36	EX_cortical	random hexamer	0.7546105030026833
+3	exon	E7	P3:E7	chr3:55395213-55395332	36	INH_medium_spiny	random hexamer	0.9811847624621988
+3	exon	E7	P3:E7	chr3:55395213-55395332	36	INH_midbrain	random hexamer	1.0
+3	exon	E7	P3:E7	chr3:55395213-55395332	36	INH_migrating_interneuron	random hexamer	0.8355850756031902
+3	junction	J7	P3:J7	chr3:55395333-55397171	37	ASC	random hexamer	1.0
+3	junction	J7	P3:J7	chr3:55395333-55397171	37	EX_cerebellum_granule	random hexamer	1.0
+3	junction	J7	P3:J7	chr3:55395333-55397171	37	EX_cortical	random hexamer	1.0
+3	junction	J7	P3:J7	chr3:55395333-55397171	37	INH_medium_spiny	random hexamer	1.0
+3	junction	J7	P3:J7	chr3:55395333-55397171	37	INH_midbrain	random hexamer	1.0
+3	junction	J7	P3:J7	chr3:55395333-55397171	37	INH_migrating_interneuron	random hexamer	1.0
+3	exon	E8	P3:E8	chr3:55397171-55397317	38	ASC	random hexamer	0.24986242345475193
+3	exon	E8	P3:E8	chr3:55397171-55397317	38	EX_cerebellum_granule	random hexamer	0.7107559514712196
+3	exon	E8	P3:E8	chr3:55397171-55397317	38	EX_cortical	random hexamer	0.6681408455029868
+3	exon	E8	P3:E8	chr3:55397171-55397317	38	INH_medium_spiny	random hexamer	0.7483889078019268
+3	exon	E8	P3:E8	chr3:55397171-55397317	38	INH_midbrain	random hexamer	1.0
+3	exon	E8	P3:E8	chr3:55397171-55397317	38	INH_migrating_interneuron	random hexamer	0.6041143908691864
+3	junction	J8	P3:J8	chr3:55397318-55407456	39	ASC	random hexamer	1.0
+3	junction	J8	P3:J8	chr3:55397318-55407456	39	EX_cerebellum_granule	random hexamer	1.0
+3	junction	J8	P3:J8	chr3:55397318-55407456	39	EX_cortical	random hexamer	1.0
+3	junction	J8	P3:J8	chr3:55397318-55407456	39	INH_medium_spiny	random hexamer	1.0
+3	junction	J8	P3:J8	chr3:55397318-55407456	39	INH_midbrain	random hexamer	1.0
+3	junction	J8	P3:J8	chr3:55397318-55407456	39	INH_migrating_interneuron	random hexamer	1.0
+3	exon	E9	P3:E9	chr3:55407456-55407589	40	ASC	random hexamer	0.12044981632286074
+3	exon	E9	P3:E9	chr3:55407456-55407589	40	EX_cerebellum_granule	random hexamer	0.3088067229191046
+3	exon	E9	P3:E9	chr3:55407456-55407589	40	EX_cortical	random hexamer	0.2674547849364278
+3	exon	E9	P3:E9	chr3:55407456-55407589	40	INH_medium_spiny	random hexamer	0.3409396171032459
+3	exon	E9	P3:E9	chr3:55407456-55407589	40	INH_midbrain	random hexamer	0.26018738352979304
+3	exon	E9	P3:E9	chr3:55407456-55407589	40	INH_migrating_interneuron	random hexamer	0.3026530867438038
+3	junction	J9	P3:J9	chr3:55407590-55409794	41	ASC	random hexamer	1.0
+3	junction	J9	P3:J9	chr3:55407590-55409794	41	EX_cerebellum_granule	random hexamer	1.0
+3	junction	J9	P3:J9	chr3:55407590-55409794	41	EX_cortical	random hexamer	1.0
+3	junction	J9	P3:J9	chr3:55407590-55409794	41	INH_medium_spiny	random hexamer	1.0
+3	junction	J9	P3:J9	chr3:55407590-55409794	41	INH_midbrain	random hexamer	1.0
+3	junction	J9	P3:J9	chr3:55407590-55409794	41	INH_migrating_interneuron	random hexamer	1.0
+3	exon	E10	P3:E10	chr3:55409794-55409871	42	ASC	random hexamer	0.04998014034158612
+3	exon	E10	P3:E10	chr3:55409794-55409871	42	EX_cerebellum_granule	random hexamer	0.1624117769234688
+3	exon	E10	P3:E10	chr3:55409794-55409871	42	EX_cortical	random hexamer	0.14306838298490412
+3	exon	E10	P3:E10	chr3:55409794-55409871	42	INH_medium_spiny	random hexamer	0.16413970869633734
+3	exon	E10	P3:E10	chr3:55409794-55409871	42	INH_midbrain	random hexamer	0.2085679577865793
+3	exon	E10	P3:E10	chr3:55409794-55409871	42	INH_migrating_interneuron	random hexamer	0.1791668843899201
+3	junction	J11	P3:J11	chr3:55409872-55410233	43	ASC	random hexamer	0.0
+3	junction	J11	P3:J11	chr3:55409872-55410233	43	EX_cerebellum_granule	random hexamer	0.0
+3	junction	J11	P3:J11	chr3:55409872-55410233	43	EX_cortical	random hexamer	0.012048192771084338
+3	junction	J11	P3:J11	chr3:55409872-55410233	43	INH_medium_spiny	random hexamer	0.0
+3	junction	J11	P3:J11	chr3:55409872-55410233	43	INH_midbrain	random hexamer	0.0
+3	junction	J11	P3:J11	chr3:55409872-55410233	43	INH_migrating_interneuron	random hexamer	0.0
+3	exon	E12	P3:E12	chr3:55410233-55410326	44	ASC	random hexamer	0.21871681253890946
+3	exon	E12	P3:E12	chr3:55410233-55410326	44	EX_cerebellum_granule	random hexamer	0.7287469798810486
+3	exon	E12	P3:E12	chr3:55410233-55410326	44	EX_cortical	random hexamer	0.5907621840431422
+3	exon	E12	P3:E12	chr3:55410233-55410326	44	INH_medium_spiny	random hexamer	0.6138659020292779
+3	exon	E12	P3:E12	chr3:55410233-55410326	44	INH_midbrain	random hexamer	0.5875301438856475
+3	exon	E12	P3:E12	chr3:55410233-55410326	44	INH_migrating_interneuron	random hexamer	0.4480707496189998
+3	junction	J12	P3:J12	chr3:55410327-55414122	45	ASC	random hexamer	1.0
+3	junction	J12	P3:J12	chr3:55410327-55414122	45	EX_cerebellum_granule	random hexamer	1.0
+3	junction	J12	P3:J12	chr3:55410327-55414122	45	EX_cortical	random hexamer	1.0
+3	junction	J12	P3:J12	chr3:55410327-55414122	45	INH_medium_spiny	random hexamer	1.0
+3	junction	J12	P3:J12	chr3:55410327-55414122	45	INH_midbrain	random hexamer	1.0
+3	junction	J12	P3:J12	chr3:55410327-55414122	45	INH_migrating_interneuron	random hexamer	1.0
+3	exon	E13	P3:E13	chr3:55414122-55414202	46	ASC	random hexamer	0.36633305709610925
+3	exon	E13	P3:E13	chr3:55414122-55414202	46	EX_cerebellum_granule	random hexamer	1.0
+3	exon	E13	P3:E13	chr3:55414122-55414202	46	EX_cortical	random hexamer	0.959516489387154
+3	exon	E13	P3:E13	chr3:55414122-55414202	46	INH_medium_spiny	random hexamer	0.8507119449954296
+3	exon	E13	P3:E13	chr3:55414122-55414202	46	INH_midbrain	random hexamer	0.8813177930905628
+3	exon	E13	P3:E13	chr3:55414122-55414202	46	INH_migrating_interneuron	random hexamer	0.6491382065639242
+3	junction	J13	P3:J13	chr3:55414203-55424294	47	ASC	random hexamer	0.9866666666666667
+3	junction	J13	P3:J13	chr3:55414203-55424294	47	EX_cerebellum_granule	random hexamer	0.9882352941176471
+3	junction	J13	P3:J13	chr3:55414203-55424294	47	EX_cortical	random hexamer	0.9973333333333333
+3	junction	J13	P3:J13	chr3:55414203-55424294	47	INH_medium_spiny	random hexamer	1.0
+3	junction	J13	P3:J13	chr3:55414203-55424294	47	INH_midbrain	random hexamer	0.9787234042553191
+3	junction	J13	P3:J13	chr3:55414203-55424294	47	INH_migrating_interneuron	random hexamer	1.0
+3	exon	E14	P3:E14	chr3:55424294-55424407	48	ASC	random hexamer	0.3343448983905547
+3	exon	E14	P3:E14	chr3:55424294-55424407	48	EX_cerebellum_granule	random hexamer	1.0
+3	exon	E14	P3:E14	chr3:55424294-55424407	48	EX_cortical	random hexamer	0.8839991765691327
+3	exon	E14	P3:E14	chr3:55424294-55424407	48	INH_medium_spiny	random hexamer	0.7613281631060385
+3	exon	E14	P3:E14	chr3:55424294-55424407	48	INH_midbrain	random hexamer	1.0
+3	exon	E14	P3:E14	chr3:55424294-55424407	48	INH_migrating_interneuron	random hexamer	0.7196140589226859
+3	junction	J15	P3:J15	chr3:55424408-55440991	49	ASC	random hexamer	0.32038834951456313
+3	junction	J15	P3:J15	chr3:55424408-55440991	49	EX_cerebellum_granule	random hexamer	0.297029702970297
+3	junction	J15	P3:J15	chr3:55424408-55440991	49	EX_cortical	random hexamer	0.21904761904761905
+3	junction	J15	P3:J15	chr3:55424408-55440991	49	INH_medium_spiny	random hexamer	0.25
+3	junction	J15	P3:J15	chr3:55424408-55440991	49	INH_midbrain	random hexamer	0.18421052631578946
+3	junction	J15	P3:J15	chr3:55424408-55440991	49	INH_migrating_interneuron	random hexamer	0.40540540540540543
+3	exon	E16	P3:E16	chr3:55440991-55443973	50	ASC	random hexamer	0.00808367323034776
+3	exon	E16	P3:E16	chr3:55440991-55443973	50	EX_cerebellum_granule	random hexamer	0.02301530979283544
+3	exon	E16	P3:E16	chr3:55440991-55443973	50	EX_cortical	random hexamer	0.013511871158479336
+3	exon	E16	P3:E16	chr3:55440991-55443973	50	INH_medium_spiny	random hexamer	0.011060750947398638
+3	exon	E16	P3:E16	chr3:55440991-55443973	50	INH_midbrain	random hexamer	0.021945656080293127
+3	exon	E16	P3:E16	chr3:55440991-55443973	50	INH_migrating_interneuron	random hexamer	0.01098748950167132
+4	path	P4	P4:path		51	ASC	random hexamer	0.17058941508355016
+4	path	P4	P4:path		51	EX_cerebellum_granule	random hexamer	0.5022167938908937
+4	path	P4	P4:path		51	EX_cortical	random hexamer	0.6278945020416704
+4	path	P4	P4:path		51	INH_medium_spiny	random hexamer	0.43323548082385493
+4	path	P4	P4:path		51	INH_midbrain	random hexamer	0.7389411712533307
+4	path	P4	P4:path		51	INH_migrating_interneuron	random hexamer	0.6342496371589174
+4	junction	J2	P4:J2	chr3:55370517-55385226	52	ASC	random hexamer	0.19879518072289157
+4	junction	J2	P4:J2	chr3:55370517-55385226	52	EX_cerebellum_granule	random hexamer	0.9635036496350365
+4	junction	J2	P4:J2	chr3:55370517-55385226	52	EX_cortical	random hexamer	0.9657894736842105
+4	junction	J2	P4:J2	chr3:55370517-55385226	52	INH_medium_spiny	random hexamer	0.9453125
+4	junction	J2	P4:J2	chr3:55370517-55385226	52	INH_midbrain	random hexamer	0.9272727272727272
+4	junction	J2	P4:J2	chr3:55370517-55385226	52	INH_migrating_interneuron	random hexamer	0.8727272727272727
+4	exon	E4	P4:E4	chr3:55385226-55385358	53	ASC	random hexamer	0.12523779327837667
+4	exon	E4	P4:E4	chr3:55385226-55385358	53	EX_cerebellum_granule	random hexamer	0.7436518853300146
+4	exon	E4	P4:E4	chr3:55385226-55385358	53	EX_cortical	random hexamer	0.5151564011609159
+4	exon	E4	P4:E4	chr3:55385226-55385358	53	INH_medium_spiny	random hexamer	0.6587859024206698
+4	exon	E4	P4:E4	chr3:55385226-55385358	53	INH_midbrain	random hexamer	0.6005452024534111
+4	exon	E4	P4:E4	chr3:55385226-55385358	53	INH_migrating_interneuron	random hexamer	0.44402272947823557
+4	junction	J4	P4:J4	chr3:55385359-55387755	54	ASC	random hexamer	0.1951219512195122
+4	junction	J4	P4:J4	chr3:55385359-55387755	54	EX_cerebellum_granule	random hexamer	0.4315068493150685
+4	junction	J4	P4:J4	chr3:55385359-55387755	54	EX_cortical	random hexamer	0.335149863760218
+4	junction	J4	P4:J4	chr3:55385359-55387755	54	INH_medium_spiny	random hexamer	0.373134328358209
+4	junction	J4	P4:J4	chr3:55385359-55387755	54	INH_midbrain	random hexamer	0.32075471698113206
+4	junction	J4	P4:J4	chr3:55385359-55387755	54	INH_migrating_interneuron	random hexamer	0.4342105263157895
+4	exon	E5	P4:E5	chr3:55387755-55387863	55	ASC	random hexamer	0.2153042050245543
+4	exon	E5	P4:E5	chr3:55387755-55387863	55	EX_cerebellum_granule	random hexamer	1.0
+4	exon	E5	P4:E5	chr3:55387755-55387863	55	EX_cortical	random hexamer	0.7461840778271116
+4	exon	E5	P4:E5	chr3:55387755-55387863	55	INH_medium_spiny	random hexamer	0.9173439333285006
+4	exon	E5	P4:E5	chr3:55387755-55387863	55	INH_midbrain	random hexamer	0.8844631314602384
+4	exon	E5	P4:E5	chr3:55387755-55387863	55	INH_migrating_interneuron	random hexamer	0.6278334317770911
+4	junction	J5	P4:J5	chr3:55387864-55394728	56	ASC	random hexamer	1.0
+4	junction	J5	P4:J5	chr3:55387864-55394728	56	EX_cerebellum_granule	random hexamer	1.0
+4	junction	J5	P4:J5	chr3:55387864-55394728	56	EX_cortical	random hexamer	1.0
+4	junction	J5	P4:J5	chr3:55387864-55394728	56	INH_medium_spiny	random hexamer	1.0
+4	junction	J5	P4:J5	chr3:55387864-55394728	56	INH_midbrain	random hexamer	1.0
+4	junction	J5	P4:J5	chr3:55387864-55394728	56	INH_migrating_interneuron	random hexamer	1.0
+4	exon	E6	P4:E6	chr3:55394728-55394785	57	ASC	random hexamer	0.2661879043266662
+4	exon	E6	P4:E6	chr3:55394728-55394785	57	EX_cerebellum_granule	random hexamer	1.0
+4	exon	E6	P4:E6	chr3:55394728-55394785	57	EX_cortical	random hexamer	0.9085742064442034
+4	exon	E6	P4:E6	chr3:55394728-55394785	57	INH_medium_spiny	random hexamer	1.0
+4	exon	E6	P4:E6	chr3:55394728-55394785	57	INH_midbrain	random hexamer	1.0
+4	exon	E6	P4:E6	chr3:55394728-55394785	57	INH_migrating_interneuron	random hexamer	0.9801130078782783
+4	junction	J6	P4:J6	chr3:55394786-55395213	58	ASC	random hexamer	1.0
+4	junction	J6	P4:J6	chr3:55394786-55395213	58	EX_cerebellum_granule	random hexamer	1.0
+4	junction	J6	P4:J6	chr3:55394786-55395213	58	EX_cortical	random hexamer	1.0
+4	junction	J6	P4:J6	chr3:55394786-55395213	58	INH_medium_spiny	random hexamer	1.0
+4	junction	J6	P4:J6	chr3:55394786-55395213	58	INH_midbrain	random hexamer	1.0
+4	junction	J6	P4:J6	chr3:55394786-55395213	58	INH_migrating_interneuron	random hexamer	1.0
+4	exon	E7	P4:E7	chr3:55395213-55395332	59	ASC	random hexamer	0.23895582329317266
+4	exon	E7	P4:E7	chr3:55395213-55395332	59	EX_cerebellum_granule	random hexamer	0.8039476030363237
+4	exon	E7	P4:E7	chr3:55395213-55395332	59	EX_cortical	random hexamer	0.7546105030026833
+4	exon	E7	P4:E7	chr3:55395213-55395332	59	INH_medium_spiny	random hexamer	0.9811847624621988
+4	exon	E7	P4:E7	chr3:55395213-55395332	59	INH_midbrain	random hexamer	1.0
+4	exon	E7	P4:E7	chr3:55395213-55395332	59	INH_migrating_interneuron	random hexamer	0.8355850756031902
+4	junction	J7	P4:J7	chr3:55395333-55397171	60	ASC	random hexamer	1.0
+4	junction	J7	P4:J7	chr3:55395333-55397171	60	EX_cerebellum_granule	random hexamer	1.0
+4	junction	J7	P4:J7	chr3:55395333-55397171	60	EX_cortical	random hexamer	1.0
+4	junction	J7	P4:J7	chr3:55395333-55397171	60	INH_medium_spiny	random hexamer	1.0
+4	junction	J7	P4:J7	chr3:55395333-55397171	60	INH_midbrain	random hexamer	1.0
+4	junction	J7	P4:J7	chr3:55395333-55397171	60	INH_migrating_interneuron	random hexamer	1.0
+4	exon	E8	P4:E8	chr3:55397171-55397317	61	ASC	random hexamer	0.24986242345475193
+4	exon	E8	P4:E8	chr3:55397171-55397317	61	EX_cerebellum_granule	random hexamer	0.7107559514712196
+4	exon	E8	P4:E8	chr3:55397171-55397317	61	EX_cortical	random hexamer	0.6681408455029868
+4	exon	E8	P4:E8	chr3:55397171-55397317	61	INH_medium_spiny	random hexamer	0.7483889078019268
+4	exon	E8	P4:E8	chr3:55397171-55397317	61	INH_midbrain	random hexamer	1.0
+4	exon	E8	P4:E8	chr3:55397171-55397317	61	INH_migrating_interneuron	random hexamer	0.6041143908691864
+4	junction	J8	P4:J8	chr3:55397318-55407456	62	ASC	random hexamer	1.0
+4	junction	J8	P4:J8	chr3:55397318-55407456	62	EX_cerebellum_granule	random hexamer	1.0
+4	junction	J8	P4:J8	chr3:55397318-55407456	62	EX_cortical	random hexamer	1.0
+4	junction	J8	P4:J8	chr3:55397318-55407456	62	INH_medium_spiny	random hexamer	1.0
+4	junction	J8	P4:J8	chr3:55397318-55407456	62	INH_midbrain	random hexamer	1.0
+4	junction	J8	P4:J8	chr3:55397318-55407456	62	INH_migrating_interneuron	random hexamer	1.0
+4	exon	E9	P4:E9	chr3:55407456-55407589	63	ASC	random hexamer	0.12044981632286074
+4	exon	E9	P4:E9	chr3:55407456-55407589	63	EX_cerebellum_granule	random hexamer	0.3088067229191046
+4	exon	E9	P4:E9	chr3:55407456-55407589	63	EX_cortical	random hexamer	0.2674547849364278
+4	exon	E9	P4:E9	chr3:55407456-55407589	63	INH_medium_spiny	random hexamer	0.3409396171032459
+4	exon	E9	P4:E9	chr3:55407456-55407589	63	INH_midbrain	random hexamer	0.26018738352979304
+4	exon	E9	P4:E9	chr3:55407456-55407589	63	INH_migrating_interneuron	random hexamer	0.3026530867438038
+4	junction	J9	P4:J9	chr3:55407590-55409794	64	ASC	random hexamer	1.0
+4	junction	J9	P4:J9	chr3:55407590-55409794	64	EX_cerebellum_granule	random hexamer	1.0
+4	junction	J9	P4:J9	chr3:55407590-55409794	64	EX_cortical	random hexamer	1.0
+4	junction	J9	P4:J9	chr3:55407590-55409794	64	INH_medium_spiny	random hexamer	1.0
+4	junction	J9	P4:J9	chr3:55407590-55409794	64	INH_midbrain	random hexamer	1.0
+4	junction	J9	P4:J9	chr3:55407590-55409794	64	INH_migrating_interneuron	random hexamer	1.0
+4	exon	E10	P4:E10	chr3:55409794-55409871	65	ASC	random hexamer	0.04998014034158612
+4	exon	E10	P4:E10	chr3:55409794-55409871	65	EX_cerebellum_granule	random hexamer	0.1624117769234688
+4	exon	E10	P4:E10	chr3:55409794-55409871	65	EX_cortical	random hexamer	0.14306838298490412
+4	exon	E10	P4:E10	chr3:55409794-55409871	65	INH_medium_spiny	random hexamer	0.16413970869633734
+4	exon	E10	P4:E10	chr3:55409794-55409871	65	INH_midbrain	random hexamer	0.2085679577865793
+4	exon	E10	P4:E10	chr3:55409794-55409871	65	INH_migrating_interneuron	random hexamer	0.1791668843899201
+4	junction	J10	P4:J10	chr3:55409872-55410230	66	ASC	random hexamer	1.0
+4	junction	J10	P4:J10	chr3:55409872-55410230	66	EX_cerebellum_granule	random hexamer	1.0
+4	junction	J10	P4:J10	chr3:55409872-55410230	66	EX_cortical	random hexamer	0.9879518072289156
+4	junction	J10	P4:J10	chr3:55409872-55410230	66	INH_medium_spiny	random hexamer	1.0
+4	junction	J10	P4:J10	chr3:55409872-55410230	66	INH_midbrain	random hexamer	1.0
+4	junction	J10	P4:J10	chr3:55409872-55410230	66	INH_migrating_interneuron	random hexamer	1.0
+4	exon	E11	P4:E11	chr3:55410230-55410326	67	ASC	random hexamer	0.21434781837216318
+4	exon	E11	P4:E11	chr3:55410230-55410326	67	EX_cerebellum_granule	random hexamer	0.7136926060903996
+4	exon	E11	P4:E11	chr3:55410230-55410326	67	EX_cortical	random hexamer	0.5782684504643983
+4	exon	E11	P4:E11	chr3:55410230-55410326	67	INH_medium_spiny	random hexamer	0.6015442798137874
+4	exon	E11	P4:E11	chr3:55410230-55410326	67	INH_midbrain	random hexamer	0.5799923006870027
+4	exon	E11	P4:E11	chr3:55410230-55410326	67	INH_migrating_interneuron	random hexamer	0.44108755922446585
+4	junction	J12	P4:J12	chr3:55410327-55414122	68	ASC	random hexamer	1.0
+4	junction	J12	P4:J12	chr3:55410327-55414122	68	EX_cerebellum_granule	random hexamer	1.0
+4	junction	J12	P4:J12	chr3:55410327-55414122	68	EX_cortical	random hexamer	1.0
+4	junction	J12	P4:J12	chr3:55410327-55414122	68	INH_medium_spiny	random hexamer	1.0
+4	junction	J12	P4:J12	chr3:55410327-55414122	68	INH_midbrain	random hexamer	1.0
+4	junction	J12	P4:J12	chr3:55410327-55414122	68	INH_migrating_interneuron	random hexamer	1.0
+4	exon	E13	P4:E13	chr3:55414122-55414202	69	ASC	random hexamer	0.36633305709610925
+4	exon	E13	P4:E13	chr3:55414122-55414202	69	EX_cerebellum_granule	random hexamer	1.0
+4	exon	E13	P4:E13	chr3:55414122-55414202	69	EX_cortical	random hexamer	0.959516489387154
+4	exon	E13	P4:E13	chr3:55414122-55414202	69	INH_medium_spiny	random hexamer	0.8507119449954296
+4	exon	E13	P4:E13	chr3:55414122-55414202	69	INH_midbrain	random hexamer	0.8813177930905628
+4	exon	E13	P4:E13	chr3:55414122-55414202	69	INH_migrating_interneuron	random hexamer	0.6491382065639242
+4	junction	J13	P4:J13	chr3:55414203-55424294	70	ASC	random hexamer	0.9866666666666667
+4	junction	J13	P4:J13	chr3:55414203-55424294	70	EX_cerebellum_granule	random hexamer	0.9882352941176471
+4	junction	J13	P4:J13	chr3:55414203-55424294	70	EX_cortical	random hexamer	0.9973333333333333
+4	junction	J13	P4:J13	chr3:55414203-55424294	70	INH_medium_spiny	random hexamer	1.0
+4	junction	J13	P4:J13	chr3:55414203-55424294	70	INH_midbrain	random hexamer	0.9787234042553191
+4	junction	J13	P4:J13	chr3:55414203-55424294	70	INH_migrating_interneuron	random hexamer	1.0
+4	exon	E14	P4:E14	chr3:55424294-55424407	71	ASC	random hexamer	0.3343448983905547
+4	exon	E14	P4:E14	chr3:55424294-55424407	71	EX_cerebellum_granule	random hexamer	1.0
+4	exon	E14	P4:E14	chr3:55424294-55424407	71	EX_cortical	random hexamer	0.8839991765691327
+4	exon	E14	P4:E14	chr3:55424294-55424407	71	INH_medium_spiny	random hexamer	0.7613281631060385
+4	exon	E14	P4:E14	chr3:55424294-55424407	71	INH_midbrain	random hexamer	1.0
+4	exon	E14	P4:E14	chr3:55424294-55424407	71	INH_migrating_interneuron	random hexamer	0.7196140589226859
+4	junction	J15	P4:J15	chr3:55424408-55440991	72	ASC	random hexamer	0.32038834951456313
+4	junction	J15	P4:J15	chr3:55424408-55440991	72	EX_cerebellum_granule	random hexamer	0.297029702970297
+4	junction	J15	P4:J15	chr3:55424408-55440991	72	EX_cortical	random hexamer	0.21904761904761905
+4	junction	J15	P4:J15	chr3:55424408-55440991	72	INH_medium_spiny	random hexamer	0.25
+4	junction	J15	P4:J15	chr3:55424408-55440991	72	INH_midbrain	random hexamer	0.18421052631578946
+4	junction	J15	P4:J15	chr3:55424408-55440991	72	INH_migrating_interneuron	random hexamer	0.40540540540540543
+4	exon	E17	P4:E17	chr3:55440991-55446485	73	ASC	random hexamer	0.004513569682343046
+4	exon	E17	P4:E17	chr3:55440991-55446485	73	EX_cerebellum_granule	random hexamer	0.012494025316110668
+4	exon	E17	P4:E17	chr3:55440991-55446485	73	EX_cortical	random hexamer	0.007338697454108896
+4	exon	E17	P4:E17	chr3:55440991-55446485	73	INH_medium_spiny	random hexamer	0.006004407657159261
+4	exon	E17	P4:E17	chr3:55440991-55446485	73	INH_midbrain	random hexamer	0.012098213677630339
+4	exon	E17	P4:E17	chr3:55440991-55446485	73	INH_migrating_interneuron	random hexamer	0.005964637158050145

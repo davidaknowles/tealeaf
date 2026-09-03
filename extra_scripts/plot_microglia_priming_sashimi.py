@@ -77,14 +77,18 @@ def main():
     parser.add_argument("--run-plots", action="store_true")
     parser.add_argument("--skip-heatmap-plots", action="store_true")
     parser.add_argument("--skip-path-usage-plot", action="store_true")
-    parser.add_argument("--path-usage", type=Path)
     parser.add_argument("--omnibus-path-usage", type=Path, required=True)
+    parser.add_argument("--testing-concentration", type=float, default=64.0)
+    parser.add_argument("--reporting-concentration", type=float, required=True)
     args = parser.parse_args()
     omnibus_path_usage = pd.read_csv(args.omnibus_path_usage, sep="\t")
     omnibus_path_usage_summary = summarize_path_usage(omnibus_path_usage)
     heatmap_levels = {block_id: tuple(sorted(group["cell_type"].unique())) for block_id, group in omnibus_path_usage.groupby("block_id")}
     block_ids = [event_id for _, event_id in EVENTS]
     selected_contrasts = select_strongest_significant_contrasts(sorted(args.pairwise_fit_root.glob("*/paired_path.tsv")), args.pairwise_event_catalog, block_ids)
+    selected_contrasts["reporting_mean_difference_norm"] = selected_contrasts["mean_difference_norm"]
+    selected_contrasts["testing_empirical_p_value"] = selected_contrasts["empirical_p_value"]
+    selected_contrasts["testing_fdr"] = selected_contrasts["fdr"]
     contrasts = {row.block_id: (row.level_a, row.level_b) for row in selected_contrasts.itertuples(index=False)}
     catalog = pd.read_csv(args.event_catalog, sep="\t", dtype=str)
     rows, events = {}, []
@@ -113,12 +117,13 @@ def main():
     args.output_dir.mkdir(parents=True, exist_ok=True)
     omnibus_path_usage.to_csv(args.output_dir / "omnibus_path_usage.tsv", sep="\t", index=False)
     omnibus_path_usage_summary.to_csv(args.output_dir / "omnibus_path_usage_summary.tsv", sep="\t", index=False)
-    path_usage_summary = None
-    if args.path_usage is not None:
-        path_usage = pd.read_csv(args.path_usage, sep="\t")
-        path_usage_summary = summarize_path_usage(path_usage)
-        path_usage.to_csv(args.output_dir / "path_usage.tsv", sep="\t", index=False)
-        path_usage_summary.to_csv(args.output_dir / "path_usage_summary.tsv", sep="\t", index=False)
+    selected_pair_usage = pd.concat([
+        omnibus_path_usage[(omnibus_path_usage["block_id"] == block_id) & omnibus_path_usage["cell_type"].isin(levels)]
+        for block_id, levels in contrasts.items()
+    ], ignore_index=True)
+    path_usage_summary = summarize_path_usage(selected_pair_usage)
+    selected_pair_usage.to_csv(args.output_dir / "path_usage.tsv", sep="\t", index=False)
+    path_usage_summary.to_csv(args.output_dir / "path_usage_summary.tsv", sep="\t", index=False)
     cell_sizes.to_csv(args.output_dir / "cell_counts.tsv", sep="\t", index=False)
     selected_contrasts.to_csv(args.output_dir / "selected_contrasts.tsv", sep="\t", index=False)
     support_rows = []
@@ -126,7 +131,7 @@ def main():
         event_id, subject, cell_type, primer = key
         support_rows.append({"event": event_id, "subject": subject, "cell_type": cell_type, "primer": primer, "spliced_umis": count})
     pd.DataFrame(support_rows).to_csv(args.output_dir / "spliced_umi_support.tsv", sep="\t", index=False)
-    manifest = {"contrast_selection": "largest mean_difference_norm among pairwise contrasts with BH FDR < 0.05", "normalization": "UMI-deduplicated spliced alignments per 1000 primer-specific half-cells", "block_heatmaps": "Path markers followed by each path's exon and junction components in 5-prime-to-3-prime RNA order; shared components are repeated under each path; coverage colors are raw primer-specific values per 1000 half-cells; path columns show fitted percentages on an independent 0-to-1 color scale", "runs": len(bam_paths), "events": []}
+    manifest = {"contrast_selection": "largest reporting-fit mean_difference_norm among pairwise contrasts with testing-fit BH FDR < 0.05", "testing_concentration": args.testing_concentration, "reporting_concentration": args.reporting_concentration, "normalization": "UMI-deduplicated spliced alignments per 1000 primer-specific half-cells", "block_heatmaps": "Path markers followed by each path's exon and junction components in 5-prime-to-3-prime RNA order; shared components are repeated under each path; coverage colors are raw primer-specific values per 1000 half-cells; path columns show fitted percentages on an independent 0-to-1 color scale", "runs": len(bam_paths), "events": []}
     palette = args.output_dir / "palette.tsv"
     palette.write_text("#1B9E77\n#D95F02\n#1B9E77\n#D95F02\n")
     event_ids = dict(EVENTS)
@@ -148,14 +153,13 @@ def main():
         coordinates = f"{event.chromosome}:{event.start + 1}-{event.end + 1}"
         prefix = event_dir / f"{event.event_id}_priming_sashimi"
         contrast = selected_contrasts[selected_contrasts["block_id"] == event_ids[event.event_id]].iloc[0]
-        manifest["events"].append({"gene": event.event_id, "test_id": event_ids[event.event_id], "cell_types": list(cell_types), "mean_difference_norm": float(contrast.mean_difference_norm), "pairwise_fdr": float(contrast.fdr), "coordinates": coordinates, "intron_counts": str(intron.relative_to(args.output_dir)), "exon_counts": str(exon.relative_to(args.output_dir)), "path_annotation": str(gtf.relative_to(args.output_dir)), "figure": str(prefix.with_suffix('.pdf').relative_to(args.output_dir))})
+        manifest["events"].append({"gene": event.event_id, "test_id": event_ids[event.event_id], "cell_types": list(cell_types), "reporting_mean_difference_norm": float(contrast.reporting_mean_difference_norm), "testing_pairwise_fdr": float(contrast.testing_fdr), "coordinates": coordinates, "intron_counts": str(intron.relative_to(args.output_dir)), "exon_counts": str(exon.relative_to(args.output_dir)), "path_annotation": str(gtf.relative_to(args.output_dir)), "figure": str(prefix.with_suffix('.pdf').relative_to(args.output_dir))})
         manifest["events"][-1]["heatmap_cell_types"] = list(heatmap_cell_types)
         manifest["events"][-1]["block_heatmap_data"] = str((event_dir / f"{event.event_id}_block_heatmap.tsv").relative_to(args.output_dir))
-        if path_usage_summary is not None:
-            usage_figure = event_dir / f"{event.event_id}_path_usage.pdf"
-            if not args.skip_path_usage_plot:
-                write_path_usage_plot(path_usage_summary, event.event_id, contrast.test_id, cell_types, args.output_dir)
-            manifest["events"][-1]["path_usage_figure"] = str(usage_figure.relative_to(args.output_dir))
+        usage_figure = event_dir / f"{event.event_id}_path_usage.pdf"
+        if not args.skip_path_usage_plot:
+            write_path_usage_plot(path_usage_summary, event.event_id, event_ids[event.event_id], cell_types, args.output_dir)
+        manifest["events"][-1]["path_usage_figure"] = str(usage_figure.relative_to(args.output_dir))
         manifest["events"][-1]["oligodt_block_heatmap"] = str(oligodt_heatmap.relative_to(args.output_dir))
         manifest["events"][-1]["ranhex_block_heatmap"] = str(ranhex_heatmap.relative_to(args.output_dir))
         if args.run_plots:
