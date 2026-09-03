@@ -135,10 +135,23 @@ def test_summarize_path_ordered_psi():
     psi = summarize_path_ordered_psi(event, paths, exon_blocks, junctions, ("A",))
     polydt = psi[psi["primer"] == "poly(dT)"]
     values = polydt.drop_duplicates(["feature_type", "feature"]).set_index(["feature_type", "feature"])["raw_value"]
-    assert values[("exon", "E1")] == 1.0
     assert values[("exon", "E2")] == 0.8
     assert values[("exon", "E3")] == 0.2
     assert values[("junction", "J1")] == 0.8
     assert values[("junction", "J2")] == 0.2
     assert values[("junction", "J3")] == 0.8
     assert values[("junction", "J4")] == 0.2
+    assert set(polydt.loc[polydt["feature_type"] == "exon", "feature"]) == {"E2", "E3"}
+
+
+def test_psi_matrix_retains_path_with_no_nonconstitutive_components():
+    event = SashimiEvent("event", "chr1", 90, 180, "+")
+    paths = (((160, 170),), ((100, 110), (160, 170)))
+    psi = summarize_path_ordered_psi(event, paths, Counter(), Counter(), ("A",))
+    usage = pd.DataFrame([
+        {"test_id": "event", "cell_type": "A", "path": "Path 1", "path_number": 1, "n_subjects": 1, "mean_proportion": 0.25, "sd_proportion": 0.0, "se_proportion": 0.0},
+        {"test_id": "event", "cell_type": "A", "path": "Path 2", "path_number": 2, "n_subjects": 1, "mean_proportion": 0.75, "sd_proportion": 0.0, "se_proportion": 0.0},
+    ])
+    matrix = combine_path_usage_and_coverage(usage, psi, "event")
+    columns = matrix[["feature_id", "column_order"]].drop_duplicates().sort_values("column_order")
+    assert columns["feature_id"].tolist() == ["P1:path", "P2:path", "P2:E1", "P2:J1"]

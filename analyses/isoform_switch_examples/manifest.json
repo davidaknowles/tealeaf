@@ -1,8 +1,9 @@
 {
-  "selection": "three non-whole-gene BH-significant blocks with the largest fitted cell-type mean path-usage span among blocks whose dominant fitted path changes between cell types and whose displayed paths contain at least one splice junction",
+  "selection": "three unique-gene, non-whole-gene BH-significant blocks with the largest fitted cell-type mean path-usage span among blocks whose dominant fitted path changes between cell types",
   "literal_zero_to_one_switches": 0,
-  "exon_psi": "mean aligned depth divided by the mean depth of the nearest path-shared exon on each available side, clipped to [0,1]; path-shared exons are 1",
+  "exon_psi": "mean aligned depth divided by the mean depth of the nearest path-shared exon on each available side, clipped to [0,1]; path-shared exons are omitted from the display",
   "junction_psi": "junction UMI count divided by the total UMI count of unique observed junctions sharing its donor or acceptor splice site",
+  "display": "path usage, exon PSI, and junction PSI share one 0-to-1 viridis scale; exons and junctions present in every displayed path are omitted",
   "events": [
     {
       "gene_name": "Agtpbp1",

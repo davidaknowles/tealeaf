@@ -161,7 +161,9 @@ def summarize_path_ordered_psi(event, paths, exon_blocks, junctions, cell_types)
         right_start, right_end = right_exon
         return (left_end, right_start) if event.strand == "+" else (right_end, left_start)
 
-    junction_order = sorted({junction_between(left, right) for path in ordered_paths for left, right in zip(path, path[1:]) if junction_between(left, right)[0] < junction_between(left, right)[1]}, reverse=event.strand == "-")
+    path_junctions = [{junction_between(left, right) for left, right in zip(path, path[1:]) if junction_between(left, right)[0] < junction_between(left, right)[1]} for path in ordered_paths]
+    shared_junctions = set.intersection(*path_junctions)
+    junction_order = sorted(set.union(*path_junctions), reverse=event.strand == "-")
     junction_labels = {junction: f"J{index}" for index, junction in enumerate(junction_order, start=1)}
     exon_depths = {}
     junction_counts = {}
@@ -181,27 +183,27 @@ def summarize_path_ordered_psi(event, paths, exon_blocks, junctions, cell_types)
     shared_positions = sorted(exon_positions[exon] for exon in shared_exons)
     for path_number, ordered_exons in enumerate(ordered_paths, start=1):
         column_order += 1
+        for cell_type, primer in groups:
+            rows.append({"path_number": path_number, "feature_type": "path_order", "feature": f"P{path_number}", "feature_id": f"P{path_number}:order", "coordinate": "", "column_order": column_order - 1, "cell_type": cell_type, "primer": primer, "raw_value": np.nan})
         for exon_index, exon in enumerate(ordered_exons):
-            feature = exon_labels[exon]
-            coordinate = f"{event.chromosome}:{exon[0] + 1}-{exon[1]}"
-            position = exon_positions[exon]
-            left = [index for index in shared_positions if index < position]
-            right = [index for index in shared_positions if index > position]
-            reference_exons = [exon_order[index] for index in ([max(left)] if left else []) + ([min(right)] if right else [])]
-            for cell_type, primer in groups:
-                depth = exon_depths[(cell_type, primer, exon)]
-                if exon in shared_exons:
-                    psi = 1.0
-                else:
+            if exon not in shared_exons:
+                feature = exon_labels[exon]
+                coordinate = f"{event.chromosome}:{exon[0] + 1}-{exon[1]}"
+                position = exon_positions[exon]
+                left = [index for index in shared_positions if index < position]
+                right = [index for index in shared_positions if index > position]
+                reference_exons = [exon_order[index] for index in ([max(left)] if left else []) + ([min(right)] if right else [])]
+                for cell_type, primer in groups:
+                    depth = exon_depths[(cell_type, primer, exon)]
                     reference_depths = [exon_depths[(cell_type, primer, reference)] for reference in reference_exons]
                     reference_depth = float(np.mean(reference_depths)) if reference_depths else np.nan
                     psi = np.clip(depth / reference_depth, 0.0, 1.0) if reference_depth > 0 else np.nan
-                rows.append({"path_number": path_number, "feature_type": "exon", "feature": feature, "feature_id": f"P{path_number}:{feature}", "coordinate": coordinate, "column_order": column_order, "cell_type": cell_type, "primer": primer, "raw_value": psi})
-            column_order += 1
+                    rows.append({"path_number": path_number, "feature_type": "exon", "feature": feature, "feature_id": f"P{path_number}:{feature}", "coordinate": coordinate, "column_order": column_order, "cell_type": cell_type, "primer": primer, "raw_value": psi})
+                column_order += 1
             if exon_index == len(ordered_exons) - 1:
                 continue
             junction = junction_between(ordered_exons[exon_index], ordered_exons[exon_index + 1])
-            if junction[0] >= junction[1]:
+            if junction[0] >= junction[1] or junction in shared_junctions:
                 continue
             feature = junction_labels[junction]
             coordinate = f"{event.chromosome}:{junction[0] + 1}-{junction[1] + 1}"
@@ -221,17 +223,23 @@ def combine_path_usage_and_coverage(path_usage_summary, coverage, test_id):
         raise ValueError(f"no fitted path usage for {test_id}")
     markers = []
     primers = tuple(coverage["primer"].drop_duplicates())
-    for path_number in sorted(coverage["path_number"].unique()):
+    path_orders = coverage[coverage["feature_type"] == "path_order"]
+    evidence = coverage[coverage["feature_type"] != "path_order"]
+    for path_number in sorted(usage["path_number"].unique()):
         path_usage = usage[usage["path_number"] == path_number]
-        marker_order = int(coverage.loc[coverage["path_number"] == path_number, "column_order"].min()) - 1
+        explicit_order = path_orders[path_orders["path_number"] == path_number]
+        if not explicit_order.empty:
+            marker_order = int(explicit_order["column_order"].iloc[0])
+        else:
+            marker_order = int(evidence.loc[evidence["path_number"] == path_number, "column_order"].min()) - 1
         for primer in primers:
             for record in path_usage.itertuples(index=False):
                 markers.append({"path_number": path_number, "feature_type": "path", "feature": f"P{path_number}", "feature_id": f"P{path_number}:path", "coordinate": "", "column_order": marker_order, "cell_type": record.cell_type, "primer": primer, "raw_value": float(record.mean_proportion)})
-    combined = pd.concat([pd.DataFrame(markers), coverage], ignore_index=True)
+    combined = pd.concat([pd.DataFrame(markers), evidence], ignore_index=True)
     return combined.sort_values(["primer", "column_order", "cell_type"]).reset_index(drop=True)
 
 
-def write_path_evidence_heatmap(matrix, event_id, primer, cell_types, output_dir, evidence_name="Coverage per 1,000 half-cells", evidence_limits=None, output_suffix="block_heatmap"):
+def write_path_evidence_heatmap(matrix, event_id, primer, cell_types, output_dir, evidence_name="Coverage per 1,000 half-cells", evidence_limits=None, output_suffix="block_heatmap", shared_scale=False):
     """Plot one primer-specific matrix of path usage and ordered evidence."""
     from plotnine import aes, element_blank, element_text, geom_point, geom_text, geom_tile, geom_vline, ggplot, labs, scale_color_cmap, scale_fill_cmap, scale_x_discrete, theme, theme_bw
 
@@ -249,19 +257,18 @@ def write_path_evidence_heatmap(matrix, event_id, primer, cell_types, output_dir
     path_positions = [index for index, value in enumerate(columns["feature_type"], start=1) if value == "path"]
     marker_size = min(14, 270 / len(feature_ids))
     primer_slug = "oligodt" if primer == "poly(dT)" else "ranhex"
-    plot = (
-        ggplot(data, aes("feature_id", "cell_type"))
-        + geom_tile(aes(fill="evidence"), color="white", size=0.15)
-        + geom_point(data=path_data, mapping=aes(color="raw_value"), shape="s", size=marker_size)
-        + geom_text(data=path_data, mapping=aes(label="label"), size=6, fontweight="bold")
-        + geom_vline(xintercept=[position - 0.5 for position in path_positions[1:]], color="#25364A", size=0.7)
-        + scale_fill_cmap(name=evidence_name, cmap_name="viridis", limits=evidence_limits, na_value="#F2F2F2")
-        + scale_color_cmap(name="Path usage", cmap_name="magma", limits=(0, 1))
-        + scale_x_discrete(labels=lambda values: [feature_labels[value] for value in values])
-        + labs(x="Path and ordered block components", y=None, title=f"{event_id}, {primer}")
-        + theme_bw(base_size=9)
-        + theme(axis_text_x=element_text(size=7, rotation=90, va="top"), axis_text_y=element_text(size=7), panel_grid=element_blank(), legend_position="right", plot_title=element_text(size=10))
-    )
+    fill_column = "raw_value" if shared_scale else "evidence"
+    plot = ggplot(data, aes("feature_id", "cell_type")) + geom_tile(aes(fill=fill_column), color="white", size=0.15)
+    if not shared_scale:
+        plot += geom_point(data=path_data, mapping=aes(color="raw_value"), shape="s", size=marker_size)
+        plot += scale_color_cmap(name="Path usage", cmap_name="magma", limits=(0, 1))
+    plot += geom_text(data=path_data, mapping=aes(label="label"), size=6, fontweight="bold")
+    plot += geom_vline(xintercept=[position - 0.5 for position in path_positions[1:]], color="#25364A", size=0.7)
+    plot += scale_fill_cmap(name=evidence_name, cmap_name="viridis", limits=evidence_limits, na_value="#F2F2F2")
+    plot += scale_x_discrete(labels=lambda values: [feature_labels[value] for value in values])
+    plot += labs(x="Path and ordered block components", y=None, title=f"{event_id}, {primer}")
+    plot += theme_bw(base_size=9)
+    plot += theme(axis_text_x=element_text(size=7, rotation=90, va="top"), axis_text_y=element_text(size=7), panel_grid=element_blank(), legend_position="right", plot_title=element_text(size=10))
     output_path = Path(output_dir) / event_id / f"{event_id}_{primer_slug}_{output_suffix}.pdf"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     height = max(3.0, 1.4 + 0.32 * len(cell_types))

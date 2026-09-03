@@ -1,0 +1,4 @@
+fixed_total_concentration	fitted_blocks	failed_blocks	significant_catalog_blocks_fitted	dominant_path_switches	near_complete_cell_type_mean_switches	within_subject_near_complete_transitions	individual_usage_q01	individual_usage_q05	individual_usage_q95	individual_usage_q99
+0	1686	99	751	85	3	129	0	0	1	1
+2	1781	4	791	88	0	0	0.0062	0.0184	0.9316	0.9740
+64	1781	4	791	92	0	0	0.0703	0.1289	0.6237	0.7343

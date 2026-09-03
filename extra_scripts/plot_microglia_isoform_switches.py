@@ -66,17 +66,6 @@ def _event_from_row(row):
     return event, paths
 
 
-def _has_spliced_junction(row):
-    event, paths = _event_from_row(row)
-    for path in paths:
-        ordered = sorted(path, reverse=event.strand == "-")
-        for left, right in zip(ordered, ordered[1:]):
-            junction = (left[1], right[0]) if event.strand == "+" else (right[1], left[0])
-            if junction[0] < junction[1]:
-                return True
-    return False
-
-
 def render_selected(output_dir):
     """Render saved switch matrices without reopening BAM files."""
     selected = pd.read_csv(output_dir / "selected_switches.tsv", sep="\t")
@@ -84,7 +73,7 @@ def render_selected(output_dir):
         matrix = pd.read_csv(output_dir / row.gene_name / f"{row.gene_name}_psi_heatmap.tsv", sep="\t")
         cell_types = tuple(matrix["cell_type"].drop_duplicates())
         for primer in ("poly(dT)", "random hexamer"):
-            write_path_evidence_heatmap(matrix, row.gene_name, primer, cell_types, output_dir, evidence_name="Exon or junction PSI", evidence_limits=(0, 1), output_suffix="psi_heatmap")
+            write_path_evidence_heatmap(matrix, row.gene_name, primer, cell_types, output_dir, evidence_name="Path usage or PSI", evidence_limits=(0, 1), output_suffix="psi_heatmap", shared_scale=True)
 
 
 def main():
@@ -109,9 +98,8 @@ def main():
     usage = load_path_usage(args.path_usage_root)
     catalog = pd.read_csv(args.event_catalog, sep="\t")
     ranking, usage_summary = rank_switches(usage, catalog)
-    ranking["has_spliced_junction"] = ranking.apply(_has_spliced_junction, axis=1)
-    interpretable = ranking[ranking["dominant_path_switch"] & ranking["has_spliced_junction"] & ~ranking["event_type"].str.contains("whole-gene")]
-    selected = interpretable.head(args.n_events).copy()
+    interpretable = ranking[ranking["dominant_path_switch"] & ~ranking["event_type"].str.contains("whole-gene")]
+    selected = interpretable.drop_duplicates("gene_name").head(args.n_events).copy()
     if len(selected) < args.n_events:
         raise ValueError(f"only {len(selected)} significant dominant-path switches were found")
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -144,10 +132,11 @@ def main():
         event_dir.mkdir(parents=True, exist_ok=True)
         matrix.to_csv(event_dir / f"{event.event_id}_psi_heatmap.tsv", sep="\t", index=False)
     manifest = {
-        "selection": "three non-whole-gene BH-significant blocks with the largest fitted cell-type mean path-usage span among blocks whose dominant fitted path changes between cell types and whose displayed paths contain at least one splice junction",
+        "selection": "three unique-gene, non-whole-gene BH-significant blocks with the largest fitted cell-type mean path-usage span among blocks whose dominant fitted path changes between cell types",
         "literal_zero_to_one_switches": int(((ranking["min_usage"] <= 0.1) & (ranking["max_usage"] >= 0.9)).sum()),
-        "exon_psi": "mean aligned depth divided by the mean depth of the nearest path-shared exon on each available side, clipped to [0,1]; path-shared exons are 1",
+        "exon_psi": "mean aligned depth divided by the mean depth of the nearest path-shared exon on each available side, clipped to [0,1]; path-shared exons are omitted from the display",
         "junction_psi": "junction UMI count divided by the total UMI count of unique observed junctions sharing its donor or acceptor splice site",
+        "display": "path usage, exon PSI, and junction PSI share one 0-to-1 viridis scale; exons and junctions present in every displayed path are omitted",
         "events": selected[["gene_name", "test_id", "event_type", "path_number", "min_cell_type", "min_usage", "max_cell_type", "max_usage", "usage_span", "fdr"]].to_dict("records"),
     }
     (args.output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
