@@ -1,0 +1,17 @@
+{
+  "source": "Joglekar et al. 2024 ScISOr-Seq2 processed annotated-transcript UMI matrix",
+  "source_doi": "10.1038/s41593-024-01616-4",
+  "selection": "full-data BH FDR below 0.05 within each method and cell-type contrast",
+  "methods": [
+    "LeafCutter",
+    "MAJIQ Heterogen",
+    "scQuint",
+    "Paired junction CLR"
+  ],
+  "junction_effect_estimator": "difference between equal-pseudobulk mean short-read junction compositions",
+  "source_junction_estimator": "source transcript UMIs summed over annotated transcripts containing each junction",
+  "eligibility": "every tested junction maps to at least one source annotated transcript; minimum pooled depth 20 per cell type; strict minimum depth 10 per cell type and biological replicate",
+  "replication": "positive dot product between short-read and source long-read junction-composition differences",
+  "paired_clr_minimum_subjects": 8,
+  "paired_clr_bh_scope": "within cell-type contrast"
+}
