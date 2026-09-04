@@ -1,0 +1,15 @@
+{
+  "source": "Joglekar et al. 2024 ScISOr-Seq2 processed annotated-transcript UMI matrix",
+  "source_doi": "10.1038/s41593-024-01616-4",
+  "source_repository": "git@github.com:noush-joglekar/biccn_tilgner_scisorseq.git",
+  "source_commit": "f2e7efb285f6df0264ffcb3946553416e4f1986f",
+  "age": "P56",
+  "oligodendrocyte_scope": "mature",
+  "statistical_selection": "Tealeaf pairwise BH FDR below 0.05 at A_test=64",
+  "effect_estimates": "Tealeaf A_report=1 subject-mean path proportions",
+  "replication_definition": "positive dot product between Tealeaf and long-read path-proportion difference vectors",
+  "strict_replication_definition": "positive dot product independently in both Tilgner biological replicates",
+  "strict_null_definition": "half the observed between-replicate directional concordance under randomized Tealeaf contrast orientation",
+  "cell_type_mapping": "fixed mapping implemented in extra_scripts/assess_tilgner_long_read_replication.py",
+  "technical_test": "pooled long-read UMI G-test, provided as a secondary read-level endpoint rather than biological replication"
+}

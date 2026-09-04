@@ -1,0 +1,13 @@
+mapping_scope	minimum_original_effect_norm	endpoint	n_tests	n_replicated	replication_rate	conditional_null_rate	orientation_test_p_value
+mature_oligodendrocytes	0	pooled_direction	704	405	0.575284	0.500000	0.0000368120
+mature_oligodendrocytes	0	both_biological_replicates	459	175	0.381264	0.331155	0.00486896
+mature_oligodendrocytes	0.05	pooled_direction	403	241	0.598015	0.500000	0.0000487081
+mature_oligodendrocytes	0.05	both_biological_replicates	276	119	0.431159	0.351449	0.000972226
+all_oligodendrocyte_stages	0	pooled_direction	710	407	0.573239	0.500000	0.0000539962
+all_oligodendrocyte_stages	0	both_biological_replicates	465	179	0.384946	0.332258	0.00311504
+all_oligodendrocyte_stages	0.05	pooled_direction	405	242	0.597531	0.500000	0.0000507065
+all_oligodendrocyte_stages	0.05	both_biological_replicates	279	122	0.437276	0.353047	0.000498912
+regional_neurons_only	0	pooled_direction	480	262	0.545833	0.500000	0.0247856
+regional_neurons_only	0	both_biological_replicates	309	106	0.343042	0.294498	0.0156509
+regional_neurons_only	0.05	pooled_direction	264	149	0.564394	0.500000	0.0210251
+regional_neurons_only	0.05	both_biological_replicates	172	67	0.389535	0.311047	0.00579910
