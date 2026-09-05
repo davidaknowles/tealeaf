@@ -71,6 +71,21 @@ def load_comparators(path, mapped_cell_types, significant_only=False):
     return table.loc[keep].copy()
 
 
+def replace_majiq_results(comparators, directory, mapped_cell_types):
+    """Replace MAJIQ rows with normalized contrast tables from one build."""
+    paths = sorted(Path(directory).glob("*.tsv"))
+    if not paths:
+        raise ValueError(f"no normalized MAJIQ tables found in {directory}")
+    majiq = pd.concat((pd.read_csv(path, sep="\t", low_memory=False) for path in paths), ignore_index=True)
+    keep = (majiq["effect"] == "cell_type") & majiq["level_a"].isin(mapped_cell_types) & majiq["level_b"].isin(mapped_cell_types)
+    majiq = majiq.loc[keep].copy()
+    expected = set(comparators.loc[comparators["method"] != "MAJIQ Heterogen", "contrast_id"])
+    missing = expected - set(majiq["contrast_id"])
+    if missing:
+        raise ValueError(f"normalized MAJIQ results omit {len(missing)} mapped contrasts")
+    return pd.concat([comparators.loc[comparators["method"] != "MAJIQ Heterogen"], majiq], ignore_index=True, sort=False)
+
+
 def scquint_groups(selected, bundle):
     groups = {}
     metadata = bundle.junctions
@@ -320,6 +335,11 @@ def main():
     parser.add_argument("--junction-bundle", required=True, type=Path)
     parser.add_argument("--leafcutter-counts", required=True, type=Path)
     parser.add_argument("--majiq-raw", required=True, type=Path)
+    parser.add_argument("--majiq-tests", type=Path, help="normalized MAJIQ tables that replace MAJIQ rows in --comparator-tests")
+    parser.add_argument("--majiq-build-min-experiments", type=int)
+    parser.add_argument("--majiq-psi-minimum-reads", type=int)
+    parser.add_argument("--majiq-psi-minimum-bins", type=int)
+    parser.add_argument("--majiq-heterogen-minimum-experiment-fraction", type=float)
     parser.add_argument("--tilgner-matrix", required=True, type=Path)
     parser.add_argument("--gtf", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
@@ -331,7 +351,9 @@ def main():
     matrix, features, columns = read_tilgner_matrix(args.tilgner_matrix, args.gtf)
     mapped = set(columns["tealeaf_cell_type"].dropna())
     all_comparators = load_comparators(args.comparator_tests, mapped)
-    selected = load_comparators(args.comparator_tests, mapped, significant_only=True)
+    if args.majiq_tests:
+        all_comparators = replace_majiq_results(all_comparators, args.majiq_tests, mapped)
+    selected = all_comparators.loc[all_comparators["significant"].astype(str).str.lower().eq("true")].copy()
     bundle = JunctionBundle.load(args.junction_bundle)
     groups = {}
     groups.update(scquint_groups(selected, bundle))
@@ -359,7 +381,23 @@ def main():
         comparison = pd.concat([summarize(combined), summarize(combined, one_per_gene_contrast=True)], ignore_index=True)
         comparison.to_csv(args.output_dir / "method_comparison_summary.tsv", sep="\t", index=False, na_rep="NA")
     paired.to_csv(args.output_dir / "paired_clr_discoveries.tsv.gz", sep="\t", index=False, na_rep="NA")
-    manifest = {"source": "Joglekar et al. 2024 ScISOr-Seq2 processed annotated-transcript UMI matrix", "source_doi": "10.1038/s41593-024-01616-4", "selection": "full-data BH FDR below 0.05 within each method and cell-type contrast", "methods": ["LeafCutter", "MAJIQ Heterogen", "scQuint", "Paired junction CLR"], "junction_effect_estimator": "difference between equal-pseudobulk mean short-read junction compositions", "source_junction_estimator": "source transcript UMIs summed over annotated transcripts containing each junction", "eligibility": "every tested junction maps to at least one source annotated transcript; minimum pooled depth 20 per cell type; strict minimum depth 10 per cell type and biological replicate", "replication": "positive dot product between short-read and source long-read junction-composition differences", "paired_clr_minimum_subjects": 8, "paired_clr_bh_scope": "within cell-type contrast"}
+    manifest = {
+        "source": "Joglekar et al. 2024 ScISOr-Seq2 processed annotated-transcript UMI matrix",
+        "source_doi": "10.1038/s41593-024-01616-4",
+        "selection": "full-data BH FDR below 0.05 within each method and cell-type contrast",
+        "methods": ["LeafCutter", "MAJIQ Heterogen", "scQuint", "Paired junction CLR"],
+        "junction_effect_estimator": "difference between equal-pseudobulk mean short-read junction compositions",
+        "source_junction_estimator": "source transcript UMIs summed over annotated transcripts containing each junction",
+        "eligibility": "every tested junction maps to at least one source annotated transcript; minimum pooled depth 20 per cell type; strict minimum depth 10 per cell type and biological replicate",
+        "replication": "positive dot product between short-read and source long-read junction-composition differences",
+        "paired_clr_minimum_subjects": 8,
+        "paired_clr_bh_scope": "within cell-type contrast",
+        "majiq_replacement_tables": bool(args.majiq_tests),
+        "majiq_build_minimum_experiments": args.majiq_build_min_experiments,
+        "majiq_psi_minimum_reads": args.majiq_psi_minimum_reads,
+        "majiq_psi_minimum_bins": args.majiq_psi_minimum_bins,
+        "majiq_heterogen_minimum_experiment_fraction": args.majiq_heterogen_minimum_experiment_fraction,
+    }
     (args.output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
 

@@ -1,7 +1,8 @@
 import numpy as np
+import pandas as pd
 from scipy import sparse
 
-from extra_scripts.assess_tilgner_junction_replication import junction_from_majiq, mean_composition, mean_composition_batch, paired_logratio_two_category_batch
+from extra_scripts.assess_tilgner_junction_replication import junction_from_majiq, mean_composition, mean_composition_batch, paired_logratio_two_category_batch, replace_majiq_results
 from tealeaf.sc.differential import paired_logratio_test
 
 
@@ -31,3 +32,13 @@ def test_batched_two_category_clr_matches_scalar_test():
         scalar = paired_logratio_test(counts[:, indices], labels, clusters)
         assert np.isclose(p_value, scalar["p_value"])
         assert n_subjects == scalar["n_subjects"]
+
+
+def test_replace_majiq_results(tmp_path):
+    columns = ["method", "contrast_id", "effect", "level_a", "level_b", "significant"]
+    original = pd.DataFrame([["LeafCutter", "cell_type__A__B", "cell_type", "A", "B", True], ["MAJIQ Heterogen", "cell_type__A__B", "cell_type", "A", "B", False]], columns=columns)
+    replacement = pd.DataFrame([["MAJIQ Heterogen", "cell_type__A__B", "cell_type", "A", "B", True]], columns=columns)
+    replacement.to_csv(tmp_path / "cell_type__A__B.tsv", sep="\t", index=False)
+    observed = replace_majiq_results(original, tmp_path, {"A", "B"})
+    assert observed["method"].tolist() == ["LeafCutter", "MAJIQ Heterogen"]
+    assert observed.loc[observed["method"] == "MAJIQ Heterogen", "significant"].item()

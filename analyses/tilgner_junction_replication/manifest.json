@@ -13,5 +13,10 @@
   "eligibility": "every tested junction maps to at least one source annotated transcript; minimum pooled depth 20 per cell type; strict minimum depth 10 per cell type and biological replicate",
   "replication": "positive dot product between short-read and source long-read junction-composition differences",
   "paired_clr_minimum_subjects": 8,
-  "paired_clr_bh_scope": "within cell-type contrast"
+  "paired_clr_bh_scope": "within cell-type contrast",
+  "majiq_replacement_tables": true,
+  "majiq_build_minimum_experiments": 3,
+  "majiq_psi_minimum_reads": 3,
+  "majiq_psi_minimum_bins": 3,
+  "majiq_heterogen_minimum_experiment_fraction": 0.5
 }

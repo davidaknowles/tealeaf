@@ -11,6 +11,7 @@ import re
 
 import numpy as np
 import pandas as pd
+from scipy import sparse
 from scipy.io import mmread
 from scipy.stats import binomtest, chi2_contingency
 
@@ -91,7 +92,11 @@ def read_tilgner_matrix(matrix_dir, gtf_path, oligodendrocyte_scope="mature"):
     features["stable_gene_id"] = features["gene_id"].map(stable_identifier)
     features["transcript_id"] = [transcript_names.get((gene, name)) for gene, name in zip(features["stable_gene_id"], features["transcript_name"])]
     features["row"] = np.arange(len(features))
-    matrix = mmread(matrix_dir / "matrix.mtx.gz", spmatrix=True).tocsr()
+    try:
+        matrix = mmread(matrix_dir / "matrix.mtx.gz", spmatrix=True)
+    except TypeError:
+        matrix = mmread(matrix_dir / "matrix.mtx.gz")
+    matrix = sparse.csr_matrix(matrix)
     if matrix.shape != (len(features), len(barcodes)):
         raise ValueError(f"matrix shape {matrix.shape} does not match features and barcodes")
     return matrix, features, parsed
