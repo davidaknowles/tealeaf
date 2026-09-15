@@ -1,0 +1,17 @@
+zeta	scope	n_tests	n_replicated	replication_rate
+128.0	all eligible intersection	672	386	0.5744047619047619
+128.0	top 75 eligible intersection	75	45	0.6
+16.0	all eligible intersection	602	343	0.5697674418604651
+16.0	top 75 eligible intersection	75	46	0.6133333333333333
+2.0	all eligible intersection	296	174	0.5878378378378378
+2.0	top 75 eligible intersection	75	49	0.6533333333333333
+256.0	all eligible intersection	653	379	0.5803981623277182
+256.0	top 75 eligible intersection	75	45	0.6
+32.0	all eligible intersection	659	380	0.5766312594840668
+32.0	top 75 eligible intersection	75	42	0.56
+4.0	all eligible intersection	410	244	0.5951219512195122
+4.0	top 75 eligible intersection	75	51	0.68
+64.0	all eligible intersection	704	405	0.5752840909090909
+64.0	top 75 eligible intersection	75	44	0.5866666666666667
+8.0	all eligible intersection	523	301	0.5755258126195029
+8.0	top 75 eligible intersection	75	49	0.6533333333333333
