@@ -14,7 +14,7 @@ METHODS = ["Tealeaf", "LeafCutter", "MAJIQ Heterogen", "scQuint", "Paired juncti
 COLORS = {"Tealeaf": "#0B6666", "LeafCutter": "#8C510A", "MAJIQ Heterogen": "#D8B365", "scQuint": "#5AB4AC", "Paired junction CLR": "#762A83"}
 
 
-def rank_agreement_table(path, tealeaf_replication_path, tealeaf_significant_path):
+def rank_agreement_table(path, tealeaf_replication_path, tealeaf_significant_path, max_rank=200):
     """Return cumulative long-read agreement ordered by each method's p-value."""
     table = pd.read_csv(path, sep="\t", low_memory=False)
     if tealeaf_replication_path is not None:
@@ -30,9 +30,11 @@ def rank_agreement_table(path, tealeaf_replication_path, tealeaf_significant_pat
     table = table[table["method"].isin(METHODS) & table["mapping_complete"].astype(str).str.lower().eq("true") & (table["minimum_pooled_depth"] >= 20) & has_long_read_direction & table["p_value"].notna()].copy()
     table = table.sort_values(["method", "p_value", "feature_id"], kind="stable")
     table["rank"] = table.groupby("method").cumcount() + 1
-    table["n_eligible"] = table.groupby("method")["rank"].transform("max")
-    table["rank_fraction"] = table["rank"] / table["n_eligible"]
-    table["cumulative_agreement"] = table.groupby("method")["pooled_replicated"].cumsum() / table["rank"]
+    table = table[table["rank"] <= max_rank].copy()
+    table["n_evaluable"] = table.groupby("method")["rank"].transform("size")
+    table["n_agreement"] = table.groupby("method")["pooled_replicated"].cumsum()
+    table["n_observed"] = table.groupby("method").cumcount() + 1
+    table["cumulative_agreement"] = table["n_agreement"] / table["n_observed"]
     return table
 
 
@@ -44,6 +46,7 @@ def main():
     parser.add_argument("--tealeaf-replication", type=Path)
     parser.add_argument("--tealeaf-significant", type=Path)
     parser.add_argument("--rank-output", type=Path)
+    parser.add_argument("--max-rank", type=int, default=200)
     args = parser.parse_args()
     table = pd.read_csv(args.summary, sep="\t")
     table = table[table["scope"] == "all selected calls"].copy()
@@ -68,15 +71,15 @@ def main():
             parser.error("--rank-output requires --replication")
         if args.tealeaf_replication is None:
             parser.error("--rank-output requires --tealeaf-replication")
-        ranked = rank_agreement_table(args.replication, args.tealeaf_replication, args.tealeaf_significant)
+        ranked = rank_agreement_table(args.replication, args.tealeaf_replication, args.tealeaf_significant, max_rank=args.max_rank)
         ranked["method"] = pd.Categorical(ranked["method"], METHODS, ordered=True)
-        rank_plot = ggplot(ranked, aes("rank_fraction", "cumulative_agreement", color="method", group="method"))
+        rank_plot = ggplot(ranked, aes("rank", "cumulative_agreement", color="method", group="method"))
         rank_plot += geom_hline(yintercept=0.5, linetype="dashed", color="#777777", size=0.4)
         rank_plot += geom_line(size=0.9)
-        rank_plot += scale_x_continuous(limits=(0, 1), labels=lambda values: [f"{value:.0%}" for value in values])
+        rank_plot += scale_x_continuous(limits=(1, args.max_rank), breaks=list(range(0, args.max_rank + 1, 25))[1:])
         rank_plot += coord_cartesian(ylim=(0, 1))
         rank_plot += scale_color_manual(values=COLORS, drop=False)
-        rank_plot += labs(x="Significance rank (fraction of eligible calls)", y="Cumulative positive sign agreement with long reads", title="Long-read agreement across significance rank", caption="Calls are ordered by each method's short-read discovery p-value; only mapped calls with at least 20 pooled long-read UMIs per cell type are included. The dashed line is the 50% orientation null.")
+        rank_plot += labs(x=f"Significance rank (top {args.max_rank} calls per method)", y="Cumulative positive sign agreement with long reads", title="Long-read agreement across significance rank", caption="Calls are ordered by each method's short-read discovery p-value before long-read eligibility filtering. Only mapped calls with at least 20 pooled long-read UMIs per cell type and a finite direction contribute to the cumulative agreement; the dashed line is the 50% orientation null.")
         rank_plot += theme_bw(base_size=10)
         rank_plot += theme(panel_grid_minor=element_blank(), plot_title=element_text(size=11), plot_caption=element_text(size=8), legend_title=element_blank())
         args.rank_output.parent.mkdir(parents=True, exist_ok=True)
