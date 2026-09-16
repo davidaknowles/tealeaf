@@ -1,17 +1,17 @@
-zeta	scope	n_tests	n_replicated	replication_rate
-128.0	all eligible intersection	672	386	0.5744047619047619
-128.0	top 75 eligible intersection	75	45	0.6
-16.0	all eligible intersection	602	343	0.5697674418604651
-16.0	top 75 eligible intersection	75	46	0.6133333333333333
-2.0	all eligible intersection	296	174	0.5878378378378378
-2.0	top 75 eligible intersection	75	49	0.6533333333333333
-256.0	all eligible intersection	653	379	0.5803981623277182
-256.0	top 75 eligible intersection	75	45	0.6
-32.0	all eligible intersection	659	380	0.5766312594840668
-32.0	top 75 eligible intersection	75	42	0.56
-4.0	all eligible intersection	410	244	0.5951219512195122
-4.0	top 75 eligible intersection	75	51	0.68
-64.0	all eligible intersection	704	405	0.5752840909090909
-64.0	top 75 eligible intersection	75	44	0.5866666666666667
-8.0	all eligible intersection	523	301	0.5755258126195029
-8.0	top 75 eligible intersection	75	49	0.6533333333333333
+zeta	scope	n_discoveries	n_tests	n_replicated	replication_rate
+128.0	all eligible after full remap	2919	690	393	0.5695652173913044
+128.0	top 75 eligible after full remap	2919	75	45	0.6
+16.0	all eligible after full remap	2825	661	382	0.5779122541603631
+16.0	top 75 eligible after full remap	2825	75	46	0.6133333333333333
+2.0	all eligible after full remap	1594	351	207	0.5897435897435898
+2.0	top 75 eligible after full remap	1594	75	49	0.6533333333333333
+256.0	all eligible after full remap	2871	677	390	0.5760709010339734
+256.0	top 75 eligible after full remap	2871	75	45	0.6
+32.0	all eligible after full remap	2922	696	410	0.5890804597701149
+32.0	top 75 eligible after full remap	2922	75	42	0.56
+4.0	all eligible after full remap	2152	491	290	0.5906313645621182
+4.0	top 75 eligible after full remap	2152	75	51	0.68
+64.0	all eligible after full remap	2950	704	405	0.5752840909090909
+64.0	top 75 eligible after full remap	2950	75	44	0.5866666666666667
+8.0	all eligible after full remap	2575	594	345	0.5808080808080808
+8.0	top 75 eligible after full remap	2575	75	49	0.6533333333333333

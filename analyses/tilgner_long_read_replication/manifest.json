@@ -6,6 +6,7 @@
   "age": "P56",
   "oligodendrocyte_scope": "mature",
   "statistical_selection": "Tealeaf pairwise BH FDR below 0.05 at A_test=64",
+  "zeta_sensitivity": "full source remapping of the union of eight fixed-total discovery sets at zeta=2,4,8,16,32,64,128,256; summaries are in analyses/tilgner_long_read_replication/zeta_sensitivity.tsv",
   "effect_estimates": "Tealeaf A_report=1 subject-mean path proportions",
   "replication_definition": "positive dot product between Tealeaf and long-read path-proportion difference vectors",
   "strict_replication_definition": "positive dot product independently in both Tilgner biological replicates",
