@@ -1,0 +1,21 @@
+method	endpoint	n_tests	n_replicated	replication_rate
+zeta=2	pooled direction	351	207	0.5897435897435898
+zeta=2	both biological replicates	224	96	0.42857142857142855
+zeta=4	pooled direction	491	290	0.5906313645621182
+zeta=4	both biological replicates	321	134	0.4174454828660436
+zeta=8	pooled direction	594	345	0.5808080808080808
+zeta=8	both biological replicates	396	157	0.39646464646464646
+zeta=16	pooled direction	661	382	0.5779122541603631
+zeta=16	both biological replicates	430	170	0.3953488372093023
+zeta=32	pooled direction	696	410	0.5890804597701149
+zeta=32	both biological replicates	454	181	0.3986784140969163
+zeta=64	pooled direction	704	405	0.5752840909090909
+zeta=64	both biological replicates	459	175	0.3812636165577342
+zeta=128	pooled direction	690	393	0.5695652173913044
+zeta=128	both biological replicates	451	170	0.376940133037694
+zeta=256	pooled direction	677	390	0.5760709010339734
+zeta=256	both biological replicates	440	167	0.3795454545454545
+Cauchy all zeta	pooled direction	740	430	0.581081081081081
+Cauchy all zeta	both biological replicates	480	187	0.38958333333333334
+adaptive p2<0.01 -> p32	pooled direction	772	449	0.5816062176165803
+adaptive p2<0.01 -> p32	both biological replicates	499	197	0.39478957915831664
