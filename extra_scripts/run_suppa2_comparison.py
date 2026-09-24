@@ -4,9 +4,9 @@
 SUPPA2 v2.4 generates the local-event catalogue and PSI values. Its classical
 paired test is a Wilcoxon signed-rank test for each event followed by BH
 correction. The upstream implementation loops over events in Python, so this
-driver applies the same test vectorized over events after native
-`generateEvents` and `psiPerEvent`. The output keeps raw p-values and
-reports the BH q-value separately.
+driver evaluates the same paired Wilcoxon normal approximation vectorized over
+events after native `generateEvents` and `psiPerEvent`. The output keeps raw
+p-values and reports the BH q-value separately.
 """
 
 from __future__ import annotations
