@@ -70,12 +70,12 @@ def main():
     rows = []
     for record in tests.itertuples(index=False):
         feature_id = str(record.feature_id)
-        if feature_id.startswith("rMATS:"):
-            event_key = "SUPPA:" + feature_id.split(":", 1)[1]
-            short_sign = -1.0
+        if record.method == "rMATS" or feature_id.startswith("rMATS:"):
+            event_key = feature_id if feature_id.startswith("SUPPA2:") else "SUPPA:" + feature_id.split(":", 1)[1]
+            short_effect = -float(record.effect_size)
         else:
             event_key = feature_id
-            short_sign = 1.0
+            short_effect = float(record.effect_size)
         event_index = event_indices.get(event_key)
         levels = (record.level_a, record.level_b)
         if event_index is None or any((level, replicate) not in groups for level in levels for replicate in (1, 2)):
@@ -93,7 +93,7 @@ def main():
             bi = event_counts[0][event_index, groups[(levels[1], replicate)]].sum()
             be = event_counts[1][event_index, groups[(levels[1], replicate)]].sum()
             replicate_signs.append((bi / (bi + be) - ai / (ai + ae)) if (ai + ae) and (bi + be) else np.nan)
-        rows.append({"method": record.method, "contrast_id": record.contrast_id, "feature_id": feature_id, "event_type": record.event_type, "gene_id": getattr(record, "gene_id", ""), "level_a": levels[0], "level_b": levels[1], "p_value": record.p_value, "raw_p_value": record.p_value, "statistic": -np.log10(max(record.p_value, 1e-300)), "mapping_complete": True, "minimum_pooled_depth": float(min(a_inc + a_exc, b_inc + b_exc)), "minimum_replicate_depth": float(min(event_counts[0][event_index, groups[(level, replicate)]].sum() + event_counts[1][event_index, groups[(level, replicate)]].sum() for level in levels for replicate in (1, 2))), "pooled_replicated": bool(short_sign * delta > 0) if np.isfinite(delta) else np.nan, "replicate_1_dot_product": short_sign * replicate_signs[0], "replicate_2_dot_product": short_sign * replicate_signs[1], "both_replicates_replicated": bool(short_sign * replicate_signs[0] > 0 and short_sign * replicate_signs[1] > 0) if np.isfinite(replicate_signs).all() else np.nan})
+        rows.append({"method": record.method, "contrast_id": record.contrast_id, "feature_id": feature_id, "event_type": record.event_type, "gene_id": getattr(record, "gene_id", ""), "level_a": levels[0], "level_b": levels[1], "p_value": record.p_value, "raw_p_value": record.p_value, "statistic": -np.log10(max(record.p_value, 1e-300)), "mapping_complete": True, "minimum_pooled_depth": float(min(a_inc + a_exc, b_inc + b_exc)), "minimum_replicate_depth": float(min(event_counts[0][event_index, groups[(level, replicate)]].sum() + event_counts[1][event_index, groups[(level, replicate)]].sum() for level in levels for replicate in (1, 2))), "pooled_replicated": bool(short_effect * delta > 0) if np.isfinite(delta) and np.isfinite(short_effect) and short_effect != 0 else np.nan, "replicate_1_dot_product": short_effect * replicate_signs[0], "replicate_2_dot_product": short_effect * replicate_signs[1], "both_replicates_replicated": bool(short_effect * replicate_signs[0] > 0 and short_effect * replicate_signs[1] > 0) if np.isfinite(replicate_signs).all() and np.isfinite(short_effect) and short_effect != 0 else np.nan})
     result = pd.DataFrame(rows)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(args.output, sep="\t", index=False, compression="gzip")
