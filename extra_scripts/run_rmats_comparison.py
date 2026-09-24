@@ -67,7 +67,11 @@ def run_command(command, args, cwd=None):
     if args.rscript is not None:
         shell_command += 'export PATH="$RMATS_RSCRIPT_DIR:$PATH"; '
     shell_command += " ".join(map(str, command))
-    subprocess.run(["bash", "-lc", shell_command], cwd=cwd, env=command_environment(args), check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    try:
+        subprocess.run(["bash", "-lc", shell_command], cwd=cwd, env=command_environment(args), check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    except subprocess.CalledProcessError as error:
+        detail = error.stderr.decode(errors="replace").strip()
+        raise RuntimeError(f"command failed with exit {error.returncode}: {shell_command}; stderr={detail}") from error
 
 
 def parse_result(path, contrast):
