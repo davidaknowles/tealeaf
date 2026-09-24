@@ -1,0 +1,9 @@
+comparison	method	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	shared_gene_pairs
+Tealeaf vs MAJIQ Heterogen	Tealeaf	8	6	6	6	1.0	0.8333333333333335	84
+Tealeaf vs MAJIQ Heterogen	MAJIQ Heterogen	8	3	5	3	0.8	0.8571428571428572	84
+Tealeaf vs SUPPA transcript PSI	Tealeaf	382	142	146	102	0.9097048041674706	0.8161732347292899	1984
+Tealeaf vs SUPPA transcript PSI	SUPPA transcript PSI	382	15	21	3	0.8095238095238095	0.2054689389545006	1984
+Tealeaf vs rMATS	Tealeaf	496	191	185	133	0.9070185368614688	0.813796322108772	2564
+Tealeaf vs rMATS	rMATS	496	2	2	0	0.0	0.5295539572302158	2564
+Tealeaf vs scQuint	Tealeaf	507	208	212	154	0.9070664005805515	0.8215163808431188	2599
+Tealeaf vs scQuint	scQuint	507	89	98	56	0.7748796147672552	0.4582624864667368	2599

@@ -1,0 +1,41 @@
+comparison	method	k	overlap	overlap_fraction	shared_gene_pairs
+Tealeaf vs MAJIQ Heterogen	Tealeaf	8	8	1.0	84
+Tealeaf vs MAJIQ Heterogen	Tealeaf	8	8	1.0	84
+Tealeaf vs MAJIQ Heterogen	Tealeaf	8	8	1.0	84
+Tealeaf vs MAJIQ Heterogen	Tealeaf	8	8	1.0	84
+Tealeaf vs MAJIQ Heterogen	Tealeaf	8	8	1.0	84
+Tealeaf vs MAJIQ Heterogen	MAJIQ Heterogen	8	8	1.0	84
+Tealeaf vs MAJIQ Heterogen	MAJIQ Heterogen	8	8	1.0	84
+Tealeaf vs MAJIQ Heterogen	MAJIQ Heterogen	8	8	1.0	84
+Tealeaf vs MAJIQ Heterogen	MAJIQ Heterogen	8	8	1.0	84
+Tealeaf vs MAJIQ Heterogen	MAJIQ Heterogen	8	8	1.0	84
+Tealeaf vs SUPPA transcript PSI	Tealeaf	25	14	0.56	1984
+Tealeaf vs SUPPA transcript PSI	Tealeaf	50	33	0.66	1984
+Tealeaf vs SUPPA transcript PSI	Tealeaf	100	74	0.74	1984
+Tealeaf vs SUPPA transcript PSI	Tealeaf	200	168	0.84	1984
+Tealeaf vs SUPPA transcript PSI	Tealeaf	382	382	1.0	1984
+Tealeaf vs SUPPA transcript PSI	SUPPA transcript PSI	25	12	0.48	1984
+Tealeaf vs SUPPA transcript PSI	SUPPA transcript PSI	50	21	0.42	1984
+Tealeaf vs SUPPA transcript PSI	SUPPA transcript PSI	100	50	0.5	1984
+Tealeaf vs SUPPA transcript PSI	SUPPA transcript PSI	200	112	0.56	1984
+Tealeaf vs SUPPA transcript PSI	SUPPA transcript PSI	382	382	1.0	1984
+Tealeaf vs rMATS	Tealeaf	25	10	0.4	2564
+Tealeaf vs rMATS	Tealeaf	50	30	0.6	2564
+Tealeaf vs rMATS	Tealeaf	100	75	0.75	2564
+Tealeaf vs rMATS	Tealeaf	200	163	0.815	2564
+Tealeaf vs rMATS	Tealeaf	496	496	1.0	2564
+Tealeaf vs rMATS	rMATS	25	21	0.84	2564
+Tealeaf vs rMATS	rMATS	50	47	0.94	2564
+Tealeaf vs rMATS	rMATS	100	97	0.97	2564
+Tealeaf vs rMATS	rMATS	200	198	0.99	2564
+Tealeaf vs rMATS	rMATS	496	496	1.0	2564
+Tealeaf vs scQuint	Tealeaf	25	9	0.36	2599
+Tealeaf vs scQuint	Tealeaf	50	30	0.6	2599
+Tealeaf vs scQuint	Tealeaf	100	76	0.76	2599
+Tealeaf vs scQuint	Tealeaf	200	157	0.785	2599
+Tealeaf vs scQuint	Tealeaf	500	496	0.992	2599
+Tealeaf vs scQuint	scQuint	25	15	0.6	2599
+Tealeaf vs scQuint	scQuint	50	36	0.72	2599
+Tealeaf vs scQuint	scQuint	100	62	0.62	2599
+Tealeaf vs scQuint	scQuint	200	123	0.615	2599
+Tealeaf vs scQuint	scQuint	500	494	0.988	2599

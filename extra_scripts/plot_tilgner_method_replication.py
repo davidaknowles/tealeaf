@@ -12,8 +12,8 @@ import pandas as pd
 from plotnine import aes, coord_cartesian, element_blank, element_text, facet_wrap, geom_col, geom_errorbar, geom_hline, geom_line, geom_point, geom_text, ggplot, labs, scale_color_manual, scale_fill_manual, scale_x_continuous, scale_x_discrete, theme, theme_bw
 
 
-METHODS = ["Tealeaf pairwise", "Tealeaf omnibus", "LeafCutter", "MAJIQ Heterogen", "scQuint", "Paired junction CLR"]
-COLORS = {"Tealeaf": "#0B6666", "Tealeaf pairwise": "#0B6666", "Tealeaf omnibus": "#1B9E77", "Isoform usage ratio": "#E7298A", "LeafCutter": "#8C510A", "MAJIQ Heterogen": "#D8B365", "scQuint": "#5AB4AC", "Paired junction CLR": "#762A83"}
+METHODS = ["Tealeaf pairwise", "Tealeaf omnibus", "LeafCutter", "MAJIQ Heterogen", "scQuint", "Paired junction CLR", "rMATS", "SUPPA transcript PSI"]
+COLORS = {"Tealeaf": "#0B6666", "Tealeaf pairwise": "#0B6666", "Tealeaf omnibus": "#1B9E77", "Isoform usage ratio": "#E7298A", "LeafCutter": "#8C510A", "MAJIQ Heterogen": "#D8B365", "scQuint": "#5AB4AC", "Paired junction CLR": "#762A83", "rMATS": "#4D4D4D", "SUPPA transcript PSI": "#CC79A7"}
 
 
 def _rank_table(table, max_rank, method_column="method"):
@@ -122,7 +122,7 @@ def rank_agreement_table(path, tealeaf_replication_path, tealeaf_significant_pat
         table = pd.concat([table, tealeaf], ignore_index=True, sort=False)
     has_long_read_direction = table["pooled_replicated"].notna()
     table["pooled_replicated"] = table["pooled_replicated"].astype(str).str.lower().eq("true")
-    table = table[table["method"].isin(["LeafCutter", "MAJIQ Heterogen", "scQuint", "Paired junction CLR", "Tealeaf pairwise"]) & table["mapping_complete"].astype(str).str.lower().eq("true") & (table["minimum_pooled_depth"] >= 20) & has_long_read_direction & table["p_value"].notna()].copy()
+    table = table[table["method"].isin(["LeafCutter", "MAJIQ Heterogen", "scQuint", "Paired junction CLR", "Tealeaf pairwise", "rMATS", "SUPPA transcript PSI"]) & table["mapping_complete"].astype(str).str.lower().eq("true") & (table["minimum_pooled_depth"] >= 20) & has_long_read_direction & table["p_value"].notna()].copy()
     tables = [_rank_table(table, max_rank)]
     if omnibus_path is not None:
         omnibus = pd.read_csv(omnibus_path, sep="\t", low_memory=False)
@@ -156,7 +156,7 @@ def main():
     args = parser.parse_args()
     table = pd.read_csv(args.summary, sep="\t")
     table = table[table["scope"] == "all selected calls"].copy()
-    table["method"] = pd.Categorical(table["method"], ["Tealeaf", "LeafCutter", "MAJIQ Heterogen", "scQuint", "Paired junction CLR"], ordered=True)
+    table["method"] = pd.Categorical(table["method"], ["Tealeaf", "LeafCutter", "MAJIQ Heterogen", "scQuint", "Paired junction CLR", "rMATS", "SUPPA transcript PSI"], ordered=True)
     table["label"] = table.apply(lambda row: f"{row.replication_rate:.0%}\n({int(row.n_tests)})", axis=1)
     plot = ggplot(table, aes("method", "replication_rate", fill="method"))
     plot += geom_col(width=0.72, show_legend=False)

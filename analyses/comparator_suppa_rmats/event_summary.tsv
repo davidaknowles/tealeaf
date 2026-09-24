@@ -1,0 +1,5 @@
+method	endpoint	scope	minimum_depth	n_tests	n_replicated	replication_rate	ci_low	ci_high	conditional_null_rate
+rMATS	pooled direction	top-ranked calls per contrast	20.0	3859	1778	0.46074112464369	0.4450612308266763	0.4764991015788621	0.5
+rMATS	both biological replicates	top-ranked calls per contrast	20.0	2549	660	0.2589250686543742	0.2422915783283128	0.2762840873271067	0.5
+SUPPA transcript PSI	pooled direction	top-ranked calls per contrast	20.0	3811	1619	0.4248228811335607	0.4092123140138036	0.4405848515603758	0.5
+SUPPA transcript PSI	both biological replicates	top-ranked calls per contrast	20.0	2494	652	0.2614274258219727	0.2445583391213458	0.2790303194791744	0.5
