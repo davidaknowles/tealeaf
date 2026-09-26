@@ -253,14 +253,16 @@ def grouped_ec_probability_matrices(
     cell_groups,
     n_groups,
     cache_files=None,
+    normalize_columns=True,
 ):
     """Build fixed EC designs for groups of alevin-fry rows in one pass.
 
     ``cell_groups[cell_idx]`` gives the design group for a probability-sidecar
     row, or a negative value to exclude that cell. Probability vectors are
-    averaged within each group and EC, then each transcript column is
-    normalized. This is useful when library chemistries share EC definitions
-    but require different fixed conditional-probability matrices.
+    averaged within each group and EC. By default each transcript column is
+    normalized for use as a GLM design. Set ``normalize_columns=False`` to
+    retain the EC-conditional probabilities for downstream expected-count
+    calculations.
     """
     probability_file = Path(probability_file)
     membership = ec_transcript_mat.tocsr()
@@ -270,7 +272,7 @@ def grouped_ec_probability_matrices(
         raise ValueError("n_groups must be positive")
     if np.any(groups >= n_groups):
         raise ValueError("cell_groups contains a group outside n_groups")
-    if cache_files is not None:
+    if cache_files is not None and normalize_columns:
         cache_files = [Path(path) for path in cache_files]
         if len(cache_files) != n_groups:
             raise ValueError("cache_files must contain one path per group")
@@ -329,9 +331,9 @@ def grouped_ec_probability_matrices(
             (values, membership.indices.copy(), membership.indptr.copy()),
             shape=membership.shape,
         )
-        matrices.append(_column_normalize(matrix))
+        matrices.append(_column_normalize(matrix) if normalize_columns else matrix)
 
-    if cache_files is not None:
+    if cache_files is not None and normalize_columns:
         for path, matrix in zip(cache_files, matrices):
             path.parent.mkdir(parents=True, exist_ok=True)
             temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp.npz")

@@ -1,0 +1,3 @@
+method	endpoint	scope	minimum_depth	n_tests	n_replicated	replication_rate	ci_low	ci_high	conditional_null_rate
+SUPPA2 (primer aware)	pooled direction	top-ranked calls per contrast	20.0	3822	1738	0.4547357404500262	0.43900255307159625	0.4705598258915264	0.5
+SUPPA2 (primer aware)	both biological replicates	top-ranked calls per contrast	20.0	2587	784	0.30305373018940857	0.28564684455951966	0.3210446430532225	0.5
