@@ -1,0 +1,3 @@
+method	endpoint	scope	minimum_depth	n_tests	n_replicated	replication_rate	ci_low	ci_high	conditional_null_rate
+rMATS	pooled direction	top-ranked calls per contrast	20.0	4588	2313	0.5041412380122058	0.4896763925045598	0.5185991545370315	0.5
+rMATS	both biological replicates	top-ranked calls per contrast	20.0	3091	1062	0.3435781300549984	0.3270397275253432	0.3605048485485212	0.5

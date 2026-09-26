@@ -10,7 +10,7 @@
     "MAJIQ Heterogen",
     "scQuint",
     "Paired junction CLR",
-    "SUPPA2 native PSI",
+    "SUPPA2 (full data)",
     "rMATS paired JCEC"
   ],
   "junction_effect_estimator": "difference between equal-pseudobulk mean short-read junction compositions",

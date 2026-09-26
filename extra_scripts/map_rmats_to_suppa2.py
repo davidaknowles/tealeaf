@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Map rMATS event coordinates to native SUPPA2 event coordinates."""
+"""Map rMATS event coordinates to SUPPA2 event coordinates."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def native_index(path):
+def suppa_index(path):
     index = defaultdict(list)
     for line in path.read_text().splitlines()[1:]:
         fields = line.split("\t")
@@ -45,7 +45,7 @@ def row_coordinates(event_type, row):
 
 
 def build_mapping(event_dir, ioe):
-    index = native_index(ioe)
+    index = suppa_index(ioe)
     mapping = []
     for event_type, native_type in EVENT_TYPES.items():
         table = pd.read_csv(event_dir / f"fromGTF.{event_type}.txt", sep="\t", dtype=str)

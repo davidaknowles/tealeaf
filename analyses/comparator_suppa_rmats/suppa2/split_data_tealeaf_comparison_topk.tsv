@@ -1,0 +1,11 @@
+comparison	method	k	overlap	overlap_fraction	shared_gene_pairs
+Tealeaf direct local path vs SUPPA2 (matched split)	Tealeaf direct local path	25	14	0.56	2342
+Tealeaf direct local path vs SUPPA2 (matched split)	Tealeaf direct local path	50	30	0.6	2342
+Tealeaf direct local path vs SUPPA2 (matched split)	Tealeaf direct local path	100	74	0.74	2342
+Tealeaf direct local path vs SUPPA2 (matched split)	Tealeaf direct local path	200	167	0.835	2342
+Tealeaf direct local path vs SUPPA2 (matched split)	Tealeaf direct local path	457	457	1.0	2342
+Tealeaf direct local path vs SUPPA2 (matched split)	SUPPA2 (matched split)	25	12	0.48	2342
+Tealeaf direct local path vs SUPPA2 (matched split)	SUPPA2 (matched split)	50	27	0.54	2342
+Tealeaf direct local path vs SUPPA2 (matched split)	SUPPA2 (matched split)	100	53	0.53	2342
+Tealeaf direct local path vs SUPPA2 (matched split)	SUPPA2 (matched split)	200	110	0.55	2342
+Tealeaf direct local path vs SUPPA2 (matched split)	SUPPA2 (matched split)	457	457	1.0	2342
