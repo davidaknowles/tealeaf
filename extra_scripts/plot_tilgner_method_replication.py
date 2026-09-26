@@ -12,8 +12,8 @@ import pandas as pd
 from plotnine import aes, coord_cartesian, element_blank, element_text, facet_wrap, geom_col, geom_errorbar, geom_hline, geom_line, geom_point, geom_text, ggplot, labs, scale_color_manual, scale_fill_manual, scale_x_continuous, scale_x_discrete, theme, theme_bw
 
 
-METHODS = ["Tealeaf pairwise", "Tealeaf omnibus", "LeafCutter", "MAJIQ Heterogen", "scQuint", "Paired junction CLR", "rMATS", "SUPPA transcript PSI"]
-COLORS = {"Tealeaf": "#0B6666", "Tealeaf pairwise": "#0B6666", "Tealeaf omnibus": "#1B9E77", "Isoform usage ratio": "#E7298A", "LeafCutter": "#8C510A", "MAJIQ Heterogen": "#D8B365", "scQuint": "#5AB4AC", "Paired junction CLR": "#762A83", "rMATS": "#4D4D4D", "SUPPA transcript PSI": "#CC79A7"}
+METHODS = ["Tealeaf pairwise", "Tealeaf omnibus", "LeafCutter", "MAJIQ Heterogen", "scQuint", "Paired junction CLR", "Isoform usage ratio", "rMATS paired JCEC", "SUPPA2 native PSI"]
+COLORS = {"Tealeaf": "#0B6666", "Tealeaf pairwise": "#0B6666", "Tealeaf omnibus": "#1B9E77", "Isoform usage ratio": "#E7298A", "LeafCutter": "#8C510A", "MAJIQ Heterogen": "#D8B365", "scQuint": "#5AB4AC", "Paired junction CLR": "#762A83", "rMATS paired JCEC": "#4D4D4D", "SUPPA2 native PSI": "#CC79A7"}
 
 
 def _rank_table(table, max_rank, method_column="method"):
@@ -109,9 +109,16 @@ def _isoform_ratio_table(replication_path, ratio_path):
     return pd.DataFrame(rows)
 
 
-def rank_agreement_table(path, tealeaf_replication_path, tealeaf_significant_path, omnibus_path=None, isoform_ratio_path=None, max_rank=200):
+def rank_agreement_table(path, tealeaf_replication_path, tealeaf_significant_path, omnibus_path=None, isoform_ratio_path=None, event_replication_paths=None, max_rank=200):
     """Return cumulative agreement with continuous tie breaks and optional omnibus ranking."""
     table = pd.read_csv(path, sep="\t", low_memory=False)
+    for event_path in event_replication_paths or []:
+        event = pd.read_csv(event_path, sep="\t", low_memory=False)
+        source_method = str(event.get("method", pd.Series([""])).iloc[0]) if not event.empty else ""
+        event["method"] = "rMATS paired JCEC" if source_method.lower().startswith("rmat") else "SUPPA2 native PSI"
+        event["raw_p_value"] = event.get("raw_p_value", event.get("p_value"))
+        event["statistic"] = event.get("statistic", np.nan)
+        table = pd.concat([table, event], ignore_index=True, sort=False)
     if tealeaf_replication_path is not None:
         tealeaf = pd.read_csv(tealeaf_replication_path, sep="\t", low_memory=False)
         tealeaf = tealeaf.rename(columns={"test_id": "feature_id"})
@@ -122,7 +129,7 @@ def rank_agreement_table(path, tealeaf_replication_path, tealeaf_significant_pat
         table = pd.concat([table, tealeaf], ignore_index=True, sort=False)
     has_long_read_direction = table["pooled_replicated"].notna()
     table["pooled_replicated"] = table["pooled_replicated"].astype(str).str.lower().eq("true")
-    table = table[table["method"].isin(["LeafCutter", "MAJIQ Heterogen", "scQuint", "Paired junction CLR", "Tealeaf pairwise", "rMATS", "SUPPA transcript PSI"]) & table["mapping_complete"].astype(str).str.lower().eq("true") & (table["minimum_pooled_depth"] >= 20) & has_long_read_direction & table["p_value"].notna()].copy()
+    table = table[table["method"].isin(["LeafCutter", "MAJIQ Heterogen", "scQuint", "Paired junction CLR", "Isoform usage ratio", "Tealeaf pairwise", "Tealeaf omnibus", "rMATS paired JCEC", "SUPPA2 native PSI"]) & table["mapping_complete"].astype(str).str.lower().eq("true") & (table["minimum_pooled_depth"] >= 20) & has_long_read_direction & table["p_value"].notna()].copy()
     tables = [_rank_table(table, max_rank)]
     if omnibus_path is not None:
         omnibus = pd.read_csv(omnibus_path, sep="\t", low_memory=False)
@@ -150,13 +157,14 @@ def main():
     parser.add_argument("--tealeaf-significant", type=Path)
     parser.add_argument("--tealeaf-omnibus", type=Path)
     parser.add_argument("--isoform-ratio", type=Path)
+    parser.add_argument("--event-replication", action="append", type=Path, help="Full-data event replication table to include in the rank audit; repeat for SUPPA2 and rMATS.")
     parser.add_argument("--rank-table", type=Path)
     parser.add_argument("--rank-output", type=Path)
     parser.add_argument("--max-rank", type=int, default=200)
     args = parser.parse_args()
     table = pd.read_csv(args.summary, sep="\t")
     table = table[table["scope"] == "all selected calls"].copy()
-    table["method"] = pd.Categorical(table["method"], ["Tealeaf", "LeafCutter", "MAJIQ Heterogen", "scQuint", "Paired junction CLR", "rMATS", "SUPPA transcript PSI"], ordered=True)
+    table["method"] = pd.Categorical(table["method"], ["Tealeaf", "LeafCutter", "MAJIQ Heterogen", "scQuint", "Paired junction CLR", "rMATS paired JCEC", "SUPPA2 native PSI"], ordered=True)
     table["label"] = table.apply(lambda row: f"{row.replication_rate:.0%}\n({int(row.n_tests)})", axis=1)
     plot = ggplot(table, aes("method", "replication_rate", fill="method"))
     plot += geom_col(width=0.72, show_legend=False)
@@ -177,7 +185,7 @@ def main():
             parser.error("--rank-output requires --replication")
         if args.tealeaf_replication is None:
             parser.error("--rank-output requires --tealeaf-replication")
-        ranked = rank_agreement_table(args.replication, args.tealeaf_replication, args.tealeaf_significant, omnibus_path=args.tealeaf_omnibus, isoform_ratio_path=args.isoform_ratio, max_rank=args.max_rank)
+        ranked = rank_agreement_table(args.replication, args.tealeaf_replication, args.tealeaf_significant, omnibus_path=args.tealeaf_omnibus, isoform_ratio_path=args.isoform_ratio, event_replication_paths=args.event_replication, max_rank=args.max_rank)
         if args.rank_table:
             args.rank_table.parent.mkdir(parents=True, exist_ok=True)
             ranked.to_csv(args.rank_table, sep="\t", index=False, na_rep="NA")

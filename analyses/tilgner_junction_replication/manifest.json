@@ -9,7 +9,9 @@
     "LeafCutter",
     "MAJIQ Heterogen",
     "scQuint",
-    "Paired junction CLR"
+    "Paired junction CLR",
+    "SUPPA2 native PSI",
+    "rMATS paired JCEC"
   ],
   "junction_effect_estimator": "difference between equal-pseudobulk mean short-read junction compositions",
   "source_junction_estimator": "source transcript UMIs summed over annotated transcripts containing each junction",
