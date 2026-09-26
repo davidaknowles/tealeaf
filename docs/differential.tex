@@ -194,14 +194,13 @@ Comparator & tests & genes & Rep. & held & \(\rho\) & Rep. & held & \(\rho\)\\
 LeafCutter & 747 & 139 & 73 & 0.878 & 0.790 & 26 & 0.750 & 0.542\\
 MAJIQ relaxed UMI & 2,500 & 480 & 156 & 0.888 & 0.791 & 38 & 0.698 & 0.437\\
 scQuint & 2,600 & 507 & 160 & 0.875 & 0.813 & 56 & 0.775 & 0.458\\
-SUPPA transcript PSI (deprecated) & 1,984 & 382 & 102 & 0.910 & 0.816 & 3 & 0.810 & 0.205\\
 SUPPA2 native PSI$^{\dagger}$ & 4,204 & 4,204 & -- & -- & -- & 0 & 0.000 & 0.207\\
 rMATS (native, historical) & 2,564 & 496 & 133 & 0.907 & 0.814 & 0 & 0.000 & 0.530\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The deprecated SUPPA transcript-PSI row preserves the directly matched Tealeaf comparison that used the earlier in-house transcript-PSI implementation. Native SUPPA2 was rerun with its standard event catalogue and is not assigned Tealeaf columns here because its split event-level feature tables were not retained in the native audit; its standalone 4,204-gene audit is shown by the dagger row. This distinction prevents the native event result from being presented as a matched block-by-cell-type-pair comparison.
+Native SUPPA2 was rerun with its standard event catalogue and is not assigned Tealeaf columns here because its split event-level feature tables were not retained in the native audit; its standalone 4,204-gene audit is shown by the dagger row. This prevents the native event result from being presented as a matched block-by-cell-type-pair comparison.
 
 Table~\ref{tab:path-alpha-scaling} directly compares the fixed-total production scaling with the former path-dependent scaling. Set \(\alpha_{\rm path}=\zeta/2\) under the former rule, so the two penalties are identical for two-path blocks. Two-path blocks comprise 5,295 of 7,671 fold-0 candidates, while a block with \(S_b>2\) receives \(S_b\zeta/2>\zeta\) total concentration under the former rule. The curves are nearly indistinguishable around their optimum. Fixed-total scaling reaches peak fold discovery rates of 19.56\% and 21.18\%, compared with 19.55\% and 20.95\% under the path-dependent scaling. Both attain maximum replicated-gene counts of 78, 161, and 161. At \(\zeta=64\), fixed total gives 76, 161, and 161 replicated genes, versus 78, 161, and 161 at the matched \(\alpha_{\rm path}=32\); their held-half replication rates are respectively 0.897/0.907/0.903 and 0.898/0.925/0.913. At \(\zeta=128\), the rates are 0.909/0.919/0.906 under fixed total and 0.908/0.919/0.907 under matched path-dependent scaling. Pooled null rejection remains near 0.05 and no fold-level null family makes a BH call at any fixed-total setting. Fixed total concentration therefore removes an arbitrary dependence on path count without a material discovery or replication penalty, and testing-level EB selects \(\zeta=32\) rather than choosing the maximum replicated-discovery count.
 
