@@ -1,0 +1,11 @@
+comparison	method	k	overlap	overlap_fraction	shared_gene_pairs
+Tealeaf direct local path vs SUPPA2 (primer aware)	Tealeaf direct local path	25	13	0.52	2191
+Tealeaf direct local path vs SUPPA2 (primer aware)	Tealeaf direct local path	50	33	0.66	2191
+Tealeaf direct local path vs SUPPA2 (primer aware)	Tealeaf direct local path	100	73	0.73	2191
+Tealeaf direct local path vs SUPPA2 (primer aware)	Tealeaf direct local path	200	156	0.78	2191
+Tealeaf direct local path vs SUPPA2 (primer aware)	Tealeaf direct local path	431	431	1.0	2191
+Tealeaf direct local path vs SUPPA2 (primer aware)	SUPPA2 (primer aware)	25	8	0.32	2191
+Tealeaf direct local path vs SUPPA2 (primer aware)	SUPPA2 (primer aware)	50	18	0.36	2191
+Tealeaf direct local path vs SUPPA2 (primer aware)	SUPPA2 (primer aware)	100	43	0.43	2191
+Tealeaf direct local path vs SUPPA2 (primer aware)	SUPPA2 (primer aware)	200	106	0.53	2191
+Tealeaf direct local path vs SUPPA2 (primer aware)	SUPPA2 (primer aware)	431	431	1.0	2191
