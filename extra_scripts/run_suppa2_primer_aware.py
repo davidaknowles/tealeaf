@@ -24,9 +24,9 @@ from scipy.special import expit, logit
 from tealeaf.sc import glm_cv
 
 try:
-    from extra_scripts.run_suppa2_full_data_comparison import bh, fast_paired_wilcoxon
+    from extra_scripts.run_suppa2_full_data_comparison import TEST_METHODS, bh, event_test_pvalues, method_label
 except ModuleNotFoundError:
-    from run_suppa2_full_data_comparison import bh, fast_paired_wilcoxon
+    from run_suppa2_full_data_comparison import TEST_METHODS, bh, event_test_pvalues, method_label
 
 
 EPS = 1e-6
@@ -56,6 +56,7 @@ def parse_args():
     parser.add_argument("--primer-sampling-model", default="oligodt_tpm", choices=("effective_length", "oligodt_tpm", "all_tpm"))
     parser.add_argument("--event-design", default="theta", choices=("raw", "theta"), help="EC-to-transcript allocation used for event PSI; theta is the production abundance-fitting design and raw is an ablation using primer-specific EC-conditional probabilities.")
     parser.add_argument("--max-events", type=int, help="limit the catalogue for a smoke test")
+    parser.add_argument("--test-method", action="append", choices=TEST_METHODS, help="Paired event statistic; repeat to evaluate several methods. Defaults to Wilcoxon.")
     return parser.parse_args()
 
 
@@ -201,6 +202,7 @@ def fit_primer_aware_psi(included, excluded, offset=None, dispersion=None, *, re
 
 def main():
     args = parse_args()
+    test_methods = args.test_method or ["wilcoxon"]
     catalog = load_catalog(args.event_catalog)
     if args.max_events is not None:
         catalog = catalog.head(args.max_events).copy()
@@ -261,14 +263,17 @@ def main():
         valid = np.isfinite(first) & np.isfinite(second)
         enough = valid.sum(axis=1) >= args.minimum_pairs
         differences = second - first
-        p_values = fast_paired_wilcoxon(differences, valid)
-        p_values[~enough] = np.nan
-        q_values = bh(p_values)
         effects = np.divide(np.nansum(np.where(valid, differences, np.nan), axis=1), valid.sum(axis=1), out=np.full(len(catalog), np.nan), where=valid.sum(axis=1) > 0)
-        for event_index in np.flatnonzero(enough):
-            event = catalog.iloc[event_index]
-            output_rows.append({
-                "method": "SUPPA2 (primer aware)",
+        for test_method in test_methods:
+            p_values = event_test_pvalues(
+                first, second, valid, test_method
+            )
+            p_values[~enough] = np.nan
+            q_values = bh(p_values)
+            for event_index in np.flatnonzero(enough):
+                event = catalog.iloc[event_index]
+                output_rows.append({
+                "method": method_label("SUPPA2 (primer aware)", test_method),
                 "contrast_id": contrast["contrast_id"],
                 "effect": contrast.get("effect", "cell_type"),
                 "stratum": contrast.get("stratum", "all"),
@@ -285,8 +290,8 @@ def main():
                 "gene_id": event.gene_id,
                 "gene_name": event.gene_name,
                 "significant": bool(q_values[event_index] < 0.05),
-                "criterion": "SUPPA2 primer-aware shared-logit paired Wilcoxon, BH q < 0.05",
-            })
+                "criterion": f"SUPPA2 primer-aware shared-logit {test_method}, BH q < 0.05",
+                })
     result = pd.DataFrame(output_rows)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(args.output, sep="\t", index=False, compression="gzip")

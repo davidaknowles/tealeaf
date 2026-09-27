@@ -13,10 +13,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--fold", help="Optionally retain one fold value.")
     args = parser.parse_args()
     table = pd.read_csv(args.input, sep="\t", compression="infer", low_memory=False)
     table["effect"] = table.contrast_id.astype(str).str.startswith("cell_type__").map({True: "cell_type", False: "condition"})
     table = table.loc[table.effect.eq("cell_type")].copy()
+    if args.fold is not None:
+        table = table.loc[table.fold.astype(str).eq(str(args.fold))].copy()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     table.to_csv(args.output, sep="\t", index=False, compression="gzip")
     print(f"wrote {len(table):,} cell-type tests")

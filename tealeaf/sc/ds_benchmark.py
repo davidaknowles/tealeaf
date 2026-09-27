@@ -139,6 +139,19 @@ def simes_pvalue(pvalues) -> float:
     )
 
 
+def cauchy_pvalue(pvalues) -> float:
+    """Combine dependent p-values with equal-weight Cauchy aggregation."""
+    values = np.asarray(pvalues, dtype=float)
+    values = values[np.isfinite(values)]
+    if not len(values):
+        return np.nan
+    values = np.clip(values, 1e-300, 1 - 1e-15)
+    statistic = float(np.mean(np.tan((0.5 - values) * np.pi)))
+    if statistic > 1e15:
+        return float(min(1.0, 1.0 / (np.pi * statistic)))
+    return float(np.clip(0.5 - np.arctan(statistic) / np.pi, 0.0, 1.0))
+
+
 def aggregate_gene_pvalues(table: pd.DataFrame) -> pd.DataFrame:
     """Combine feature p-values into one Simes p-value per method and gene."""
     required = {"method", "gene_id", "p_value"}

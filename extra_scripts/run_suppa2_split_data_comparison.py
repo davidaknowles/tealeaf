@@ -18,7 +18,12 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 
-from run_suppa2_full_data_comparison import bh, fast_paired_wilcoxon
+from run_suppa2_full_data_comparison import (
+    TEST_METHODS,
+    bh,
+    event_test_pvalues,
+    method_label,
+)
 
 
 def parse_args():
@@ -31,6 +36,8 @@ def parse_args():
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--minimum-pairs", type=int, default=8)
     parser.add_argument("--fold", type=int, required=True)
+    parser.add_argument("--method-base", default="SUPPA2 (matched split)")
+    parser.add_argument("--test-method", action="append", choices=TEST_METHODS, help="Paired event statistic; repeat to evaluate several methods. Defaults to Wilcoxon.")
     return parser.parse_args()
 
 
@@ -74,6 +81,7 @@ def event_psi(catalog: pd.DataFrame, matrix: sparse.spmatrix, columns: list[str]
 
 def main():
     args = parse_args()
+    test_methods = args.test_method or ["wilcoxon"]
     matrix = sparse.load_npz(args.matrix).tocsr()
     rows = args.rows.read_text().splitlines()
     columns = args.columns.read_text().splitlines()
@@ -108,16 +116,19 @@ def main():
             out=np.full(len(catalog), np.nan),
             where=counts > 0,
         )
-        p_values = fast_paired_wilcoxon(differences, valid)
-        # Events below the minimum-pair threshold are not tested and must not
-        # contribute to the within-contrast BH denominator.
-        p_values[~enough] = np.nan
-        q_values = bh(p_values)
-        for event_index in np.flatnonzero(enough):
-            event = catalog.iloc[event_index]
-            output_rows.append(
-                {
-                    "method": "SUPPA2 (matched split)",
+        for test_method in test_methods:
+            p_values = event_test_pvalues(
+                first, second, valid, test_method
+            )
+            # Events below the minimum-pair threshold are not tested and must
+            # not contribute to the within-contrast BH denominator.
+            p_values[~enough] = np.nan
+            q_values = bh(p_values)
+            for event_index in np.flatnonzero(enough):
+                event = catalog.iloc[event_index]
+                output_rows.append(
+                    {
+                    "method": method_label(args.method_base, test_method),
                     "contrast_id": contrast["contrast_id"],
                     "effect": "cell_type",
                     "stratum": contrast.get("stratum", "all"),
@@ -134,9 +145,9 @@ def main():
                     "gene_id": event.gene_id,
                     "gene_name": event.gene_name,
                     "significant": bool(q_values[event_index] < 0.05),
-                    "criterion": "SUPPA2 classical paired Wilcoxon, BH q < 0.05",
-                }
-            )
+                    "criterion": f"SUPPA2 {test_method}, BH q < 0.05",
+                    }
+                )
     result = pd.DataFrame(output_rows)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(args.output, sep="\t", index=False, compression="gzip")

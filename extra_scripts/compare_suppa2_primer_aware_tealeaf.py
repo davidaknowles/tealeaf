@@ -32,7 +32,6 @@ def load_tealeaf(path):
 def load_primer(path):
     table = pd.read_csv(path, sep="\t", compression="infer", low_memory=False)
     table = table.loc[table.effect.eq("cell_type") & table.p_value.notna()].copy()
-    table["method"] = "SUPPA2 (primer aware)"
     return table[["method", "gene_id", "level_a", "level_b", "p_value"]]
 
 

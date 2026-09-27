@@ -12,6 +12,7 @@ p-values and reports the BH q-value separately.
 from __future__ import annotations
 
 import argparse
+from functools import lru_cache
 import json
 from pathlib import Path
 import subprocess
@@ -22,9 +23,21 @@ from scipy import sparse
 from scipy.special import ndtr
 from scipy.stats import rankdata
 
+from tealeaf.sc import differential
 
-EVENT_TYPES = ("SE", "A3", "A5", "MX", "RI")
+
+EVENT_TYPES = ("SE", "A3", "A5", "MX", "RI", "AF", "AL")
 EVENT_LABELS = {"A3": "A3SS", "A5": "A5SS", "MX": "MXE"}
+TEST_METHODS = (
+    "wilcoxon",
+    "wilcoxon_exact",
+    "paired_t",
+    "moderated_t",
+    "logit_paired_t",
+    "logit_moderated_t",
+    "asin_paired_t",
+    "asin_moderated_t",
+)
 
 
 def bh(values):
@@ -55,6 +68,7 @@ def fast_paired_wilcoxon(differences, valid, *, tie_method="average"):
     p_values = np.full(n_events, np.nan, dtype=float)
     nonzero = valid & (differences != 0)
     n = nonzero.sum(axis=1)
+    p_values[(n == 0) & valid.any(axis=1)] = 1.0
     selected = np.flatnonzero(n >= 1)
     if not len(selected):
         return p_values
@@ -83,6 +97,104 @@ def fast_paired_wilcoxon(differences, valid, *, tie_method="average"):
     return p_values
 
 
+@lru_cache(maxsize=None)
+def signed_rank_cdf(n):
+    """Return the exact CDF of a sum of ranks 1 through n."""
+    counts = np.array([1], dtype=np.int64)
+    for rank in range(1, int(n) + 1):
+        updated = np.zeros(len(counts) + rank, dtype=np.int64)
+        updated[: len(counts)] += counts
+        updated[rank:] += counts
+        counts = updated
+    return np.cumsum(counts) / float(2 ** int(n))
+
+
+def hybrid_exact_paired_wilcoxon(differences, valid):
+    """Use exact signed-rank tails when nonzero absolute ranks are untied."""
+    differences = np.asarray(differences, dtype=float)
+    valid = np.asarray(valid, dtype=bool) & np.isfinite(differences)
+    nonzero = valid & (differences != 0)
+    n = nonzero.sum(axis=1)
+    values = np.abs(differences).copy()
+    values[~nonzero] = np.inf
+    sorted_values = np.sort(values, axis=1)
+    tied = np.any(
+        np.isfinite(sorted_values[:, 1:])
+        & (sorted_values[:, 1:] == sorted_values[:, :-1]),
+        axis=1,
+    )
+    p_values = fast_paired_wilcoxon(differences, valid)
+    exact = (n > 0) & ~tied
+    if not exact.any():
+        return p_values
+    local = np.flatnonzero(exact)
+    ranks = rankdata(values[local], axis=1, method="ordinal")
+    ranks[~nonzero[local]] = 0
+    w_plus = np.sum(
+        np.where((differences[local] > 0) & nonzero[local], ranks, 0),
+        axis=1,
+    )
+    totals = n[local] * (n[local] + 1) // 2
+    w_minimum = np.minimum(w_plus, totals - w_plus).astype(int)
+    for sample_size in np.unique(n[local]):
+        selected = n[local] == sample_size
+        cdf = signed_rank_cdf(int(sample_size))
+        p_values[local[selected]] = np.minimum(
+            1.0,
+            2.0 * cdf[w_minimum[selected]],
+        )
+    return p_values
+
+
+def event_test_differences(first, second, method):
+    """Transform PSI and return M by N paired differences."""
+    if method not in TEST_METHODS:
+        raise ValueError(f"unknown event test method {method!r}")
+    if method.startswith("logit_"):
+        first_test = np.log(
+            np.clip(first, 1e-3, 1 - 1e-3)
+            / np.clip(1 - first, 1e-3, 1 - 1e-3)
+        )
+        second_test = np.log(
+            np.clip(second, 1e-3, 1 - 1e-3)
+            / np.clip(1 - second, 1e-3, 1 - 1e-3)
+        )
+    elif method.startswith("asin_"):
+        first_test = np.arcsin(np.sqrt(np.clip(first, 0, 1)))
+        second_test = np.arcsin(np.sqrt(np.clip(second, 0, 1)))
+    else:
+        first_test, second_test = first, second
+    return second_test - first_test
+
+
+def event_test_pvalues(first, second, valid, method):
+    """Return p-values for M events measured in N paired subjects."""
+    differences = event_test_differences(first, second, method)
+    if method == "wilcoxon":
+        return fast_paired_wilcoxon(differences, valid)
+    if method == "wilcoxon_exact":
+        return hybrid_exact_paired_wilcoxon(differences, valid)
+    return differential.vectorized_paired_t_pvalues(
+        differences,
+        valid,
+        moderate=method.endswith("moderated_t"),
+    )
+
+
+def method_label(base, method):
+    labels = {
+        "wilcoxon": "paired Wilcoxon",
+        "wilcoxon_exact": "hybrid-exact paired Wilcoxon",
+        "paired_t": "paired t",
+        "moderated_t": "moderated paired t",
+        "logit_paired_t": "logit paired t",
+        "logit_moderated_t": "logit moderated paired t",
+        "asin_paired_t": "arcsine paired t",
+        "asin_moderated_t": "arcsine moderated paired t",
+    }
+    return base if method == "wilcoxon" else f"{base}; {labels[method]}"
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--matrix", required=True, type=Path)
@@ -95,6 +207,7 @@ def parse_args():
     parser.add_argument("--event-output", required=True, type=Path)
     parser.add_argument("--work-dir", required=True, type=Path)
     parser.add_argument("--minimum-pairs", type=int, default=8)
+    parser.add_argument("--test-method", action="append", choices=TEST_METHODS, help="Paired event statistic; repeat to evaluate several methods. Defaults to Wilcoxon.")
     return parser.parse_args()
 
 
@@ -148,6 +261,7 @@ def load_psi(path):
 
 def main():
     args = parse_args()
+    test_methods = args.test_method or ["wilcoxon"]
     args.work_dir.mkdir(parents=True, exist_ok=True)
     manifest_groups = [json.loads(path.read_text()) for path in args.contrasts]
     contrasts = [record for group in manifest_groups for record in group]
@@ -161,7 +275,7 @@ def main():
     ioe_prefix = args.work_dir / "mouse"
     ioe = args.work_dir / "mouse.ioe"
     if not ioe.exists():
-        subprocess.run(suppa_command(args.suppa_root, "generateEvents", "-i", args.gtf, "-o", ioe_prefix, "-f", "ioe", "-e", "SE", "SS", "MX", "RI", "-m", "ERROR"), check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(suppa_command(args.suppa_root, "generateEvents", "-i", args.gtf, "-o", ioe_prefix, "-f", "ioe", "-e", "SE", "SS", "MX", "RI", "FL", "-m", "ERROR"), check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         parts = [args.work_dir / f"mouse_{event_type}_strict.ioe" for event_type in EVENT_TYPES]
         with ioe.open("w") as handle:
             for index, part in enumerate(parts):
@@ -209,15 +323,19 @@ def main():
             out=np.full(len(events), np.nan, dtype=float),
             where=counts > 0,
         )
-        p_values = np.full(len(events), np.nan)
         selected = np.flatnonzero(enough)
-        if len(selected):
-            p_values = fast_paired_wilcoxon(differences, valid)
-            p_values[~enough] = np.nan
-        q_values = bh(p_values)
-        for index in selected:
-            event = events.iloc[index]
-            result_rows.append({"method": "SUPPA2 (full data)", "contrast_id": contrast["contrast_id"], "effect": "cell_type", "stratum": contrast.get("stratum", "all"), "level_a": level_a, "level_b": level_b, "feature_id": event.feature_id, "event_type": event.event_type, "event_id": event.event_id, "p_value": float(p_values[index]), "q_value": float(q_values[index]), "effect_size": float(effects[index]), "n_subjects": int(valid[index].sum()), "fold": fold_by_contrast[contrast["contrast_id"]], "gene_id": event.gene_id, "gene_name": event.gene_name, "significant": bool(q_values[index] < 0.05), "criterion": "SUPPA2 classical paired Wilcoxon, BH q < 0.05"})
+        for test_method in test_methods:
+            p_values = np.full(len(events), np.nan)
+            if len(selected):
+                p_values = event_test_pvalues(
+                    first, second, valid, test_method
+                )
+                p_values[~enough] = np.nan
+            q_values = bh(p_values)
+            for index in selected:
+                event = events.iloc[index]
+                label = method_label("SUPPA2 (full data)", test_method)
+                result_rows.append({"method": label, "contrast_id": contrast["contrast_id"], "effect": "cell_type", "stratum": contrast.get("stratum", "all"), "level_a": level_a, "level_b": level_b, "feature_id": event.feature_id, "event_type": event.event_type, "event_id": event.event_id, "p_value": float(p_values[index]), "q_value": float(q_values[index]), "effect_size": float(effects[index]), "n_subjects": int(valid[index].sum()), "fold": fold_by_contrast[contrast["contrast_id"]], "gene_id": event.gene_id, "gene_name": event.gene_name, "significant": bool(q_values[index] < 0.05), "criterion": f"SUPPA2 {test_method}, BH q < 0.05"})
     result = pd.DataFrame(result_rows)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(args.output, sep="\t", index=False, compression="gzip")

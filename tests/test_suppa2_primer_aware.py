@@ -7,7 +7,11 @@ from extra_scripts.run_suppa2_primer_aware import (
     fit_primer_aware_psi,
 )
 from tealeaf.sc import sc_utils
-from extra_scripts.run_suppa2_full_data_comparison import fast_paired_wilcoxon
+from extra_scripts.run_suppa2_full_data_comparison import (
+    event_test_pvalues,
+    fast_paired_wilcoxon,
+    hybrid_exact_paired_wilcoxon,
+)
 
 
 def test_primer_aware_event_mapping_and_shared_logit():
@@ -68,4 +72,29 @@ def test_vectorized_wilcoxon_averages_tied_ranks():
     valid = np.isfinite(differences)
     observed = fast_paired_wilcoxon(differences, valid)[0]
     expected = wilcoxon(differences[0, valid[0]], zero_method="wilcox", method="approx").pvalue
+    assert np.isclose(observed, expected)
+
+
+def test_event_paired_t_matches_scipy():
+    from scipy.stats import ttest_rel
+
+    first = np.array([
+        [0.1, 0.2, 0.4, 0.3],
+        [0.2, 0.2, np.nan, 0.2],
+    ])
+    second = np.array([
+        [0.3, 0.5, 0.7, 0.6],
+        [0.2, 0.2, np.nan, 0.2],
+    ])
+    valid = np.isfinite(first) & np.isfinite(second)
+    observed = event_test_pvalues(first, second, valid, "paired_t")
+    assert np.isclose(observed[0], ttest_rel(second[0], first[0]).pvalue)
+    assert observed[1] == 1.0
+
+
+def test_hybrid_exact_wilcoxon_matches_untied_exact_tail():
+    differences = np.array([[1.0, 2.0, 3.0, 4.0, -5.0]])
+    valid = np.ones_like(differences, dtype=bool)
+    observed = hybrid_exact_paired_wilcoxon(differences, valid)[0]
+    expected = wilcoxon(differences[0], method="exact").pvalue
     assert np.isclose(observed, expected)

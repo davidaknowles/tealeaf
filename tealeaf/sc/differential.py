@@ -1933,6 +1933,82 @@ def moderated_t_pvalues(
     return 2 * scipy.stats.t.sf(moderated, residual_df + prior_df)
 
 
+def vectorized_paired_t_pvalues(differences, valid=None, *, moderate=False):
+    """Test M paired scalar effects across up to N subjects.
+
+    Differences is an M by N array whose rows are features and columns are
+    independent paired subjects. Valid has the same shape and marks observed
+    pairs. When moderate is true, residual variances share one empirical-Bayes
+    prior fitted across the eligible features.
+    """
+    differences = np.asarray(differences, dtype=float)
+    if differences.ndim != 2:
+        raise ValueError("differences must be a feature-by-subject matrix")
+    if valid is None:
+        valid = np.isfinite(differences)
+    else:
+        valid = np.asarray(valid, dtype=bool) & np.isfinite(differences)
+    if valid.shape != differences.shape:
+        raise ValueError("valid must have the same shape as differences")
+    n = valid.sum(axis=1).astype(float)
+    values = np.where(valid, differences, 0.0)
+    sums = values.sum(axis=1)
+    sums_of_squares = np.square(values).sum(axis=1)
+    means = np.divide(
+        sums,
+        n,
+        out=np.full(len(differences), np.nan),
+        where=n > 0,
+    )
+    residual_df = n - 1.0
+    variances = np.divide(
+        sums_of_squares - np.divide(
+            np.square(sums),
+            n,
+            out=np.zeros_like(sums),
+            where=n > 0,
+        ),
+        residual_df,
+        out=np.full(len(differences), np.nan),
+        where=residual_df > 0,
+    )
+    variances = np.maximum(variances, 0.0)
+    eligible = (n >= 3) & np.isfinite(means) & np.isfinite(variances)
+    p_values = np.full(len(differences), np.nan)
+    if not eligible.any():
+        return p_values
+    if moderate:
+        prior_eligible = eligible & (variances > 0)
+        if prior_eligible.sum() < 3:
+            return vectorized_paired_t_pvalues(
+                differences, valid, moderate=False
+            )
+        prior_df, prior_variance = fit_variance_prior(
+            variances[prior_eligible],
+            residual_df[prior_eligible],
+        )
+        posterior = (
+            residual_df[eligible] * variances[eligible]
+            + prior_df * prior_variance
+        ) / (residual_df[eligible] + prior_df)
+        statistics = means[eligible] / np.sqrt(posterior / n[eligible])
+        p_values[eligible] = 2.0 * scipy.stats.t.sf(
+            np.abs(statistics),
+            residual_df[eligible] + prior_df,
+        )
+        return p_values
+    positive = eligible & (variances > 0)
+    statistics = means[positive] / np.sqrt(variances[positive] / n[positive])
+    p_values[positive] = 2.0 * scipy.stats.t.sf(
+        np.abs(statistics),
+        residual_df[positive],
+    )
+    constant = eligible & (variances == 0)
+    p_values[constant & (means == 0)] = 1.0
+    p_values[constant & (means != 0)] = 0.0
+    return p_values
+
+
 def _multinomial_glmm_cluster_mode(
     counts,
     fixed_logits,

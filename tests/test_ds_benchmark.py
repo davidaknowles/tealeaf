@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 from tealeaf.sc.ds_benchmark import (
+    cauchy_pvalue,
     aggregate_feature_pvalues,
     aggregate_gene_pvalues,
     aggregate_gene_pair_pvalues,
@@ -83,6 +84,10 @@ def test_normalized_junction_pairwise_table_filters_failures():
 
 def test_simes_pvalue():
     assert simes_pvalue([0.01, 0.04, 0.5]) == 0.03
+
+
+def test_cauchy_pvalue_preserves_identical_inputs():
+    assert np.isclose(cauchy_pvalue([0.02, 0.02, 0.02]), 0.02)
 
 
 def test_aggregate_gene_pvalues_strips_versions():
