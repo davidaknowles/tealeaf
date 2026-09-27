@@ -1,9 +1,11 @@
 import numpy as np
 
 from extra_scripts.run_suppa2_tealeaf_hybrid import (
+    collapse_event_nuisance,
     event_path_index,
     partition_event_tests,
 )
+from tealeaf.sc.ec_glmm import ECGLMMData
 
 
 def test_event_path_index_preserves_non_event_isoforms_as_nuisance():
@@ -40,3 +42,24 @@ def test_partition_event_tests_keeps_context_together_and_balances():
         for shard in shards
     ]
     assert not contexts[0] & contexts[1]
+
+
+def test_collapse_event_nuisance_preserves_fixed_mixture_and_event_paths():
+    mapping = np.array(
+        [[1, 0, 1, 0], [0, 1, 0, 1], [1, 0, 0, 1]], dtype=float
+    )
+    data = ECGLMMData(
+        counts=(np.zeros((2, 3)),),
+        compatibility=(mapping,),
+        design=np.ones((2, 1)),
+        clusters=np.array(["s1", "s2"]),
+    )
+    collapsed, path_index, baseline = collapse_event_nuisance(
+        data, np.array([0, 1, -1, -1]), np.array([0.1, 0.2, 0.3, 0.4])
+    )
+    np.testing.assert_array_equal(path_index, [0, 1, -1])
+    np.testing.assert_allclose(baseline, [0.1, 0.2, 0.7])
+    expected_nuisance = (0.3 * mapping[:, 2] + 0.4 * mapping[:, 3]) / 0.7
+    np.testing.assert_allclose(collapsed.compatibility[0][:, 0], mapping[:, 0])
+    np.testing.assert_allclose(collapsed.compatibility[0][:, 1], mapping[:, 1])
+    np.testing.assert_allclose(collapsed.compatibility[0][:, 2], expected_nuisance)

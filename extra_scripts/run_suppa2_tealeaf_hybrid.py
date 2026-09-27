@@ -20,10 +20,15 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from extra_scripts.run_ec_block_glmm import local_test_design
+from extra_scripts.run_ec_block_glmm import (
+    covered_celltype_pairwise_designs,
+    local_test_design,
+    modeled_gene_umis,
+)
 from extra_scripts.run_ec_glmm import local_gene_data
 from extra_scripts.run_paired_path_test import filtered_inputs, signed_null_p_value
 from tealeaf.sc import ec_block_glmm
+from tealeaf.sc import ec_glmm
 
 
 def canonical(value):
@@ -61,6 +66,37 @@ def supported_gene_transcripts(gene, gene_transcripts, gene_ecs, designs):
     return transcripts[supported]
 
 
+def collapse_event_nuisance(data, path_index, baseline):
+    """Collapse non-event isoforms to one fixed-mixture nuisance component."""
+    path_index = np.asarray(path_index, dtype=int)
+    baseline = np.asarray(baseline, dtype=float)
+    groups = [
+        np.flatnonzero(path_index == 0),
+        np.flatnonzero(path_index == 1),
+        np.flatnonzero(path_index < 0),
+    ]
+    groups = [group for group in groups if len(group)]
+    collapsed_maps = []
+    for mapping in data.compatibility:
+        columns = []
+        for group in groups:
+            weights = baseline[group]
+            if weights.sum() <= 0:
+                weights = np.ones(len(group), dtype=float)
+            weights = weights / weights.sum()
+            columns.append(mapping[:, group] @ weights)
+        collapsed_maps.append(np.column_stack(columns))
+    collapsed = ec_glmm.ECGLMMData(
+        data.counts,
+        tuple(collapsed_maps),
+        data.design,
+        data.clusters,
+    )
+    collapsed_baseline = np.asarray([baseline[group].sum() for group in groups])
+    collapsed_path_index = np.asarray([0, 1] + ([-1] if len(groups) == 3 else []))
+    return collapsed, collapsed_path_index, collapsed_baseline
+
+
 def partition_event_tests(tests, shard_count):
     """Shard by gene/context so one event family stays together."""
     groups = {}
@@ -93,6 +129,7 @@ def parse_args():
     parser.add_argument("--path-prior-center", choices=("uniform", "baseline"), default="uniform")
     parser.add_argument("--path-pseudocount-scaling", choices=("per_path", "total"), default="total")
     parser.add_argument("--max-tests", type=int, help="limit tests for a smoke run")
+    parser.add_argument("--scan-all-events", action="store_true", help="screen the full supported gene transcript set rather than the block candidate gene set")
     return parser.parse_args()
 
 
@@ -122,30 +159,71 @@ def main():
 
     # A gene/subject-fold/contrast context is shared by all standard events for
     # that gene. Collapse the many annotation blocks to avoid duplicate tests.
-    contexts = {}
-    for candidate in cached["candidates"]:
-        _, _, _, gene, _, _, _, rows, _, levels = candidate
-        key = (int(gene), tuple(np.asarray(rows, dtype=int)), tuple(levels))
-        contexts.setdefault(key, candidate)
     tests = []
     represented_event_ids = set()
-    supported_transcript_cache = {}
-    for (gene, rows, levels), candidate in contexts.items():
-        # Fit the whole supported gene transcript set so a SUPPA2 event is not
-        # restricted to whichever local block happened to qualify as a screen.
-        if gene not in supported_transcript_cache:
-            supported_transcript_cache[gene] = supported_gene_transcripts(
+    contexts = {}
+    if args.scan_all_events:
+        gene_lookup = {canonical(gene): index for index, gene in enumerate(genes)}
+        screening_counts = tuple(matrix.tocsc() for matrix in counts)
+        candidate_genes = sorted({
+            gene_lookup[gene_id]
+            for gene_id in events_by_gene
+            if gene_id in gene_lookup
+        })
+        for gene in candidate_genes:
+            ecs = np.asarray(gene_ecs[gene], dtype=int)
+            if not len(ecs) or len(ecs) > int(settings.get("max_ecs", 128)):
+                continue
+            transcripts = supported_gene_transcripts(
                 gene, gene_transcripts, gene_ecs, designs
             )
-        transcripts = supported_transcript_cache[gene]
-        gene_id = canonical(genes[gene])
-        for event in events_by_gene.get(gene_id, ()):
-            path_index = event_path_index(
-                transcripts, features, event.included, event.excluded
+            if len(transcripts) < 2:
+                continue
+            gene_umis = modeled_gene_umis(
+                screening_counts, designs, ecs, transcripts
             )
-            if path_index is not None:
-                tests.append((candidate, event, path_index))
-                represented_event_ids.add(str(event.event_id))
+            coverage_specs = covered_celltype_pairwise_designs(
+                metadata,
+                gene_umis,
+                min_gene_umis=float(settings.get("min_gene_umis", 10.0)),
+                min_samples=int(settings.get("min_gene_samples", 0)),
+                min_celltype_mice=int(settings.get("min_celltype_mice", 3)),
+            )
+            gene_id = str(genes[gene])
+            for coverage, _ in coverage_specs:
+                rows, _, _, _, _, levels = coverage
+                candidate = (
+                    "", "", gene_id, gene, transcripts, None, [], rows, None, tuple(levels)
+                )
+                context_key = (gene, tuple(np.asarray(rows, dtype=int)), tuple(levels))
+                contexts.setdefault(context_key, candidate)
+                for event in events_by_gene.get(canonical(gene_id), ()):
+                    path_index = event_path_index(
+                        transcripts, features, event.included, event.excluded
+                    )
+                    if path_index is not None:
+                        tests.append((candidate, event, path_index))
+                        represented_event_ids.add(str(event.event_id))
+    else:
+        for candidate in cached["candidates"]:
+            _, _, _, gene, _, _, _, rows, _, levels = candidate
+            key = (int(gene), tuple(np.asarray(rows, dtype=int)), tuple(levels))
+            contexts.setdefault(key, candidate)
+        supported_transcript_cache = {}
+        for (gene, rows, levels), candidate in contexts.items():
+            if gene not in supported_transcript_cache:
+                supported_transcript_cache[gene] = supported_gene_transcripts(
+                    gene, gene_transcripts, gene_ecs, designs
+                )
+            transcripts = candidate[4]
+            gene_id = canonical(genes[gene])
+            for event in events_by_gene.get(gene_id, ()):
+                path_index = event_path_index(
+                    transcripts, features, event.included, event.excluded
+                )
+                if path_index is not None:
+                    tests.append((candidate, event, path_index))
+                    represented_event_ids.add(str(event.event_id))
     skipped_events = len(catalog) - len(represented_event_ids)
     tests = partition_event_tests(tests, args.shard_count)[args.shard_index]
     if args.max_tests is not None:
@@ -165,7 +243,7 @@ def main():
             )
             local_counts = tuple(matrix[rows] for matrix in counts)
             clusters = local_metadata.mouse.astype(str).to_numpy()
-            transcripts = supported_transcript_cache[gene]
+            transcripts = candidate[4]
             base, _, totals = local_gene_data(
                 local_counts,
                 designs,
@@ -178,12 +256,15 @@ def main():
             cache_key = (gene, tuple(rows))
             if cache_key not in baseline_cache:
                 baseline_cache[cache_key] = ec_block_glmm.pooled_isoform_weights(base)
+            fit_base, fit_path_index, fit_baseline = collapse_event_nuisance(
+                base, path_index, baseline_cache[cache_key]
+            )
             result = ec_block_glmm.paired_path_test(
-                base,
-                path_index,
+                fit_base,
+                fit_path_index,
                 labels,
                 clusters,
-                baseline=baseline_cache[cache_key],
+                baseline=fit_baseline,
                 max_iter=args.max_iter,
                 path_pseudocount=args.path_pseudocount,
                 path_prior_center=args.path_prior_center,
@@ -191,11 +272,14 @@ def main():
             )
             values = result["differences"]
             covariances = result["difference_covariances"]
+            mean_event_logratio = float(values.mean(axis=0)[0]) if len(values) else np.nan
             observed.append({
                 "test_id": event_test_id,
                 "block_id": event_id,
                 "gene_id": gene_id,
                 "contrast": "cell_type_pairwise",
+                "contrast_id": f"cell_type__{tested_levels[0]}__{tested_levels[1]}",
+                "effect": "cell_type",
                 "level_a": tested_levels[0],
                 "level_b": tested_levels[1],
                 "method": "Tealeaf EC; SUPPA2 event definitions",
@@ -205,7 +289,8 @@ def main():
                 "retain_uncertainty": False,
                 "uncertainty_scale": 0.0,
                 "n_paths": 2,
-                "n_isoforms": base.n_isoforms,
+                "n_isoforms": fit_base.n_isoforms,
+                "n_source_isoforms": base.n_isoforms,
                 "n_ecs": len(gene_ecs[gene]),
                 "n_samples": result.get("n_observations", len(local_metadata)),
                 "n_subjects": result["n_subjects"],
@@ -217,6 +302,7 @@ def main():
                 "restricted_objective": result.get("restricted_objective", np.nan),
                 "converged": result["converged"],
                 "mean_difference_norm": float(np.linalg.norm(values.mean(axis=0))) if len(values) else 0.0,
+                "effect_size": mean_event_logratio,
                 "event_type": event.event_type,
                 "event_id": event_id,
                 "feature_id": event.feature_id,

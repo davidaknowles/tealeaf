@@ -1,0 +1,3 @@
+method	n_evaluable	top_rank	pooled_n	pooled_agree	pooled_rate	strict_n	strict_agree	strict_rate
+SUPPA2 (full data)	81	81	81	47	0.5802469135802469	49	25	0.5102040816326531
+Tealeaf EC; SUPPA2 event definitions	81	81	81	43	0.5308641975308642	49	17	0.3469387755102041
