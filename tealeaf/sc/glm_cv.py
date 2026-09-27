@@ -162,6 +162,7 @@ def prepare_paired_primer_glm_data(
     length_caches=None,
     transcript_to_gene=None,
     gene_loss_weight=0.0,
+    retain_event_probabilities=False,
 ):
     """Prepare paired primer observations with one latent row per cell.
 
@@ -246,8 +247,8 @@ def prepare_paired_primer_glm_data(
 
     transcript_lengths = sc_utils.get_transcript_lengths(Path(salmon_ref))
     if ec_design == "binary":
-        base = sc_utils._column_normalize(membership.astype(float))
-        phi_designs = [base, base]
+        raw_base = membership.astype(float).tocsr()
+        phi_designs = [raw_base, raw_base]
     elif ec_design == "weighted":
         probability_file = Path(probability_file or (
             alevin_dir / "gene_eqclass_probs.tsv.gz"
@@ -263,6 +264,7 @@ def prepare_paired_primer_glm_data(
             group_by_row,
             2,
             cache_files=weight_caches,
+            normalize_columns=False,
         )
     else:
         if weight_caches is None:
@@ -324,6 +326,10 @@ def prepare_paired_primer_glm_data(
             np.ones_like(sampling_factors[1]),
         ]
     design_weights = [1.0 / factor for factor in sampling_factors]
+    event_probability_blocks = [
+        phi_design[ec_keep, :][:, feature_keep].tocsr()
+        for phi_design in phi_designs
+    ] if retain_event_probabilities else None
     designs = []
     for phi_design, primer_weights in zip(phi_designs, design_weights):
         filtered = phi_design[ec_keep, :][:, feature_keep]
@@ -413,6 +419,7 @@ def prepare_paired_primer_glm_data(
             "source_rows": np.column_stack((poly_rows, hex_rows)),
             "annotated_pair_count": len(pairs),
             "retained_pair_count": len(complete),
+            **({"event_probability_blocks": event_probability_blocks} if retain_event_probabilities else {}),
             **gene_metadata,
         },
         cv_raw_counts=raw_paired_counts,

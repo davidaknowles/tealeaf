@@ -1,11 +1,13 @@
 import numpy as np
 from scipy import sparse
+from scipy.stats import wilcoxon
 
 from extra_scripts.run_suppa2_primer_aware import (
     event_matrices,
     fit_primer_aware_psi,
 )
 from tealeaf.sc import sc_utils
+from extra_scripts.run_suppa2_full_data_comparison import fast_paired_wilcoxon
 
 
 def test_primer_aware_event_mapping_and_shared_logit():
@@ -59,3 +61,11 @@ def test_grouped_probability_raw_mode_preserves_ec_rows(tmp_path):
     )
     assert np.allclose(raw[0].toarray(), [[0.25, 0.75], [1.0, 0.0]])
     assert np.allclose(raw[1].toarray(), [[0.5, 0.5], [1.0, 0.0]])
+
+
+def test_vectorized_wilcoxon_averages_tied_ranks():
+    differences = np.array([[1.0, 1.0, -2.0, 0.0, np.nan]])
+    valid = np.isfinite(differences)
+    observed = fast_paired_wilcoxon(differences, valid)[0]
+    expected = wilcoxon(differences[0, valid[0]], zero_method="wilcox", method="approx").pvalue
+    assert np.isclose(observed, expected)

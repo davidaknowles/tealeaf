@@ -1,0 +1,3 @@
+comparison	method	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	shared_gene_pairs
+Tealeaf direct local path vs SUPPA2 (primer aware)	Tealeaf direct local path	450	156	150	100	0.8626923076923076	0.7361331496287224	2273
+Tealeaf direct local path vs SUPPA2 (primer aware)	SUPPA2 (primer aware)	450	0	0	0		0.24181881565988353	2273

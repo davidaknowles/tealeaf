@@ -109,6 +109,9 @@ def main():
             where=counts > 0,
         )
         p_values = fast_paired_wilcoxon(differences, valid)
+        # Events below the minimum-pair threshold are not tested and must not
+        # contribute to the within-contrast BH denominator.
+        p_values[~enough] = np.nan
         q_values = bh(p_values)
         for event_index in np.flatnonzero(enough):
             event = catalog.iloc[event_index]

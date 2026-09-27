@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 from scipy.special import ndtr
+from scipy.stats import rankdata
 
 
 EVENT_TYPES = ("SE", "A3", "A5", "MX", "RI")
@@ -41,12 +42,14 @@ def bh(values):
     return out
 
 
-def fast_paired_wilcoxon(differences, valid):
+def fast_paired_wilcoxon(differences, valid, *, tie_method="average"):
     """Vectorized normal-approximation paired Wilcoxon p-values.
 
     SUPPA2's classical test uses scipy's paired Wilcoxon test event by event.
-    The rank statistic has a simple vectorized approximation, which avoids
-    millions of Python-level scipy calls while retaining the same test family.
+    The rank statistic has a simple vectorized normal approximation, which
+    avoids millions of Python-level scipy calls while retaining the same test
+    family. Tied absolute differences use averaged ranks, matching scipy's
+    Wilcoxon convention.
     """
     n_events = differences.shape[0]
     p_values = np.full(n_events, np.nan, dtype=float)
@@ -59,9 +62,17 @@ def fast_paired_wilcoxon(differences, valid):
     mask = nonzero[selected]
     values[~mask] = np.inf
     order = np.argsort(values, axis=1, kind="stable")
-    ranks = np.empty_like(values, dtype=float)
-    positions = np.broadcast_to(np.arange(1, values.shape[1] + 1), values.shape)
-    np.put_along_axis(ranks, order, positions, axis=1)
+    if tie_method == "average":
+        # ``rankdata`` matches scipy.stats.wilcoxon for tied absolute
+        # differences. The old implementation assigned stable ordinal ranks,
+        # which made the result depend on sample order.
+        ranks = rankdata(values, axis=1, method="average")
+    elif tie_method == "ordinal":
+        ranks = np.empty_like(values, dtype=float)
+        positions = np.broadcast_to(np.arange(1, values.shape[1] + 1), values.shape)
+        np.put_along_axis(ranks, order, positions, axis=1)
+    else:
+        raise ValueError("tie_method must be 'average' or 'ordinal'")
     ranks[~mask] = 0.0
     w_plus = np.sum(np.where((differences[selected] > 0) & mask, ranks, 0.0), axis=1)
     n_selected = n[selected]
@@ -202,6 +213,7 @@ def main():
         selected = np.flatnonzero(enough)
         if len(selected):
             p_values = fast_paired_wilcoxon(differences, valid)
+            p_values[~enough] = np.nan
         q_values = bh(p_values)
         for index in selected:
             event = events.iloc[index]

@@ -54,6 +54,7 @@ def parse_args():
     parser.add_argument("--min-eq", type=int, default=5)
     parser.add_argument("--ec-design", default="weighted", choices=("binary", "weighted", "positional"))
     parser.add_argument("--primer-sampling-model", default="oligodt_tpm", choices=("effective_length", "oligodt_tpm", "all_tpm"))
+    parser.add_argument("--event-design", default="theta", choices=("raw", "theta"), help="EC-to-transcript allocation used for event PSI; theta is the production abundance-fitting design and raw is an ablation using primer-specific EC-conditional probabilities.")
     parser.add_argument("--max-events", type=int, help="limit the catalogue for a smoke test")
     return parser.parse_args()
 
@@ -103,6 +104,7 @@ def prepare_event_counts(args, catalog):
         min_half_umis=args.min_half_umis,
         primer_sampling_model=args.primer_sampling_model,
         probability_file=probability_file,
+        retain_event_probabilities=True,
     )
     pairs = pd.read_csv(args.primer_pairs, sep="\t", dtype=str)
     source_rows = np.asarray(prepared.metadata["source_rows"], dtype=int)
@@ -126,14 +128,19 @@ def prepare_event_counts(args, catalog):
     sample_index = {name: index for index, name in enumerate(sample_levels)}
     sample_ids = np.asarray([sample_index[name] for name in sample_names], dtype=int)
     selector = sparse.coo_matrix((np.ones(len(sample_ids)), (sample_ids, np.arange(len(sample_ids)))), shape=(len(sample_levels), len(sample_ids))).tocsr()
-    # ``prepare_paired_primer_glm_data`` has already applied the production
-    # EC filtering and built one compatibility block per primer. Row
-    # normalization turns those fixed design weights into the conditional EC
-    # allocations needed for expected event counts without rereading the
-    # large probability sidecar.
+    # Event PSI needs EC-conditional transcript probabilities. The legacy
+    # route row-normalized the theta compatibility blocks, which are intended
+    # for abundance fitting and include transcript exposure corrections. Use
+    # the raw primer-specific probability blocks for event allocation.
     phi = []
-    for start in (0, n_ec):
-        design = (2.0 * prepared.compatibility[start : start + n_ec]).tocsr()
+    if args.event_design == "raw":
+        event_blocks = prepared.metadata.get("event_probability_blocks")
+        if event_blocks is None:
+            raise ValueError("raw event probabilities were not retained")
+    else:
+        event_blocks = [prepared.compatibility[start : start + n_ec] for start in (0, n_ec)]
+    for design in event_blocks:
+        design = design.tocsr()
         row_totals = np.asarray(design.sum(axis=1)).ravel()
         inverse = np.divide(1.0, row_totals, out=np.zeros_like(row_totals), where=row_totals > 0)
         phi.append((sparse.diags(inverse) @ design).tocsr())
@@ -255,6 +262,7 @@ def main():
         enough = valid.sum(axis=1) >= args.minimum_pairs
         differences = second - first
         p_values = fast_paired_wilcoxon(differences, valid)
+        p_values[~enough] = np.nan
         q_values = bh(p_values)
         effects = np.divide(np.nansum(np.where(valid, differences, np.nan), axis=1), valid.sum(axis=1), out=np.full(len(catalog), np.nan), where=valid.sum(axis=1) > 0)
         for event_index in np.flatnonzero(enough):
