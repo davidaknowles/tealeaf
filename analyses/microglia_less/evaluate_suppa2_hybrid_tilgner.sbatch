@@ -10,15 +10,25 @@
 set -euo pipefail
 source /gpfs/commons/home/daknowles/projects/tealeaf/analyses/microglia_less/config.env
 module load "${PYTHON_MODULE}"
-source "${HOME}/venv/cpa_blackwell/bin/activate"
+source "${HOME}/venv/jax/bin/activate"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 
-HYBRID_TAG=${HYBRID_TAG:-tealeaf_hybrid_full}
-OUTPUT_TAG=${OUTPUT_TAG:-tilgner_rank}
-python "${REPO_ROOT}/extra_scripts/compare_suppa2_hybrid_tilgner_sign.py" \
-  --native-tests "${REPO_ROOT}/analyses/comparator_suppa_rmats/suppa2/full_data_tests.tsv.gz" \
-  --hybrid-tests "${REPO_ROOT}/.cache/suppa2_statistics/${HYBRID_TAG}/merged/paired_path.tsv" \
-  --tilgner-audit "${REPO_ROOT}/analyses/comparator_suppa_rmats/suppa2/full_data_tilgner.tsv.gz" \
-  --output-dir "${REPO_ROOT}/analyses/comparator_suppa_rmats/suppa2_tealeaf_hybrid/${OUTPUT_TAG}" \
-  --top-rank 200 \
+BASE="${REPO_ROOT}/analyses/comparator_suppa_rmats/suppa2_tealeaf_hybrid/full_data"
+python "${REPO_ROOT}/extra_scripts/assess_event_tilgner_replication.py" \
+  --tests "${BASE}/full_data_tests.tsv.gz" \
+  --events "${BASE}/event_catalog.tsv.gz" \
+  --tilgner-matrix "${REPO_ROOT}/.cache/tilgner_scisorseq/LR_annotTranscripts_byCT" \
+  --gtf "${GENCODE_GTF}" \
+  --output "${BASE}/full_data_tilgner.tsv.gz" \
+  --summary "${BASE}/full_data_tilgner_summary.tsv" \
+  --top-per-contrast 0 \
   --minimum-depth 20
+
+python "${REPO_ROOT}/extra_scripts/plot_tilgner_method_replication.py" \
+  --summary "${REPO_ROOT}/analyses/tilgner_junction_replication/method_comparison_summary.tsv" \
+  --output "${REPO_ROOT}/.cache/suppa2_statistics/hybrid-method-comparison.pdf" \
+  --rank-input "${REPO_ROOT}/analyses/tilgner_junction_replication/sign_agreement_by_rank.tsv" \
+  --hybrid-replication "${BASE}/full_data_tilgner.tsv.gz" \
+  --rank-table "${REPO_ROOT}/analyses/tilgner_junction_replication/sign_agreement_by_rank.tsv" \
+  --rank-output "${REPO_ROOT}/analyses/tilgner_junction_replication/sign_agreement_by_rank.pdf" \
+  --max-rank 200

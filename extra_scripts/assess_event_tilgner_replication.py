@@ -23,12 +23,12 @@ def parse_args():
     parser.add_argument("--gtf", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--summary", required=True, type=Path)
-    parser.add_argument("--top-per-contrast", type=int, default=500)
+    parser.add_argument("--top-per-contrast", type=int, default=500, help="Maximum tests per method and contrast before mapping; 0 maps every test.")
     parser.add_argument("--minimum-depth", type=float, default=20.0)
     return parser.parse_args()
 
 
-def summarize(table, minimum_depth):
+def summarize(table, minimum_depth, scope="top-ranked calls per contrast"):
     rows = []
     for method, group in table.groupby("method"):
         eligible = group[group.mapping_complete & (group.minimum_pooled_depth >= minimum_depth) & group.pooled_replicated.notna()]
@@ -37,7 +37,7 @@ def summarize(table, minimum_depth):
             values = subset[column].astype(bool)
             successes = int(values.sum())
             low, high = wilson_interval(successes, len(values))
-            rows.append({"method": method, "endpoint": endpoint, "scope": "top-ranked calls per contrast", "minimum_depth": minimum_depth, "n_tests": len(values), "n_replicated": successes, "replication_rate": successes / len(values) if len(values) else np.nan, "ci_low": low, "ci_high": high, "conditional_null_rate": 0.5})
+            rows.append({"method": method, "endpoint": endpoint, "scope": scope, "minimum_depth": minimum_depth, "n_tests": len(values), "n_replicated": successes, "replication_rate": successes / len(values) if len(values) else np.nan, "ci_low": low, "ci_high": high, "conditional_null_rate": 0.5})
     return pd.DataFrame(rows)
 
 
@@ -64,9 +64,18 @@ def main():
     groups = {(cell_type, int(rep)): values["column"].to_numpy(dtype=int) for (cell_type, rep), values in columns.dropna(subset=["tealeaf_cell_type", "replicate"]).groupby(["tealeaf_cell_type", "replicate"])}
     tests = pd.concat((pd.read_csv(path, sep="\t", compression="infer", low_memory=False) for path in args.tests), ignore_index=True)
     tests = tests[tests.effect.eq("cell_type") & tests.p_value.notna()].copy()
+    if "converged" in tests:
+        tests = tests[tests.converged.isna() | tests.converged.astype(str).str.lower().eq("true")].copy()
     # Keep a stable, method-specific significance ranking without imposing a method-specific FDR cutoff.
     tests["p_value"] = pd.to_numeric(tests.p_value, errors="coerce")
-    tests = tests.sort_values(["method", "contrast_id", "p_value", "feature_id"], kind="stable").groupby(["method", "contrast_id"], sort=False).head(args.top_per_contrast)
+    tests = tests[tests.p_value.notna()].copy()
+    tests["raw_p_value"] = pd.to_numeric(tests.get("raw_p_value", tests.p_value), errors="coerce").fillna(tests.p_value)
+    tests["statistic"] = pd.to_numeric(tests.get("statistic", -np.log10(tests.p_value.clip(lower=1e-300))), errors="coerce")
+    tests = tests.sort_values(["method", "contrast_id", "p_value", "raw_p_value", "statistic", "feature_id"], ascending=[True, True, True, True, False, True], kind="stable")
+    if args.top_per_contrast < 0:
+        raise ValueError("--top-per-contrast must be nonnegative")
+    if args.top_per_contrast:
+        tests = tests.groupby(["method", "contrast_id"], sort=False).head(args.top_per_contrast)
     rows = []
     for record in tests.itertuples(index=False):
         feature_id = str(record.feature_id)
@@ -93,14 +102,17 @@ def main():
             bi = event_counts[0][event_index, groups[(levels[1], replicate)]].sum()
             be = event_counts[1][event_index, groups[(levels[1], replicate)]].sum()
             replicate_signs.append((bi / (bi + be) - ai / (ai + ae)) if (ai + ae) and (bi + be) else np.nan)
-        rows.append({"method": record.method, "contrast_id": record.contrast_id, "feature_id": feature_id, "event_type": record.event_type, "gene_id": getattr(record, "gene_id", ""), "level_a": levels[0], "level_b": levels[1], "p_value": record.p_value, "raw_p_value": record.p_value, "statistic": -np.log10(max(record.p_value, 1e-300)), "mapping_complete": True, "minimum_pooled_depth": float(min(a_inc + a_exc, b_inc + b_exc)), "minimum_replicate_depth": float(min(event_counts[0][event_index, groups[(level, replicate)]].sum() + event_counts[1][event_index, groups[(level, replicate)]].sum() for level in levels for replicate in (1, 2))), "pooled_replicated": bool(short_effect * delta > 0) if np.isfinite(delta) and np.isfinite(short_effect) and short_effect != 0 else np.nan, "replicate_1_dot_product": short_effect * replicate_signs[0], "replicate_2_dot_product": short_effect * replicate_signs[1], "both_replicates_replicated": bool(short_effect * replicate_signs[0] > 0 and short_effect * replicate_signs[1] > 0) if np.isfinite(replicate_signs).all() and np.isfinite(short_effect) and short_effect != 0 else np.nan})
+        rows.append({"method": record.method, "contrast_id": record.contrast_id, "feature_id": feature_id, "event_type": record.event_type, "gene_id": getattr(record, "gene_id", ""), "level_a": levels[0], "level_b": levels[1], "p_value": record.p_value, "raw_p_value": record.raw_p_value, "statistic": record.statistic, "short_read_effect": short_effect, "long_read_effect": float(delta), "mapping_complete": True, "minimum_pooled_depth": float(min(a_inc + a_exc, b_inc + b_exc)), "minimum_replicate_depth": float(min(event_counts[0][event_index, groups[(level, replicate)]].sum() + event_counts[1][event_index, groups[(level, replicate)]].sum() for level in levels for replicate in (1, 2))), "pooled_replicated": bool(short_effect * delta > 0) if np.isfinite(delta) and np.isfinite(short_effect) and short_effect != 0 else np.nan, "replicate_1_dot_product": short_effect * replicate_signs[0], "replicate_2_dot_product": short_effect * replicate_signs[1], "both_replicates_replicated": bool(short_effect * replicate_signs[0] > 0 and short_effect * replicate_signs[1] > 0) if np.isfinite(replicate_signs).all() and np.isfinite(short_effect) and short_effect != 0 else np.nan})
     result = pd.DataFrame(rows)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(args.output, sep="\t", index=False, compression="gzip")
-    summary = summarize(result, args.minimum_depth)
+    summary = summarize(result, args.minimum_depth, scope="all converged tests" if args.top_per_contrast == 0 else "top-ranked calls per contrast")
     args.summary.parent.mkdir(parents=True, exist_ok=True)
     summary.to_csv(args.summary, sep="\t", index=False)
+    manifest = {"input_tests": len(tests), "mapped_tests": len(result), "top_per_contrast": args.top_per_contrast, "minimum_pooled_depth": args.minimum_depth, "minimum_replicate_depth": args.minimum_depth / 2, "tests": [str(path) for path in args.tests], "events": str(args.events), "selection": "all converged tests" if args.top_per_contrast == 0 else "method-specific significance ranking per contrast", "source_mapping": "at least one source annotated transcript in each event class"}
+    args.output.with_name(args.output.name.removesuffix(".tsv.gz") + "_manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(summary.to_string(index=False))
+    print(f"Mapped {len(result):,} of {len(tests):,} tested associations before depth filtering")
 
 
 if __name__ == "__main__":

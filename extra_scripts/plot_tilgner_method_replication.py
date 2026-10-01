@@ -12,8 +12,8 @@ import pandas as pd
 from plotnine import aes, coord_cartesian, element_blank, element_text, facet_wrap, geom_col, geom_errorbar, geom_hline, geom_line, geom_point, geom_text, ggplot, labs, scale_color_manual, scale_fill_manual, scale_x_continuous, scale_x_discrete, theme, theme_bw
 
 
-METHODS = ["Tealeaf pairwise", "Tealeaf omnibus", "LeafCutter", "MAJIQ Heterogen", "scQuint", "Paired junction CLR", "Isoform usage ratio", "rMATS paired JCEC", "SUPPA2 (full data)", "SUPPA2 (primer aware)", "Tealeaf/SUPPA2 hybrid (shared audit)"]
-COLORS = {"Tealeaf": "#0B6666", "Tealeaf pairwise": "#0B6666", "Tealeaf omnibus": "#1B9E77", "Isoform usage ratio": "#E7298A", "LeafCutter": "#8C510A", "MAJIQ Heterogen": "#D8B365", "scQuint": "#5AB4AC", "Paired junction CLR": "#762A83", "rMATS paired JCEC": "#4D4D4D", "SUPPA2 (full data)": "#CC79A7", "SUPPA2 (primer aware)": "#7B3294", "Tealeaf/SUPPA2 hybrid (shared audit)": "#D55E00"}
+METHODS = ["Tealeaf pairwise", "Tealeaf omnibus", "LeafCutter", "MAJIQ Heterogen", "scQuint", "Paired junction CLR", "Isoform usage ratio", "rMATS paired JCEC", "SUPPA2 (full data)", "SUPPA2 (primer aware)", "Tealeaf/SUPPA2 hybrid"]
+COLORS = {"Tealeaf": "#0B6666", "Tealeaf pairwise": "#0B6666", "Tealeaf omnibus": "#1B9E77", "Isoform usage ratio": "#E7298A", "LeafCutter": "#8C510A", "MAJIQ Heterogen": "#D8B365", "scQuint": "#5AB4AC", "Paired junction CLR": "#762A83", "rMATS paired JCEC": "#4D4D4D", "SUPPA2 (full data)": "#CC79A7", "SUPPA2 (primer aware)": "#7B3294", "Tealeaf/SUPPA2 hybrid": "#D55E00"}
 
 
 def _rank_table(table, max_rank, method_column="method"):
@@ -115,7 +115,9 @@ def rank_agreement_table(path, tealeaf_replication_path, tealeaf_significant_pat
     for event_path in event_replication_paths or []:
         event = pd.read_csv(event_path, sep="\t", low_memory=False)
         source_method = str(event.get("method", pd.Series([""])).iloc[0]) if not event.empty else ""
-        if source_method.lower().startswith("rmat"):
+        if source_method == "Tealeaf EC; SUPPA2 event definitions":
+            event["method"] = "Tealeaf/SUPPA2 hybrid"
+        elif source_method.lower().startswith("rmat"):
             event["method"] = "rMATS paired JCEC"
         elif "primer" in source_method.lower():
             event["method"] = "SUPPA2 (primer aware)"
@@ -134,7 +136,7 @@ def rank_agreement_table(path, tealeaf_replication_path, tealeaf_significant_pat
         table = pd.concat([table, tealeaf], ignore_index=True, sort=False)
     has_long_read_direction = table["pooled_replicated"].notna()
     table["pooled_replicated"] = table["pooled_replicated"].astype(str).str.lower().eq("true")
-    table = table[table["method"].isin(["LeafCutter", "MAJIQ Heterogen", "scQuint", "Paired junction CLR", "Isoform usage ratio", "Tealeaf pairwise", "Tealeaf omnibus", "rMATS paired JCEC", "SUPPA2 (full data)", "SUPPA2 (primer aware)"]) & table["mapping_complete"].astype(str).str.lower().eq("true") & (table["minimum_pooled_depth"] >= 20) & has_long_read_direction & table["p_value"].notna()].copy()
+    table = table[table["method"].isin(METHODS) & table["mapping_complete"].astype(str).str.lower().eq("true") & (table["minimum_pooled_depth"] >= 20) & has_long_read_direction & table["p_value"].notna()].copy()
     tables = [_rank_table(table, max_rank)]
     if omnibus_path is not None:
         omnibus = pd.read_csv(omnibus_path, sep="\t", low_memory=False)
@@ -164,7 +166,7 @@ def main():
     parser.add_argument("--isoform-ratio", type=Path)
     parser.add_argument("--event-replication", action="append", type=Path, help="Full-data event replication table to include in the rank audit; repeat for SUPPA2 and rMATS.")
     parser.add_argument("--rank-input", type=Path, help="Existing rank table to plot without recomputing the discovery audit.")
-    parser.add_argument("--hybrid-event-rank", type=Path, help="Exploratory Tealeaf/SUPPA2 hybrid rank table, restricted to events in the native SUPPA2 top-rank audit.")
+    parser.add_argument("--hybrid-replication", type=Path, help="Long-read mapping of all converged Tealeaf/SUPPA2 hybrid tests, ranked by the hybrid's own significance.")
     parser.add_argument("--rank-table", type=Path)
     parser.add_argument("--rank-output", type=Path)
     parser.add_argument("--max-rank", type=int, default=200)
@@ -196,13 +198,14 @@ def main():
             if args.tealeaf_replication is None:
                 parser.error("--rank-output requires --tealeaf-replication unless --rank-input is provided")
             ranked = rank_agreement_table(args.replication, args.tealeaf_replication, args.tealeaf_significant, omnibus_path=args.tealeaf_omnibus, isoform_ratio_path=args.isoform_ratio, event_replication_paths=args.event_replication, max_rank=args.max_rank)
-        if args.hybrid_event_rank is not None:
-            hybrid = pd.read_csv(args.hybrid_event_rank, sep="\t", low_memory=False)
+        if args.hybrid_replication is not None:
+            hybrid = pd.read_csv(args.hybrid_replication, sep="\t", low_memory=False)
             hybrid = hybrid[hybrid["method"].eq("Tealeaf EC; SUPPA2 event definitions")].copy()
-            hybrid = hybrid.rename(columns={"pooled_cumulative_agreement": "cumulative_agreement"})
-            hybrid["method"] = "Tealeaf/SUPPA2 hybrid (shared audit)"
-            hybrid["rank"] = pd.to_numeric(hybrid["rank"], errors="coerce")
-            hybrid["cumulative_agreement"] = pd.to_numeric(hybrid["cumulative_agreement"], errors="coerce")
+            hybrid = hybrid[hybrid.mapping_complete.astype(str).str.lower().eq("true") & hybrid.minimum_pooled_depth.ge(20) & hybrid.pooled_replicated.notna()].copy()
+            hybrid["pooled_replicated"] = hybrid.pooled_replicated.astype(str).str.lower().eq("true")
+            hybrid["method"] = "Tealeaf/SUPPA2 hybrid"
+            hybrid = _rank_table(hybrid, args.max_rank)
+            ranked = ranked[~ranked.method.astype(str).str.startswith("Tealeaf/SUPPA2 hybrid")].copy()
             ranked = pd.concat([ranked, hybrid], ignore_index=True, sort=False)
         if args.rank_table:
             args.rank_table.parent.mkdir(parents=True, exist_ok=True)
@@ -214,7 +217,7 @@ def main():
         rank_plot += scale_x_continuous(limits=(1, args.max_rank), breaks=list(range(0, args.max_rank + 1, 25))[1:])
         rank_plot += coord_cartesian(ylim=(0, 1))
         rank_plot += scale_color_manual(values=COLORS, drop=False)
-        rank_plot += labs(x=f"Significance rank (top {args.max_rank} calls per method)", y="Cumulative positive sign agreement with long reads", title="Long-read agreement across significance rank", caption="Hybrid: 81 shared events; not hybrid-ranked. Dashed line: 50% orientation null.")
+        rank_plot += labs(x=f"Significance rank (top {args.max_rank} calls per method)", y="Cumulative positive sign agreement with long reads", title="Long-read agreement across significance rank", caption="Each method uses its own significance ranking. Dashed line: 50% orientation null.")
         rank_plot += theme_bw(base_size=10)
         rank_plot += theme(panel_grid_minor=element_blank(), plot_title=element_text(size=11), plot_caption=element_text(size=8), legend_title=element_blank())
         args.rank_output.parent.mkdir(parents=True, exist_ok=True)

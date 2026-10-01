@@ -2,10 +2,13 @@
 """Test SUPPA2 event definitions with Tealeaf's local-path EC model.
 
 Each SUPPA2 event's included and excluded transcript sets define two tested
-paths. Other annotated isoforms are nuisance components. Primer-specific EC
+paths with fixed pooled within-class mixtures and fixed combined mass. Other
+EC-supported isoforms form one fixed-mixture nuisance component. Primer-specific EC
 counts are fitted with Tealeaf's paired path estimator and paired test; signed
-subject-label nulls are emitted in the same format as the production path
-pipeline for matched empirical calibration.
+subject-label nulls are drawn independently for each event/contrast and emitted
+in the production path format for pooled empirical calibration. The reported
+effect is the subject-mean included-minus-excluded ILR difference, level b minus
+level a, equal to the mean inclusion-logit difference divided by sqrt(2).
 """
 
 from __future__ import annotations
@@ -272,7 +275,7 @@ def main():
             )
             values = result["differences"]
             covariances = result["difference_covariances"]
-            mean_event_logratio = float(values.mean(axis=0)[0]) if len(values) else np.nan
+            mean_event_ilr_difference = float(values.mean(axis=0)[0]) if len(values) else np.nan
             observed.append({
                 "test_id": event_test_id,
                 "block_id": event_id,
@@ -302,7 +305,7 @@ def main():
                 "restricted_objective": result.get("restricted_objective", np.nan),
                 "converged": result["converged"],
                 "mean_difference_norm": float(np.linalg.norm(values.mean(axis=0))) if len(values) else 0.0,
-                "effect_size": mean_event_logratio,
+                "effect_size": mean_event_ilr_difference,
                 "event_type": event.event_type,
                 "event_id": event_id,
                 "feature_id": event.feature_id,
