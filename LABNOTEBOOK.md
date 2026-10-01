@@ -1,5 +1,9 @@
 # Lab Notebook
 
+## 2026-10-01 Tealeaf/SUPPA2 hybrid reporting
+
+Added the split Tealeaf/SUPPA2 hybrid result as a daggered exploratory row in the main matched-reproducibility table. It reports 51 replicated genes on the 1,755 mappable shared gene--cell-type-pair hypotheses, versus 17 for direct Tealeaf on the same restricted universe. Added the hybrid's 81-event cumulative long-read direction curve to the significance-rank figure. This curve is explicitly labeled as a shared-event audit selected from native SUPPA2's top-500-per-contrast list, not as the hybrid's own top-ranked results; it is therefore not suitable for a head-to-head long-read ranking claim. The plotting script accepts --hybrid-event-rank and uses the saved rank and cumulative-agreement values.
+
 ## 2026-07-27 Hierarchical Gene--Isoform Proposal
 
 Added `docs/hierarchical.tex`, a proposed count model that decomposes
