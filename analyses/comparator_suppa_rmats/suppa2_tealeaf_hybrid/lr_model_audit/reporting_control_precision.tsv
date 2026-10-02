@@ -1,0 +1,4 @@
+field	maximum_absolute_difference	relative_tolerance	absolute_tolerance
+raw_p_value	7.925959888410716e-11	1e-08	1e-10
+statistic	0.006149363526777529	0.01	0.0001
+mean_difference_norm	1.1165499080867392e-11	1e-08	1e-07

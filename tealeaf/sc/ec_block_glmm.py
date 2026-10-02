@@ -22,13 +22,18 @@ def pooled_isoform_weights(data, max_iter=100):
         for counts in data.counts
     )
     dimension = data.n_isoforms - 1
+    if dimension == 0:
+        return np.ones(1)
+    mappings = tuple(np.asarray(mapping, dtype=float) for mapping in data.compatibility)
+    column_sums = tuple(mapping.sum(axis=0) for mapping in mappings)
 
     def objective(free_logits):
         logits = np.r_[np.asarray(free_logits, dtype=float), 0.0]
         abundance = np.exp(logits - logits.max())
         value = 0.0
-        for counts, mapping in zip(totals, data.compatibility):
-            mass = np.asarray(mapping, dtype=float) @ abundance
+        gradient = np.zeros(data.n_isoforms)
+        for counts, mapping, columns in zip(totals, mappings, column_sums):
+            mass = mapping @ abundance
             if counts.sum() > 0:
                 value -= float(
                     counts @ np.log(np.maximum(mass, 1e-300))
@@ -37,12 +42,15 @@ def pooled_isoform_weights(data, max_iter=100):
                     counts.sum()
                     * np.log(np.maximum(mass.sum(), 1e-300))
                 )
-        return value
+                gradient -= abundance * (mapping.T @ (counts / np.maximum(mass, 1e-300)))
+                gradient += counts.sum() * abundance * columns / np.maximum(mass.sum(), 1e-300)
+        return value, gradient[:-1]
 
     result = scipy.optimize.minimize(
         objective,
         np.zeros(dimension, dtype=float),
         method="L-BFGS-B",
+        jac=True,
         options={"maxiter": int(max_iter)},
     )
     logits = np.r_[np.asarray(result.x, dtype=float), 0.0]
@@ -116,6 +124,7 @@ def paired_path_test(
     path_pseudocount_scaling="per_path",
     retain_uncertainty=False,
     uncertainty_scale=1.0,
+    profile_event_mass=False,
 ):
     """Test paired local-path shifts after aggregating rows within subjects.
 
@@ -125,6 +134,8 @@ def paired_path_test(
     isoform mixture fixed. The production result is a paired t test for
     ``S = 2`` and Hotelling's T-squared test for ``S > 2``. The optional
     measurement-error sensitivity carries the conditional path covariance.
+    For collapsed binary events, ``profile_event_mass`` also fits the total
+    inclusion-plus-exclusion mass against an optional other-isoform class.
     """
     labels = np.asarray(labels)
     clusters = np.asarray(clusters)
@@ -158,7 +169,8 @@ def paired_path_test(
                 local_fits = []
                 break
             try:
-                fit = differential.fit_path_perturbation(
+                fitter = differential.fit_event_path_perturbation if profile_event_mass else differential.fit_path_perturbation
+                fit = fitter(
                     counts,
                     data.compatibility,
                     baseline,

@@ -1,0 +1,13 @@
+{
+  "input_tests": 7182,
+  "mapped_tests": 2758,
+  "top_per_contrast": 0,
+  "minimum_pooled_depth": 20.0,
+  "minimum_replicate_depth": 10.0,
+  "tests": [
+    "/gpfs/commons/home/daknowles/projects/tealeaf/analyses/comparator_suppa_rmats/suppa2_tealeaf_hybrid/full_data/full_data_tests.tsv.gz"
+  ],
+  "events": "/gpfs/commons/home/daknowles/projects/tealeaf/analyses/comparator_suppa_rmats/suppa2_tealeaf_hybrid/full_data/event_catalog.tsv.gz",
+  "selection": "all converged tests",
+  "source_mapping": "at least one source annotated transcript in each event class"
+}

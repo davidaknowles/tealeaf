@@ -7,6 +7,8 @@ import pandas as pd
 from scipy import sparse
 
 from extra_scripts import assess_event_tilgner_replication as audit
+from extra_scripts import retest_suppa2_hybrid_psi
+from extra_scripts.publish_suppa2_hybrid_lr_fix import reporting_table
 from extra_scripts.plot_tilgner_method_replication import rank_agreement_table
 from tealeaf.sc import differential
 
@@ -50,6 +52,72 @@ def test_all_tests_mapped_without_native_selection(tmp_path, monkeypatch):
     np.testing.assert_allclose(mapped.raw_p_value, [.001, .0011])
     np.testing.assert_allclose(mapped.statistic, [20, 19])
     assert pd.read_csv(summary, sep="\t").scope.eq("all converged tests").all()
+
+
+def test_profiled_event_mass_prevents_nuisance_change_reversing_inclusion():
+    mapping = np.array([[1., 0., 0.], [0., 1., .8], [0., 0., .2]])
+    baseline = np.array([.4, .4, .2])
+    true_a, true_b = np.array([.48, .32, .2]), np.array([.16, .04, .8])
+    fixed, profiled = [], []
+    for theta in (true_a, true_b):
+        counts = (10000 * (mapping @ theta),)
+        fixed.append(differential.fit_path_perturbation(counts, (mapping,), baseline, np.array([0, 1, -1])).path_proportions[0])
+        fit = differential.fit_event_path_perturbation(counts, (mapping,), baseline, np.array([0, 1, -1]))
+        assert fit.converged
+        np.testing.assert_allclose(fit.theta, theta, atol=2e-4)
+        profiled.append(fit.path_proportions[0])
+    assert fixed[1] < fixed[0]
+    np.testing.assert_allclose(profiled[1] - profiled[0], .2, atol=2e-4)
+
+
+def test_profiled_mass_and_inclusion_prior_have_separate_targets():
+    counts = (np.array([80., 20., 100.]), np.array([40., 10., 50.]))
+    fit = differential.fit_event_path_perturbation(counts, (np.eye(3), np.eye(3)), np.array([.45, .45, .1]), np.array([0, 1, -1]), path_pseudocount=32, path_pseudocount_scaling="total")
+    expected = (120 + 16) / (150 + 32)
+    assert fit.converged
+    np.testing.assert_allclose(fit.path_proportions[0], expected, atol=2e-5)
+    np.testing.assert_allclose(fit.theta[:2].sum(), .5, atol=2e-5)
+    assert fit.covariance.identifiable
+    np.testing.assert_allclose(fit.covariance.covariance[0, 0], 1 / (2 * 182 * expected * (1 - expected)), rtol=2e-4)
+
+
+def test_event_inclusion_fit_is_not_limited_by_extreme_baseline():
+    fit = differential.fit_event_path_perturbation((np.array([800., 200.]),), (np.eye(2),), np.array([1e-12, 1 - 1e-12]), np.array([0, 1]), path_pseudocount=64, path_pseudocount_scaling="total")
+    assert fit.converged
+    np.testing.assert_allclose(fit.path_proportions[0], (800 + 32) / (1000 + 64), atol=2e-5)
+
+
+def test_transcript_information_is_finite_for_tiny_ec_masses():
+    theta = np.array([.4, .6])
+    information = differential.transcript_fisher_information(theta, (np.eye(2) * 1e-310,), (100.,))
+    assert np.isfinite(information).all()
+    np.testing.assert_allclose(information, 100 * (np.diag(theta) - np.outer(theta, theta)), rtol=1e-6)
+
+
+def test_psi_sensitivity_pairs_saved_numeric_celltype_labels(tmp_path, monkeypatch):
+    shard = tmp_path / "shards" / "shard_0"
+    shard.mkdir(parents=True)
+    record = {"test_id": "event", "block_id": "block", "level_a": "A", "level_b": "B", "report_pseudocount": 1}
+    pd.DataFrame([record]).to_csv(shard / "paired_path.tsv", sep="\t", index=False)
+    usage = [{"test_id": "event", "subject": subject, "cell_type": level, "inclusion": .2 if level == 0 else .5 + subject / 100} for subject in range(4) for level in (0, 1)]
+    pd.DataFrame(usage).to_csv(shard / "path_usage.tsv.gz", sep="\t", index=False)
+    output = tmp_path / "output"
+    monkeypatch.setattr(sys, "argv", ["retest", "--shards", str(shard.parent), "--output-dir", str(output), "--null-replicates", "2"])
+    retest_suppa2_hybrid_psi.main()
+    result = pd.read_csv(output / "paired_path.tsv", sep="\t").iloc[0]
+    assert result.converged and result.n_subjects == 4
+    np.testing.assert_allclose(result.effect_size, .315)
+    assert result.p_value < .001
+    assert len(pd.read_csv(output / "paired_path_null.tsv.gz", sep="\t")) == 2
+
+
+def test_reporting_effect_does_not_change_testing_fields():
+    original = pd.DataFrame({"effect_size": [.2], "report_psi_effect": [-.05], "p_value": [.001], "mean_difference_norm": [.2], "statistic": [30.]})
+    reported = reporting_table(original)
+    assert reported.effect_size.iloc[0] == -.05
+    assert reported.test_ilr_effect_size.iloc[0] == .2
+    assert reporting_table(reported).test_ilr_effect_size.iloc[0] == .2
+    pd.testing.assert_frame_equal(reported[["p_value", "statistic", "mean_difference_norm"]], original[["p_value", "statistic", "mean_difference_norm"]])
 
 
 def test_hybrid_rank_uses_own_complete_universe_and_continuous_ties(tmp_path):

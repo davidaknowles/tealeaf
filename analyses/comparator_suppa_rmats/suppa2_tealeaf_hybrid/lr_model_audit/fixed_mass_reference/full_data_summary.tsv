@@ -1,2 +1,2 @@
 events	eligible	nominal_0.05	fdr_0.05	null_rejection_0.05	null_rejection_0.01	null_rejection_0.001	null_mean_bh_0.05	null_max_bh_0.05	failures	calibration	moderate_variances	retain_uncertainty	minimum_path_pseudocount	median_path_pseudocount	maximum_path_pseudocount	path_pseudocount_scaling
-7182	7182	2129	1247	0.05002958785853523	0.009964146477304371	0.0009659565580618212	0.0	0	0	empirical	True	False	64.0	64.0	64.0	total
+7182	7182	2265	1417	0.0500078320802005	0.009955444165970481	0.0009703077137287663	0.0	0	0	empirical	True	False	64.0	64.0	64.0	total

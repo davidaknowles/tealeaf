@@ -195,6 +195,14 @@ def test_pooled_isoform_weights_match_identity_ec_proportions():
     np.testing.assert_allclose(weights, [0.8, 0.2], atol=1e-5)
 
 
+def test_pooled_baseline_conditions_on_primer_efficiency():
+    theta = np.array([.2, .5, .3])
+    mappings = (np.diag([2., 1., 3.]), np.diag([1., 4., 2.]))
+    counts = tuple((1000 * (mapping @ theta) / (mapping @ theta).sum())[None, :] for mapping in mappings)
+    data = ec_glmm.ECGLMMData(counts, mappings, np.ones((1, 1)), np.array([0]))
+    np.testing.assert_allclose(ec_block_glmm.pooled_isoform_weights(data), theta, atol=2e-5)
+
+
 def test_paired_path_test_recovers_subject_paired_shift():
     rng = np.random.default_rng(18)
     counts = []

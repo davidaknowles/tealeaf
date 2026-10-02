@@ -501,7 +501,11 @@ def transcript_fisher_information(theta, designs, totals):
         normalizer = float(q.sum())
         if normalizer <= 0:
             continue
-        cross = weighted.T @ sp.diags(1.0 / q) @ weighted
+        # Dividing by sqrt(q) before multiplying avoids overflow in 1/q for
+        # tiny but positive EC masses, without changing the information.
+        scaled = weighted.copy()
+        scaled.data /= np.repeat(np.sqrt(q), np.diff(scaled.indptr))
+        cross = scaled.T @ scaled
         cross = np.asarray(cross.toarray(), dtype=float) / normalizer
         exposure = np.asarray(weighted.sum(axis=0)).ravel() / normalizer
         information += total * (cross - np.outer(exposure, exposure))
@@ -963,6 +967,69 @@ def fit_path_perturbation(
         iterations=int(result.nit),
         objective=float(result.fun),
     )
+
+
+def fit_event_path_perturbation(counts, designs, baseline, path_index, *, max_iter=100, path_pseudocount=0.0, path_prior_center="uniform", path_pseudocount_scaling="total"):
+    """Fit binary event inclusion while profiling its mass against other isoforms.
+
+    Compatibility columns must be included, excluded, and optionally one
+    collapsed nuisance class. The tested coordinate is inclusion logit / sqrt(2);
+    a separate event-mass logit is estimated when a nuisance class is present.
+    Within-class mixtures remain fixed. The prior applies only to inclusion.
+    """
+    baseline = np.asarray(baseline, dtype=float)
+    path_index = np.asarray(path_index, dtype=int)
+    if not np.array_equal(path_index, np.array([0, 1])) and not np.array_equal(path_index, np.array([0, 1, -1])):
+        raise ValueError("event fitting requires two tested classes and at most one nuisance class")
+    has_nuisance = len(path_index) == 3
+    baseline = np.maximum(baseline, 1e-12)
+    baseline /= baseline.sum()
+    designs = tuple(sp.csr_matrix(value) for value in designs)
+    counts = tuple(np.asarray(value, dtype=float) for value in counts)
+    totals = tuple(value.sum() for value in counts)
+    baseline_paths = path_proportions(baseline, path_index)
+    center = np.array([.5, .5]) if path_prior_center == "uniform" else baseline_paths
+    if path_prior_center not in ("uniform", "baseline"):
+        raise ValueError("invalid event prior center")
+    prior = _path_prior_counts(path_pseudocount, 2, center, path_pseudocount_scaling)
+
+    def composition(parameters):
+        psi = scipy.special.expit(parameters[0])
+        if not has_nuisance:
+            return np.array([psi, 1 - psi]), np.array([[1 - psi], [-psi]]), psi
+        mass = scipy.special.expit(parameters[1])
+        theta = np.array([mass * psi, mass * (1 - psi), 1 - mass])
+        jacobian = np.array([[1 - psi, 1 - mass], [-psi, 1 - mass], [0, -mass]])
+        return theta, jacobian, psi
+
+    def objective(parameters):
+        theta, jacobian, psi = composition(parameters)
+        loss, score = 0., np.zeros(len(path_index))
+        for observed, design, total in zip(counts, designs, totals):
+            if total <= 0:
+                continue
+            q = np.asarray(design @ theta).ravel()
+            normalizer = q.sum()
+            if normalizer <= 0 or np.any((observed > 0) & (q <= 0)):
+                return np.inf, np.zeros(len(parameters))
+            loss -= float(observed @ np.log(np.maximum(q, 1e-300)))
+            loss += total * np.log(normalizer)
+            score += theta * np.asarray(design.T @ (observed / np.maximum(q, 1e-300))).ravel()
+            score -= total * theta * np.asarray(design.sum(axis=0)).ravel() / normalizer
+        loss -= float(prior @ np.log([psi, 1 - psi]))
+        gradient = -jacobian.T @ score
+        gradient[0] += prior.sum() * psi - prior[0]
+        return loss, gradient
+
+    initial = scipy.special.logit([baseline_paths[0], baseline[:2].sum()] if has_nuisance else [baseline_paths[0]])
+    result = scipy.optimize.minimize(objective, initial, method="L-BFGS-B", jac=True, bounds=[(-20, 20)] * len(initial), options={"maxiter": int(max_iter), "ftol": 1e-9})
+    theta, jacobian, psi = composition(result.x)
+    # First coordinate is the tested ILR; second is the nuisance mass logit.
+    jacobian[:, 0] *= np.sqrt(2)
+    information = jacobian.T @ transcript_fisher_information(theta, designs, totals) @ jacobian
+    information[0, 0] += 2 * prior.sum() * psi * (1 - psi)
+    covariance = identifiable_covariance(information, np.array([[1., 0.]]) if has_nuisance else np.ones((1, 1)))
+    return PathFit(delta=np.array([(result.x[0] - scipy.special.logit(baseline_paths[0])) / np.sqrt(2)]), path_logratios=np.array([result.x[0] / np.sqrt(2)]), path_proportions=np.array([psi, 1 - psi]), theta=theta, covariance=covariance, converged=bool(result.success), iterations=int(result.nit), objective=float(result.fun))
 
 
 def paired_measurement_error_test(

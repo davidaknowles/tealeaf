@@ -31,4 +31,5 @@ python "${REPO_ROOT}/extra_scripts/run_suppa2_tealeaf_hybrid.py" \
   --shard-count "${SHARD_COUNT}" \
   --path-pseudocount 32 \
   --path-pseudocount-scaling total \
+  --profile-event-mass --report-pseudocount 1 \
   --null-replicates 32

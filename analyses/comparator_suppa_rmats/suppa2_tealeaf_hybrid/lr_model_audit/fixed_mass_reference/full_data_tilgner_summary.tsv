@@ -1,0 +1,3 @@
+method	endpoint	scope	minimum_depth	n_tests	n_replicated	replication_rate	ci_low	ci_high	conditional_null_rate
+Tealeaf EC; SUPPA2 event definitions	pooled direction	all converged tests	20.0	1194	531	0.44472361809045224	0.41675877347594376	0.47304300368916	0.5
+Tealeaf EC; SUPPA2 event definitions	both biological replicates	all converged tests	20.0	817	206	0.2521419828641371	0.22357285678644104	0.283031012148414	0.5

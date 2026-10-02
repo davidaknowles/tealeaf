@@ -19,7 +19,7 @@ export OPENBLAS_NUM_THREADS=1
 OUTPUT_TAG=${OUTPUT_TAG:-tealeaf_hybrid_full}
 OUT="${REPO_ROOT}/.cache/suppa2_statistics/${OUTPUT_TAG}/shards/shard_${SLURM_ARRAY_TASK_ID}"
 EXTRA_ARGS=()
-if [[ "${SCAN_ALL_EVENTS:-0}" == "1" ]]; then
+if [[ "${SCAN_ALL_EVENTS:-1}" == "1" ]]; then
   EXTRA_ARGS+=(--scan-all-events)
 fi
 if [[ -n "${MAX_TESTS:-}" ]]; then
@@ -35,5 +35,6 @@ python "${REPO_ROOT}/extra_scripts/run_suppa2_tealeaf_hybrid.py" \
   --shard-count 96 \
   --path-pseudocount 64 \
   --path-pseudocount-scaling total \
+  --profile-event-mass --report-pseudocount 1 \
   --null-replicates 32 \
   "${EXTRA_ARGS[@]}"

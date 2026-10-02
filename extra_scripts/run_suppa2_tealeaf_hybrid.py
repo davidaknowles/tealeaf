@@ -2,13 +2,17 @@
 """Test SUPPA2 event definitions with Tealeaf's local-path EC model.
 
 Each SUPPA2 event's included and excluded transcript sets define two tested
-paths with fixed pooled within-class mixtures and fixed combined mass. Other
+paths with fixed pooled within-class mixtures. With ``--profile-event-mass``,
+their combined mass is estimated per subject and cell type; otherwise it is
+fixed at the pooled value for a legacy sensitivity analysis. Other
 EC-supported isoforms form one fixed-mixture nuisance component. Primer-specific EC
 counts are fitted with Tealeaf's paired path estimator and paired test; signed
 subject-label nulls are drawn independently for each event/contrast and emitted
 in the production path format for pooled empirical calibration. The reported
-effect is the subject-mean included-minus-excluded ILR difference, level b minus
-level a, equal to the mean inclusion-logit difference divided by sqrt(2).
+testing effect is the subject-mean included-minus-excluded ILR difference,
+level b minus level a, equal to the mean inclusion-logit difference divided
+by sqrt(2). Optional descriptive refits also export mean PSI differences
+under a separate reporting pseudocount, without changing test statistics.
 """
 
 from __future__ import annotations
@@ -133,6 +137,9 @@ def parse_args():
     parser.add_argument("--path-pseudocount-scaling", choices=("per_path", "total"), default="total")
     parser.add_argument("--max-tests", type=int, help="limit tests for a smoke run")
     parser.add_argument("--scan-all-events", action="store_true", help="screen the full supported gene transcript set rather than the block candidate gene set")
+    parser.add_argument("--profile-event-mass", action="store_true", help="Estimate included-plus-excluded mass separately for each subject and cell type.")
+    parser.add_argument("--report-pseudocount", type=float, help="Optional separate smoothing strength for descriptive effect estimates; testing is unchanged.")
+    parser.add_argument("--export-path-usage", action="store_true")
     return parser.parse_args()
 
 
@@ -233,7 +240,7 @@ def main():
         tests = tests[: args.max_tests]
 
     row_lookup = {}
-    observed, null, failures = [], [], []
+    observed, null, failures, usage = [], [], [], []
     baseline_cache = {}
     started = time.perf_counter()
     for candidate, event, path_index in tests:
@@ -272,10 +279,22 @@ def main():
                 path_pseudocount=args.path_pseudocount,
                 path_prior_center=args.path_prior_center,
                 path_pseudocount_scaling=args.path_pseudocount_scaling,
+                profile_event_mass=args.profile_event_mass,
             )
             values = result["differences"]
             covariances = result["difference_covariances"]
             mean_event_ilr_difference = float(values.mean(axis=0)[0]) if len(values) else np.nan
+            report = result
+            if args.report_pseudocount is not None:
+                report = ec_block_glmm.paired_path_test(fit_base, fit_path_index, labels, clusters, baseline=fit_baseline, max_iter=args.max_iter, path_pseudocount=args.report_pseudocount, path_prior_center=args.path_prior_center, path_pseudocount_scaling=args.path_pseudocount_scaling, profile_event_mass=args.profile_event_mass)
+            report_values = report["differences"]
+            report_ilr = float(report_values.mean(axis=0)[0]) if len(report_values) else np.nan
+            psi_differences = np.array([pair[1].path_proportions[0] - pair[0].path_proportions[0] for pair in report["path_fits"]])
+            report_psi = float(psi_differences.mean()) if len(psi_differences) else np.nan
+            if args.export_path_usage:
+                for subject, fits in zip(report["subject_ids"], report["path_fits"]):
+                    for level, fit in zip(report["levels"], fits):
+                        usage.append({"test_id": event_test_id, "feature_id": event.feature_id, "contrast_id": f"cell_type__{tested_levels[0]}__{tested_levels[1]}", "subject": subject, "cell_type": tested_levels[int(level)], "inclusion": float(fit.path_proportions[0]), "event_mass": float(fit.theta[:2].sum()), "ilr": float(fit.path_logratios[0])})
             observed.append({
                 "test_id": event_test_id,
                 "block_id": event_id,
@@ -305,7 +324,15 @@ def main():
                 "restricted_objective": result.get("restricted_objective", np.nan),
                 "converged": result["converged"],
                 "mean_difference_norm": float(np.linalg.norm(values.mean(axis=0))) if len(values) else 0.0,
-                "effect_size": mean_event_ilr_difference,
+                "effect_size": report_psi if args.report_pseudocount is not None else mean_event_ilr_difference,
+                "effect_coordinate": "psi" if args.report_pseudocount is not None else "ilr",
+                "test_ilr_effect_size": mean_event_ilr_difference,
+                "report_ilr_effect": report_ilr,
+                "report_psi_effect": report_psi,
+                "report_n_subjects": report["n_subjects"],
+                "report_pseudocount": args.report_pseudocount if args.report_pseudocount is not None else args.path_pseudocount,
+                "profile_event_mass": args.profile_event_mass,
+                "baseline_event_mass": float(fit_baseline[:2].sum()),
                 "event_type": event.event_type,
                 "event_id": event_id,
                 "feature_id": event.feature_id,
@@ -330,6 +357,8 @@ def main():
     args.output_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(observed).to_csv(args.output_dir / "paired_path.tsv", sep="\t", index=False)
     pd.DataFrame(null).to_csv(args.output_dir / "paired_path_null.tsv.gz", sep="\t", index=False)
+    if args.export_path_usage:
+        pd.DataFrame(usage).to_csv(args.output_dir / "path_usage.tsv.gz", sep="\t", index=False)
     (args.output_dir / "failures.json").write_text(json.dumps(failures, indent=2) + "\n")
     (args.output_dir / "summary.json").write_text(json.dumps({
         "candidate_contexts": len(contexts),
