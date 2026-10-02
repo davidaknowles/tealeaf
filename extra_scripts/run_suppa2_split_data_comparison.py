@@ -3,9 +3,8 @@
 
 The SUPPA2 event catalogue is supplied by ``event-catalog`` so the
 rerun does not depend on retaining the external SUPPA2 installation. PSI is
-the native transcript-TPM ratio over the catalogue's included and excluded
-transcript sets, followed by the same paired Wilcoxon normal approximation
-used by ``run_suppa2_full_data_comparison.py``.
+the upstream transcript-TPM ratio over the catalogue's included and excluded
+transcript sets, followed by an exact conditional paired signed-rank test.
 """
 
 from __future__ import annotations
@@ -18,7 +17,7 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 
-from run_suppa2_full_data_comparison import (
+from extra_scripts.run_suppa2_full_data_comparison import (
     TEST_METHODS,
     bh,
     event_test_pvalues,
@@ -37,7 +36,7 @@ def parse_args():
     parser.add_argument("--minimum-pairs", type=int, default=8)
     parser.add_argument("--fold", type=int, required=True)
     parser.add_argument("--method-base", default="SUPPA2 (matched split)")
-    parser.add_argument("--test-method", action="append", choices=TEST_METHODS, help="Paired event statistic; repeat to evaluate several methods. Defaults to Wilcoxon.")
+    parser.add_argument("--test-method", action="append", choices=TEST_METHODS, help="Paired event statistic; repeat to evaluate several methods. Defaults to exact signed-rank tails, including ties.")
     return parser.parse_args()
 
 
@@ -81,7 +80,7 @@ def event_psi(catalog: pd.DataFrame, matrix: sparse.spmatrix, columns: list[str]
 
 def main():
     args = parse_args()
-    test_methods = args.test_method or ["wilcoxon"]
+    test_methods = args.test_method or ["wilcoxon_exact"]
     matrix = sparse.load_npz(args.matrix).tocsr()
     rows = args.rows.read_text().splitlines()
     columns = args.columns.read_text().splitlines()
@@ -118,7 +117,7 @@ def main():
         )
         for test_method in test_methods:
             p_values = event_test_pvalues(
-                first, second, valid, test_method
+                first, second, valid & enough[:, None], test_method
             )
             # Events below the minimum-pair threshold are not tested and must
             # not contribute to the within-contrast BH denominator.

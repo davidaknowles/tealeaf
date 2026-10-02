@@ -23,8 +23,8 @@ done
 
 RUN_REPRO="${RUN_ROOT}/junction_benchmark/reproducibility"
 python "${REPO_ROOT}/extra_scripts/evaluate_suppa2_statistics.py" \
-  --tealeaf-shards "${RUN_REPRO}/fold0/tealeaf_paired_path_uniform_eb_crossfit_total_shards" \
-  --tealeaf-shards "${RUN_REPRO}/fold1/tealeaf_paired_path_uniform_eb_crossfit_total_shards" \
+  --tealeaf-tests "${RUN_REPRO}/fold0/tealeaf_paired_path_total_a32_production/paired_path.tsv" \
+  --tealeaf-tests "${RUN_REPRO}/fold1/tealeaf_paired_path_total_a32_production/paired_path.tsv" \
   --comparison "SUPPA2 primer-aware; prior Wilcoxon" \
     "${REPO_ROOT}/analyses/comparator_suppa_rmats/suppa2_primer_aware/split_data_fold0_tests.tsv.gz" \
     "${REPO_ROOT}/analyses/comparator_suppa_rmats/suppa2_primer_aware/split_data_fold1_tests.tsv.gz" \

@@ -1,0 +1,13 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	replicate
+fixed Table 1 SUPPA2 universe	asin_moderated_t	simes	simes	2342	457	20	31	12	0.7959677419354838	0.4592163475586236	-1
+fixed Table 1 SUPPA2 universe	asin_paired_t	simes	simes	2342	457	31	37	15	0.7868352223190933	0.34995941474758446	-1
+fixed Table 1 SUPPA2 universe	logit_moderated_t	simes	simes	2342	457	18	26	10	0.8098290598290598	0.4995197160339911	-1
+fixed Table 1 SUPPA2 universe	logit_paired_t	simes	simes	2342	457	23	30	14	0.8282608695652174	0.3539438857336552	-1
+fixed Table 1 SUPPA2 universe	moderated_t	simes	simes	2342	457	29	28	13	0.8762315270935961	0.38733958892721665	-1
+fixed Table 1 SUPPA2 universe	paired_t	simes	simes	2342	457	34	38	18	0.8080495356037152	0.33637253338979406	-1
+fixed Table 1 SUPPA2 universe	wilcoxon	simes	simes	2342	457	26	22	1	0.9003496503496504	0.35075591534374123	-1
+fixed Table 1 SUPPA2 universe	wilcoxon_exact	simes	simes	2342	457	48	44	21	0.771780303030303	0.3565691273400634	-1
+fixed Table 1 SUPPA2 universe	Tealeaf production merged	simes	simes	2342	457	180	174	131	0.8843869731800766	0.8119320295813764	-1
+fixed Table 1 SUPPA2 universe	Tealeaf prior cross-fitted EB merged	simes	simes	2342	457	77	110	44	0.825974025974026	0.5415172575593145	-1
+fixed Table 1 SUPPA2 universe	Tealeaf legacy raw shards	simes	simes	2342	457	57	72	31	0.7960526315789473	0.4836831694919603	-1
+fixed Table 1 SUPPA2 universe	SUPPA2 archived approximation	simes	simes	2342	457	26	22	1	0.9003496503496504	0.35182413899294884	-1

@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
 
-from extra_scripts.compare_suppa2_primer_aware_tealeaf import load_tealeaf
+from extra_scripts.compare_suppa2_primer_aware_tealeaf import load_merged_tealeaf, load_tealeaf
 from tealeaf.sc.ds_benchmark import (
     benjamini_hochberg,
     cauchy_pvalue,
@@ -20,7 +20,9 @@ from tealeaf.sc.ds_benchmark import (
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--tealeaf-shards", action="append", required=True, type=Path)
+    reference = parser.add_mutually_exclusive_group(required=True)
+    reference.add_argument("--tealeaf-shards", action="append", type=Path)
+    reference.add_argument("--tealeaf-tests", action="append", type=Path, help="Production merged paired_path.tsv; repeat for both folds.")
     parser.add_argument("--comparison", action="append", nargs=3, metavar=("LABEL", "FOLD0", "FOLD1"), required=True)
     parser.add_argument("--output-dir", required=True, type=Path)
     return parser.parse_args()
@@ -93,9 +95,13 @@ def metric_row(label, method, pair_combination, gene_combination, pair_tables):
 
 def main():
     args = parse_args()
-    if len(args.tealeaf_shards) != 2:
-        raise ValueError("provide exactly two Tealeaf shard directories")
-    tealeaf = [normalize_pairs(load_tealeaf(path)) for path in args.tealeaf_shards]
+    paths = args.tealeaf_tests or args.tealeaf_shards
+    if len(paths) != 2:
+        raise ValueError("provide exactly two Tealeaf fold inputs")
+    if args.tealeaf_tests:
+        tealeaf = [normalize_pairs(load_merged_tealeaf(path)) for path in paths]
+    else:
+        tealeaf = [normalize_pairs(load_tealeaf(path)) for path in paths]
     metrics, diagnostics, details = [], [], []
     for label, fold0_path, fold1_path in args.comparison:
         folds = [
@@ -181,7 +187,7 @@ def main():
                     details.append(reference_details)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(metrics).to_csv(args.output_dir / "split_reproducibility.tsv", sep="\t", index=False)
-    pd.DataFrame(diagnostics).to_csv(args.output_dir / "event_diagnostics.tsv", sep="\t", index=False)
+    pd.DataFrame(diagnostics).to_csv(args.output_dir / "event_diagnostics.tsv", sep="\t", index=False, na_rep="NA")
     pd.concat(details, ignore_index=True).to_csv(args.output_dir / "gene_pvalues.tsv.gz", sep="\t", index=False, compression="gzip")
 
 

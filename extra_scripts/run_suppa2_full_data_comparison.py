@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Run SUPPA2 event quantification with a vectorized classical test.
+"""Run SUPPA2 event quantification with paired event tests.
 
 SUPPA2 v2.4 generates the local-event catalogue and PSI values. Its classical
 paired test is a Wilcoxon signed-rank test for each event followed by BH
 correction. The upstream implementation loops over events in Python, so this
-driver evaluates the same paired Wilcoxon normal approximation vectorized over
-events after native `generateEvents` and `psiPerEvent`. The output keeps raw
+driver defaults to exact conditional signed-rank tails, including ties, after
+upstream `generateEvents` and `psiPerEvent`. A tie-corrected normal approximation
+and paired-t sensitivities are available explicitly. The output keeps raw
 p-values and reports the BH q-value separately.
 """
 
 from __future__ import annotations
 
 import argparse
-from functools import lru_cache
 import json
 from pathlib import Path
 import subprocess
@@ -20,10 +20,9 @@ import subprocess
 import numpy as np
 import pandas as pd
 from scipy import sparse
-from scipy.special import ndtr
-from scipy.stats import rankdata
 
 from tealeaf.sc import differential
+from tealeaf.sc.event_tests import paired_signed_rank, signed_rank_cdf
 
 
 EVENT_TYPES = ("SE", "A3", "A5", "MX", "RI", "AF", "AL")
@@ -64,86 +63,15 @@ def fast_paired_wilcoxon(differences, valid, *, tie_method="average"):
     family. Tied absolute differences use averaged ranks, matching scipy's
     Wilcoxon convention.
     """
-    n_events = differences.shape[0]
-    p_values = np.full(n_events, np.nan, dtype=float)
-    nonzero = valid & (differences != 0)
-    n = nonzero.sum(axis=1)
-    p_values[(n == 0) & valid.any(axis=1)] = 1.0
-    selected = np.flatnonzero(n >= 1)
-    if not len(selected):
-        return p_values
-    values = np.abs(differences[selected]).copy()
-    mask = nonzero[selected]
-    values[~mask] = np.inf
-    order = np.argsort(values, axis=1, kind="stable")
-    if tie_method == "average":
-        # ``rankdata`` matches scipy.stats.wilcoxon for tied absolute
-        # differences. The old implementation assigned stable ordinal ranks,
-        # which made the result depend on sample order.
-        ranks = rankdata(values, axis=1, method="average")
-    elif tie_method == "ordinal":
-        ranks = np.empty_like(values, dtype=float)
-        positions = np.broadcast_to(np.arange(1, values.shape[1] + 1), values.shape)
-        np.put_along_axis(ranks, order, positions, axis=1)
-    else:
-        raise ValueError("tie_method must be 'average' or 'ordinal'")
-    ranks[~mask] = 0.0
-    w_plus = np.sum(np.where((differences[selected] > 0) & mask, ranks, 0.0), axis=1)
-    n_selected = n[selected]
-    expected = n_selected * (n_selected + 1) / 4.0
-    variance = n_selected * (n_selected + 1) * (2 * n_selected + 1) / 24.0
-    z = (w_plus - expected) / np.sqrt(variance)
-    p_values[selected] = 2.0 * ndtr(-np.abs(z))
-    return p_values
-
-
-@lru_cache(maxsize=None)
-def signed_rank_cdf(n):
-    """Return the exact CDF of a sum of ranks 1 through n."""
-    counts = np.array([1], dtype=np.int64)
-    for rank in range(1, int(n) + 1):
-        updated = np.zeros(len(counts) + rank, dtype=np.int64)
-        updated[: len(counts)] += counts
-        updated[rank:] += counts
-        counts = updated
-    return np.cumsum(counts) / float(2 ** int(n))
+    return paired_signed_rank(differences, valid, tie_method=tie_method)
 
 
 def hybrid_exact_paired_wilcoxon(differences, valid):
-    """Use exact signed-rank tails when nonzero absolute ranks are untied."""
-    differences = np.asarray(differences, dtype=float)
-    valid = np.asarray(valid, dtype=bool) & np.isfinite(differences)
-    nonzero = valid & (differences != 0)
-    n = nonzero.sum(axis=1)
-    values = np.abs(differences).copy()
-    values[~nonzero] = np.inf
-    sorted_values = np.sort(values, axis=1)
-    tied = np.any(
-        np.isfinite(sorted_values[:, 1:])
-        & (sorted_values[:, 1:] == sorted_values[:, :-1]),
-        axis=1,
-    )
-    p_values = fast_paired_wilcoxon(differences, valid)
-    exact = (n > 0) & ~tied
-    if not exact.any():
-        return p_values
-    local = np.flatnonzero(exact)
-    ranks = rankdata(values[local], axis=1, method="ordinal")
-    ranks[~nonzero[local]] = 0
-    w_plus = np.sum(
-        np.where((differences[local] > 0) & nonzero[local], ranks, 0),
-        axis=1,
-    )
-    totals = n[local] * (n[local] + 1) // 2
-    w_minimum = np.minimum(w_plus, totals - w_plus).astype(int)
-    for sample_size in np.unique(n[local]):
-        selected = n[local] == sample_size
-        cdf = signed_rank_cdf(int(sample_size))
-        p_values[local[selected]] = np.minimum(
-            1.0,
-            2.0 * cdf[w_minimum[selected]],
-        )
-    return p_values
+    """Exact conditional signed-rank tails, including tied absolute ranks.
+
+    The historical function name is retained for downstream imports.
+    """
+    return paired_signed_rank(differences, valid, exact=True)
 
 
 def event_test_differences(first, second, method):
@@ -184,7 +112,7 @@ def event_test_pvalues(first, second, valid, method):
 def method_label(base, method):
     labels = {
         "wilcoxon": "paired Wilcoxon",
-        "wilcoxon_exact": "hybrid-exact paired Wilcoxon",
+        "wilcoxon_exact": "exact paired Wilcoxon",
         "paired_t": "paired t",
         "moderated_t": "moderated paired t",
         "logit_paired_t": "logit paired t",
@@ -207,7 +135,7 @@ def parse_args():
     parser.add_argument("--event-output", required=True, type=Path)
     parser.add_argument("--work-dir", required=True, type=Path)
     parser.add_argument("--minimum-pairs", type=int, default=8)
-    parser.add_argument("--test-method", action="append", choices=TEST_METHODS, help="Paired event statistic; repeat to evaluate several methods. Defaults to Wilcoxon.")
+    parser.add_argument("--test-method", action="append", choices=TEST_METHODS, help="Paired event statistic; repeat to evaluate several methods. Defaults to exact signed-rank tails, including ties.")
     return parser.parse_args()
 
 
@@ -261,7 +189,7 @@ def load_psi(path):
 
 def main():
     args = parse_args()
-    test_methods = args.test_method or ["wilcoxon"]
+    test_methods = args.test_method or ["wilcoxon_exact"]
     args.work_dir.mkdir(parents=True, exist_ok=True)
     manifest_groups = [json.loads(path.read_text()) for path in args.contrasts]
     contrasts = [record for group in manifest_groups for record in group]
@@ -328,7 +256,7 @@ def main():
             p_values = np.full(len(events), np.nan)
             if len(selected):
                 p_values = event_test_pvalues(
-                    first, second, valid, test_method
+                    first, second, valid & enough[:, None], test_method
                 )
                 p_values[~enough] = np.nan
             q_values = bh(p_values)

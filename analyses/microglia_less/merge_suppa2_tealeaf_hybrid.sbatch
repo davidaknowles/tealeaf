@@ -23,8 +23,8 @@ done
 
 RUN_REPRO="${RUN_ROOT}/junction_benchmark/reproducibility"
 python "${REPO_ROOT}/extra_scripts/evaluate_suppa2_statistics.py" \
-  --tealeaf-shards "${RUN_REPRO}/fold0/tealeaf_paired_path_uniform_eb_crossfit_total_shards" \
-  --tealeaf-shards "${RUN_REPRO}/fold1/tealeaf_paired_path_uniform_eb_crossfit_total_shards" \
+  --tealeaf-tests "${RUN_REPRO}/fold0/tealeaf_paired_path_total_a32_production/paired_path.tsv" \
+  --tealeaf-tests "${RUN_REPRO}/fold1/tealeaf_paired_path_total_a32_production/paired_path.tsv" \
   --comparison "Tealeaf EC; SUPPA2 event definitions" \
     "${BASE}/fold0_merged/paired_path.tsv" \
     "${BASE}/fold1_merged/paired_path.tsv" \

@@ -56,7 +56,9 @@ def parse_args():
     parser.add_argument("--primer-sampling-model", default="oligodt_tpm", choices=("effective_length", "oligodt_tpm", "all_tpm"))
     parser.add_argument("--event-design", default="theta", choices=("raw", "theta"), help="EC-to-transcript allocation used for event PSI; theta is the production abundance-fitting design and raw is an ablation using primer-specific EC-conditional probabilities.")
     parser.add_argument("--max-events", type=int, help="limit the catalogue for a smoke test")
-    parser.add_argument("--test-method", action="append", choices=TEST_METHODS, help="Paired event statistic; repeat to evaluate several methods. Defaults to Wilcoxon.")
+    parser.add_argument("--psi-cache-dir", type=Path, help="Save event PSI and sample identifiers for statistical audits.")
+    parser.add_argument("--prepare-only", action="store_true", help="Prepare PSI without running event tests; requires --psi-cache-dir.")
+    parser.add_argument("--test-method", action="append", choices=TEST_METHODS, help="Paired event statistic; repeat to evaluate several methods. Defaults to exact signed-rank tails, including ties.")
     return parser.parse_args()
 
 
@@ -202,7 +204,9 @@ def fit_primer_aware_psi(included, excluded, offset=None, dispersion=None, *, re
 
 def main():
     args = parse_args()
-    test_methods = args.test_method or ["wilcoxon"]
+    if args.prepare_only and args.psi_cache_dir is None:
+        raise ValueError("--prepare-only requires --psi-cache-dir")
+    test_methods = args.test_method or ["wilcoxon_exact"]
     catalog = load_catalog(args.event_catalog)
     if args.max_events is not None:
         catalog = catalog.head(args.max_events).copy()
@@ -251,6 +255,14 @@ def main():
     catalog["n_samples"] = np.isfinite(psi_by_fold[next(iter(psi_by_fold))]).sum(axis=1)
     args.event_output.parent.mkdir(parents=True, exist_ok=True)
     catalog.to_csv(args.event_output, sep="\t", index=False, compression="gzip")
+    if args.psi_cache_dir is not None:
+        args.psi_cache_dir.mkdir(parents=True, exist_ok=True)
+        (args.psi_cache_dir / "samples.json").write_text(json.dumps(sample_levels))
+        catalog.to_csv(args.psi_cache_dir / "event_catalog.tsv.gz", sep="\t", index=False, compression="gzip")
+        for fold, psi in psi_by_fold.items():
+            np.savez_compressed(args.psi_cache_dir / f"psi_fold{fold}.npz", psi=psi)
+    if args.prepare_only:
+        return
     output_rows = []
     for fold, contrast in contrast_sets:
         pairs = [(row_lookup.get(a), row_lookup.get(b)) for a, b in zip(contrast["samples_a"], contrast["samples_b"])]
@@ -266,7 +278,7 @@ def main():
         effects = np.divide(np.nansum(np.where(valid, differences, np.nan), axis=1), valid.sum(axis=1), out=np.full(len(catalog), np.nan), where=valid.sum(axis=1) > 0)
         for test_method in test_methods:
             p_values = event_test_pvalues(
-                first, second, valid, test_method
+                first, second, valid & enough[:, None], test_method
             )
             p_values[~enough] = np.nan
             q_values = bh(p_values)

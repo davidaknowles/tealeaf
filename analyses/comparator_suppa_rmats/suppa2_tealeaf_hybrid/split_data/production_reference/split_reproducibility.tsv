@@ -1,0 +1,9 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp
+SUPPA2 definitions; Tealeaf EC; current reference	Tealeaf EC; SUPPA2 event definitions	simes	simes	1755	354	83	81	49	0.8842034805890227	0.6463092576276595
+Tealeaf matched to SUPPA2 definitions; Tealeaf EC; current reference	Tealeaf direct local path	simes	simes	1755	354	114	111	71	0.875651967757231	0.7923291417912005
+SUPPA2 definitions; Tealeaf EC; current reference	Tealeaf EC; SUPPA2 event definitions	simes	cauchy	1755	354	98	89	53	0.8938316899793626	0.6626299690880676
+Tealeaf matched to SUPPA2 definitions; Tealeaf EC; current reference	Tealeaf direct local path	simes	cauchy	1755	354	122	120	82	0.8885928961748634	0.7965452483470469
+SUPPA2 definitions; Tealeaf EC; current reference	Tealeaf EC; SUPPA2 event definitions	cauchy	simes	1755	354	87	81	49	0.8869731800766283	0.6402405520521781
+Tealeaf matched to SUPPA2 definitions; Tealeaf EC; current reference	Tealeaf direct local path	cauchy	simes	1755	354	117	111	78	0.8818433818433818	0.792631337913252
+SUPPA2 definitions; Tealeaf EC; current reference	Tealeaf EC; SUPPA2 event definitions	cauchy	cauchy	1755	354	99	89	55	0.9051186017478152	0.6460745362364808
+Tealeaf matched to SUPPA2 definitions; Tealeaf EC; current reference	Tealeaf direct local path	cauchy	cauchy	1755	354	123	120	82	0.8892276422764227	0.7957193972883251

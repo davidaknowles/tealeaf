@@ -1,0 +1,7 @@
+comparison	method	fold	event_tests	gene_pairs	median_events_per_pair	maximum_events_per_pair	unique_p_values	minimum_p_value	nominal_0_05	nominal_0_001
+SUPPA2 definitions; Tealeaf EC; current reference	Tealeaf EC; SUPPA2 event definitions	0	2858	1755	1.0	27.0	2547.0	2.925944348538491e-05	884.0	225.0
+SUPPA2 definitions; Tealeaf EC; current reference	Tealeaf EC; SUPPA2 event definitions	1	2858	1755	1.0	27.0	2590.0	6.364157067396423e-05	827.0	190.0
+Tealeaf matched to SUPPA2 definitions; Tealeaf EC; current reference	Tealeaf direct local path	matched	4622	1755	NA	NA	NA	NA	NA	NA
+Tealeaf matched to SUPPA2 definitions; Tealeaf EC; current reference	Tealeaf direct local path	matched	4622	1755	NA	NA	NA	NA	NA	NA
+Tealeaf matched to SUPPA2 definitions; Tealeaf EC; current reference	Tealeaf direct local path	matched	4622	1755	NA	NA	NA	NA	NA	NA
+Tealeaf matched to SUPPA2 definitions; Tealeaf EC; current reference	Tealeaf direct local path	matched	4622	1755	NA	NA	NA	NA	NA	NA

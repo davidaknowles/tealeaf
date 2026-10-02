@@ -16,14 +16,14 @@ export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 RUN_REPRO="${RUN_ROOT}/junction_benchmark/reproducibility"
 HYBRID="${REPO_ROOT}/.cache/suppa2_statistics/tealeaf_hybrid_gene_wide"
 python "${REPO_ROOT}/extra_scripts/evaluate_suppa2_statistics.py" \
-  --tealeaf-shards "${RUN_REPRO}/fold0/tealeaf_paired_path_uniform_eb_crossfit_total_shards" \
-  --tealeaf-shards "${RUN_REPRO}/fold1/tealeaf_paired_path_uniform_eb_crossfit_total_shards" \
+  --tealeaf-tests "${RUN_REPRO}/fold0/tealeaf_paired_path_total_a32_production/paired_path.tsv" \
+  --tealeaf-tests "${RUN_REPRO}/fold1/tealeaf_paired_path_total_a32_production/paired_path.tsv" \
   --comparison "SUPPA2 definitions; Tealeaf EC model" \
     "${HYBRID}/fold0_merged/paired_path.tsv" \
     "${HYBRID}/fold1_merged/paired_path.tsv" \
   --comparison "Tealeaf direct local path" \
-    "${RUN_REPRO}/fold0/tealeaf_paired_path_uniform_eb_crossfit_total/paired_path.tsv" \
-    "${RUN_REPRO}/fold1/tealeaf_paired_path_uniform_eb_crossfit_total/paired_path.tsv" \
+    "${RUN_REPRO}/fold0/tealeaf_paired_path_total_a32_production/paired_path.tsv" \
+    "${RUN_REPRO}/fold1/tealeaf_paired_path_total_a32_production/paired_path.tsv" \
   --comparison "SUPPA2 native; all event types" \
     "${REPO_ROOT}/.cache/suppa2_statistics/native_all_events/fold0.tsv.gz" \
     "${REPO_ROOT}/.cache/suppa2_statistics/native_all_events/fold1.tsv.gz" \

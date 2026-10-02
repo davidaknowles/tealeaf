@@ -75,6 +75,65 @@ def test_vectorized_wilcoxon_averages_tied_ranks():
     assert np.isclose(observed, expected)
 
 
+def test_exact_wilcoxon_ties_matches_exhaustive_signs():
+    from itertools import product
+    from scipy.stats import rankdata
+
+    differences = np.array([[1., 1., -2., 3., 0., np.nan]])
+    ranks = rankdata(np.abs(differences[0, :4]))
+    sums = np.array([np.dot(signs, ranks) for signs in product((0, 1), repeat=4)])
+    observed_sum = ranks[differences[0, :4] > 0].sum()
+    expected = min(1, 2 * np.mean(sums <= min(observed_sum, ranks.sum() - observed_sum)))
+    actual = hybrid_exact_paired_wilcoxon(differences, np.isfinite(differences))[0]
+    assert actual == expected
+    assert actual == hybrid_exact_paired_wilcoxon(differences[:, ::-1], np.isfinite(differences[:, ::-1]))[0]
+
+
+def test_exact_wilcoxon_many_subjects_does_not_overflow():
+    from tealeaf.sc.event_tests import signed_rank_cdf
+
+    for n in (8, 24, 64, 83):
+        cdf = signed_rank_cdf(n)
+        assert np.all(np.diff(cdf) >= 0)
+        assert np.isclose(cdf[-1], 1)
+        assert cdf[0] == 2. ** (-n)
+        differences = np.arange(1, n + 1, dtype=float)[None, :]
+        assert hybrid_exact_paired_wilcoxon(differences, np.ones_like(differences, dtype=bool))[0] == 2. ** (1 - n)
+
+
+def test_signed_rank_missing_zero_and_tied_extreme_tail():
+    from tealeaf.sc.event_tests import paired_signed_rank
+
+    differences = np.array([[0, 0, np.nan], [np.nan, np.nan, np.nan], [1, 1, 1]], dtype=float)
+    valid = np.ones_like(differences, dtype=bool)
+    for exact in (False, True):
+        p = paired_signed_rank(differences, valid, exact=exact)
+        assert p[0] == 1
+        assert np.isnan(p[1])
+    assert paired_signed_rank(differences, valid, exact=True)[2] == .25
+
+
+def test_normal_wilcoxon_matches_scipy_with_random_ties():
+    rng = np.random.default_rng(123)
+    differences = rng.integers(-4, 5, size=(30, 24)).astype(float)
+    valid = rng.random(differences.shape) > .1
+    observed = fast_paired_wilcoxon(differences, valid)
+    expected = [wilcoxon(row[mask], zero_method="wilcox", method="approx", correction=False).pvalue for row, mask in zip(differences, valid)]
+    np.testing.assert_allclose(observed, expected)
+
+
+def test_merged_tealeaf_reference_uses_calibrated_pvalues(tmp_path):
+    import pandas as pd
+    from extra_scripts.compare_suppa2_primer_aware_tealeaf import load_merged_tealeaf
+
+    table = pd.DataFrame({"method": ["local_path"] * 3, "gene_id": ["g1", "g2", "g3"], "level_a": ["a"] * 3, "level_b": ["b"] * 3, "converged": [True, False, True], "n_subjects": [8, 8, 2], "p_value": [.04, .01, .001], "raw_p_value": [.00001, .00002, .00003]})
+    path = tmp_path / "paired_path.tsv"
+    table.to_csv(path, sep="\t", index=False)
+    actual = load_merged_tealeaf(path)
+    assert actual.gene_id.tolist() == ["g1"]
+    assert actual.p_value.tolist() == [.04]
+
+
 def test_event_paired_t_matches_scipy():
     from scipy.stats import ttest_rel
 
