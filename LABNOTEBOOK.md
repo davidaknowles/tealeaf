@@ -1,5 +1,15 @@
 # Lab Notebook
 
+## 2026-10-02 Primer-aware SUPPA2 input reconciliation
+
+The first primer-aware exact-tail audit failed its archived-effect and subject-count checks because its wrapper used the filtered barcode annotation rather than the annotation used for the archived event preparation. This excluded an additional 1,605 annotated paired cells and changed both paired sample counts and event estimates. Restored the original annotation in the audit wrapper, retained the numerical guard, and added barcode-annotation and contrast-manifest SHA256 fingerprints to the PSI preparation provenance. Theta allocation no longer retains unused raw probability blocks, without changing its calculations.
+
+An attempted shortcut using the older EC-GLMM compatibility cache restored the expected subject counts but did not reproduce event effects. For one cassette event, the archived effect was 0.01956 versus 0.00001419 with the cache, both with 24 subjects. Matching matrix dimensions and transcript order is therefore not sufficient evidence for reusing that cache. Removed the unverified shortcut from the runner. Source history shows a change in where raw probability columns are initially normalized, but subsequent normalization should cancel these column factors, so that history alone does not establish the cause of the cache mismatch. The event-specific diagnostic records nuisance-fit and contrast differences without modifying archived results.
+
+Submitted a full probability-sidecar rebuild with the original annotation, followed by the archived-effect checks, eight paired-statistic alternatives, synchronized subject-sign null families, and comparison to the selected merged Tealeaf reference. Primer-aware Table 1 remains the explicitly archived approximation until this audit succeeds; no failed rerun has replaced published results.
+
+The focused primer-aware, hybrid, long-read mapping, and differential regression suite passed all 55 tests. The added preparation regression checks both theta and raw allocation, including correct raw-block retention and unchanged expected event counts.
+
 ## 2026-10-02 SUPPA2 split-tail debugging
 
 Traced the main Table 1 low SUPPA2 replication count to the always-normal signed-rank approximation rather than a double event-BH filter. The upstream classical SUPPA2 implementation calls SciPy's Wilcoxon directly; the vectorized approximation was not equivalent at small subject counts. With 24 unanimously signed untied differences, its extreme p-value is about 1.8e-5 versus the exact 1.19e-7. Corrected missing tied-rank variance, using sum(ranks squared)/4, and replaced integer assignment counting with normalized probability recursion to avoid overflow. Exact conditional tails now also handle ties without a normal fallback. The reusable rank implementation lives in `tealeaf.sc.event_tests`, and the three SUPPA2 runners default to exact tails.

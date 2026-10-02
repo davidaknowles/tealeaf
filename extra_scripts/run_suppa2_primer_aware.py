@@ -6,13 +6,14 @@ primer preparation supplies primer-specific EC probabilities and counts; those
 are aggregated to subject-by-cell-type samples and converted to expected
 included/excluded event counts. A shared event logit with a primer offset is
 estimated using beta-binomial-inspired iteratively reweighted logits, followed
-by the same paired Wilcoxon approximation and within-contrast BH correction as
+by exact paired signed-rank tails and within-contrast BH correction as
 the pooled SUPPA2 comparator.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -107,7 +108,7 @@ def prepare_event_counts(args, catalog):
         min_half_umis=args.min_half_umis,
         primer_sampling_model=args.primer_sampling_model,
         probability_file=probability_file,
-        retain_event_probabilities=True,
+        retain_event_probabilities=args.event_design == "raw",
     )
     pairs = pd.read_csv(args.primer_pairs, sep="\t", dtype=str)
     source_rows = np.asarray(prepared.metadata["source_rows"], dtype=int)
@@ -131,10 +132,9 @@ def prepare_event_counts(args, catalog):
     sample_index = {name: index for index, name in enumerate(sample_levels)}
     sample_ids = np.asarray([sample_index[name] for name in sample_names], dtype=int)
     selector = sparse.coo_matrix((np.ones(len(sample_ids)), (sample_ids, np.arange(len(sample_ids)))), shape=(len(sample_levels), len(sample_ids))).tocsr()
-    # Event PSI needs EC-conditional transcript probabilities. The legacy
-    # route row-normalized the theta compatibility blocks, which are intended
-    # for abundance fitting and include transcript exposure corrections. Use
-    # the raw primer-specific probability blocks for event allocation.
+    # Production allocation row-normalizes the theta compatibility blocks,
+    # retaining transcript exposure corrections. The raw ablation instead
+    # uses primer-specific EC-conditional probabilities without those factors.
     phi = []
     if args.event_design == "raw":
         event_blocks = prepared.metadata.get("event_probability_blocks")
@@ -258,6 +258,8 @@ def main():
     if args.psi_cache_dir is not None:
         args.psi_cache_dir.mkdir(parents=True, exist_ok=True)
         (args.psi_cache_dir / "samples.json").write_text(json.dumps(sample_levels))
+        provenance = {"barcode_groups": str(args.barcode_groups), "barcode_groups_sha256": hashlib.sha256(args.barcode_groups.read_bytes()).hexdigest(), "contrasts": [str(path) for path in args.contrasts], "contrast_sha256": [hashlib.sha256(path.read_bytes()).hexdigest() for path in args.contrasts], "min_half_umis": args.min_half_umis, "min_eq": args.min_eq, "ec_design": args.ec_design, "event_design": args.event_design, "primer_sampling_model": args.primer_sampling_model}
+        (args.psi_cache_dir / "preparation.json").write_text(json.dumps(provenance, indent=2) + "\n")
         catalog.to_csv(args.psi_cache_dir / "event_catalog.tsv.gz", sep="\t", index=False, compression="gzip")
         for fold, psi in psi_by_fold.items():
             np.savez_compressed(args.psi_cache_dir / f"psi_fold{fold}.npz", psi=psi)

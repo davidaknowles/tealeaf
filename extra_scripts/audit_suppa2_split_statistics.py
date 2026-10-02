@@ -108,7 +108,7 @@ def main():
             previous = old_fold.loc[(contrast["contrast_id"], catalog.iloc[index].feature_id)]
             effect = differences[index, valid[index]].mean()
             if abs(effect - previous.effect_size) > 1e-10 or valid[index].sum() != previous.n_subjects:
-                raise ValueError("quantification changed relative to the original split comparison")
+                raise ValueError(f"quantification changed relative to archive, fold={args.fold}, contrast={contrast['contrast_id']}, event={catalog.iloc[index].feature_id}, effect={effect} versus {previous.effect_size}, subjects={valid[index].sum()} versus {previous.n_subjects}")
             diagnostics.append({"fold": args.fold, "contrast_id": contrast["contrast_id"], "gene_id": genes[index], "feature_id": catalog.iloc[index].feature_id, "n_subjects": valid[index].sum(), "nonzero_subjects": np.sum(valid[index] & (differences[index] != 0)), "effect_size": effect})
         for method in TEST_METHODS:
             # Ineligible events must not contribute to the moderation prior.

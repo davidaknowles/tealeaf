@@ -75,6 +75,38 @@ def test_vectorized_wilcoxon_averages_tied_ranks():
     assert np.isclose(observed, expected)
 
 
+def test_primer_event_preparation_retains_raw_blocks_only_for_raw_allocation(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    import pandas as pd
+    from extra_scripts.run_suppa2_primer_aware import prepare_event_counts
+    from tealeaf.sc import glm_cv
+
+    pairs = tmp_path / "pairs.tsv"
+    pd.DataFrame({"cell_id": ["c0"], "polydt_barcode": ["p0"], "ranhex_barcode": ["h0"]}).to_csv(pairs, sep="\t", index=False)
+    groups = tmp_path / "groups.csv"
+    groups.write_text("p0,ct__condition__subject\n")
+    catalog = pd.DataFrame({"feature_id": ["event"], "included": ["tx1"], "excluded": ["tx2"]})
+    calls = []
+
+    def prepare(*args, **kwargs):
+        calls.append(kwargs["retain_event_probabilities"])
+        metadata = {"source_rows": np.array([[0, 1]])}
+        if kwargs["retain_event_probabilities"]:
+            metadata["event_probability_blocks"] = [sparse.eye(2, format="csr")] * 2
+        return SimpleNamespace(metadata=metadata, barcodes=["c0"], features=["tx1", "tx2"], cv_raw_counts=sparse.csr_matrix([[8., 2., 6., 4.]]), compatibility=sparse.vstack([sparse.eye(2)] * 2).tocsr())
+
+    monkeypatch.setattr(glm_cv, "prepare_paired_primer_glm_data", prepare)
+    for mode in ("theta", "raw"):
+        args = SimpleNamespace(probability_file=None, alevin_dir=tmp_path, salmon_ref=tmp_path / "ref.fa", primer_pairs=pairs, barcode_groups=groups, ec_design="weighted", min_eq=5, min_half_umis=500, primer_sampling_model="oligodt_tpm", event_design=mode)
+        levels, _, counts = prepare_event_counts(args, catalog)
+        assert levels == ["subject__ct"]
+        np.testing.assert_allclose(counts[0][0], [[8.]])
+        np.testing.assert_allclose(counts[0][1], [[2.]])
+        np.testing.assert_allclose(counts[1][0], [[6.]])
+        np.testing.assert_allclose(counts[1][1], [[4.]])
+    assert calls == [False, True]
+
+
 def test_exact_wilcoxon_ties_matches_exhaustive_signs():
     from itertools import product
     from scipy.stats import rankdata
