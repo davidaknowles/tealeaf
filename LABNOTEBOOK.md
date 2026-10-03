@@ -1,5 +1,11 @@
 # Lab Notebook
 
+## 2026-10-02 Primer-aware exact-tail comparison published
+
+The full probability-sidecar rebuild completed in 5 h 3 min with peak memory 10.6 GiB and passed the archived event-effect and subject-count checks in both folds. The matched primer-aware universe has 2,191 gene--cell-type-pair hypotheses, 431 genes, and 4,267/4,270 event tests per fold. Exact signed-rank tails give 13/16 fold-level gene BH calls and five replicated genes, versus 6/6 and zero under the normal approximation. The selected merged Tealeaf concentration-32 reference gives 173/166 fold calls and 127 replicated genes on that same universe. Updated main Table 1, its methods and interpretation, and the result manifests; full-data long-read rankings remain unchanged.
+
+Paired and moderated PSI t tests give four replicated genes, arcsine variants three, and logit variants two. All eight statistics give zero replicated genes in all 32 synchronized subject-sign null families. Exact null rejection is .04867/.04781 at .05 and .000901/.000907 at .001. The full statistic and null-family audit is retained under `analyses/comparator_suppa_rmats/suppa2_primer_aware/statistics_audit`. The comparator test was not chosen by discovery count, exact tails repair the existing signed-rank family.
+
 ## 2026-10-02 Primer-aware SUPPA2 input reconciliation
 
 The first primer-aware exact-tail audit failed its archived-effect and subject-count checks because its wrapper used the filtered barcode annotation rather than the annotation used for the archived event preparation. This excluded an additional 1,605 annotated paired cells and changed both paired sample counts and event estimates. Restored the original annotation in the audit wrapper, retained the numerical guard, and added barcode-annotation and contrast-manifest SHA256 fingerprints to the PSI preparation provenance. Theta allocation no longer retains unused raw probability blocks, without changing its calculations.
