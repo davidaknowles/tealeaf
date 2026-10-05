@@ -397,6 +397,8 @@ def main():
                 "mean_difference_norm": float(
                     np.linalg.norm(values.mean(axis=0))
                 ) if len(values) else 0.0,
+                "mean_difference": json.dumps(values.mean(axis=0).tolist()) if len(values) else "[]",
+                "path_signatures": json.dumps(signatures),
             })
             if result["converged"]:
                 if uncertainty_grid is not None:

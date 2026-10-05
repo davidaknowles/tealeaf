@@ -1,0 +1,60 @@
+"""Coverage and direction diagnostics, distinct from discovery testing."""
+
+import numpy as np
+from scipy.stats import rankdata, spearmanr
+
+
+def coverage_correlation(pvalues, coverage, controls=None):
+    """Correlate p (not -log p) with depth, optionally residualizing ranks.
+
+    Controls are N by C, with one row per hypothesis. Negative rho means
+    smaller p-values at greater coverage; it alone does not imply null bias.
+    """
+    pvalues, coverage = np.asarray(pvalues, float), np.asarray(coverage, float)
+    valid = np.isfinite(pvalues) & (pvalues >= 0) & (pvalues <= 1) & np.isfinite(coverage) & (coverage > 0)
+    if controls is not None:
+        controls = np.asarray(controls, float)
+        if controls.ndim == 1:
+            controls = controls[:, None]
+        valid &= np.isfinite(controls).all(axis=1)
+    p, depth = pvalues[valid], coverage[valid]
+    rho = float(spearmanr(p, depth).statistic) if len(p) > 2 and np.ptp(p) > 0 and np.ptp(depth) > 0 else np.nan
+    partial = np.nan
+    if controls is not None and len(p) > controls.shape[1] + 2:
+        x = np.column_stack([np.ones(len(p)), *[rankdata(column) for column in controls[valid].T]])
+        residuals = []
+        for values in (p, depth):
+            ranks = rankdata(values)
+            residuals.append(ranks - x @ np.linalg.lstsq(x, ranks, rcond=None)[0])
+        if all(np.linalg.norm(values) > 1e-10 for values in residuals):
+            partial = float(np.corrcoef(residuals)[0, 1])
+    return {"n": len(p), "rho_p_coverage": rho, "partial_rho": partial}
+
+
+def aligned_direction(first, second, first_features=None, second_features=None):
+    """Compare effects in the same feature order, rejecting incompatible sets.
+
+    Scalar effects use sign concordance; multivariate effects use positive
+    inner product, plus cosine and component concordance. Zero components
+    are excluded rather than counted as agreement.
+    """
+    first, second = np.asarray(first, float), np.asarray(second, float)
+    if first.size == 0 or second.size == 0:
+        raise ValueError("missing effect direction")
+    if first_features is not None:
+        if len(set(first_features)) != len(first_features) or len(set(second_features)) != len(second_features):
+            raise ValueError("duplicate feature identities")
+        if set(first_features) != set(second_features):
+            raise ValueError("effect feature sets differ")
+        second = second[[second_features.index(feature) for feature in first_features]]
+    if first.shape != second.shape or first.ndim != 1:
+        raise ValueError("effect vectors must have the same dimension")
+    if not np.isfinite(first).all() or not np.isfinite(second).all():
+        raise ValueError("nonfinite effect vector")
+    norm = np.linalg.norm(first) * np.linalg.norm(second)
+    eligible = (first != 0) & (second != 0)
+    dot = float(first @ second)
+    return {"direction_agrees": bool(dot > 0) if norm > 0 else np.nan,
+            "cosine": dot / norm if norm > 0 else np.nan,
+            "nonzero_components": int(eligible.sum()),
+            "agreeing_components": int(np.sum(first[eligible] * second[eligible] > 0))}

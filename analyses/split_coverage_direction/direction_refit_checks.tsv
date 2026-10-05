@@ -1,0 +1,3 @@
+fold	eligible_tests	verified_tests	excluded_tests	maximum_effect_norm_error	maximum_allowed_error	baseline_revision
+0	7522	7255	267	4.888725651039981	1e-06	d31da47
+1	5055	4920	135	0.7597060982884865	1e-06	d31da47
