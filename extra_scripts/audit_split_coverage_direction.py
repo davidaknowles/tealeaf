@@ -8,10 +8,14 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from extra_scripts.evaluate_suppa2_statistics import normalize_pairs, grouped_pvalues
+from extra_scripts.evaluate_suppa2_statistics import normalize_pairs, grouped_pvalues, metric_row
 from tealeaf.sc.ds_benchmark import benjamini_hochberg
 from tealeaf.sc.differential import helmert_basis
 from tealeaf.sc.replication_audit import coverage_correlation, aligned_direction
+from tealeaf.sc.junction_benchmark import JunctionBundle
+from extra_scripts.assess_tilgner_junction_replication import (
+    leafcutter_groups, scquint_groups, mean_composition_batch, majiq_feature_ids,
+)
 
 
 def eligible_reference(path):
@@ -53,6 +57,49 @@ def gene_table(table):
     depth = table.groupby(["gene_id", "pair_id"]).coverage.median().groupby("gene_id").median().rename("coverage")
     counts = table.groupby("gene_id").agg(n_features=("p_value", "size"), n_subjects=("reference_n_subjects", "median"))
     return genes.merge(depth, on="gene_id").merge(counts, on="gene_id")
+
+
+def signed_junctions(table, bundle, benchmark, fold, method):
+    """Recover split effects, retaining the original event tests and identities.
+
+    LeafCutter/scQuint use equal-pseudobulk junction proportions within their
+    tested groups. MAJIQ uses each tested edge's native median PSI difference.
+    Missing effects are retained as unevaluable, not removed before event BH.
+    """
+    local = table.copy()
+    local["effect_vector"] = [[] for _ in range(len(local))]
+    local["effect_features"] = [[] for _ in range(len(local))]
+    if method == "MAJIQ Heterogen":
+        for contrast, selected in local.groupby("contrast_id"):
+            raw = pd.read_csv(benchmark / f"reproducibility/fold{fold}/majiq_min3_cov3/tests/raw/{contrast}.tsv", sep="\t", comment="#")
+            features = majiq_feature_ids(raw)
+            a, b = selected[["level_a", "level_b"]].iloc[0]
+            delta = raw[f"{b}-raw_psi_quantile_0.500"] - raw[f"{a}-raw_psi_quantile_0.500"]
+            effects = dict(zip(features, delta))
+            for index, row in selected.iterrows():
+                local.at[index, "effect_vector"] = [float(effects.get(row.feature_id, np.nan))]
+                local.at[index, "effect_features"] = [str(row.feature_id)]
+        return local
+    groups = (leafcutter_groups(local, bundle, benchmark / "leafcutter/clustering/benchmark_perind_numers.counts.gz")
+              if method == "LeafCutter" else scquint_groups(local, bundle))
+    sample_lookup = dict(zip(bundle.samples.sample_id, range(len(bundle.samples))))
+    contrasts = {item["contrast_id"]: item for item in json.loads((benchmark / f"reproducibility/fold{fold}/contrasts.json").read_text())}
+    effects = {}
+    batches = {}
+    for key, group in groups.items():
+        batches.setdefault((group["contrast_id"], len(group["indices"])), []).append((key, group))
+    for (contrast, _), batch in batches.items():
+        manifest = contrasts[contrast]
+        indices = [group["indices"] for _, group in batch]
+        first = mean_composition_batch(bundle.counts, [sample_lookup[sample] for sample in manifest["samples_a"]], indices)
+        second = mean_composition_batch(bundle.counts, [sample_lookup[sample] for sample in manifest["samples_b"]], indices)
+        for (key, group), delta in zip(batch, second - first):
+            effects[key] = (delta.tolist(), group["indices"].astype(str).tolist())
+    for index, row in local.iterrows():
+        vector, features = effects.get((method, row.contrast_id, row.feature_id), ([], []))
+        local.at[index, "effect_vector"] = vector
+        local.at[index, "effect_features"] = features
+    return local
 
 
 def signed_reference(table, paths, diagnostic_path=None):
@@ -133,6 +180,7 @@ def main():
     parser.add_argument("--repo-root", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--directions-dir", type=Path)
+    parser.add_argument("--junction-directions", action="store_true")
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     repro = args.run_root / "junction_benchmark/reproducibility"
@@ -143,7 +191,8 @@ def main():
         refit_checks = [{"fold": k, "eligible_tests": len(table), "verified_tests": int(table.refit_verified.sum()), "excluded_tests": int((~table.refit_verified).sum()), "maximum_effect_norm_error": np.abs(table.mean_difference_norm - table.mean_difference_norm_refit).max(), "maximum_allowed_error": 1e-6, "baseline_revision": "d31da47"} for k, table in enumerate(ref)]
         pd.DataFrame(refit_checks).to_csv(args.output_dir / "direction_refit_checks.tsv", sep="\t", index=False)
     others = [load_comparators(repro, args.repo_root, k) for k in (0, 1)]
-    correlations, details, directions, statuses, gene_details, null_correlations = [], [], [], [], [], []
+    bundle = JunctionBundle.load(args.run_root / "junction_benchmark/pseudobulk_junctions") if args.junction_directions else None
+    correlations, details, directions, statuses, gene_details, null_correlations, metrics = [], [], [], [], [], [], []
     nulls = []
     for k in (0, 1):
         local = pd.read_csv(repro / f"fold{k}/tealeaf_paired_path_total_a32_production/paired_path_null.tsv.gz", sep="\t")
@@ -153,6 +202,8 @@ def main():
         shared = set.intersection(*(set(zip(t.gene_id, t.pair_id)) for t in [*ref, others[0][comparison], others[1][comparison]]))
         for method in ("Tealeaf", comparison):
             tables = [add_coverage(subset((ref[k] if method == "Tealeaf" else others[k][comparison]), shared), ref[k]) for k in (0, 1)]
+            if bundle is not None and method in ("LeafCutter", "scQuint", "MAJIQ Heterogen"):
+                tables = [signed_junctions(table, bundle, args.run_root / "junction_benchmark", k, method) for k, table in enumerate(tables)]
             gene_folds = []
             for k, table in enumerate(tables):
                 gene = gene_table(table)
@@ -169,12 +220,16 @@ def main():
                 records, status = direction_rows(tables, gene_folds, comparison, method)
                 directions.extend(records)
                 statuses.append(status)
+            metric, _ = metric_row(comparison, method, "simes", "simes", [grouped_pvalues(table, ["gene_id", "pair_id"], "simes") for table in tables])
+            metrics.append(metric)
             details.extend([table[["gene_id", "pair_id", "feature_id", "p_value", "coverage"]].assign(comparison=comparison, method=method, fold=k) for k, table in enumerate(tables)])
     pd.DataFrame(correlations).to_csv(args.output_dir / "coverage_correlations.tsv", sep="\t", index=False)
     pd.DataFrame(null_correlations).to_csv(args.output_dir / "null_coverage_correlations.tsv", sep="\t", index=False)
     pd.concat(gene_details).to_csv(args.output_dir / "gene_coverage_pvalues.tsv.gz", sep="\t", index=False)
     pd.concat(details).to_csv(args.output_dir / "event_coverage_pvalues.tsv.gz", sep="\t", index=False)
-    pd.DataFrame(statuses).to_csv(args.output_dir / "direction_status.tsv", sep="\t", index=False)
+    statuses.extend({"comparison": "rMATS (historical)", "method": method, "status": "historical split event tables unavailable; full-data effects not substituted"} for method in ("Tealeaf", "rMATS"))
+    pd.DataFrame(statuses).to_csv(args.output_dir / "direction_status.tsv", sep="\t", index=False, na_rep="NA")
+    pd.DataFrame(metrics).to_csv(args.output_dir / "table1_gene_metrics.tsv", sep="\t", index=False)
     # Coverage quintiles refer to the common event set, not a selected tail.
     direction = pd.DataFrame(directions)
     summaries = []
@@ -187,7 +242,7 @@ def main():
                     finite = local.direction_agrees.notna()
                     summaries.append({"comparison": comparison, "method": method, "selection": selection, "coverage_bin": bin_id, "n_events": len(local), "n_genes": local.gene_id.nunique(), "n_direction_evaluable": int(finite.sum()), "agree": int(local.loc[finite, "direction_agrees"].sum()), "agreement": local.loc[finite, "direction_agrees"].mean(), "gene_mean_agreement": local.loc[finite].groupby("gene_id").direction_agrees.mean().mean(), "median_cosine": local.cosine.median(), "median_coverage": local.coverage.median()})
         direction.to_csv(args.output_dir / "event_direction_agreement.tsv.gz", sep="\t", index=False)
-    pd.DataFrame(summaries).to_csv(args.output_dir / "direction_summary.tsv", sep="\t", index=False)
+    pd.DataFrame(summaries).to_csv(args.output_dir / "direction_summary.tsv", sep="\t", index=False, na_rep="NA")
     # Fixed-concentration null coverage check, distinct from selector-aware FDR.
     bins = []
     for k, local in enumerate(nulls):

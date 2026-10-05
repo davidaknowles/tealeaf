@@ -189,23 +189,24 @@ The 192 one-core fitting shards use 2.516 aggregate worker hours across both fol
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{Cell-type differential-splicing reproducibility across independent subject halves using the calibrated Tealeaf direct local-path test. ``Tests'' counts shared gene-by-cell-type-pair hypotheses, ``Rep.'' is the number of genes passing BH on \(p^{\rm rep}\), ``held'' is held-half nominal replication, and \(\rho\) is Spearman correlation of gene-level \(-\log_{10}p\). Every row uses the hypothesis universe shared by Tealeaf and that comparator in both halves. For SUPPA2, event p-values are combined by Simes within each gene--cell-type pair before applying the common two-fold procedure; the primer-aware row uses its event-eligible matched subset. The dagger marks the exploratory hybrid of SUPPA2 event definitions and the Tealeaf EC likelihood on its shared event-supported universe.}
+\caption{Cell-type differential-splicing reproducibility across independent subject halves using the calibrated Tealeaf direct local-path test. ``Tests'' counts shared gene-by-cell-type-pair hypotheses, ``Rep.'' is the number of genes passing BH on \(p^{\rm rep}\), ``held'' is held-half nominal replication, and \(\rho\) is Spearman correlation of gene-level \(-\log_{10}p\). ``Direction'' gives agreeing/evaluable common feature tests in the union passing event BH at 0.05 in either half, correcting within each complete matched fold before intersecting feature identities. It is sign agreement for scalar effects and a positive inner product for aligned multi-component effects. Unevaluable effects remain in the selected-event counts but not these denominators. The two methods' direction columns have different event definitions and do not count identical events. Every row uses the eligible hypothesis universe shared by Tealeaf and that comparator in both halves. For SUPPA2, event p-values are combined by Simes within each gene--cell-type pair before applying the common two-fold procedure; the primer-aware row uses its event-eligible matched subset. The dagger marks the exploratory hybrid of SUPPA2 event definitions and the Tealeaf EC likelihood. Asterisks mark unavailable historical rMATS split event tables, not zero agreement; full-data effects are not substituted.}
 \label{tab:ec-glmm-reproducibility}
-\begin{tabular}{lrrrrrrrr}
+\setlength{\tabcolsep}{3pt}
+\resizebox{\textwidth}{!}{\begin{tabular}{lrrrrrrrrrr}
 \toprule
-& \multicolumn{2}{c}{Shared} & \multicolumn{3}{c}{Tealeaf} & \multicolumn{3}{c}{Comparator}\\
-\cmidrule(lr){2-3}\cmidrule(lr){4-6}\cmidrule(lr){7-9}
-Comparator & tests & genes & Rep. & held & \(\rho\) & Rep. & held & \(\rho\)\\
+& \multicolumn{2}{c}{Shared} & \multicolumn{4}{c}{Tealeaf} & \multicolumn{4}{c}{Comparator}\\
+\cmidrule(lr){2-3}\cmidrule(lr){4-7}\cmidrule(lr){8-11}
+Comparator & tests & genes & Rep. & held & \(\rho\) & Direction & Rep. & held & \(\rho\) & Direction\\
 \midrule
-LeafCutter & 747 & 139 & 73 & 0.878 & 0.790 & 26 & 0.750 & 0.542\\
-MAJIQ relaxed UMI & 2,500 & 480 & 156 & 0.888 & 0.791 & 38 & 0.698 & 0.437\\
-scQuint & 2,600 & 507 & 160 & 0.875 & 0.813 & 56 & 0.775 & 0.458\\
-SUPPA2 (matched split; exact paired) & 2,342 & 457 & 131 & 0.884 & 0.812 & 21 & 0.772 & 0.357\\
-rMATS (native, historical) & 2,564 & 496 & 133 & 0.907 & 0.814 & 0 & 0.000 & 0.530\\
-SUPPA2 (primer aware; exact paired) & 2,191 & 431 & 127 & 0.885 & 0.811 & 5 & 0.861 & 0.274\\
-SUPPA2/Tealeaf hybrid$^{\dagger}$ & 1,755 & 354 & 71 & 0.876 & 0.792 & 49 & 0.884 & 0.646\\
+LeafCutter & 747 & 139 & 73 & 0.878 & 0.790 & \shortstack{98.3\%\\462/470} & 26 & 0.750 & 0.542 & \shortstack{91.6\%\\142/155}\\
+MAJIQ relaxed UMI & 2,499 & 479 & 156 & 0.888 & 0.791 & \shortstack{98.3\%\\1,308/1,330} & 38 & 0.697 & 0.435 & \shortstack{95.6\%\\1,750/1,831}\\
+scQuint & 2,599 & 506 & 160 & 0.875 & 0.813 & \shortstack{98.6\%\\1,300/1,319} & 56 & 0.774 & 0.456 & \shortstack{93.8\%\\549/585}\\
+SUPPA2 (exact paired) & 2,342 & 457 & 131 & 0.884 & 0.812 & \shortstack{98.6\%\\1,092/1,107} & 21 & 0.772 & 0.357 & \shortstack{93.3\%\\378/405}\\
+rMATS (native, historical) & 2,564 & 496 & 133 & 0.907 & 0.814 & ---$^{*}$ & 0 & 0.000 & 0.530 & ---$^{*}$\\
+SUPPA2 (primer-aware; exact paired) & 2,191 & 431 & 127 & 0.885 & 0.811 & \shortstack{98.6\%\\1,069/1,084} & 5 & 0.861 & 0.274 & \shortstack{92.1\%\\105/114}\\
+SUPPA2/Tealeaf hybrid$^{\dagger}$ & 1,755 & 354 & 71 & 0.876 & 0.792 & \shortstack{98.7\%\\660/669} & 49 & 0.884 & 0.646 & \shortstack{96.6\%\\590/611}\\
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}
 
 The matched-split SUPPA2 analysis uses the standard event catalogue on the production subject-fold manifests. Its event-level tests were reduced to gene--cell-type-pair hypotheses by Simes aggregation, and the resulting 2,342 hypotheses are shared with the Tealeaf direct-path results shown in the table. Correcting the signed-rank tail calculation raises replicated SUPPA2 discoveries from one to 21 genes, with 48 and 44 fold-level BH genes. Quantification, event eligibility, subject counts, the matched universe, and aggregation are held fixed. Alternative paired-$t$ statistics give 10--18 replicated genes. None of the eight statistics produces a replicated gene in any of 32 subject-synchronized sign-flip families after the complete Simes/conjunction/BH procedure. This is a finite null audit rather than a proof of family-level FDR control. The Tealeaf reference is the merged, calibrated fixed-total concentration-32 result, not a raw fitting shard or a deprecated cross-fitted smoothing run. The earlier full-data and original event-universe split outputs remain separate audits and have not been relabeled as exact-test results.
@@ -220,25 +221,25 @@ A correlation between small p-values and high coverage can arise from power, mis
 
 The fixed-concentration sign-flip nulls also show coverage dependence. At nominal 0.05, rejection in the lowest versus highest coverage quintile is 0.0341 versus 0.0615 in fold 0, and 0.0435 versus 0.0576 in fold 1. At nominal 0.001, the highest quintile rejects at 0.00273 and 0.00235. Thus pooled calibration can conceal coverage-specific tail inflation, and the Table~\ref{tab:ec-glmm-reproducibility} advantage cannot be attributed solely to greater power on the basis of replicated p-values. These conditional diagnostics hold concentration fixed, reuse the calibration null pool, and contain correlated events; they are not an independent selector-aware FDR validation.
 
-For directional assessment, each fold applies event BH to all eligible feature tests on the matched gene--pair universe, before intersecting event identities across folds. We select the union of events significant in either fold, not only events significant in both. Tealeaf's mean ILR effects are mapped to centered log-path effects and aligned by path signature. Two-path agreement is ordinary sign agreement; for a multi-path block it is a positive inner product of the aligned effect vectors. SUPPA2 uses its paired mean PSI effect, and the hybrid uses its testing ILR effect. The archived Tealeaf pooled-baseline optimizer is used to recover directions without changing the published p-values. A recovered effect must match its published norm within \(10^{-6}\) in each fold; 267 of 7,522 and 135 of 5,055 eligible fold tests fail this check and are not assigned a direction. Nonmatching path sets and zero effects are also unevaluable. Table~\ref{tab:coverage-direction-audit} retains the evaluable denominators rather than assuming agreement for those exclusions.
+For directional assessment, each fold applies event BH to all eligible feature tests on the matched gene--pair universe, before intersecting event identities across folds. We select the union of events significant in either fold, not only events significant in both. Tealeaf's mean ILR effects are mapped to centered log-path effects and aligned by path signature. Two-path agreement is ordinary sign agreement; for a multi-path block it is a positive inner product of the aligned effect vectors. LeafCutter and scQuint use differences of equal-pseudobulk mean junction proportions within their tested clusters or intron groups, using only samples in that fold's contrast manifest and excluding zero-total pseudobulks from each mean. Junction components are aligned by their identities in the common count bundle. MAJIQ uses its native median PSI difference for each tested edge, without collapsing distinct edge tests into one LSV. SUPPA2 uses its paired mean PSI effect, and the hybrid uses its testing ILR effect. The archived Tealeaf pooled-baseline optimizer is used to recover directions without changing the published p-values. A recovered effect must match its published norm within \(10^{-6}\) in each fold; 267 of 7,522 and 135 of 5,055 eligible fold tests fail this check and are not assigned a direction. Nonmatching feature sets, missing effects, and zero effects are also unevaluable. Table~\ref{tab:ec-glmm-reproducibility} retains the evaluable denominators rather than assuming agreement for those exclusions.
 
-On the SUPPA2-matched universe, 1,092 of 1,107 evaluable Tealeaf events agree, 98.6\%, among 1,171 selected common events. Equal-gene weighting gives 97.2\%, reducing domination by genes with many blocks. Agreement is 58/63 in the lowest coverage quintile and 365/367 in the highest. The two-path subset gives 774/784 sign agreements, 98.7\%, and the multi-path subset gives 318/323 positive inner products, 98.5\%. Using the original published fold-event BH thresholds instead of correcting within the matched subset gives 1,003/1,014 agreements, 98.9\%. Including all common events within genes significant in either half, rather than only event-BH discoveries, gives 1,852/2,172 agreements, 85.3\%; this is a separate weaker-signal sensitivity. High directional agreement supports consistency of the measured effects, but does not rule out a systematic artifact shared across halves or remove the coverage-specific null-calibration concern. Junction comparator directions are absent from the saved split summaries and are not inferred from unsigned statistics; the historical rMATS split row is not included in this audit.
+On the SUPPA2-matched universe, 1,092 of 1,107 evaluable Tealeaf events agree, 98.6\%, among 1,171 selected common events. Equal-gene weighting gives 97.2\%, reducing domination by genes with many blocks. Agreement is 58/63 in the lowest coverage quintile and 365/367 in the highest. The two-path subset gives 774/784 sign agreements, 98.7\%, and the multi-path subset gives 318/323 positive inner products, 98.5\%. Using the original published fold-event BH thresholds instead of correcting within the matched subset gives 1,003/1,014 agreements, 98.9\%. Including all common events within genes significant in either half, rather than only event-BH discoveries, gives 1,852/2,172 agreements, 85.3\%; this is a separate weaker-signal sensitivity. High directional agreement supports consistency of the measured effects, but does not rule out a systematic artifact shared across halves or remove the coverage-specific null-calibration concern. The historical rMATS split event tables are unavailable, so its aggregate row is retained without fabricated directional values or substituted full-data effects.
 
 \begin{table}[H]
 \centering
 \scriptsize
-\caption{Coverage and directional audits on the converged, finite-p-value matched split universes. Correlations use Table~\ref{tab:ec-glmm-reproducibility}'s gene-level Simes p-values and the common gene-coverage proxy, reported as fold 0 / fold 1. Directional agreement is among common events passing event BH in either half, restricted to verified, aligned, nonzero effects. Different feature definitions mean the two direction columns do not count identical events. Dashes indicate unavailable saved signed effects.}
+\caption{Coverage audit on the converged, finite-p-value matched split universes. Correlations use Table~\ref{tab:ec-glmm-reproducibility}'s gene-level Simes p-values and the common gene-coverage proxy, reported as fold 0 / fold 1. Split-effect direction agreement is integrated into Table~\ref{tab:ec-glmm-reproducibility}.}
 \label{tab:coverage-direction-audit}
-\begin{tabular}{lcccc}
+\begin{tabular}{lcc}
 \toprule
-Matched comparator & Tealeaf \(\rho\) & Comparator \(\rho\) & Tealeaf direction & Comparator direction\\
+Matched comparator & Tealeaf \(\rho\) & Comparator \(\rho\)\\
 \midrule
-LeafCutter & \(-.425 / -.472\) & \(-.114 / .016\) & 462/470 (98.3\%) & ---\\
-MAJIQ Heterogen & \(-.416 / -.348\) & \(-.086 / -.179\) & 1,308/1,330 (98.3\%) & ---\\
-scQuint & \(-.425 / -.338\) & \(-.069 / -.080\) & 1,300/1,319 (98.6\%) & ---\\
-SUPPA2 & \(-.427 / -.323\) & \(-.178 / -.262\) & 1,092/1,107 (98.6\%) & 378/405 (93.3\%)\\
-SUPPA2 primer-aware & \(-.412 / -.313\) & \(-.278 / -.184\) & 1,069/1,084 (98.6\%) & 105/114 (92.1\%)\\
-SUPPA2/Tealeaf hybrid & \(-.419 / -.297\) & \(-.339 / -.237\) & 660/669 (98.7\%) & 590/611 (96.6\%)\\
+LeafCutter & \(-.425 / -.472\) & \(-.114 / .016\)\\
+MAJIQ Heterogen & \(-.416 / -.348\) & \(-.086 / -.179\)\\
+scQuint & \(-.425 / -.338\) & \(-.069 / -.080\)\\
+SUPPA2 & \(-.427 / -.323\) & \(-.178 / -.262\)\\
+SUPPA2 primer-aware & \(-.412 / -.313\) & \(-.278 / -.184\)\\
+SUPPA2/Tealeaf hybrid & \(-.419 / -.297\) & \(-.339 / -.237\)\\
 \bottomrule
 \end{tabular}
 \end{table}

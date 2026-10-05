@@ -48,3 +48,40 @@ def test_direction_union_is_symmetric_and_uses_consistent_level_order():
     assert all(record["event_BH_union"] for record in records)
     assert not any(record["event_BH_intersection"] for record in records)
     assert all(record["direction_agrees"] for record in records)
+
+
+def test_junction_directions_use_only_manifest_samples(tmp_path, monkeypatch):
+    import json
+    from types import SimpleNamespace
+    import pandas as pd
+    from scipy.sparse import csr_matrix
+    import extra_scripts.audit_split_coverage_direction as audit
+
+    folder = tmp_path / "reproducibility/fold0"
+    folder.mkdir(parents=True)
+    (folder / "contrasts.json").write_text(json.dumps([{"contrast_id": "contrast", "samples_a": ["a0"], "samples_b": ["b0"]}]))
+    table = pd.DataFrame({"method": ["scQuint", "scQuint"], "contrast_id": ["contrast"] * 2, "feature_id": ["event", "missing"]})
+    bundle = SimpleNamespace(counts=csr_matrix([[9, 1], [1, 9], [0, 10], [10, 0]]), samples=pd.DataFrame({"sample_id": ["a0", "b0", "a1", "b1"]}))
+    monkeypatch.setattr(audit, "scquint_groups", lambda *args: {("scQuint", "contrast", "event"): {"contrast_id": "contrast", "indices": np.array([0, 1])}})
+    result = audit.signed_junctions(table, bundle, tmp_path, 0, "scQuint")
+    assert np.allclose(result.effect_vector.iloc[0], [-.8, .8])
+    assert result.effect_features.iloc[0] == ["0", "1"]
+    assert result.effect_vector.iloc[1] == []
+    assert len(result) == len(table)
+
+
+def test_majiq_directions_preserve_edge_identity(tmp_path):
+    import pandas as pd
+    from extra_scripts.audit_split_coverage_direction import signed_junctions
+    from extra_scripts.assess_tilgner_junction_replication import majiq_feature_ids
+
+    raw = pd.DataFrame({"gene_id": ["g", "g"], "seqid": ["chr1"] * 2, "start": [10, 10], "end": [20, 30], "a-raw_psi_quantile_0.500": [.2, .8], "b-raw_psi_quantile_0.500": [.6, .4]})
+    folder = tmp_path / "reproducibility/fold0/majiq_min3_cov3/tests/raw"
+    folder.mkdir(parents=True)
+    raw.to_csv(folder / "contrast.tsv", sep="\t", index=False)
+    features = majiq_feature_ids(raw)
+    table = pd.DataFrame({"contrast_id": ["contrast"] * 3, "level_a": ["a"] * 3, "level_b": ["b"] * 3, "feature_id": [features.iloc[1], features.iloc[0], "missing"]})
+    result = signed_junctions(table, None, tmp_path, 0, "MAJIQ Heterogen")
+    assert np.allclose(result.effect_vector.iloc[:2].tolist(), [[-.4], [.4]])
+    assert np.isnan(result.effect_vector.iloc[2][0])
+    assert result.effect_features.iloc[0] == [features.iloc[1]]

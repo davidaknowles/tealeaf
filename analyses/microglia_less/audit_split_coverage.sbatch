@@ -18,4 +18,4 @@ if [[ "${WITH_DIRECTIONS:-0}" == 1 ]]; then
 fi
 python "${REPO_ROOT}/extra_scripts/audit_split_coverage_direction.py" \
   --run-root "${RUN_ROOT}" --repo-root "${REPO_ROOT}" \
-  --output-dir "${REPO_ROOT}/analyses/split_coverage_direction" "${ARGS[@]}"
+  --output-dir "${REPO_ROOT}/analyses/split_coverage_direction" --junction-directions "${ARGS[@]}"
