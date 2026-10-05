@@ -26,7 +26,7 @@ def eligible_reference(path):
     return normalize_pairs(table)
 
 
-def load_comparators(repro, repo, fold):
+def load_comparators(repro, repo, fold, reference=None):
     table = pd.read_csv(repro / f"fold{fold}/comparison_majiq_min3_cov3/all_tests.tsv.gz", sep="\t", low_memory=False)
     table = table.loc[table.effect.eq("cell_type")].copy()
     mapping = pd.read_csv(repro / "leafcutter_cluster_gene.tsv.gz", sep="\t").set_index("feature_id").gene_id
@@ -39,7 +39,31 @@ def load_comparators(repro, repo, fold):
                         ("SUPPA2 primer-aware", base / f"suppa2_primer_aware/split_data_matched_exact_fold{fold}_tests.tsv.gz"),
                         ("SUPPA2/Tealeaf hybrid", base / f"suppa2_tealeaf_hybrid/split_data/fold{fold}_tests.tsv.gz")):
         result[label] = normalize_pairs(pd.read_csv(path, sep="\t", low_memory=False))
+    rmats_path = base / f"rmats/split_data_fold{fold}_tests.tsv.gz"
+    if rmats_path.exists():
+        result["rMATS (paired)"] = load_paired_rmats(rmats_path, reference)
     return result
+
+
+def load_paired_rmats(path, reference=None):
+    """Read paired split outputs and convert native a-minus-b PSI direction.
+
+    Retain all finite tests in reference genes, not only native discoveries.
+    Chunking avoids retaining millions of unmatched catalogue rows in memory.
+    """
+    genes = set(reference.gene_id) if reference is not None else None
+    frames = []
+    columns = ["method", "contrast_id", "effect", "stratum", "level_a", "level_b", "feature_id", "p_value", "q_value", "effect_size", "gene_id", "statistical_model", "effect_orientation"]
+    for chunk in pd.read_csv(path, sep="\t", usecols=columns, chunksize=100_000):
+        if not chunk.statistical_model.eq("PAIRADISE").all() or not chunk.effect_orientation.eq("a_minus_b").all():
+            raise ValueError("expected native paired rMATS split outputs")
+        local = normalize_pairs(chunk.loc[chunk.effect.eq("cell_type")])
+        if genes is not None:
+            local = local.loc[local.gene_id.isin(genes)].copy()
+        local["effect_size"] = -local.effect_size
+        local["effect_orientation"] = "b_minus_a"
+        frames.append(local)
+    return pd.concat(frames, ignore_index=True)
 
 
 def subset(table, shared):
@@ -190,7 +214,7 @@ def main():
         ref = [signed_reference(table, sorted((args.directions_dir / f"fold{k}").glob("shard_*/paired_path.tsv")), args.output_dir / f"fold{k}_refit_norm_diagnostics.tsv") for k, table in enumerate(ref)]
         refit_checks = [{"fold": k, "eligible_tests": len(table), "verified_tests": int(table.refit_verified.sum()), "excluded_tests": int((~table.refit_verified).sum()), "maximum_effect_norm_error": np.abs(table.mean_difference_norm - table.mean_difference_norm_refit).max(), "maximum_allowed_error": 1e-6, "baseline_revision": "d31da47"} for k, table in enumerate(ref)]
         pd.DataFrame(refit_checks).to_csv(args.output_dir / "direction_refit_checks.tsv", sep="\t", index=False)
-    others = [load_comparators(repro, args.repo_root, k) for k in (0, 1)]
+    others = [load_comparators(repro, args.repo_root, k, ref[k]) for k in (0, 1)]
     bundle = JunctionBundle.load(args.run_root / "junction_benchmark/pseudobulk_junctions") if args.junction_directions else None
     correlations, details, directions, statuses, gene_details, null_correlations, metrics = [], [], [], [], [], [], []
     nulls = []
@@ -227,7 +251,8 @@ def main():
     pd.DataFrame(null_correlations).to_csv(args.output_dir / "null_coverage_correlations.tsv", sep="\t", index=False)
     pd.concat(gene_details).to_csv(args.output_dir / "gene_coverage_pvalues.tsv.gz", sep="\t", index=False)
     pd.concat(details).to_csv(args.output_dir / "event_coverage_pvalues.tsv.gz", sep="\t", index=False)
-    statuses.extend({"comparison": "rMATS (historical)", "method": method, "status": "historical split event tables unavailable; full-data effects not substituted"} for method in ("Tealeaf", "rMATS"))
+    if not all("rMATS (paired)" in fold for fold in others):
+        statuses.extend({"comparison": "rMATS (historical)", "method": method, "status": "historical split event tables unavailable; full-data effects not substituted"} for method in ("Tealeaf", "rMATS"))
     pd.DataFrame(statuses).to_csv(args.output_dir / "direction_status.tsv", sep="\t", index=False, na_rep="NA")
     pd.DataFrame(metrics).to_csv(args.output_dir / "table1_gene_metrics.tsv", sep="\t", index=False)
     # Coverage quintiles refer to the common event set, not a selected tail.

@@ -13,11 +13,12 @@ from __future__ import annotations
 import argparse
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import json
+from itertools import zip_longest
 import os
 from pathlib import Path
-import shutil
 import subprocess
 import tempfile
+import time
 
 import numpy as np
 import pandas as pd
@@ -123,6 +124,8 @@ def run_paired_jcec_only(work, args, threads):
         from_gtf = work / f"fromGTF.{event_type}.txt"
         if not count_path.exists() or not from_gtf.exists():
             continue
+        started = time.monotonic()
+        print(f"PAIRADISE {work.name}, {event_type} started", flush=True)
         sec_tmp = tmp_root / f"JCEC_{event_type}"
         sec_tmp.mkdir(parents=True, exist_ok=True)
         result_id = sec_tmp / "rMATS_result_ID.txt"
@@ -136,18 +139,19 @@ def run_paired_jcec_only(work, args, threads):
         rscript = str(args.rscript) if args.rscript is not None else "Rscript"
         run_command([rscript, str(PAIRED_MODEL), str(count_path), str(threads), str(result_fdr)], args, cwd=sec_tmp)
         with result_paired.open("w") as out_handle, result_fdr.open() as fdr_handle, result_il.open() as il_handle:
-            for fdr_line, il_line in zip(fdr_handle, il_handle):
+            for fdr_line, il_line in zip_longest(fdr_handle, il_handle):
+                if fdr_line is None or il_line is None:
+                    raise ValueError(f"{event_type} p-value and inclusion tables have different row counts")
                 out_handle.write(fdr_line.rstrip("\n") + "\t" + il_line.rstrip("\n") + "\n")
         run_command(["python", str(JOIN_FILES), str(from_gtf), str(result_paired), "0", "0", str(result_final)], args)
+        print(f"PAIRADISE {work.name}, {event_type} finished in {time.monotonic() - started:.1f}s", flush=True)
 
 
 def process_one(item):
     fold, contrast, old_output, work_root, threads, args = item
     index = int(contrast["index"])
-    work = work_root / f"fold{fold}_{index}"
-    if work.exists():
-        shutil.rmtree(work)
-    work.mkdir(parents=True)
+    work_root.mkdir(parents=True, exist_ok=True)
+    work = Path(tempfile.mkdtemp(prefix=f"fold{fold}_{index}_", dir=work_root))
     try:
         run_command(["python", str(PREPARE), "--new-output-dir", work, "--old-output-dir", old_output, "--group-1-indices", ",".join(map(str, contrast["indices_a"])), "--group-2-indices", ",".join(map(str, contrast["indices_b"]))], args)
         if args.paired_stats and args.paired_jcec_only:
@@ -159,6 +163,9 @@ def process_one(item):
             run_command(command, args, cwd=work)
         result = parse_result(work, contrast)
         result["fold"] = fold
+        result["statistical_model"] = "PAIRADISE" if args.paired_stats else "unpaired"
+        result["effect_orientation"] = "a_minus_b"
+        result["n_subjects"] = len(contrast["paired_subjects"])
         result.to_csv(work / "parsed.tsv", sep="\t", index=False)
         return fold, index, len(result), str(work / "parsed.tsv"), None
     except Exception as error:  # pragma: no cover - reported by parent

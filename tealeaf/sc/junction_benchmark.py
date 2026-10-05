@@ -39,6 +39,42 @@ def benjamini_hochberg(pvalues) -> np.ndarray:
     return result
 
 
+def index_subject_paired_contrasts(contrasts, samples, sample_indices):
+    """Index contrast counts in identical subject order on both sides.
+
+    ``sample_indices`` maps sample IDs to columns in a retained count pass.
+    Refuse missing, duplicated, or unpaired samples instead of pairing by row.
+    """
+    if len(set(sample_indices.values())) != len(sample_indices) or any(int(index) != index or index < 0 for index in sample_indices.values()):
+        raise ValueError("count-pass sample indices must be unique nonnegative integers")
+    metadata = samples.set_index("sample_id", verify_integrity=True)
+    output = []
+    for contrast in contrasts:
+        local = dict(contrast)
+        by_side = []
+        for side in ("a", "b"):
+            sample_ids = local[f"samples_{side}"]
+            if not sample_ids or len(set(sample_ids)) != len(sample_ids):
+                raise ValueError("contrast samples must be nonempty and unique")
+            selected = metadata.loc[sample_ids]
+            if selected.subject.duplicated().any():
+                raise ValueError("multiple pseudobulks for one subject in a contrast side")
+            if not selected.cell_type.eq(local[f"level_{side}"]).all():
+                raise ValueError("sample cell types disagree with contrast levels")
+            by_side.append(dict(zip(selected.subject.astype(str), sample_ids)))
+        subjects = sorted(by_side[0])
+        if set(subjects) != set(by_side[1]):
+            raise ValueError("contrast sides have different subjects")
+        if "paired_subjects" in local and set(map(str, local["paired_subjects"])) != set(subjects):
+            raise ValueError("paired-subject manifest disagrees with sample metadata")
+        local["paired_subjects"] = subjects
+        for side, lookup in zip(("a", "b"), by_side):
+            local[f"samples_{side}"] = [lookup[subject] for subject in subjects]
+            local[f"indices_{side}"] = [sample_indices[sample] for sample in local[f"samples_{side}"]]
+        output.append(local)
+    return output
+
+
 def permute_paired_contrasts(
     contrasts: list[dict],
     samples: pd.DataFrame,
