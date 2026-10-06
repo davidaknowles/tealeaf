@@ -1,0 +1,3 @@
+method	comparison	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp
+Tealeaf	rMATS (paired)	simes	simes	3109	597	228	220	155	0.8773923444976077	0.7957193791335166
+rMATS (paired)	rMATS (paired)	simes	simes	3109	597	20	25	12	0.7150000000000001	0.3509550499308015

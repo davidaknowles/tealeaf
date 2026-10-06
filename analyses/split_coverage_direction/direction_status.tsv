@@ -1,15 +1,15 @@
 comparison	method	status	common_events	incompatible_or_nonfinite
-LeafCutter	Tealeaf	computed	1047.0	46.0
-LeafCutter	LeafCutter	computed	1070.0	0.0
-MAJIQ Heterogen	Tealeaf	computed	3412.0	174.0
-MAJIQ Heterogen	MAJIQ Heterogen	computed	25001.0	0.0
-SUPPA2	Tealeaf	computed	3317.0	170.0
-SUPPA2	SUPPA2	computed	5295.0	0.0
-SUPPA2 primer-aware	Tealeaf	computed	3156.0	159.0
-SUPPA2 primer-aware	SUPPA2 primer-aware	computed	4266.0	0.0
-SUPPA2/Tealeaf hybrid	Tealeaf	computed	2300.0	150.0
-SUPPA2/Tealeaf hybrid	SUPPA2/Tealeaf hybrid	computed	2858.0	0.0
-scQuint	Tealeaf	computed	3527.0	200.0
-scQuint	scQuint	computed	7180.0	0.0
-rMATS (historical)	Tealeaf	historical split event tables unavailable; full-data effects not substituted	NA	NA
-rMATS (historical)	rMATS	historical split event tables unavailable; full-data effects not substituted	NA	NA
+LeafCutter	Tealeaf	computed	1047	46
+LeafCutter	LeafCutter	computed	1070	0
+MAJIQ Heterogen	Tealeaf	computed	3412	174
+MAJIQ Heterogen	MAJIQ Heterogen	computed	25001	0
+SUPPA2	Tealeaf	computed	3317	170
+SUPPA2	SUPPA2	computed	5295	0
+SUPPA2 primer-aware	Tealeaf	computed	3156	159
+SUPPA2 primer-aware	SUPPA2 primer-aware	computed	4266	0
+SUPPA2/Tealeaf hybrid	Tealeaf	computed	2300	150
+SUPPA2/Tealeaf hybrid	SUPPA2/Tealeaf hybrid	computed	2858	0
+rMATS (paired)	Tealeaf	computed	4114	220
+rMATS (paired)	rMATS (paired)	computed	20518	0
+scQuint	Tealeaf	computed	3527	200
+scQuint	scQuint	computed	7180	0

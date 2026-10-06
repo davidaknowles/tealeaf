@@ -1,0 +1,3 @@
+method	comparison	selection	coverage_bin	n_events	n_genes	n_direction_evaluable	agree	agreement	gene_mean_agreement	median_cosine	median_coverage
+Tealeaf	rMATS (paired)	event_BH_union	all	1428	306	1349	1333	0.988139362490734	0.9777342966084688	1.0	64.5
+rMATS (paired)	rMATS (paired)	event_BH_union	all	100	43	98	91	0.9285714285714286	0.8643410852713178	1.0	70.5

@@ -1,0 +1,15 @@
+{
+  "statistical_model": "PAIRADISE",
+  "count_type": "JCEC",
+  "read_handling": "single_end",
+  "effect_orientation": "a_minus_b",
+  "fold_contrasts": [
+    190,
+    190
+  ],
+  "fold_subjects": [
+    24,
+    24
+  ],
+  "source": "retained corrected all-sample count pass; split-specific statistical refits"
+}

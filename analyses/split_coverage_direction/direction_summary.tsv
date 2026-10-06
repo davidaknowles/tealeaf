@@ -183,8 +183,8 @@ SUPPA2	SUPPA2	event_BH_union_two_path	1	48	36	48	43	0.8958333333333334	0.8888888
 SUPPA2	SUPPA2	event_BH_union_two_path	2	45	24	45	43	0.9555555555555556	0.9583333333333334	1.0	52.5
 SUPPA2	SUPPA2	event_BH_union_two_path	3	89	38	89	80	0.898876404494382	0.8491228070175438	1.0	65.5
 SUPPA2	SUPPA2	event_BH_union_two_path	4	188	34	188	182	0.9680851063829787	0.8382352941176471	1.0	112.5
-SUPPA2	SUPPA2	event_BH_union_multi_path	all	0	0	0	0				
-SUPPA2	SUPPA2	published_event_BH_union	all	0	0	0	0				
+SUPPA2	SUPPA2	event_BH_union_multi_path	all	0	0	0	0	NA	NA	NA	NA
+SUPPA2	SUPPA2	published_event_BH_union	all	0	0	0	0	NA	NA	NA	NA
 SUPPA2	SUPPA2	event_BH_intersection	all	124	33	124	124	1.0	1.0	1.0	78.25
 SUPPA2	SUPPA2	event_BH_intersection	0	7	5	7	7	1.0	1.0	1.0	36.0
 SUPPA2	SUPPA2	event_BH_intersection	1	9	7	9	9	1.0	1.0	1.0	42.0
@@ -269,8 +269,8 @@ SUPPA2 primer-aware	SUPPA2 primer-aware	event_BH_union_two_path	1	2	2	2	1	0.5	0.
 SUPPA2 primer-aware	SUPPA2 primer-aware	event_BH_union_two_path	2	7	6	7	7	1.0	1.0	1.0	52.0
 SUPPA2 primer-aware	SUPPA2 primer-aware	event_BH_union_two_path	3	21	15	21	16	0.7619047619047619	0.7777777777777778	1.0	69.0
 SUPPA2 primer-aware	SUPPA2 primer-aware	event_BH_union_two_path	4	73	11	73	71	0.9726027397260274	0.9517045454545454	1.0	112.5
-SUPPA2 primer-aware	SUPPA2 primer-aware	event_BH_union_multi_path	all	0	0	0	0				
-SUPPA2 primer-aware	SUPPA2 primer-aware	published_event_BH_union	all	0	0	0	0				
+SUPPA2 primer-aware	SUPPA2 primer-aware	event_BH_union_multi_path	all	0	0	0	0	NA	NA	NA	NA
+SUPPA2 primer-aware	SUPPA2 primer-aware	published_event_BH_union	all	0	0	0	0	NA	NA	NA	NA
 SUPPA2 primer-aware	SUPPA2 primer-aware	event_BH_intersection	all	34	10	34	34	1.0	1.0	1.0	112.5
 SUPPA2 primer-aware	SUPPA2 primer-aware	event_BH_intersection	0	2	2	2	2	1.0	1.0	1.0	37.0
 SUPPA2 primer-aware	SUPPA2 primer-aware	event_BH_intersection	1	1	1	1	1	1.0	1.0	1.0	43.5
@@ -354,7 +354,7 @@ SUPPA2/Tealeaf hybrid	SUPPA2/Tealeaf hybrid	event_BH_union_two_path	1	60	43	60	5
 SUPPA2/Tealeaf hybrid	SUPPA2/Tealeaf hybrid	event_BH_union_two_path	2	116	66	116	108	0.9310344827586207	0.9545454545454546	1.0	51.5
 SUPPA2/Tealeaf hybrid	SUPPA2/Tealeaf hybrid	event_BH_union_two_path	3	178	73	178	174	0.9775280898876404	0.9848842701936703	1.0	64.5
 SUPPA2/Tealeaf hybrid	SUPPA2/Tealeaf hybrid	event_BH_union_two_path	4	229	57	229	228	0.9956331877729258	0.9824561403508771	1.0	103.5
-SUPPA2/Tealeaf hybrid	SUPPA2/Tealeaf hybrid	event_BH_union_multi_path	all	0	0	0	0				
+SUPPA2/Tealeaf hybrid	SUPPA2/Tealeaf hybrid	event_BH_union_multi_path	all	0	0	0	0	NA	NA	NA	NA
 SUPPA2/Tealeaf hybrid	SUPPA2/Tealeaf hybrid	published_event_BH_union	all	525	120	525	510	0.9714285714285714	0.9721341463414634	1.0	66.5
 SUPPA2/Tealeaf hybrid	SUPPA2/Tealeaf hybrid	published_event_BH_union	0	20	16	20	19	0.95	0.9375	1.0	38.0
 SUPPA2/Tealeaf hybrid	SUPPA2/Tealeaf hybrid	published_event_BH_union	1	40	30	40	36	0.9	0.9466666666666667	1.0	42.25
@@ -432,6 +432,92 @@ SUPPA2/Tealeaf hybrid	Tealeaf	fold1_event_BH	1	36	27	36	36	1.0	1.0	1.0	44.5
 SUPPA2/Tealeaf hybrid	Tealeaf	fold1_event_BH	2	98	57	91	91	1.0	1.0	1.0	53.5
 SUPPA2/Tealeaf hybrid	Tealeaf	fold1_event_BH	3	158	69	144	144	1.0	1.0	1.0	66.0
 SUPPA2/Tealeaf hybrid	Tealeaf	fold1_event_BH	4	184	49	178	175	0.9831460674157303	0.9456521739130435	1.0	102.75
+rMATS (paired)	Tealeaf	event_BH_union	all	1428	306	1349	1333	0.9881393624907339	0.9777342966084687	1.0	64.5
+rMATS (paired)	Tealeaf	event_BH_union	0	84	57	77	71	0.922077922077922	0.9	1.0	37.0
+rMATS (paired)	Tealeaf	event_BH_union	1	155	102	148	144	0.972972972972973	0.9583333333333334	1.0	44.0
+rMATS (paired)	Tealeaf	event_BH_union	2	297	156	283	281	0.9929328621908127	0.9868421052631579	1.0	53.0
+rMATS (paired)	Tealeaf	event_BH_union	3	405	160	370	369	0.9972972972972973	0.9983766233766234	1.0	65.5
+rMATS (paired)	Tealeaf	event_BH_union	4	487	108	471	468	0.9936305732484076	0.9852130325814537	1.0	99.0
+rMATS (paired)	Tealeaf	event_BH_union_two_path	all	1034	251	986	975	0.9888438133874239	0.9778373162519505	1.0	63.5
+rMATS (paired)	Tealeaf	event_BH_union_two_path	0	61	44	57	55	0.9649122807017544	0.9534883720930233	1.0	37.0
+rMATS (paired)	Tealeaf	event_BH_union_two_path	1	122	86	116	112	0.9655172413793104	0.9506172839506173	1.0	44.0
+rMATS (paired)	Tealeaf	event_BH_union_two_path	2	222	135	212	210	0.9905660377358491	0.9846153846153847	1.0	52.5
+rMATS (paired)	Tealeaf	event_BH_union_two_path	3	282	134	261	260	0.9961685823754789	0.9974554707379134	1.0	65.0
+rMATS (paired)	Tealeaf	event_BH_union_two_path	4	347	84	340	338	0.9941176470588236	0.9870045484080572	1.0	103.0
+rMATS (paired)	Tealeaf	event_BH_union_multi_path	all	394	112	363	358	0.9862258953168044	0.9802164502164503	0.9848449896116315	67.5
+rMATS (paired)	Tealeaf	event_BH_union_multi_path	0	23	19	20	16	0.8	0.7941176470588235	0.9193868654489559	35.5
+rMATS (paired)	Tealeaf	event_BH_union_multi_path	1	33	31	32	32	1.0	1.0	0.9581933486134466	43.5
+rMATS (paired)	Tealeaf	event_BH_union_multi_path	2	75	47	71	71	1.0	1.0	0.9901776935315452	53.5
+rMATS (paired)	Tealeaf	event_BH_union_multi_path	3	123	57	109	109	1.0	1.0	0.9892847557142393	67.0
+rMATS (paired)	Tealeaf	event_BH_union_multi_path	4	140	43	131	130	0.9923664122137404	0.975	0.9838523422337316	93.25
+rMATS (paired)	Tealeaf	published_event_BH_union	all	1317	290	1244	1233	0.9911575562700965	0.976648013233379	1.0	65.0
+rMATS (paired)	Tealeaf	published_event_BH_union	0	71	48	65	62	0.9538461538461539	0.9361702127659575	1.0	37.0
+rMATS (paired)	Tealeaf	published_event_BH_union	1	137	91	132	128	0.9696969696969697	0.9540229885057471	1.0	44.0
+rMATS (paired)	Tealeaf	published_event_BH_union	2	274	148	261	259	0.9923371647509579	0.9861111111111112	1.0	53.0
+rMATS (paired)	Tealeaf	published_event_BH_union	3	375	155	341	341	1.0	1.0	1.0	65.5
+rMATS (paired)	Tealeaf	published_event_BH_union	4	460	106	445	443	0.9955056179775281	0.9805825242718447	1.0	99.0
+rMATS (paired)	Tealeaf	event_BH_intersection	all	765	209	724	724	1.0	1.0	1.0	69.0
+rMATS (paired)	Tealeaf	event_BH_intersection	0	16	10	16	16	1.0	1.0	1.0	38.5
+rMATS (paired)	Tealeaf	event_BH_intersection	1	54	40	52	52	1.0	1.0	1.0	43.5
+rMATS (paired)	Tealeaf	event_BH_intersection	2	135	83	128	128	1.0	1.0	1.0	53.5
+rMATS (paired)	Tealeaf	event_BH_intersection	3	238	115	214	214	1.0	1.0	1.0	65.5
+rMATS (paired)	Tealeaf	event_BH_intersection	4	322	86	314	314	1.0	1.0	1.0	101.5
+rMATS (paired)	Tealeaf	gene_BH_union	all	2822	275	2667	2273	0.8522684664416947	0.8771792653503597	0.9999999999999999	55.5
+rMATS (paired)	Tealeaf	gene_BH_union	0	494	149	464	317	0.6831896551724138	0.7134589535274467	0.997621647129188	36.5
+rMATS (paired)	Tealeaf	gene_BH_union	1	442	176	414	329	0.7946859903381642	0.817065772669221	0.9999999999999998	44.0
+rMATS (paired)	Tealeaf	gene_BH_union	2	585	193	550	480	0.8727272727272727	0.8764223057644108	0.9999999999999999	52.5
+rMATS (paired)	Tealeaf	gene_BH_union	3	612	165	574	522	0.9094076655052264	0.933906948813781	0.9999999999999999	65.0
+rMATS (paired)	Tealeaf	gene_BH_union	4	689	102	665	625	0.9398496240601504	0.9603742586266206	1.0	100.5
+rMATS (paired)	Tealeaf	fold0_event_BH	all	1214	274	1148	1139	0.9921602787456446	0.9886363636363638	1.0	65.0
+rMATS (paired)	Tealeaf	fold0_event_BH	0	60	42	57	54	0.9473684210526315	0.9390243902439024	1.0	36.75
+rMATS (paired)	Tealeaf	fold0_event_BH	1	131	88	125	122	0.976	0.963855421686747	1.0	44.0
+rMATS (paired)	Tealeaf	fold0_event_BH	2	240	129	229	228	0.9956331877729258	0.992	1.0	53.0
+rMATS (paired)	Tealeaf	fold0_event_BH	3	358	147	326	325	0.9969325153374233	0.9982394366197183	1.0	65.25
+rMATS (paired)	Tealeaf	fold0_event_BH	4	425	103	411	410	0.9975669099756691	0.9994117647058823	1.0	99.0
+rMATS (paired)	Tealeaf	fold1_event_BH	all	979	249	925	918	0.9924324324324324	0.9793715846994535	1.0	67.5
+rMATS (paired)	Tealeaf	fold1_event_BH	0	40	26	36	33	0.9166666666666666	0.88	1.0	37.25
+rMATS (paired)	Tealeaf	fold1_event_BH	1	78	56	75	74	0.9866666666666667	0.9811320754716981	1.0	43.5
+rMATS (paired)	Tealeaf	fold1_event_BH	2	192	117	182	181	0.9945054945054945	0.9910714285714286	1.0	53.0
+rMATS (paired)	Tealeaf	fold1_event_BH	3	285	132	258	258	1.0	1.0	1.0	65.5
+rMATS (paired)	Tealeaf	fold1_event_BH	4	384	93	374	372	0.9946524064171123	0.9775280898876404	1.0	101.5
+rMATS (paired)	rMATS (paired)	event_BH_union	all	100	43	98	91	0.9285714285714286	0.8643410852713178	1.0	70.5
+rMATS (paired)	rMATS (paired)	event_BH_union	0	10	8	9	7	0.7777777777777778	0.75	1.0	37.0
+rMATS (paired)	rMATS (paired)	event_BH_union	1	19	15	19	15	0.7894736842105263	0.7666666666666667	1.0	45.0
+rMATS (paired)	rMATS (paired)	event_BH_union	2	10	10	10	10	1.0	1.0	1.0	57.5
+rMATS (paired)	rMATS (paired)	event_BH_union	3	25	11	24	24	1.0	1.0	1.0	76.0
+rMATS (paired)	rMATS (paired)	event_BH_union	4	36	9	36	35	0.9722222222222222	0.8888888888888888	1.0	141.75
+rMATS (paired)	rMATS (paired)	event_BH_union_two_path	all	100	43	98	91	0.9285714285714286	0.8643410852713178	1.0	70.5
+rMATS (paired)	rMATS (paired)	event_BH_union_two_path	0	10	8	9	7	0.7777777777777778	0.75	1.0	37.0
+rMATS (paired)	rMATS (paired)	event_BH_union_two_path	1	19	15	19	15	0.7894736842105263	0.7666666666666667	1.0	45.0
+rMATS (paired)	rMATS (paired)	event_BH_union_two_path	2	10	10	10	10	1.0	1.0	1.0	57.5
+rMATS (paired)	rMATS (paired)	event_BH_union_two_path	3	25	11	24	24	1.0	1.0	1.0	76.0
+rMATS (paired)	rMATS (paired)	event_BH_union_two_path	4	36	9	36	35	0.9722222222222222	0.8888888888888888	1.0	141.75
+rMATS (paired)	rMATS (paired)	event_BH_union_multi_path	all	0	0	0	0	NA	NA	NA	NA
+rMATS (paired)	rMATS (paired)	published_event_BH_union	all	0	0	0	0	NA	NA	NA	NA
+rMATS (paired)	rMATS (paired)	event_BH_intersection	all	29	16	29	29	1.0	1.0	1.0	104.0
+rMATS (paired)	rMATS (paired)	event_BH_intersection	0	3	2	3	3	1.0	1.0	1.0	39.0
+rMATS (paired)	rMATS (paired)	event_BH_intersection	1	2	1	2	2	1.0	1.0	1.0	45.5
+rMATS (paired)	rMATS (paired)	event_BH_intersection	2	3	3	3	3	1.0	1.0	1.0	60.5
+rMATS (paired)	rMATS (paired)	event_BH_intersection	3	6	6	6	6	1.0	1.0	1.0	73.25
+rMATS (paired)	rMATS (paired)	event_BH_intersection	4	15	6	15	15	1.0	1.0	1.0	141.0
+rMATS (paired)	rMATS (paired)	gene_BH_union	all	3735	32	1605	986	0.6143302180685358	0.6083961367671503	1.0	87.5
+rMATS (paired)	rMATS (paired)	gene_BH_union	0	345	20	154	98	0.6363636363636364	0.630582298136646	1.0	38.0
+rMATS (paired)	rMATS (paired)	gene_BH_union	1	375	19	167	103	0.6167664670658682	0.6236337538790401	1.0	46.0
+rMATS (paired)	rMATS (paired)	gene_BH_union	2	405	21	186	119	0.6397849462365591	0.6796914725486155	1.0	56.5
+rMATS (paired)	rMATS (paired)	gene_BH_union	3	777	20	325	201	0.6184615384615385	0.6200311564796859	1.0	75.5
+rMATS (paired)	rMATS (paired)	gene_BH_union	4	1833	10	773	465	0.6015523932729625	0.6630698361614867	1.0	141.0
+rMATS (paired)	rMATS (paired)	fold0_event_BH	all	62	26	60	59	0.9833333333333333	0.9615384615384616	1.0	79.0
+rMATS (paired)	rMATS (paired)	fold0_event_BH	0	6	5	5	4	0.8	0.75	1.0	38.0
+rMATS (paired)	rMATS (paired)	fold0_event_BH	1	8	7	8	8	1.0	1.0	1.0	46.5
+rMATS (paired)	rMATS (paired)	fold0_event_BH	2	5	5	5	5	1.0	1.0	1.0	56.0
+rMATS (paired)	rMATS (paired)	fold0_event_BH	3	17	10	16	16	1.0	1.0	1.0	76.0
+rMATS (paired)	rMATS (paired)	fold0_event_BH	4	26	6	26	26	1.0	1.0	1.0	141.75
+rMATS (paired)	rMATS (paired)	fold1_event_BH	all	67	34	67	61	0.9104477611940298	0.8529411764705882	1.0	70.5
+rMATS (paired)	rMATS (paired)	fold1_event_BH	0	7	6	7	6	0.8571428571428571	0.8333333333333334	1.0	37.0
+rMATS (paired)	rMATS (paired)	fold1_event_BH	1	13	9	13	9	0.6923076923076923	0.6111111111111112	1.0	44.5
+rMATS (paired)	rMATS (paired)	fold1_event_BH	2	8	8	8	8	1.0	1.0	1.0	59.5
+rMATS (paired)	rMATS (paired)	fold1_event_BH	3	14	9	14	14	1.0	1.0	1.0	73.25
+rMATS (paired)	rMATS (paired)	fold1_event_BH	4	25	9	25	24	0.96	0.8888888888888888	1.0	141.0
 scQuint	Tealeaf	event_BH_union	all	1400	292	1319	1300	0.9855951478392722	0.974106671493431	1.0	65.0
 scQuint	Tealeaf	event_BH_union	0	102	69	95	87	0.9157894736842105	0.8880597014925373	1.0	38.0
 scQuint	Tealeaf	event_BH_union	1	159	104	147	141	0.9591836734693877	0.9375	1.0	45.0
