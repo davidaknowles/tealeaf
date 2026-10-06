@@ -154,18 +154,20 @@ def majiq_groups(selected, raw_directory, bundle):
     return groups
 
 
-def add_short_read_effects(groups, bundle):
+def add_short_read_effects(groups, bundle, batch_size=512):
     sample_groups = {cell_type: group.index.to_numpy(dtype=int) for cell_type, group in bundle.samples.groupby("cell_type")}
     batches = defaultdict(list)
     for key, group in groups.items():
         if "original_delta" not in group:
             batches[(group["level_a"], group["level_b"], len(group["indices"]))].append((key, group))
-    for (level_a, level_b, _), batch in batches.items():
-        indices = [group["indices"] for _, group in batch]
-        first = mean_composition_batch(bundle.counts, sample_groups[level_a], indices)
-        second = mean_composition_batch(bundle.counts, sample_groups[level_b], indices)
-        for (_, group), delta in zip(batch, second - first):
-            group["original_delta"] = delta
+    for (level_a, level_b, _), records in batches.items():
+        for start in range(0, len(records), batch_size):
+            batch = records[start:start + batch_size]
+            indices = [group["indices"] for _, group in batch]
+            first = mean_composition_batch(bundle.counts, sample_groups[level_a], indices)
+            second = mean_composition_batch(bundle.counts, sample_groups[level_b], indices)
+            for (_, group), delta in zip(batch, second - first):
+                group["original_delta"] = delta
     output = {}
     for key, group in groups.items():
         if np.isfinite(group["original_delta"]).all() and np.linalg.norm(group["original_delta"]) > 0:
@@ -346,6 +348,9 @@ def main():
     parser.add_argument("--jobs", type=int, default=1)
     parser.add_argument("--tealeaf-replication", type=Path)
     parser.add_argument("--paired-clr-input", type=Path)
+    parser.add_argument("--all-tested", action="store_true", help="Map all finite tested features, without a significance cutoff, for a separate rank audit.")
+    parser.add_argument("--methods", nargs="+", choices=["LeafCutter", "MAJIQ Heterogen", "scQuint"], help="Limit the external methods in this audit.")
+    parser.add_argument("--skip-paired-clr", action="store_true", help="Do not rerun the exploratory paired CLR baseline.")
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     matrix, features, columns = read_tilgner_matrix(args.tilgner_matrix, args.gtf)
@@ -353,13 +358,22 @@ def main():
     all_comparators = load_comparators(args.comparator_tests, mapped)
     if args.majiq_tests:
         all_comparators = replace_majiq_results(all_comparators, args.majiq_tests, mapped)
-    selected = all_comparators.loc[all_comparators["significant"].astype(str).str.lower().eq("true")].copy()
+    eligible = np.isfinite(pd.to_numeric(all_comparators.p_value, errors="coerce"))
+    if "converged" in all_comparators:
+        eligible &= all_comparators.converged.astype(str).str.lower().eq("true")
+    if args.methods:
+        eligible &= all_comparators.method.isin(args.methods)
+    if not args.all_tested:
+        eligible &= all_comparators["significant"].astype(str).str.lower().eq("true")
+    selected = all_comparators.loc[eligible].copy()
     bundle = JunctionBundle.load(args.junction_bundle)
     groups = {}
     groups.update(scquint_groups(selected, bundle))
     groups.update(leafcutter_groups(selected, bundle, args.leafcutter_counts))
     groups.update(majiq_groups(selected, args.majiq_raw, bundle))
-    if args.paired_clr_input:
+    if args.skip_paired_clr:
+        paired, paired_groups = pd.DataFrame(), {}
+    elif args.paired_clr_input:
         paired = pd.read_csv(args.paired_clr_input, sep="\t")
         paired_groups = scquint_groups(paired.assign(method="scQuint"), bundle)
     else:
@@ -375,17 +389,20 @@ def main():
     results = assess_groups(groups, source_junction_counts(groups, matrix, features, columns, args.gtf))
     results.to_csv(args.output_dir / "junction_replication.tsv.gz", sep="\t", index=False, na_rep="NA")
     summary = pd.concat([summarize(results), summarize(results, one_per_gene_contrast=True)], ignore_index=True)
+    if args.all_tested:
+        summary["scope"] = summary.scope.replace({"all selected calls": "all tested LR-evaluable calls"})
     summary.to_csv(args.output_dir / "junction_replication_summary.tsv", sep="\t", index=False, na_rep="NA")
     if args.tealeaf_replication:
         combined = pd.concat([results, load_tealeaf_results(args.tealeaf_replication)], ignore_index=True, sort=False)
         comparison = pd.concat([summarize(combined), summarize(combined, one_per_gene_contrast=True)], ignore_index=True)
         comparison.to_csv(args.output_dir / "method_comparison_summary.tsv", sep="\t", index=False, na_rep="NA")
-    paired.to_csv(args.output_dir / "paired_clr_discoveries.tsv.gz", sep="\t", index=False, na_rep="NA")
+    if not args.skip_paired_clr:
+        paired.to_csv(args.output_dir / "paired_clr_discoveries.tsv.gz", sep="\t", index=False, na_rep="NA")
     manifest = {
         "source": "Joglekar et al. 2024 ScISOr-Seq2 processed annotated-transcript UMI matrix",
         "source_doi": "10.1038/s41593-024-01616-4",
-        "selection": "full-data BH FDR below 0.05 within each method and cell-type contrast",
-        "methods": ["LeafCutter", "MAJIQ Heterogen", "scQuint", "Paired junction CLR"],
+        "selection": "all converged finite full-data tests, without a significance cutoff" if args.all_tested else "full-data BH FDR below 0.05 within each method and cell-type contrast",
+        "methods": (args.methods or ["LeafCutter", "MAJIQ Heterogen", "scQuint"]) + ([] if args.skip_paired_clr else ["Paired junction CLR"]),
         "junction_effect_estimator": "difference between equal-pseudobulk mean short-read junction compositions",
         "source_junction_estimator": "source transcript UMIs summed over annotated transcripts containing each junction",
         "eligibility": "every tested junction maps to at least one source annotated transcript; minimum pooled depth 20 per cell type; strict minimum depth 10 per cell type and biological replicate",

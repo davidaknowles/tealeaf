@@ -9,7 +9,7 @@ import scipy.stats
 from . import differential, ec_glmm
 
 
-def pooled_isoform_weights(data, max_iter=100):
+def pooled_isoform_weights(data, max_iter=100, *, return_status=False):
     """Estimate one label-independent isoform mixture from pooled EC counts.
 
     The returned vector has dimension ``T``, where ``T`` is the number of
@@ -23,7 +23,7 @@ def pooled_isoform_weights(data, max_iter=100):
     )
     dimension = data.n_isoforms - 1
     if dimension == 0:
-        return np.ones(1)
+        return (np.ones(1), True) if return_status else np.ones(1)
     mappings = tuple(np.asarray(mapping, dtype=float) for mapping in data.compatibility)
     column_sums = tuple(mapping.sum(axis=0) for mapping in mappings)
 
@@ -55,7 +55,8 @@ def pooled_isoform_weights(data, max_iter=100):
     )
     logits = np.r_[np.asarray(result.x, dtype=float), 0.0]
     weights = np.exp(logits - logits.max())
-    return weights / weights.sum()
+    weights = weights / weights.sum()
+    return (weights, bool(result.success)) if return_status else weights
 
 
 def collapse_isoforms_to_paths(data, path_index, weights=None):
@@ -226,6 +227,39 @@ def paired_path_test(
         "path_fits": fits,
         "levels": tuple(levels),
     }
+
+
+def pooled_path_effect(data, path_index, labels, *, baseline=None, path_pseudocount=1., balance_primers=False, primer=None):
+    """Estimate a reporting-only B-minus-A effect from pooled primer EC counts.
+
+    ``labels`` has dimension N with two levels; ``path_index`` has dimension
+    T. The returned difference has dimension S. Unlike the production test,
+    observations are count-weighted within each level, not subject-weighted.
+    Optional primer balancing rescales each nonempty primer count vector to
+    their mean total before fitting. This does not produce a biological test
+    or change any production p-value.
+    """
+    labels = np.asarray(labels)
+    if labels.shape != (data.counts[0].shape[0],) or len(np.unique(labels)) != 2:
+        raise ValueError("pooled effect requires aligned labels with two levels")
+    if baseline is None:
+        baseline = pooled_isoform_weights(data)
+    if primer is not None and (int(primer) != primer or not 0 <= primer < len(data.counts)):
+        raise ValueError("invalid primer index")
+    fits = []
+    for level in np.unique(labels):
+        counts = [np.asarray(values[labels == level], dtype=float).sum(axis=0) for values in data.counts]
+        if primer is not None:
+            counts = [value if index == primer else np.zeros_like(value) for index, value in enumerate(counts)]
+        positive = [value.sum() for value in counts if value.sum() > 0]
+        if not positive:
+            raise ValueError("pooled level has no positive EC counts")
+        if balance_primers:
+            target = np.mean(positive)
+            counts = [value * target / value.sum() if value.sum() > 0 else value for value in counts]
+        fit = differential.fit_path_perturbation(counts, data.compatibility, baseline, path_index, path_pseudocount=path_pseudocount, path_pseudocount_scaling="total")
+        fits.append(fit)
+    return {"difference": fits[1].path_proportions - fits[0].path_proportions, "fits": fits, "converged": all(fit.converged for fit in fits)}
 
 
 def independent_path_test(

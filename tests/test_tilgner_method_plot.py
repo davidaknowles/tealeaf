@@ -1,6 +1,7 @@
 import pandas as pd
 
-from extra_scripts.plot_tilgner_method_replication import rank_agreement_table
+from extra_scripts.plot_tilgner_method_replication import rank_agreement_table, replace_rank_methods
+from tealeaf.sc.replication_audit import ranked_direction_summary
 
 
 def test_rank_agreement_uses_only_eligible_directional_calls(tmp_path):
@@ -44,3 +45,35 @@ def test_rank_agreement_breaks_calibrated_pvalue_ties(tmp_path):
     tealeaf_rows = observed[observed.method.eq("Tealeaf pairwise")]
     assert tealeaf_rows.p_tie_size.eq(3).all()
     assert tealeaf_rows["rank"].tolist() == [1, 2, 3]
+
+
+def test_all_tested_rank_replacement_keeps_nonsignificant_tests():
+    import numpy as np
+    replacement = pd.DataFrame({"method": ["LeafCutter"] * 210, "contrast_id": ["a_b"] * 210, "feature_id": [f"e{i}" for i in range(210)], "p_value": np.linspace(.1, .9, 210), "q_value": [1.] * 210, "mapping_complete": [True] * 210, "minimum_pooled_depth": [20] * 210, "pooled_replicated": [True] * 210})
+    previous = replacement.iloc[:1].assign(rank=1)
+    observed = replace_rank_methods(previous, replacement)
+    assert len(observed) == 200
+    assert observed["rank"].tolist() == list(range(1, 201))
+    assert observed.q_value.eq(1).all()
+
+
+def test_rank_area_weights_early_hits_and_does_not_extrapolate():
+    import numpy as np
+    table = pd.DataFrame({"method": ["a"] * 3, "rank": [1, 2, 3], "pooled_replicated": [True, False, True]})
+    summary = ranked_direction_summary(table, (3, 100))
+    assert np.isclose(summary[0]["agreement"], 2 / 3)
+    assert np.isclose(summary[0]["normalized_auc"], (1 + .5 + 2 / 3) / 3)
+    assert np.isnan(summary[1]["normalized_auc"])
+
+
+def test_omnibus_ranking_uses_its_own_continuous_tail_not_pairwise_tail(tmp_path):
+    empty = pd.DataFrame(columns=["method", "feature_id", "mapping_complete", "pooled_replicated", "minimum_pooled_depth", "p_value"])
+    pairs = pd.DataFrame({"test_id": ["p1", "p2"], "block_id": ["b1", "b2"], "p_value": [.01, .01], "raw_p_value": [1e-12, .1], "statistic": [100., 1.], "original_effect_norm": [.2, .3], "mapping_complete": [True, True], "pooled_replicated": [False, True], "minimum_pooled_depth": [20, 20]})
+    omnibus = pd.DataFrame({"block_id": ["b1", "b2"], "p_value": [.001, .001], "raw_p_value": [.1, 1e-12], "statistic": [1., 100.], "fdr": [.01, .01]})
+    paths = [tmp_path / name for name in ("junction.tsv", "pairs.tsv", "omnibus.tsv")]
+    for table, path in zip((empty, pairs, omnibus), paths):
+        table.to_csv(path, sep="\t", index=False)
+    ranked = rank_agreement_table(paths[0], paths[1], None, omnibus_path=paths[2])
+    selected = ranked.loc[ranked.method.eq("Tealeaf omnibus")]
+    assert selected.feature_id.tolist() == ["b2", "b1"]
+    assert selected.pooled_replicated.tolist() == [True, False]

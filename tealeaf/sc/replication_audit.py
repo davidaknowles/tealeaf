@@ -4,6 +4,33 @@ import numpy as np
 from scipy.stats import rankdata, spearmanr
 
 
+def ranked_direction_summary(table, cutoffs=(40, 100, 200)):
+    """Summarize discrete cumulative agreement without extrapolating short curves.
+
+    The normalized area at K is the arithmetic mean of the cumulative
+    agreement at integer ranks 1 through K, not a ROC area.
+    """
+    rows = []
+    for method, local in table.groupby("method", observed=True):
+        local = local.sort_values("rank")
+        ranks = local["rank"].to_numpy(dtype=float)
+        if not np.array_equal(ranks, np.arange(1, len(local) + 1)):
+            raise ValueError("agreement ranks must be unique and consecutive from one")
+        if local.pooled_replicated.isna().any():
+            raise ValueError("ranked directions must all be evaluable")
+        direction = local.pooled_replicated.astype(str).str.lower()
+        if not direction.isin(["true", "false"]).all():
+            raise ValueError("ranked directions must be boolean agreement indicators")
+        agreement = direction.eq("true").to_numpy(dtype=float)
+        curve = np.cumsum(agreement) / ranks
+        for cutoff in cutoffs:
+            if int(cutoff) != cutoff or cutoff <= 0:
+                raise ValueError("rank cutoffs must be positive integers")
+            available = len(local) >= cutoff
+            rows.append({"method": str(method), "cutoff": int(cutoff), "n_available": len(local), "n_agree": int(agreement[:cutoff].sum()) if available else np.nan, "agreement": float(curve[cutoff - 1]) if available else np.nan, "normalized_auc": float(curve[:cutoff].mean()) if available else np.nan})
+    return rows
+
+
 def coverage_correlation(pvalues, coverage, controls=None):
     """Correlate p (not -log p) with depth, optionally residualizing ranks.
 

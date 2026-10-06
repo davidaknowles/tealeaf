@@ -9,6 +9,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from tealeaf.sc.replication_audit import ranked_direction_summary
 from plotnine import aes, coord_cartesian, element_blank, element_text, facet_wrap, geom_col, geom_errorbar, geom_hline, geom_line, geom_point, geom_text, ggplot, labs, scale_color_manual, scale_fill_manual, scale_x_continuous, scale_x_discrete, theme, theme_bw
 
 
@@ -33,6 +34,23 @@ def _rank_table(table, max_rank, method_column="method"):
     table["n_observed"] = table.groupby(method_column).cumcount() + 1
     table["cumulative_agreement"] = table["n_agreement"] / table["n_observed"]
     return table.drop(columns=["_sort_raw_p", "_sort_statistic"])
+
+
+def replace_rank_methods(ranked, replacement, max_rank=200):
+    """Replace entire curves using all tested, LR-evaluable features, without FDR screening."""
+    methods = set(replacement.method.dropna())
+    if not methods:
+        raise ValueError("rank replacement has no methods")
+    valid = replacement.mapping_complete.astype(str).str.lower().eq("true")
+    valid &= pd.to_numeric(replacement.minimum_pooled_depth, errors="coerce").ge(20)
+    valid &= replacement.pooled_replicated.notna()
+    valid &= np.isfinite(pd.to_numeric(replacement.p_value, errors="coerce"))
+    replacement = replacement.loc[valid].copy()
+    replacement["pooled_replicated"] = replacement.pooled_replicated.astype(str).str.lower().eq("true")
+    if replacement.duplicated(["method", "contrast_id", "feature_id"]).any():
+        raise ValueError("duplicate method--contrast--feature tests in rank replacement")
+    replacement = _rank_table(replacement, max_rank)
+    return pd.concat([ranked.loc[~ranked.method.isin(methods)], replacement], ignore_index=True, sort=False)
 
 
 def _isoform_ratio_table(replication_path, ratio_path):
@@ -133,7 +151,7 @@ def rank_agreement_table(path, tealeaf_replication_path, tealeaf_significant_pat
         if tealeaf_significant_path is not None:
             significant = pd.read_csv(tealeaf_significant_path, sep="\t", usecols=["test_id", "p_value", "raw_p_value", "statistic"])
             tealeaf = tealeaf.merge(significant.rename(columns={"test_id": "feature_id"}), on="feature_id", how="left")
-        table = pd.concat([table, tealeaf], ignore_index=True, sort=False)
+        table = tealeaf.copy() if table.empty else pd.concat([table, tealeaf], ignore_index=True, sort=False)
     has_long_read_direction = table["pooled_replicated"].notna()
     table["pooled_replicated"] = table["pooled_replicated"].astype(str).str.lower().eq("true")
     table = table[table["method"].isin(METHODS) & table["mapping_complete"].astype(str).str.lower().eq("true") & (table["minimum_pooled_depth"] >= 20) & has_long_read_direction & table["p_value"].notna()].copy()
@@ -144,7 +162,11 @@ def rank_agreement_table(path, tealeaf_replication_path, tealeaf_significant_pat
         omnibus = omnibus[omnibus["fdr"].astype(float) < 0.05]
         eligible = table[table["method"].eq("Tealeaf pairwise")].copy()
         eligible = eligible.sort_values(["block_id", "original_effect_norm", "feature_id"], ascending=[True, False, True], kind="stable").drop_duplicates("block_id")
-        eligible = eligible.merge(omnibus[["block_id", "p_value"]], on="block_id", how="inner", suffixes=("_pairwise", ""))
+        # Omnibus ties must use omnibus tails/statistics, never the selected
+        # pairwise contrast's unrelated statistic.
+        fields = [column for column in ("block_id", "p_value", "raw_p_value", "statistic") if column in omnibus]
+        eligible = eligible.rename(columns={column: f"{column}_pairwise" for column in ("p_value", "raw_p_value", "statistic") if column in eligible})
+        eligible = eligible.merge(omnibus[fields], on="block_id", how="inner")
         eligible["method"] = "Tealeaf omnibus"
         eligible["feature_id"] = eligible["block_id"]
         tables.append(_rank_table(eligible, max_rank))
@@ -166,6 +188,8 @@ def main():
     parser.add_argument("--isoform-ratio", type=Path)
     parser.add_argument("--event-replication", action="append", type=Path, help="Full-data event replication table to include in the rank audit; repeat for SUPPA2 and rMATS.")
     parser.add_argument("--rank-input", type=Path, help="Existing rank table to plot without recomputing the discovery audit.")
+    parser.add_argument("--rank-replacement", action="append", type=Path, help="All-tested source mapping that replaces the entire curves of its methods, without significance screening.")
+    parser.add_argument("--rank-summary", type=Path, help="Write top-K agreement and normalized discrete cumulative-agreement area.")
     parser.add_argument("--hybrid-replication", type=Path, help="Long-read mapping of all converged Tealeaf/SUPPA2 hybrid tests, ranked by the hybrid's own significance.")
     parser.add_argument("--rank-table", type=Path)
     parser.add_argument("--rank-output", type=Path)
@@ -198,6 +222,8 @@ def main():
             if args.tealeaf_replication is None:
                 parser.error("--rank-output requires --tealeaf-replication unless --rank-input is provided")
             ranked = rank_agreement_table(args.replication, args.tealeaf_replication, args.tealeaf_significant, omnibus_path=args.tealeaf_omnibus, isoform_ratio_path=args.isoform_ratio, event_replication_paths=args.event_replication, max_rank=args.max_rank)
+        for path in args.rank_replacement or []:
+            ranked = replace_rank_methods(ranked, pd.read_csv(path, sep="\t", low_memory=False), args.max_rank)
         if args.hybrid_replication is not None:
             hybrid = pd.read_csv(args.hybrid_replication, sep="\t", low_memory=False)
             hybrid = hybrid[hybrid["method"].eq("Tealeaf EC; SUPPA2 event definitions")].copy()
@@ -210,6 +236,9 @@ def main():
         if args.rank_table:
             args.rank_table.parent.mkdir(parents=True, exist_ok=True)
             ranked.to_csv(args.rank_table, sep="\t", index=False, na_rep="NA")
+        if args.rank_summary:
+            args.rank_summary.parent.mkdir(parents=True, exist_ok=True)
+            pd.DataFrame(ranked_direction_summary(ranked)).to_csv(args.rank_summary, sep="\t", index=False, na_rep="NA")
         ranked["method"] = pd.Categorical(ranked["method"], METHODS, ordered=True)
         rank_plot = ggplot(ranked, aes("rank", "cumulative_agreement", color="method", group="method"))
         rank_plot += geom_hline(yintercept=0.5, linetype="dashed", color="#777777", size=0.4)

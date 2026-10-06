@@ -1,0 +1,217 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	unit	strategy	ranking	n_fallback
+pairwise; subject-mean A_report=1; calibrated then raw	40	704	26	0.65	0.7456744861964191	pairwise	subject-mean A_report=1	calibrated then raw	0
+pairwise; subject-mean A_report=1; calibrated then raw	100	704	58	0.58	0.6560236379875741	pairwise	subject-mean A_report=1	calibrated then raw	0
+pairwise; subject-mean A_report=1; calibrated then raw	200	704	121	0.605	0.6267687911992065	pairwise	subject-mean A_report=1	calibrated then raw	0
+pairwise; subject-mean A_report=1; continuous raw	40	704	32	0.8	0.8008400303267488	pairwise	subject-mean A_report=1	continuous raw	0
+pairwise; subject-mean A_report=1; continuous raw	100	704	65	0.65	0.7297126490808001	pairwise	subject-mean A_report=1	continuous raw	0
+pairwise; subject-mean A_report=1; continuous raw	200	704	118	0.59	0.6695625701887784	pairwise	subject-mean A_report=1	continuous raw	0
+pairwise; subject-mean A_report=1; effect magnitude, not significance	40	704	21	0.525	0.5005213376499716	pairwise	subject-mean A_report=1	effect magnitude, not significance	0
+pairwise; subject-mean A_report=1; effect magnitude, not significance	100	704	56	0.56	0.5307374936581039	pairwise	subject-mean A_report=1	effect magnitude, not significance	0
+pairwise; subject-mean A_report=1; effect magnitude, not significance	200	704	113	0.565	0.55105280011654	pairwise	subject-mean A_report=1	effect magnitude, not significance	0
+pairwise; subject-mean A_report=1; effect times log evidence, not significance	40	704	27	0.675	0.7858179177686686	pairwise	subject-mean A_report=1	effect times log evidence, not significance	0
+pairwise; subject-mean A_report=1; effect times log evidence, not significance	100	704	56	0.56	0.66464230770586	pairwise	subject-mean A_report=1	effect times log evidence, not significance	0
+pairwise; subject-mean A_report=1; effect times log evidence, not significance	200	704	122	0.61	0.6324396016302598	pairwise	subject-mean A_report=1	effect times log evidence, not significance	0
+pairwise; subject-mean A_report=1; primer concordance then raw, not significance	40	704	30	0.75	0.752034421462343	pairwise	subject-mean A_report=1	primer concordance then raw, not significance	0
+pairwise; subject-mean A_report=1; primer concordance then raw, not significance	100	704	65	0.65	0.7248956053846147	pairwise	subject-mean A_report=1	primer concordance then raw, not significance	0
+pairwise; subject-mean A_report=1; primer concordance then raw, not significance	200	704	122	0.61	0.672290022268968	pairwise	subject-mean A_report=1	primer concordance then raw, not significance	0
+pairwise; subject-mean A_report=1; primer cosine times log evidence, not significance	40	704	30	0.75	0.7791065783979315	pairwise	subject-mean A_report=1	primer cosine times log evidence, not significance	0
+pairwise; subject-mean A_report=1; primer cosine times log evidence, not significance	100	704	60	0.6	0.7099093607972631	pairwise	subject-mean A_report=1	primer cosine times log evidence, not significance	0
+pairwise; subject-mean A_report=1; primer cosine times log evidence, not significance	200	704	115	0.575	0.6549370570734555	pairwise	subject-mean A_report=1	primer cosine times log evidence, not significance	0
+omnibus; subject-mean A_report=1; calibrated then raw	40	284	27	0.675	0.6235650007074318	omnibus	subject-mean A_report=1	calibrated then raw	0
+omnibus; subject-mean A_report=1; calibrated then raw	100	284	62	0.62	0.6484030488542446	omnibus	subject-mean A_report=1	calibrated then raw	0
+omnibus; subject-mean A_report=1; calibrated then raw	200	284	114	0.57	0.6204586631168059	omnibus	subject-mean A_report=1	calibrated then raw	0
+omnibus; subject-mean A_report=1; continuous raw	40	284	27	0.675	0.6235650007074318	omnibus	subject-mean A_report=1	continuous raw	0
+omnibus; subject-mean A_report=1; continuous raw	100	284	60	0.6	0.6457833787231749	omnibus	subject-mean A_report=1	continuous raw	0
+omnibus; subject-mean A_report=1; continuous raw	200	284	112	0.56	0.6052352989268485	omnibus	subject-mean A_report=1	continuous raw	0
+omnibus; subject-mean A_report=1; effect magnitude, not significance	40	284	20	0.5	0.44188344627913667	omnibus	subject-mean A_report=1	effect magnitude, not significance	0
+omnibus; subject-mean A_report=1; effect magnitude, not significance	100	284	54	0.54	0.49780750645419247	omnibus	subject-mean A_report=1	effect magnitude, not significance	0
+omnibus; subject-mean A_report=1; effect magnitude, not significance	200	284	118	0.59	0.5297484655105263	omnibus	subject-mean A_report=1	effect magnitude, not significance	0
+omnibus; subject-mean A_report=1; effect times log evidence, not significance	40	284	25	0.625	0.6728055405898827	omnibus	subject-mean A_report=1	effect times log evidence, not significance	0
+omnibus; subject-mean A_report=1; effect times log evidence, not significance	100	284	59	0.59	0.6260498867987457	omnibus	subject-mean A_report=1	effect times log evidence, not significance	0
+omnibus; subject-mean A_report=1; effect times log evidence, not significance	200	284	111	0.555	0.6000661463558827	omnibus	subject-mean A_report=1	effect times log evidence, not significance	0
+omnibus; subject-mean A_report=1; primer concordance then raw, not significance	40	284	26	0.65	0.6493098145184921	omnibus	subject-mean A_report=1	primer concordance then raw, not significance	0
+omnibus; subject-mean A_report=1; primer concordance then raw, not significance	100	284	57	0.57	0.6527685357422877	omnibus	subject-mean A_report=1	primer concordance then raw, not significance	0
+omnibus; subject-mean A_report=1; primer concordance then raw, not significance	200	284	118	0.59	0.6112009439268098	omnibus	subject-mean A_report=1	primer concordance then raw, not significance	0
+omnibus; subject-mean A_report=1; primer cosine times log evidence, not significance	40	284	28	0.7	0.7021171225019105	omnibus	subject-mean A_report=1	primer cosine times log evidence, not significance	0
+omnibus; subject-mean A_report=1; primer cosine times log evidence, not significance	100	284	55	0.55	0.6399177549920683	omnibus	subject-mean A_report=1	primer cosine times log evidence, not significance	0
+omnibus; subject-mean A_report=1; primer cosine times log evidence, not significance	200	284	118	0.59	0.6031543495015141	omnibus	subject-mean A_report=1	primer cosine times log evidence, not significance	0
+pairwise; pooled free isoforms; calibrated then raw	40	704	25	0.625	0.7379254346321019	pairwise	pooled free isoforms	calibrated then raw	0
+pairwise; pooled free isoforms; calibrated then raw	100	704	59	0.59	0.6545358488746368	pairwise	pooled free isoforms	calibrated then raw	0
+pairwise; pooled free isoforms; calibrated then raw	200	704	120	0.6	0.6303801075408154	pairwise	pooled free isoforms	calibrated then raw	0
+pairwise; pooled free isoforms; continuous raw	40	704	31	0.775	0.8488649113762807	pairwise	pooled free isoforms	continuous raw	0
+pairwise; pooled free isoforms; continuous raw	100	704	66	0.66	0.7578017049066205	pairwise	pooled free isoforms	continuous raw	0
+pairwise; pooled free isoforms; continuous raw	200	704	120	0.6	0.6921366290505501	pairwise	pooled free isoforms	continuous raw	0
+pairwise; pooled free isoforms; effect magnitude, not significance	40	704	26	0.65	0.5325853786878522	pairwise	pooled free isoforms	effect magnitude, not significance	0
+pairwise; pooled free isoforms; effect magnitude, not significance	100	704	68	0.68	0.6102428994426359	pairwise	pooled free isoforms	effect magnitude, not significance	0
+pairwise; pooled free isoforms; effect magnitude, not significance	200	704	126	0.63	0.6311763038611623	pairwise	pooled free isoforms	effect magnitude, not significance	0
+pairwise; pooled free isoforms; effect times log evidence, not significance	40	704	30	0.75	0.8329171908781472	pairwise	pooled free isoforms	effect times log evidence, not significance	0
+pairwise; pooled free isoforms; effect times log evidence, not significance	100	704	64	0.64	0.7504104542979205	pairwise	pooled free isoforms	effect times log evidence, not significance	0
+pairwise; pooled free isoforms; effect times log evidence, not significance	200	704	130	0.65	0.6980662127915329	pairwise	pooled free isoforms	effect times log evidence, not significance	0
+pairwise; pooled free isoforms; primer concordance then raw, not significance	40	704	31	0.775	0.8474806153624843	pairwise	pooled free isoforms	primer concordance then raw, not significance	0
+pairwise; pooled free isoforms; primer concordance then raw, not significance	100	704	65	0.65	0.759737434716092	pairwise	pooled free isoforms	primer concordance then raw, not significance	0
+pairwise; pooled free isoforms; primer concordance then raw, not significance	200	704	125	0.625	0.6977256739580701	pairwise	pooled free isoforms	primer concordance then raw, not significance	0
+pairwise; pooled free isoforms; primer cosine times log evidence, not significance	40	704	30	0.75	0.815089498499668	pairwise	pooled free isoforms	primer cosine times log evidence, not significance	0
+pairwise; pooled free isoforms; primer cosine times log evidence, not significance	100	704	60	0.6	0.7249571864446147	pairwise	pooled free isoforms	primer cosine times log evidence, not significance	0
+pairwise; pooled free isoforms; primer cosine times log evidence, not significance	200	704	123	0.615	0.6759611452307268	pairwise	pooled free isoforms	primer cosine times log evidence, not significance	0
+omnibus; pooled free isoforms; calibrated then raw	40	284	26	0.65	0.6063267976555208	omnibus	pooled free isoforms	calibrated then raw	0
+omnibus; pooled free isoforms; calibrated then raw	100	284	61	0.61	0.633354734742897	omnibus	pooled free isoforms	calibrated then raw	0
+omnibus; pooled free isoforms; calibrated then raw	200	284	114	0.57	0.6082345340280509	omnibus	pooled free isoforms	calibrated then raw	0
+omnibus; pooled free isoforms; continuous raw	40	284	26	0.65	0.6063267976555208	omnibus	pooled free isoforms	continuous raw	0
+omnibus; pooled free isoforms; continuous raw	100	284	60	0.6	0.6301849665331758	omnibus	pooled free isoforms	continuous raw	0
+omnibus; pooled free isoforms; continuous raw	200	284	111	0.555	0.5995065177711119	omnibus	pooled free isoforms	continuous raw	0
+omnibus; pooled free isoforms; effect magnitude, not significance	40	284	25	0.625	0.5784600024241245	omnibus	pooled free isoforms	effect magnitude, not significance	0
+omnibus; pooled free isoforms; effect magnitude, not significance	100	284	65	0.65	0.6147531742427459	omnibus	pooled free isoforms	effect magnitude, not significance	0
+omnibus; pooled free isoforms; effect magnitude, not significance	200	284	125	0.625	0.6259243406726305	omnibus	pooled free isoforms	effect magnitude, not significance	0
+omnibus; pooled free isoforms; effect times log evidence, not significance	40	284	29	0.725	0.7406595442821835	omnibus	pooled free isoforms	effect times log evidence, not significance	0
+omnibus; pooled free isoforms; effect times log evidence, not significance	100	284	67	0.67	0.6967683717803321	omnibus	pooled free isoforms	effect times log evidence, not significance	0
+omnibus; pooled free isoforms; effect times log evidence, not significance	200	284	117	0.585	0.6537444034458177	omnibus	pooled free isoforms	effect times log evidence, not significance	0
+omnibus; pooled free isoforms; primer concordance then raw, not significance	40	284	28	0.7	0.599483563549958	omnibus	pooled free isoforms	primer concordance then raw, not significance	0
+omnibus; pooled free isoforms; primer concordance then raw, not significance	100	284	57	0.57	0.6181376882258679	omnibus	pooled free isoforms	primer concordance then raw, not significance	0
+omnibus; pooled free isoforms; primer concordance then raw, not significance	200	284	113	0.565	0.5861686931736166	omnibus	pooled free isoforms	primer concordance then raw, not significance	0
+omnibus; pooled free isoforms; primer cosine times log evidence, not significance	40	284	29	0.725	0.6925842492942816	omnibus	pooled free isoforms	primer cosine times log evidence, not significance	0
+omnibus; pooled free isoforms; primer cosine times log evidence, not significance	100	284	56	0.56	0.6542471675361335	omnibus	pooled free isoforms	primer cosine times log evidence, not significance	0
+omnibus; pooled free isoforms; primer cosine times log evidence, not significance	200	284	113	0.565	0.6056510915422065	omnibus	pooled free isoforms	primer cosine times log evidence, not significance	0
+pairwise; pooled local; calibrated then raw	40	704	26	0.65	0.8045675049538892	pairwise	pooled local	calibrated then raw	0
+pairwise; pooled local; calibrated then raw	100	704	61	0.61	0.6965327286853289	pairwise	pooled local	calibrated then raw	0
+pairwise; pooled local; calibrated then raw	200	704	120	0.6	0.6553111784950815	pairwise	pooled local	calibrated then raw	0
+pairwise; pooled local; continuous raw	40	704	33	0.825	0.9034332601131932	pairwise	pooled local	continuous raw	0
+pairwise; pooled local; continuous raw	100	704	67	0.67	0.793685271213742	pairwise	pooled local	continuous raw	0
+pairwise; pooled local; continuous raw	200	704	120	0.6	0.7113948890378974	pairwise	pooled local	continuous raw	0
+pairwise; pooled local; effect magnitude, not significance	40	704	25	0.625	0.5394584932258859	pairwise	pooled local	effect magnitude, not significance	0
+pairwise; pooled local; effect magnitude, not significance	100	704	67	0.67	0.6082369672608735	pairwise	pooled local	effect magnitude, not significance	0
+pairwise; pooled local; effect magnitude, not significance	200	704	123	0.615	0.6232590751483842	pairwise	pooled local	effect magnitude, not significance	0
+pairwise; pooled local; effect times log evidence, not significance	40	704	30	0.75	0.8042173080951984	pairwise	pooled local	effect times log evidence, not significance	0
+pairwise; pooled local; effect times log evidence, not significance	100	704	65	0.65	0.7383605600738171	pairwise	pooled local	effect times log evidence, not significance	0
+pairwise; pooled local; effect times log evidence, not significance	200	704	125	0.625	0.684166272847618	pairwise	pooled local	effect times log evidence, not significance	0
+pairwise; pooled local; primer concordance then raw, not significance	40	704	31	0.775	0.8832037222664774	pairwise	pooled local	primer concordance then raw, not significance	0
+pairwise; pooled local; primer concordance then raw, not significance	100	704	65	0.65	0.7714140697091315	pairwise	pooled local	primer concordance then raw, not significance	0
+pairwise; pooled local; primer concordance then raw, not significance	200	704	119	0.595	0.6921852545751697	pairwise	pooled local	primer concordance then raw, not significance	0
+pairwise; pooled local; primer cosine times log evidence, not significance	40	704	30	0.75	0.85112591733097	pairwise	pooled local	primer cosine times log evidence, not significance	0
+pairwise; pooled local; primer cosine times log evidence, not significance	100	704	60	0.6	0.7368244026713484	pairwise	pooled local	primer cosine times log evidence, not significance	0
+pairwise; pooled local; primer cosine times log evidence, not significance	200	704	114	0.57	0.6684182179537995	pairwise	pooled local	primer cosine times log evidence, not significance	0
+omnibus; pooled local; calibrated then raw	40	284	26	0.65	0.610416959305465	omnibus	pooled local	calibrated then raw	0
+omnibus; pooled local; calibrated then raw	100	284	62	0.62	0.6435819526308164	omnibus	pooled local	calibrated then raw	0
+omnibus; pooled local; calibrated then raw	200	284	115	0.575	0.616513794348308	omnibus	pooled local	calibrated then raw	0
+omnibus; pooled local; continuous raw	40	284	26	0.65	0.610416959305465	omnibus	pooled local	continuous raw	0
+omnibus; pooled local; continuous raw	100	284	61	0.61	0.6416816067222142	omnibus	pooled local	continuous raw	0
+omnibus; pooled local; continuous raw	200	284	113	0.565	0.6109483032134447	omnibus	pooled local	continuous raw	0
+omnibus; pooled local; effect magnitude, not significance	40	284	24	0.6	0.5236638885538923	omnibus	pooled local	effect magnitude, not significance	0
+omnibus; pooled local; effect magnitude, not significance	100	284	63	0.63	0.5819025736129004	omnibus	pooled local	effect magnitude, not significance	0
+omnibus; pooled local; effect magnitude, not significance	200	284	121	0.605	0.5962990182966847	omnibus	pooled local	effect magnitude, not significance	0
+omnibus; pooled local; effect times log evidence, not significance	40	284	28	0.7	0.7117601971082971	omnibus	pooled local	effect times log evidence, not significance	0
+omnibus; pooled local; effect times log evidence, not significance	100	284	65	0.65	0.6661108041054817	omnibus	pooled local	effect times log evidence, not significance	0
+omnibus; pooled local; effect times log evidence, not significance	200	284	115	0.575	0.63550484797693	omnibus	pooled local	effect times log evidence, not significance	0
+omnibus; pooled local; primer concordance then raw, not significance	40	284	28	0.7	0.6046287181030072	omnibus	pooled local	primer concordance then raw, not significance	0
+omnibus; pooled local; primer concordance then raw, not significance	100	284	57	0.57	0.6259733092261612	omnibus	pooled local	primer concordance then raw, not significance	0
+omnibus; pooled local; primer concordance then raw, not significance	200	284	112	0.56	0.5871758460136532	omnibus	pooled local	primer concordance then raw, not significance	0
+omnibus; pooled local; primer cosine times log evidence, not significance	40	284	31	0.775	0.7490075908831411	omnibus	pooled local	primer cosine times log evidence, not significance	0
+omnibus; pooled local; primer cosine times log evidence, not significance	100	284	55	0.55	0.6814476607575797	omnibus	pooled local	primer cosine times log evidence, not significance	0
+omnibus; pooled local; primer cosine times log evidence, not significance	200	284	112	0.56	0.6155450664433504	omnibus	pooled local	primer cosine times log evidence, not significance	0
+pairwise; primer 0 pooled local; calibrated then raw	40	704	27	0.675	0.6677494629980112	pairwise	primer 0 pooled local	calibrated then raw	0
+pairwise; primer 0 pooled local; calibrated then raw	100	704	61	0.61	0.6465756275069928	pairwise	primer 0 pooled local	calibrated then raw	0
+pairwise; primer 0 pooled local; calibrated then raw	200	704	114	0.57	0.6201263322779259	pairwise	primer 0 pooled local	calibrated then raw	0
+pairwise; primer 0 pooled local; continuous raw	40	704	31	0.775	0.7007066733584543	pairwise	primer 0 pooled local	continuous raw	0
+pairwise; primer 0 pooled local; continuous raw	100	704	65	0.65	0.6976052367123965	pairwise	primer 0 pooled local	continuous raw	0
+pairwise; primer 0 pooled local; continuous raw	200	704	113	0.565	0.6541661281698016	pairwise	primer 0 pooled local	continuous raw	0
+pairwise; primer 0 pooled local; effect magnitude, not significance	40	704	25	0.625	0.5401512716175553	pairwise	primer 0 pooled local	effect magnitude, not significance	0
+pairwise; primer 0 pooled local; effect magnitude, not significance	100	704	55	0.55	0.561981319728742	pairwise	primer 0 pooled local	effect magnitude, not significance	0
+pairwise; primer 0 pooled local; effect magnitude, not significance	200	704	112	0.56	0.5641551757604628	pairwise	primer 0 pooled local	effect magnitude, not significance	0
+pairwise; primer 0 pooled local; effect times log evidence, not significance	40	704	27	0.675	0.6953746319493184	pairwise	primer 0 pooled local	effect times log evidence, not significance	0
+pairwise; primer 0 pooled local; effect times log evidence, not significance	100	704	62	0.62	0.6583375211979086	pairwise	primer 0 pooled local	effect times log evidence, not significance	0
+pairwise; primer 0 pooled local; effect times log evidence, not significance	200	704	114	0.57	0.6193913261876236	pairwise	primer 0 pooled local	effect times log evidence, not significance	0
+pairwise; primer 0 pooled local; primer concordance then raw, not significance	40	704	30	0.75	0.8517370799150015	pairwise	primer 0 pooled local	primer concordance then raw, not significance	0
+pairwise; primer 0 pooled local; primer concordance then raw, not significance	100	704	62	0.62	0.7466299878203734	pairwise	primer 0 pooled local	primer concordance then raw, not significance	0
+pairwise; primer 0 pooled local; primer concordance then raw, not significance	200	704	117	0.585	0.6674675865885683	pairwise	primer 0 pooled local	primer concordance then raw, not significance	0
+pairwise; primer 0 pooled local; primer cosine times log evidence, not significance	40	704	30	0.75	0.85112591733097	pairwise	primer 0 pooled local	primer cosine times log evidence, not significance	0
+pairwise; primer 0 pooled local; primer cosine times log evidence, not significance	100	704	58	0.58	0.7328757846249363	pairwise	primer 0 pooled local	primer cosine times log evidence, not significance	0
+pairwise; primer 0 pooled local; primer cosine times log evidence, not significance	200	704	112	0.56	0.6595373746257753	pairwise	primer 0 pooled local	primer cosine times log evidence, not significance	0
+omnibus; primer 0 pooled local; calibrated then raw	40	284	29	0.725	0.7523203571519129	omnibus	primer 0 pooled local	calibrated then raw	0
+omnibus; primer 0 pooled local; calibrated then raw	100	284	58	0.58	0.6938985810818097	omnibus	primer 0 pooled local	calibrated then raw	0
+omnibus; primer 0 pooled local; calibrated then raw	200	284	108	0.54	0.6265223403331812	omnibus	primer 0 pooled local	calibrated then raw	0
+omnibus; primer 0 pooled local; continuous raw	40	284	29	0.725	0.7523203571519129	omnibus	primer 0 pooled local	continuous raw	0
+omnibus; primer 0 pooled local; continuous raw	100	284	59	0.59	0.6937191536539551	omnibus	primer 0 pooled local	continuous raw	0
+omnibus; primer 0 pooled local; continuous raw	200	284	106	0.53	0.6245704054236271	omnibus	primer 0 pooled local	continuous raw	0
+omnibus; primer 0 pooled local; effect magnitude, not significance	40	284	23	0.575	0.6171422648365067	omnibus	primer 0 pooled local	effect magnitude, not significance	0
+omnibus; primer 0 pooled local; effect magnitude, not significance	100	284	57	0.57	0.5975544298378835	omnibus	primer 0 pooled local	effect magnitude, not significance	0
+omnibus; primer 0 pooled local; effect magnitude, not significance	200	284	115	0.575	0.5877234758907026	omnibus	primer 0 pooled local	effect magnitude, not significance	0
+omnibus; primer 0 pooled local; effect times log evidence, not significance	40	284	27	0.675	0.7620556551952253	omnibus	primer 0 pooled local	effect times log evidence, not significance	0
+omnibus; primer 0 pooled local; effect times log evidence, not significance	100	284	62	0.62	0.7061489919634734	omnibus	primer 0 pooled local	effect times log evidence, not significance	0
+omnibus; primer 0 pooled local; effect times log evidence, not significance	200	284	116	0.58	0.6532810486191144	omnibus	primer 0 pooled local	effect times log evidence, not significance	0
+omnibus; primer 0 pooled local; primer concordance then raw, not significance	40	284	30	0.75	0.7928073368331419	omnibus	primer 0 pooled local	primer concordance then raw, not significance	0
+omnibus; primer 0 pooled local; primer concordance then raw, not significance	100	284	60	0.6	0.7197469598150326	omnibus	primer 0 pooled local	primer concordance then raw, not significance	0
+omnibus; primer 0 pooled local; primer concordance then raw, not significance	200	284	114	0.57	0.6489492720896135	omnibus	primer 0 pooled local	primer concordance then raw, not significance	0
+omnibus; primer 0 pooled local; primer cosine times log evidence, not significance	40	284	29	0.725	0.7820051873302261	omnibus	primer 0 pooled local	primer cosine times log evidence, not significance	0
+omnibus; primer 0 pooled local; primer cosine times log evidence, not significance	100	284	60	0.6	0.7101794136755463	omnibus	primer 0 pooled local	primer cosine times log evidence, not significance	0
+omnibus; primer 0 pooled local; primer cosine times log evidence, not significance	200	284	114	0.57	0.64719236695472	omnibus	primer 0 pooled local	primer cosine times log evidence, not significance	0
+pairwise; primer 1 pooled local; calibrated then raw	40	704	24	0.6	0.7466163720931898	pairwise	primer 1 pooled local	calibrated then raw	0
+pairwise; primer 1 pooled local; calibrated then raw	100	704	53	0.53	0.6308117212876072	pairwise	primer 1 pooled local	calibrated then raw	0
+pairwise; primer 1 pooled local; calibrated then raw	200	704	109	0.545	0.5875085660194526	pairwise	primer 1 pooled local	calibrated then raw	0
+pairwise; primer 1 pooled local; continuous raw	40	704	27	0.675	0.7682163400130928	pairwise	primer 1 pooled local	continuous raw	0
+pairwise; primer 1 pooled local; continuous raw	100	704	57	0.57	0.6737006047503783	pairwise	primer 1 pooled local	continuous raw	0
+pairwise; primer 1 pooled local; continuous raw	200	704	101	0.505	0.6034735399505082	pairwise	primer 1 pooled local	continuous raw	1
+pairwise; primer 1 pooled local; effect magnitude, not significance	40	704	29	0.725	0.6527617434491078	pairwise	primer 1 pooled local	effect magnitude, not significance	0
+pairwise; primer 1 pooled local; effect magnitude, not significance	100	704	65	0.65	0.6626821942832389	pairwise	primer 1 pooled local	effect magnitude, not significance	0
+pairwise; primer 1 pooled local; effect magnitude, not significance	200	704	123	0.615	0.6412691505199071	pairwise	primer 1 pooled local	effect magnitude, not significance	0
+pairwise; primer 1 pooled local; effect times log evidence, not significance	40	704	27	0.675	0.7686168719534354	pairwise	primer 1 pooled local	effect times log evidence, not significance	0
+pairwise; primer 1 pooled local; effect times log evidence, not significance	100	704	65	0.65	0.7226219371672604	pairwise	primer 1 pooled local	effect times log evidence, not significance	0
+pairwise; primer 1 pooled local; effect times log evidence, not significance	200	704	120	0.6	0.6667532836233547	pairwise	primer 1 pooled local	effect times log evidence, not significance	0
+pairwise; primer 1 pooled local; primer concordance then raw, not significance	40	704	31	0.775	0.8421077796256512	pairwise	primer 1 pooled local	primer concordance then raw, not significance	0
+pairwise; primer 1 pooled local; primer concordance then raw, not significance	100	704	61	0.61	0.7447577032968408	pairwise	primer 1 pooled local	primer concordance then raw, not significance	0
+pairwise; primer 1 pooled local; primer concordance then raw, not significance	200	704	116	0.58	0.6642831842642711	pairwise	primer 1 pooled local	primer concordance then raw, not significance	0
+pairwise; primer 1 pooled local; primer cosine times log evidence, not significance	40	704	29	0.725	0.8498598916899445	pairwise	primer 1 pooled local	primer cosine times log evidence, not significance	0
+pairwise; primer 1 pooled local; primer cosine times log evidence, not significance	100	704	56	0.56	0.718846163442155	pairwise	primer 1 pooled local	primer cosine times log evidence, not significance	0
+pairwise; primer 1 pooled local; primer cosine times log evidence, not significance	200	704	109	0.545	0.6448348767296711	pairwise	primer 1 pooled local	primer cosine times log evidence, not significance	0
+omnibus; primer 1 pooled local; calibrated then raw	40	284	31	0.775	0.7185529643223922	omnibus	primer 1 pooled local	calibrated then raw	0
+omnibus; primer 1 pooled local; calibrated then raw	100	284	64	0.64	0.7054687598723663	omnibus	primer 1 pooled local	calibrated then raw	0
+omnibus; primer 1 pooled local; calibrated then raw	200	284	116	0.58	0.6499249288606359	omnibus	primer 1 pooled local	calibrated then raw	1
+omnibus; primer 1 pooled local; continuous raw	40	284	31	0.775	0.7185529643223922	omnibus	primer 1 pooled local	continuous raw	0
+omnibus; primer 1 pooled local; continuous raw	100	284	62	0.62	0.7045385814198539	omnibus	primer 1 pooled local	continuous raw	0
+omnibus; primer 1 pooled local; continuous raw	200	284	112	0.56	0.6387539994971908	omnibus	primer 1 pooled local	continuous raw	1
+omnibus; primer 1 pooled local; effect magnitude, not significance	40	284	24	0.6	0.5809741246975731	omnibus	primer 1 pooled local	effect magnitude, not significance	0
+omnibus; primer 1 pooled local; effect magnitude, not significance	100	284	57	0.57	0.5852190908436776	omnibus	primer 1 pooled local	effect magnitude, not significance	0
+omnibus; primer 1 pooled local; effect magnitude, not significance	200	284	114	0.57	0.5722534640011109	omnibus	primer 1 pooled local	effect magnitude, not significance	0
+omnibus; primer 1 pooled local; effect times log evidence, not significance	40	284	30	0.75	0.6657249184663743	omnibus	primer 1 pooled local	effect times log evidence, not significance	0
+omnibus; primer 1 pooled local; effect times log evidence, not significance	100	284	58	0.58	0.6418094997867559	omnibus	primer 1 pooled local	effect times log evidence, not significance	0
+omnibus; primer 1 pooled local; effect times log evidence, not significance	200	284	112	0.56	0.5966322448929777	omnibus	primer 1 pooled local	effect times log evidence, not significance	0
+omnibus; primer 1 pooled local; primer concordance then raw, not significance	40	284	31	0.775	0.7870441216799742	omnibus	primer 1 pooled local	primer concordance then raw, not significance	0
+omnibus; primer 1 pooled local; primer concordance then raw, not significance	100	284	62	0.62	0.7371379527231755	omnibus	primer 1 pooled local	primer concordance then raw, not significance	0
+omnibus; primer 1 pooled local; primer concordance then raw, not significance	200	284	116	0.58	0.665034661488151	omnibus	primer 1 pooled local	primer concordance then raw, not significance	0
+omnibus; primer 1 pooled local; primer cosine times log evidence, not significance	40	284	31	0.775	0.879071867437656	omnibus	primer 1 pooled local	primer cosine times log evidence, not significance	0
+omnibus; primer 1 pooled local; primer cosine times log evidence, not significance	100	284	62	0.62	0.7570170946209143	omnibus	primer 1 pooled local	primer cosine times log evidence, not significance	0
+omnibus; primer 1 pooled local; primer cosine times log evidence, not significance	200	284	116	0.58	0.6765125999141038	omnibus	primer 1 pooled local	primer cosine times log evidence, not significance	0
+pairwise; primer-balanced pooled local; calibrated then raw	40	704	27	0.675	0.8136260996239857	pairwise	primer-balanced pooled local	calibrated then raw	0
+pairwise; primer-balanced pooled local; calibrated then raw	100	704	62	0.62	0.7068483081993169	pairwise	primer-balanced pooled local	calibrated then raw	0
+pairwise; primer-balanced pooled local; calibrated then raw	200	704	124	0.62	0.6670102261984482	pairwise	primer-balanced pooled local	calibrated then raw	0
+pairwise; primer-balanced pooled local; continuous raw	40	704	33	0.825	0.9077917858228218	pairwise	primer-balanced pooled local	continuous raw	0
+pairwise; primer-balanced pooled local; continuous raw	100	704	67	0.67	0.7996706173668261	pairwise	primer-balanced pooled local	continuous raw	0
+pairwise; primer-balanced pooled local; continuous raw	200	704	123	0.615	0.7204283625056087	pairwise	primer-balanced pooled local	continuous raw	0
+pairwise; primer-balanced pooled local; effect magnitude, not significance	40	704	23	0.575	0.5482274725214827	pairwise	primer-balanced pooled local	effect magnitude, not significance	0
+pairwise; primer-balanced pooled local; effect magnitude, not significance	100	704	63	0.63	0.6000377972844269	pairwise	primer-balanced pooled local	effect magnitude, not significance	0
+pairwise; primer-balanced pooled local; effect magnitude, not significance	200	704	127	0.635	0.6166332048982333	pairwise	primer-balanced pooled local	effect magnitude, not significance	0
+pairwise; primer-balanced pooled local; effect times log evidence, not significance	40	704	30	0.75	0.8542447538910096	pairwise	primer-balanced pooled local	effect times log evidence, not significance	0
+pairwise; primer-balanced pooled local; effect times log evidence, not significance	100	704	65	0.65	0.7442101216738054	pairwise	primer-balanced pooled local	effect times log evidence, not significance	0
+pairwise; primer-balanced pooled local; effect times log evidence, not significance	200	704	126	0.63	0.6850996771772457	pairwise	primer-balanced pooled local	effect times log evidence, not significance	0
+pairwise; primer-balanced pooled local; primer concordance then raw, not significance	40	704	31	0.775	0.8832037222664774	pairwise	primer-balanced pooled local	primer concordance then raw, not significance	0
+pairwise; primer-balanced pooled local; primer concordance then raw, not significance	100	704	66	0.66	0.776325206329781	pairwise	primer-balanced pooled local	primer concordance then raw, not significance	0
+pairwise; primer-balanced pooled local; primer concordance then raw, not significance	200	704	121	0.605	0.7003575718155649	pairwise	primer-balanced pooled local	primer concordance then raw, not significance	0
+pairwise; primer-balanced pooled local; primer cosine times log evidence, not significance	40	704	30	0.75	0.85112591733097	pairwise	primer-balanced pooled local	primer cosine times log evidence, not significance	0
+pairwise; primer-balanced pooled local; primer cosine times log evidence, not significance	100	704	61	0.61	0.7439061244644505	pairwise	primer-balanced pooled local	primer cosine times log evidence, not significance	0
+pairwise; primer-balanced pooled local; primer cosine times log evidence, not significance	200	704	116	0.58	0.6781700541523563	pairwise	primer-balanced pooled local	primer cosine times log evidence, not significance	0
+omnibus; primer-balanced pooled local; calibrated then raw	40	284	27	0.675	0.6210200423734984	omnibus	primer-balanced pooled local	calibrated then raw	0
+omnibus; primer-balanced pooled local; calibrated then raw	100	284	59	0.59	0.6370282392944744	omnibus	primer-balanced pooled local	calibrated then raw	0
+omnibus; primer-balanced pooled local; calibrated then raw	200	284	110	0.55	0.5959461702489173	omnibus	primer-balanced pooled local	calibrated then raw	0
+omnibus; primer-balanced pooled local; continuous raw	40	284	27	0.675	0.6210200423734984	omnibus	primer-balanced pooled local	continuous raw	0
+omnibus; primer-balanced pooled local; continuous raw	100	284	59	0.59	0.6397039689807271	omnibus	primer-balanced pooled local	continuous raw	0
+omnibus; primer-balanced pooled local; continuous raw	200	284	108	0.54	0.5993627325698503	omnibus	primer-balanced pooled local	continuous raw	0
+omnibus; primer-balanced pooled local; effect magnitude, not significance	40	284	25	0.625	0.6223231099203824	omnibus	primer-balanced pooled local	effect magnitude, not significance	0
+omnibus; primer-balanced pooled local; effect magnitude, not significance	100	284	60	0.6	0.619455025170746	omnibus	primer-balanced pooled local	effect magnitude, not significance	0
+omnibus; primer-balanced pooled local; effect magnitude, not significance	200	284	117	0.585	0.6064867381949077	omnibus	primer-balanced pooled local	effect magnitude, not significance	0
+omnibus; primer-balanced pooled local; effect times log evidence, not significance	40	284	27	0.675	0.818555082547524	omnibus	primer-balanced pooled local	effect times log evidence, not significance	0
+omnibus; primer-balanced pooled local; effect times log evidence, not significance	100	284	62	0.62	0.6984668521723755	omnibus	primer-balanced pooled local	effect times log evidence, not significance	0
+omnibus; primer-balanced pooled local; effect times log evidence, not significance	200	284	113	0.565	0.6410580458027333	omnibus	primer-balanced pooled local	effect times log evidence, not significance	0
+omnibus; primer-balanced pooled local; primer concordance then raw, not significance	40	284	29	0.725	0.6204583264573486	omnibus	primer-balanced pooled local	primer concordance then raw, not significance	0
+omnibus; primer-balanced pooled local; primer concordance then raw, not significance	100	284	58	0.58	0.6414128481138148	omnibus	primer-balanced pooled local	primer concordance then raw, not significance	0
+omnibus; primer-balanced pooled local; primer concordance then raw, not significance	200	284	116	0.58	0.6046579400876518	omnibus	primer-balanced pooled local	primer concordance then raw, not significance	0
+omnibus; primer-balanced pooled local; primer cosine times log evidence, not significance	40	284	29	0.725	0.7258884821740821	omnibus	primer-balanced pooled local	primer cosine times log evidence, not significance	0
+omnibus; primer-balanced pooled local; primer cosine times log evidence, not significance	100	284	60	0.6	0.6869510183679324	omnibus	primer-balanced pooled local	primer cosine times log evidence, not significance	0
+omnibus; primer-balanced pooled local; primer cosine times log evidence, not significance	200	284	116	0.58	0.6288276722550262	omnibus	primer-balanced pooled local	primer cosine times log evidence, not significance	0

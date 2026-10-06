@@ -8,6 +8,8 @@
   "statistical_selection": "Tealeaf pairwise BH FDR below 0.05 at A_test=64",
   "zeta_sensitivity": "full source remapping of the union of eight fixed-total discovery sets at zeta=2,4,8,16,32,64,128,256; summaries are in analyses/tilgner_long_read_replication/zeta_sensitivity.tsv",
   "effect_estimates": "Tealeaf A_report=1 subject-mean path proportions",
+  "saved_source_count_precision": "full fractional source-matrix precision, restored and checked against published effect norms/depths for all 2950 primary records",
+  "exploratory_reporting_and_ranking": "ranking_audit contains reporting-only sensitivities, without changes to statistical p-values or production discoveries",
   "replication_definition": "positive dot product between Tealeaf and long-read path-proportion difference vectors",
   "strict_replication_definition": "positive dot product independently in both Tilgner biological replicates",
   "strict_null_definition": "half the observed between-replicate directional concordance under randomized Tealeaf contrast orientation",

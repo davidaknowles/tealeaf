@@ -37,3 +37,21 @@ def test_strict_replication_uses_conditional_sign_flip_null():
     summary = summarize_replication(results)
     selected = summary[(summary["minimum_depth"] == 20) & (summary["minimum_original_effect_norm"] == 0.1)]
     assert dict(zip(selected["endpoint"], selected["null_rate"])) == {"pooled direction": 0.5, "both biological replicates": 5 / 16}
+
+
+def test_saved_source_path_counts_preserve_fractional_precision():
+    import json
+    from scipy import sparse
+    from extra_scripts.assess_tilgner_long_read_replication import assess_replication
+
+    signatures = [[[10, 20]], [[10, 30]]]
+    catalog = pd.DataFrame({"test_id": ["b|cell_type|a|b"], "block_id": ["b"], "gene_id": ["g"], "gene_name": ["G"], "event_type": ["cassette"], "tested_path_signatures": [json.dumps(signatures)]})
+    blocks = {"b": {"gene_id": "g", "transcripts": ["t1", "t2"], "path_index": [0, 1], "path_signatures": signatures}}
+    usage = pd.DataFrame({"test_id": ["b|cell_type|a|b"] * 4, "cell_type": ["a", "a", "b", "b"], "path_number": [1, 2, 1, 2], "proportion": [.7, .3, .3, .7]})
+    matrix = sparse.csr_matrix([[.75, .75, .25, .25], [.25, .25, .75, .75]])
+    features = pd.DataFrame({"stable_gene_id": ["g", "g"], "transcript_id": ["t1", "t2"], "row": [0, 1]})
+    columns = pd.DataFrame({"tealeaf_cell_type": ["a", "a", "b", "b"], "replicate": [1, 2, 1, 2], "column": [0, 1, 2, 3]})
+    result = assess_replication(catalog, usage, blocks, matrix, features, columns).iloc[0]
+    assert json.loads(result.counts_a_rep1) == [.75, .25]
+    assert json.loads(result.counts_b_rep2) == [.25, .75]
+    assert result.pooled_replicated
