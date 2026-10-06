@@ -1,0 +1,43 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	strategy	ranking	n_fallback
+Dirichlet pooling with subject-mean fallback; calibrated then raw	40	704	26	0.65	0.7456744861964191	Dirichlet pooling with subject-mean fallback	calibrated then raw	4
+Dirichlet pooling with subject-mean fallback; calibrated then raw	100	704	61	0.61	0.6642523493274877	Dirichlet pooling with subject-mean fallback	calibrated then raw	7
+Dirichlet pooling with subject-mean fallback; calibrated then raw	200	704	126	0.63	0.6475316276248039	Dirichlet pooling with subject-mean fallback	calibrated then raw	15
+Dirichlet pooling with subject-mean fallback; continuous raw	40	704	32	0.8	0.8008400303267488	Dirichlet pooling with subject-mean fallback	continuous raw	3
+Dirichlet pooling with subject-mean fallback; continuous raw	100	704	66	0.66	0.7362059847502219	Dirichlet pooling with subject-mean fallback	continuous raw	6
+Dirichlet pooling with subject-mean fallback; continuous raw	200	704	121	0.605	0.6809502634889358	Dirichlet pooling with subject-mean fallback	continuous raw	13
+effective-count Dirichlet pooling; calibrated then raw	40	704	26	0.65	0.7456744861964191	effective-count Dirichlet pooling	calibrated then raw	4
+effective-count Dirichlet pooling; calibrated then raw	100	704	61	0.61	0.6642523493274877	effective-count Dirichlet pooling	calibrated then raw	7
+effective-count Dirichlet pooling; calibrated then raw	200	704	126	0.63	0.6475316276248039	effective-count Dirichlet pooling	calibrated then raw	15
+effective-count Dirichlet pooling; continuous raw	40	704	32	0.8	0.8008400303267488	effective-count Dirichlet pooling	continuous raw	3
+effective-count Dirichlet pooling; continuous raw	100	704	66	0.66	0.7362059847502219	effective-count Dirichlet pooling	continuous raw	6
+effective-count Dirichlet pooling; continuous raw	200	704	121	0.605	0.6809502634889358	effective-count Dirichlet pooling	continuous raw	13
+paired-subject balanced pooled local; calibrated then raw	40	704	27	0.675	0.8136260996239857	paired-subject balanced pooled local	calibrated then raw	0
+paired-subject balanced pooled local; calibrated then raw	100	704	62	0.62	0.7068483081993169	paired-subject balanced pooled local	calibrated then raw	0
+paired-subject balanced pooled local; calibrated then raw	200	704	124	0.62	0.6670102261984482	paired-subject balanced pooled local	calibrated then raw	0
+paired-subject balanced pooled local; continuous raw	40	704	33	0.825	0.9077917858228218	paired-subject balanced pooled local	continuous raw	0
+paired-subject balanced pooled local; continuous raw	100	704	67	0.67	0.7996706173668261	paired-subject balanced pooled local	continuous raw	0
+paired-subject balanced pooled local; continuous raw	200	704	123	0.615	0.7204283625056087	paired-subject balanced pooled local	continuous raw	0
+paired-subject pooled local; calibrated then raw	40	704	26	0.65	0.8045675049538892	paired-subject pooled local	calibrated then raw	0
+paired-subject pooled local; calibrated then raw	100	704	61	0.61	0.6948721379297227	paired-subject pooled local	calibrated then raw	0
+paired-subject pooled local; calibrated then raw	200	704	120	0.6	0.6544808831172785	paired-subject pooled local	calibrated then raw	0
+paired-subject pooled local; continuous raw	40	704	33	0.825	0.9034332601131932	paired-subject pooled local	continuous raw	0
+paired-subject pooled local; continuous raw	100	704	66	0.66	0.7848408288657339	paired-subject pooled local	continuous raw	0
+paired-subject pooled local; continuous raw	200	704	120	0.6	0.7066827338342182	paired-subject pooled local	continuous raw	0
+pooled local; calibrated then raw	40	704	26	0.65	0.8045675049538892	pooled local	calibrated then raw	0
+pooled local; calibrated then raw	100	704	61	0.61	0.6948721379297227	pooled local	calibrated then raw	0
+pooled local; calibrated then raw	200	704	120	0.6	0.6544808831172785	pooled local	calibrated then raw	0
+pooled local; continuous raw	40	704	33	0.825	0.9034332601131932	pooled local	continuous raw	0
+pooled local; continuous raw	100	704	66	0.66	0.7848408288657339	pooled local	continuous raw	0
+pooled local; continuous raw	200	704	120	0.6	0.7066827338342182	pooled local	continuous raw	0
+primer-balanced pooled local; calibrated then raw	40	704	27	0.675	0.8136260996239857	primer-balanced pooled local	calibrated then raw	0
+primer-balanced pooled local; calibrated then raw	100	704	62	0.62	0.7068483081993169	primer-balanced pooled local	calibrated then raw	0
+primer-balanced pooled local; calibrated then raw	200	704	124	0.62	0.6670102261984482	primer-balanced pooled local	calibrated then raw	0
+primer-balanced pooled local; continuous raw	40	704	33	0.825	0.9077917858228218	primer-balanced pooled local	continuous raw	0
+primer-balanced pooled local; continuous raw	100	704	67	0.67	0.7996706173668261	primer-balanced pooled local	continuous raw	0
+primer-balanced pooled local; continuous raw	200	704	123	0.615	0.7204283625056087	primer-balanced pooled local	continuous raw	0
+subject-mean A1; calibrated then raw	40	704	26	0.65	0.7456744861964191	subject-mean A1	calibrated then raw	0
+subject-mean A1; calibrated then raw	100	704	58	0.58	0.6560236379875741	subject-mean A1	calibrated then raw	0
+subject-mean A1; calibrated then raw	200	704	121	0.605	0.6267687911992065	subject-mean A1	calibrated then raw	0
+subject-mean A1; continuous raw	40	704	32	0.8	0.8008400303267488	subject-mean A1	continuous raw	0
+subject-mean A1; continuous raw	100	704	65	0.65	0.7297126490808001	subject-mean A1	continuous raw	0
+subject-mean A1; continuous raw	200	704	118	0.59	0.6695625701887784	subject-mean A1	continuous raw	0

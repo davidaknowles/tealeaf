@@ -969,6 +969,92 @@ def fit_path_perturbation(
     )
 
 
+def fit_profiled_path_perturbation(counts, designs, baseline, path_index, *, max_iter=100, tolerance=1e-9, path_pseudocount=0.0, path_prior_center="uniform", path_pseudocount_scaling="total"):
+    """Fit absolute path ILRs and profile block mass against other isoforms.
+
+    Baseline and path_index have length T. Nonnegative indices define S paths;
+    -1 marks isoforms outside the block. Within-path and within-outside-block
+    transcript mixtures stay fixed to baseline. The fitted coordinates are
+    S-1 absolute ILRs and, if needed, one block-mass logit. The path covariance
+    profiles that extra coordinate rather than conditioning on its estimate.
+    This experimental fitter does not change the default production fitter.
+    """
+    baseline = np.maximum(np.asarray(baseline, dtype=float), 1e-12)
+    baseline /= baseline.sum()
+    path_index = np.asarray(path_index, dtype=int)
+    if baseline.ndim != 1 or path_index.shape != baseline.shape or not np.isfinite(baseline).all() or np.any(path_index < -1):
+        raise ValueError("baseline and path_index must align")
+    paths = np.unique(path_index[path_index >= 0])
+    if not np.array_equal(paths, np.arange(len(paths))) or len(paths) < 2:
+        raise ValueError("at least two consecutive path indices required")
+    size = len(paths)
+    has_nuisance = np.any(path_index < 0)
+    classes = size + int(has_nuisance)
+    projection = np.zeros((len(baseline), classes))
+    for path in range(classes):
+        selected = path_index == path if path < size else path_index < 0
+        projection[selected, path] = baseline[selected] / baseline[selected].sum()
+    mappings = tuple(np.asarray(sp.csr_matrix(design) @ projection) for design in designs)
+    counts = tuple(np.asarray(value, dtype=float) for value in counts)
+    if len(counts) != len(mappings) or any(value.shape != (mapping.shape[0],) or not np.isfinite(value).all() or np.any(value < 0) for value, mapping in zip(counts, mappings)):
+        raise ValueError("finite nonnegative EC counts must align with mappings")
+    totals = tuple(float(value.sum()) for value in counts)
+    if sum(totals) <= 0:
+        raise ValueError("positive EC count total required")
+    basis = helmert_basis(size)
+    baseline_paths = path_proportions(baseline, path_index)
+    if path_prior_center == "uniform":
+        center = np.full(size, 1 / size)
+    elif path_prior_center == "baseline":
+        center = baseline_paths
+    else:
+        raise ValueError("invalid path prior center")
+    prior = _path_prior_counts(path_pseudocount, size, center, path_pseudocount_scaling)
+
+    def composition(parameters):
+        proportions = scipy.special.softmax(basis @ parameters[:size - 1])
+        path_jacobian = basis - proportions @ basis
+        if not has_nuisance:
+            return proportions, path_jacobian, proportions
+        mass = scipy.special.expit(parameters[-1])
+        theta = np.r_[mass * proportions, 1 - mass]
+        jacobian = np.zeros((classes, size))
+        jacobian[:size, :size - 1] = path_jacobian
+        jacobian[:size, -1] = 1 - mass
+        jacobian[-1, -1] = -mass
+        return theta, jacobian, proportions
+
+    def objective(parameters):
+        theta, jacobian, proportions = composition(parameters)
+        value, score = 0., np.zeros(classes)
+        for observed, mapping, total in zip(counts, mappings, totals):
+            if total <= 0:
+                continue
+            mass = mapping @ theta
+            normalizer = mass.sum()
+            if normalizer <= 0 or np.any((observed > 0) & (mass <= 0)):
+                return np.inf, np.zeros(len(parameters))
+            value -= observed @ np.log(np.maximum(mass, 1e-300))
+            value += total * np.log(normalizer)
+            score += theta * (mapping.T @ (observed / np.maximum(mass, 1e-300)) - total * mapping.sum(axis=0) / normalizer)
+        value -= prior @ np.log(proportions)
+        gradient = -jacobian.T @ score
+        gradient[:size - 1] += prior.sum() * (proportions @ basis) - prior @ basis
+        return float(value), gradient
+
+    initial = basis.T @ np.log(baseline_paths)
+    if has_nuisance:
+        initial = np.r_[initial, scipy.special.logit(baseline[path_index >= 0].sum())]
+    fitted = scipy.optimize.minimize(objective, initial, jac=True, method="L-BFGS-B", bounds=[(-20., 20.)] * len(initial), options={"maxiter": max_iter, "ftol": tolerance})
+    theta, jacobian, proportions = composition(fitted.x)
+    information = jacobian.T @ transcript_fisher_information(theta, mappings, totals) @ jacobian
+    information[:size - 1, :size - 1] += prior.sum() * basis.T @ (np.diag(proportions) - np.outer(proportions, proportions)) @ basis
+    target = np.zeros((size - 1, len(initial)))
+    target[:, :size - 1] = np.eye(size - 1)
+    covariance = identifiable_covariance(information, target)
+    return PathFit(delta=fitted.x[:size - 1] - basis.T @ np.log(baseline_paths), path_logratios=basis.T @ np.log(proportions), path_proportions=proportions, theta=projection @ theta, covariance=covariance, converged=bool(fitted.success), iterations=int(fitted.nit), objective=float(fitted.fun))
+
+
 def fit_event_path_perturbation(counts, designs, baseline, path_index, *, max_iter=100, path_pseudocount=0.0, path_prior_center="uniform", path_pseudocount_scaling="total"):
     """Fit binary event inclusion while profiling its mass against other isoforms.
 

@@ -1,0 +1,23 @@
+{
+  "analysis": "Independent subject-split reporting and omnibus sensitivities",
+  "production_changes": false,
+  "production_pairwise_pvalues_and_table1": "unchanged",
+  "reporting_concentration": 1,
+  "testing_concentration_controls": {"subject_halves": 32, "full_data": 64},
+  "testing_strength_selection": "Existing production EB choices, not reselected for the modified-likelihood sensitivity",
+  "baseline_estimation": "Current analytic EC optimizer, refitted independently within each subject half; common to reporting alternatives",
+  "reporting_selection": "Existing comparator-matched event-BH union, with explicit selected and evaluable denominators",
+  "direction_definition": "Positive inner product after aligning paths by genomic signature",
+  "dirichlet_pooling": "Covariance-matched fractional effective-count approximation; failed fits fall back to the equal-subject estimate in the operational comparison",
+  "omnibus_reporting_control": "Explicit concentration-1 subject-blocked regression arrays, independent of method ordering",
+  "null_families": {"calibration": 32, "held_assessment": 32},
+  "null_assessment_limitation": "Held permutations assess calibration-pool generalization; they do not establish biological-null calibration under heteroscedasticity",
+  "gaussian_simulation": {"seed": 8721, "tests": 600, "subjects": 12, "cell_types": 4, "ILR_dimensions": [1, 3], "heteroscedastic_scales": [0.5, 1, 2, 4], "null_definition": "Zero cell-type ILR coefficients; this need not imply equal mean proportions"},
+  "paired_combinations": "All eligible archived marginal contrasts, no significance screen; Bonferroni, Simes, ACAT; joint subject dependence not certified by independently seeded marginal nulls",
+  "long_read_mapping": "Complete tested omnibus block set, using fractional source counts and the existing fixed P56 cell-type mapping",
+  "long_read_contrast_selection": "Largest short-read effect or smallest analytic-tail paired contrast among mapped cell types, before source depth or direction checks",
+  "long_read_comparison": "Own all-tested, own BH-selected, and common-tested/source-evaluable universes reported separately; top 40, 100, 200",
+  "rank_metric": "Mean cumulative directional agreement at integer ranks 1 through K, not ROC AUC",
+  "profiled_fitter": "Absolute path ILRs plus optional independently fitted block mass, fixed within-class transcript mixtures; experimental only",
+  "scripts": ["audit_path_reporting_omnibus.py", "audit_omnibus_pooled_reporting.py", "audit_wild_omnibus.py", "summarize_path_reporting_omnibus.py", "simulate_omnibus_audit.py", "inspect_reporting_robustness.py"]
+}

@@ -1,0 +1,57 @@
+discovery_fold	strategy	ranking	cutoff	n_selected	n_evaluable	agreement	median_cosine	held_nominal_replication	held_BH_replication
+0	Dirichlet pooling with subject-mean fallback	calibrated then raw	100	100	100	0.92	1.0	1.0	1.0
+0	Dirichlet pooling with subject-mean fallback	calibrated then raw	200	200	200	0.875	1.0	0.985	0.945
+0	Dirichlet pooling with subject-mean fallback	continuous raw	100	100	100	0.96	1.0	1.0	0.99
+0	Dirichlet pooling with subject-mean fallback	continuous raw	200	200	200	0.91	1.0	0.99	0.945
+0	effective-count Dirichlet pooling	calibrated then raw	100	100	87	0.9080459770114943	1.0	1.0	1.0
+0	effective-count Dirichlet pooling	calibrated then raw	200	200	178	0.8595505617977528	1.0	0.985	0.945
+0	effective-count Dirichlet pooling	continuous raw	100	100	86	0.9534883720930233	1.0	1.0	0.99
+0	effective-count Dirichlet pooling	continuous raw	200	200	174	0.896551724137931	1.0	0.99	0.945
+0	paired-subject balanced pooled local	calibrated then raw	100	100	100	0.45	-0.9999999999999998	1.0	1.0
+0	paired-subject balanced pooled local	calibrated then raw	200	200	200	0.57	0.9484310785369362	0.985	0.945
+0	paired-subject balanced pooled local	continuous raw	100	100	100	0.55	0.9911722176807738	1.0	0.99
+0	paired-subject balanced pooled local	continuous raw	200	200	200	0.57	0.9678740841110607	0.99	0.945
+0	paired-subject pooled local	calibrated then raw	100	100	100	0.5	0.0	1.0	1.0
+0	paired-subject pooled local	calibrated then raw	200	200	200	0.575	0.9816585780963433	0.985	0.945
+0	paired-subject pooled local	continuous raw	100	100	100	0.58	0.9949870216467941	1.0	0.99
+0	paired-subject pooled local	continuous raw	200	200	200	0.57	0.9897950347453193	0.99	0.945
+0	pooled local	calibrated then raw	100	100	100	0.5	0.0	1.0	1.0
+0	pooled local	calibrated then raw	200	200	200	0.575	0.9816585780963433	0.985	0.945
+0	pooled local	continuous raw	100	100	100	0.58	0.9949870216467941	1.0	0.99
+0	pooled local	continuous raw	200	200	200	0.57	0.9897950347453193	0.99	0.945
+0	primer-balanced pooled local	calibrated then raw	100	100	100	0.45	-0.9999999999999998	1.0	1.0
+0	primer-balanced pooled local	calibrated then raw	200	200	200	0.57	0.9484310785369362	0.985	0.945
+0	primer-balanced pooled local	continuous raw	100	100	100	0.55	0.9911722176807738	1.0	0.99
+0	primer-balanced pooled local	continuous raw	200	200	200	0.57	0.9678740841110607	0.99	0.945
+0	subject-mean A1	calibrated then raw	100	100	100	0.94	1.0	1.0	1.0
+0	subject-mean A1	calibrated then raw	200	200	200	0.9	1.0	0.985	0.945
+0	subject-mean A1	continuous raw	100	100	100	0.97	1.0	1.0	0.99
+0	subject-mean A1	continuous raw	200	200	200	0.935	1.0	0.99	0.945
+1	Dirichlet pooling with subject-mean fallback	calibrated then raw	100	100	100	0.89	1.0	0.98	0.96
+1	Dirichlet pooling with subject-mean fallback	calibrated then raw	200	200	200	0.845	1.0	0.99	0.97
+1	Dirichlet pooling with subject-mean fallback	continuous raw	100	100	100	0.88	1.0	0.98	0.97
+1	Dirichlet pooling with subject-mean fallback	continuous raw	200	200	200	0.845	1.0	0.99	0.965
+1	effective-count Dirichlet pooling	calibrated then raw	100	100	83	0.8674698795180723	1.0	0.98	0.96
+1	effective-count Dirichlet pooling	calibrated then raw	200	200	174	0.8218390804597702	1.0	0.99	0.97
+1	effective-count Dirichlet pooling	continuous raw	100	100	85	0.8588235294117647	1.0	0.98	0.97
+1	effective-count Dirichlet pooling	continuous raw	200	200	177	0.8248587570621468	1.0	0.99	0.965
+1	paired-subject balanced pooled local	calibrated then raw	100	100	100	0.44	-0.7432241718343331	0.98	0.96
+1	paired-subject balanced pooled local	calibrated then raw	200	200	200	0.53	0.6154572424199864	0.99	0.97
+1	paired-subject balanced pooled local	continuous raw	100	100	100	0.47	-0.9106153645927887	0.98	0.97
+1	paired-subject balanced pooled local	continuous raw	200	200	200	0.525	0.5008882673825517	0.99	0.965
+1	paired-subject pooled local	calibrated then raw	100	100	100	0.45	-0.6754890276056496	0.98	0.96
+1	paired-subject pooled local	calibrated then raw	200	200	200	0.525	0.8244142509058527	0.99	0.97
+1	paired-subject pooled local	continuous raw	100	100	100	0.49	-0.39663750237434364	0.98	0.97
+1	paired-subject pooled local	continuous raw	200	200	200	0.55	0.9842741055285629	0.99	0.965
+1	pooled local	calibrated then raw	100	100	100	0.45	-0.6754890276056496	0.98	0.96
+1	pooled local	calibrated then raw	200	200	200	0.525	0.8244142509058527	0.99	0.97
+1	pooled local	continuous raw	100	100	100	0.49	-0.39663750237434364	0.98	0.97
+1	pooled local	continuous raw	200	200	200	0.55	0.9842741055285629	0.99	0.965
+1	primer-balanced pooled local	calibrated then raw	100	100	100	0.44	-0.7432241718343331	0.98	0.96
+1	primer-balanced pooled local	calibrated then raw	200	200	200	0.53	0.6154572424199864	0.99	0.97
+1	primer-balanced pooled local	continuous raw	100	100	100	0.47	-0.9106153645927887	0.98	0.97
+1	primer-balanced pooled local	continuous raw	200	200	200	0.525	0.5008882673825517	0.99	0.965
+1	subject-mean A1	calibrated then raw	100	100	100	0.91	1.0	0.98	0.96
+1	subject-mean A1	calibrated then raw	200	200	200	0.875	1.0	0.99	0.97
+1	subject-mean A1	continuous raw	100	100	100	0.9	1.0	0.98	0.97
+1	subject-mean A1	continuous raw	200	200	200	0.88	1.0	0.99	0.965
