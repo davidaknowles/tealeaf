@@ -1,0 +1,3 @@
+draw	strategy	n_tests	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01	BH_discoveries
+0	hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities, fragment kernel, fragment-kernel null	32	19	0.0	0.03125	0.0	0
+1	hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities, fragment kernel, fragment-kernel null	32	20	0.03125	0.03125	0.03125	0

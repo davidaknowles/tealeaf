@@ -159,7 +159,7 @@ def efficient_shared_path_score(counts, designs, theta, path_index, observed_lev
     return (*result, target.T @ target) if return_reference else result
 
 
-def shared_path_score_components(data, path_index, labels, subjects, *, baseline=None, max_iter=300, reporting_concentration=None, null_multistart=False, score_coordinate="ilr"):
+def shared_path_score_components(data, path_index, labels, subjects, *, baseline=None, max_iter=300, reporting_concentration=None, null_multistart=False, score_coordinate="ilr", count_likelihood="multinomial"):
     """Fit each subject null once; failures invalidate the complete hypothesis.
 
     Missing/zero-total types are structural exclusions, not optimizer-based
@@ -174,6 +174,8 @@ def shared_path_score_components(data, path_index, labels, subjects, *, baseline
         raise ValueError("at least two cell types required")
     if score_coordinate not in ("ilr", "proportion"):
         raise ValueError("score coordinate must be ilr or proportion")
+    if count_likelihood not in ("multinomial", "conditional") or (count_likelihood == "conditional" and (score_coordinate != "ilr" or len(levels) != 2)):
+        raise ValueError("conditional count prototype requires two types and ILR coordinates")
     if baseline is None:
         baseline = pooled_isoform_weights(data)
     if reporting_concentration is not None and (not np.isfinite(reporting_concentration) or reporting_concentration < 0):
@@ -188,10 +190,18 @@ def shared_path_score_components(data, path_index, labels, subjects, *, baseline
         local_levels, counts = local_levels[positive], tuple(value[positive] for value in counts)
         if len(local_levels) < 2:
             continue
-        shared = SharedPathNullProblem(counts, data.compatibility, baseline, path_index).fit(max_iter=max_iter, multistart=null_multistart)
+        if count_likelihood == "conditional":
+            from .conditional_path_score import ConditionalPathNullProblem, efficient_conditional_path_score
+            conditional = ConditionalPathNullProblem(counts, data.compatibility, baseline, path_index)
+            shared, offsets = conditional.fit(max_iter=max_iter, multistart=null_multistart)
+        else:
+            shared = SharedPathNullProblem(counts, data.compatibility, baseline, path_index).fit(max_iter=max_iter, multistart=null_multistart)
         if not shared.converged:
             raise ValueError(f"shared-path null failed for subject {subject}, iterations={shared.iterations}, gradient={shared.gradient_norm:.6g}, termination={shared.termination_message}")
-        score, info, shape, target_info = efficient_shared_path_score(counts, data.compatibility, shared.theta, path_index, local_levels, len(levels), score_coordinate=score_coordinate, return_reference=True)
+        if count_likelihood == "conditional":
+            score, info, shape, target_info = efficient_conditional_path_score(conditional, shared.theta, offsets)
+        else:
+            score, info, shape, target_info = efficient_shared_path_score(counts, data.compatibility, shared.theta, path_index, local_levels, len(levels), score_coordinate=score_coordinate, return_reference=True)
         scores.append(score)
         information.append(info)
         shapes.append(shape)

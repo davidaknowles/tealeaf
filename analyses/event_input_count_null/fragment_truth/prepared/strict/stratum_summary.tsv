@@ -1,0 +1,13 @@
+strategy	degrees_of_freedom	n_subjects	n_tests	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01
+hybrid free-transcript EC mixed score, target-normalized rank, fragment-kernel null	1	0	3	0	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, fragment-kernel null	1	4	11	11	0.0	0.09090909090909091	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, fragment-kernel null	1	5	13	13	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, fragment-kernel null	1	6	10	10	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, fragment-kernel null	1	7	4	4	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, fragment-kernel null	1	8	5	5	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, fragment-kernel null	1	9	7	7	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, fragment-kernel null	1	10	3	3	0.0	0.3333333333333333	0.3333333333333333
+hybrid free-transcript EC mixed score, target-normalized rank, fragment-kernel null	1	12	3	3	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, fragment-kernel null	1	14	2	2	0.0	0.5	0.5
+hybrid free-transcript EC mixed score, target-normalized rank, fragment-kernel null	1	15	1	1	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, fragment-kernel null	1	18	2	2	0.0	0.0	0.0

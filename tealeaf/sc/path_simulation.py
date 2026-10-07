@@ -38,7 +38,7 @@ def simulate_independent_binary_blocks(rng, *, n_subjects=12, gene_depth=100, a_
     return data, details
 
 
-def simulate_counts(base, baseline, subjects, rng, subject_scale=.5, *, labels=None, path_index=None, residual_concentration=None, return_details=False, within_path_type_scale=None):
+def simulate_counts(base, baseline, subjects, rng, subject_scale=.5, *, labels=None, path_index=None, residual_concentration=None, return_details=False, within_path_type_scale=None, ec_opportunity_scale=0.):
     """Generate primer-conditioned EC counts under a conditional-mean null.
 
     Baseline is length T; subjects/labels are length N; path_index is length T.
@@ -58,6 +58,9 @@ def simulate_counts(base, baseline, subjects, rng, subject_scale=.5, *, labels=N
     preserving every subject/label path mass and outside-block abundance.
     This tests nuisance changes under a genuine target-path null. Its
     observation truth, not the subject baseline, includes the type tilt.
+    Optional EC opportunity shifts multiply each primer map row by a shared
+    log-normal factor during generation, while the returned design remains
+    the original analysis design. They are shared by subjects and types.
     """
     baseline, subjects = np.asarray(baseline, float), np.asarray(subjects)
     if baseline.shape != (base.n_isoforms,) or np.any(~np.isfinite(baseline)) or np.any(baseline < 0) or baseline.sum() <= 0:
@@ -101,9 +104,24 @@ def simulate_counts(base, baseline, subjects, rng, subject_scale=.5, *, labels=N
             mass = observation_weights[:, positions].sum(axis=1, keepdims=True)
             shares = softmax(np.log(np.maximum(observation_weights[:, positions], 1e-300)) + tilts[encoded_types][:, positions], axis=1)
             observation_weights[:, positions] = mass * shares
-    generated = resample_counts(base, observation_weights, rng)
+    if not np.isfinite(ec_opportunity_scale) or ec_opportunity_scale < 0:
+        raise ValueError("nonnegative finite EC opportunity scale required")
+    opportunity_factors = None
+    simulation_base = base
+    if ec_opportunity_scale > 0:
+        opportunity_factors = tuple(np.exp(rng.normal(scale=ec_opportunity_scale, size=np.asarray(mapping).shape[0])) for mapping in base.compatibility)
+        mappings = tuple(np.asarray(mapping) * factors[:, None] for mapping, factors in zip(base.compatibility, opportunity_factors))
+        if any(not np.isfinite(mapping).all() for mapping in mappings):
+            raise ValueError("simulated opportunity factors exceed finite mapping range")
+        simulation_base = ECGLMMData(base.counts, mappings, base.design, base.clusters)
+    generated = resample_counts(simulation_base, observation_weights, rng)
+    if opportunity_factors is not None:
+        generated = ECGLMMData(generated.counts, base.compatibility, base.design, base.clusters)
     if return_details:
-        return generated, {"subject_levels": levels, "subject_weights": weights, "observation_weights": observation_weights}
+        details = {"subject_levels": levels, "subject_weights": weights, "observation_weights": observation_weights}
+        if opportunity_factors is not None:
+            details["ec_opportunity_factors"] = opportunity_factors
+        return generated, details
     return generated
 
 

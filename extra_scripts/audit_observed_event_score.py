@@ -15,6 +15,7 @@ from extra_scripts.run_suppa2_tealeaf_hybrid import canonical, supported_gene_tr
 from tealeaf.sc.ec_block_glmm import pooled_isoform_weights
 from tealeaf.sc.path_score_mixed import shared_path_score_components, aggregate_path_scores, paired_score_reporting, MODEL_VERSION
 from tealeaf.sc.replication_audit import complete_cluster_fit
+from tealeaf.sc.conditional_path_score import binary_fragment_opportunity_kernels
 
 
 def main():
@@ -30,6 +31,8 @@ def main():
     parser.add_argument("--shard-count", type=int, default=8)
     parser.add_argument("--score-coordinate", choices=("ilr", "proportion"), default="ilr")
     parser.add_argument("--information-metric", choices=("absolute", "reference"), default="absolute")
+    parser.add_argument("--count-likelihood", choices=("multinomial", "conditional"), default="multinomial")
+    parser.add_argument("--kernel-units", choices=("prepared", "fragment"), default="prepared")
     args = parser.parse_args()
     if not 0 <= args.shard_index < args.shard_count:
         raise ValueError("invalid diagnostic shard")
@@ -39,6 +42,8 @@ def main():
         raise ValueError("observed diagnostic requires the full-data production coverage recipe")
     source = args.cache / f"{args.source}_paired"
     metadata, counts, genes, gene_tx, gene_ecs, designs = filtered_inputs(source / "prepared.pkl", settings)
+    if args.kernel_units == "fragment":
+        designs = binary_fragment_opportunity_kernels(designs)
     if metadata.duplicated(["mouse", "cell_type"]).any():
         raise ValueError("one pseudobulk per subject/type required")
     features = (source / "features.txt").read_text().splitlines()
@@ -70,7 +75,7 @@ def main():
                 raise ValueError("event lacks complete source transcript support")
             base, _, _ = local_gene_data(tuple(matrix[rows] for matrix in counts), designs, transcripts, gene_ecs[gene], np.ones((len(rows), 1)), subjects, drop_zero=False)
             baseline = pooled_isoform_weights(base)
-            components = shared_path_score_components(base, paths, labels, subjects, baseline=baseline, max_iter=2000, null_multistart=True, reporting_concentration=1., score_coordinate=args.score_coordinate)
+            components = shared_path_score_components(base, paths, labels, subjects, baseline=baseline, max_iter=2000, null_multistart=True, reporting_concentration=1., score_coordinate=args.score_coordinate, count_likelihood=args.count_likelihood)
             report = paired_score_reporting(components)
             result_row.update(n_expected_subjects=len(np.unique(subjects)), n_fitted_subjects=len(components.subject_ids), n_reported_subjects=report["n_reported_subjects"], report_complete=report["complete"], report_effect=report["effect"][0], pooled_inclusion=baseline[paths == 0].sum() / baseline[paths >= 0].sum(), pooled_event_mass=baseline[paths >= 0].sum(), n_interior_starts_selected=sum(fit.selected_start == 1 for fit in components.null_fits))
             result = aggregate_path_scores(components, information_metric=args.information_metric)
@@ -86,7 +91,7 @@ def main():
     args.output_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(output).to_csv(args.output_dir / "tests.tsv", sep="\t", index=False, na_rep="NA")
     (args.output_dir / "failures.json").write_text(json.dumps(failures, indent=2) + "\n")
-    (args.output_dir / "settings.json").write_text(json.dumps({"source": args.source, "candidate_settings": settings, "model_version": MODEL_VERSION, "score_coordinate": args.score_coordinate, "information_metric": args.information_metric, "max_iter": 2000, "null_multistart": True, "reporting_concentration": 1, "n_requested": len(records), "shard_count": args.shard_count, "selection": "fixed random null-family identifiers and labeled native top100 diagnosis; no selected-family BH or full-universe LR claim", "production_changes": False}, indent=2) + "\n")
+    (args.output_dir / "settings.json").write_text(json.dumps({"source": args.source, "candidate_settings": settings, "model_version": MODEL_VERSION, "score_coordinate": args.score_coordinate, "information_metric": args.information_metric, "count_likelihood": args.count_likelihood, "kernel_units": args.kernel_units, "max_iter": 2000, "null_multistart": True, "reporting_concentration": 1, "n_requested": len(records), "shard_count": args.shard_count, "selection": "fixed random null-family identifiers and labeled native top100 diagnosis; no selected-family BH or full-universe LR claim", "production_changes": False}, indent=2) + "\n")
 
 
 if __name__ == "__main__":

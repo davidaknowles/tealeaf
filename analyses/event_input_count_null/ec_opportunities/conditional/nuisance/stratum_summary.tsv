@@ -1,0 +1,14 @@
+strategy	degrees_of_freedom	n_subjects	n_tests	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities	1	0	21	0	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities	1	4	14	14	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities	1	5	11	11	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities	1	6	2	2	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities	1	7	6	6	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities	1	8	3	3	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities	1	9	1	1	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities	1	10	1	1	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities	1	11	1	1	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities	1	12	1	1	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities	1	13	1	1	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities	1	14	1	1	0.0	1.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities	1	15	1	1	1.0	1.0	1.0

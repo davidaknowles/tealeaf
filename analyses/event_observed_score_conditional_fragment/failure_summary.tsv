@@ -1,0 +1,76 @@
+source	scope	error	n
+original_binary	fixed random real-data diagnostic	ValueError('four informative subject clusters and positive residual df required')	1
+original_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject A_1, iterations=2000, gradient=0.000523465, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject A_1, iterations=2000, gradient=0.000842456, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject A_1, iterations=2000, gradient=0.00129286, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject A_1, iterations=2000, gradient=0.00495909, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject A_2, iterations=2000, gradient=0.000123623, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject A_8, iterations=2000, gradient=0.000109281, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject B_1, iterations=2000, gradient=0.00116756, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject B_5, iterations=2000, gradient=0.00191332, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject B_8, iterations=2000, gradient=0.000178013, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject B_8, iterations=2000, gradient=0.000230835, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject C_4, iterations=2000, gradient=0.000956751, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject E_1, iterations=2000, gradient=0.00337214, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject F_2, iterations=2000, gradient=0.000359902, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject F_4, iterations=2000, gradient=0.00323646, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject F_7, iterations=2000, gradient=0.00229339, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	native top100 diagnostic, not an inference family	KeyError(('EX_cortical', 'ODC'))	1
+original_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_1, iterations=2000, gradient=0.00420209, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_1, iterations=2000, gradient=0.00537624, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_2, iterations=2000, gradient=0.00030374, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_7, iterations=2000, gradient=0.00088191, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_8, iterations=2000, gradient=0.00137031, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_8, iterations=2000, gradient=0.00367753, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject B_1, iterations=2000, gradient=0.0077996, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject B_2, iterations=2000, gradient=0.239237, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject B_3, iterations=2000, gradient=0.000157559, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject B_5, iterations=2000, gradient=0.0028743, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject B_5, iterations=2000, gradient=0.00312987, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject C_4, iterations=2000, gradient=0.00453709, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject C_7, iterations=2000, gradient=0.000152492, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject C_7, iterations=2000, gradient=0.00027705, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject C_7, iterations=2000, gradient=0.00577707, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject D_6, iterations=2000, gradient=0.00491244, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject E_5, iterations=2000, gradient=0.0571742, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject E_7, iterations=2000, gradient=0.000804334, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	fixed random real-data diagnostic	ValueError('four informative subject clusters and positive residual df required')	6
+parsimony_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject A_1, iterations=2000, gradient=0.000306418, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject A_1, iterations=2000, gradient=0.000500015, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject A_7, iterations=2000, gradient=0.000260433, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject A_7, iterations=2000, gradient=0.00148512, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject A_8, iterations=2000, gradient=0.000212526, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject A_8, iterations=2000, gradient=0.00316917, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject B_8, iterations=2000, gradient=0.000139412, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject B_8, iterations=2000, gradient=0.000310155, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject C_5, iterations=2000, gradient=6.86651e-05, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject D_3, iterations=2000, gradient=0.000612815, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject D_6, iterations=2000, gradient=0.00021628, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject F_5, iterations=2000, gradient=0.00255309, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject F_5, iterations=2000, gradient=4.07068e-05, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	KeyError(('EX_cerebellum_granule', 'EX_cortical'))	2
+parsimony_binary	native top100 diagnostic, not an inference family	KeyError(('EX_cortical', 'EX_hippocampus_granule'))	1
+parsimony_binary	native top100 diagnostic, not an inference family	KeyError(('EX_cortical', 'ODC'))	2
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('four informative subject clusters and positive residual df required')	8
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_1, iterations=2000, gradient=0.000109582, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_1, iterations=2000, gradient=0.00520215, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_1, iterations=2000, gradient=0.0244172, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_1, iterations=2000, gradient=5.87257e-05, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_2, iterations=2000, gradient=0.00253838, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_4, iterations=2000, gradient=0.00238487, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_7, iterations=2000, gradient=0.00225522, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_7, iterations=2000, gradient=0.00574211, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_7, iterations=2000, gradient=0.0153482, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_8, iterations=2000, gradient=0.00103804, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_8, iterations=2000, gradient=0.00105661, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_8, iterations=2000, gradient=0.00182129, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_8, iterations=2000, gradient=0.00392049, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject B_2, iterations=2000, gradient=0.00244956, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject B_8, iterations=2000, gradient=0.00035368, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject C_1, iterations=2000, gradient=0.00149415, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject C_1, iterations=2000, gradient=0.00240121, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject C_2, iterations=2000, gradient=0.000600219, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject D_6, iterations=2000, gradient=0.00126671, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject E_4, iterations=2000, gradient=0.000567214, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject E_8, iterations=2000, gradient=0.00628282, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject F_4, iterations=2000, gradient=0.0040393, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1

@@ -1,0 +1,13 @@
+strategy	degrees_of_freedom	n_subjects	n_tests	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities, fragment kernel, fragment-kernel null	1	0	22	0	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities, fragment kernel, fragment-kernel null	1	4	12	12	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities, fragment kernel, fragment-kernel null	1	5	5	5	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities, fragment kernel, fragment-kernel null	1	6	5	5	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities, fragment kernel, fragment-kernel null	1	7	3	3	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities, fragment kernel, fragment-kernel null	1	8	6	6	0.0	0.16666666666666666	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities, fragment kernel, fragment-kernel null	1	9	4	4	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities, fragment kernel, fragment-kernel null	1	10	1	1	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities, fragment kernel, fragment-kernel null	1	11	1	1	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities, fragment kernel, fragment-kernel null	1	12	3	3	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities, fragment kernel, fragment-kernel null	1	13	1	1	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank, conditional EC opportunities, fragment kernel, fragment-kernel null	1	14	1	1	0.0	0.0	0.0

@@ -1,0 +1,5 @@
+source	scope	n_requested	n_complete_inference	n_complete_reporting	n_raw_f_p05	n_raw_chi_p05	n_boundary_pooled	n_negligible_pooled_event_mass	n_report_agrees	n_score_agrees	n_external_nonzero
+parsimony_binary	fixed random real-data diagnostic	32	13	19	1	1	6	9	NA	NA	NA
+parsimony_binary	native top100 diagnostic, not an inference family	100	65	73	33	40	9	36	58.0	56.0	96.0
+original_binary	fixed random real-data diagnostic	32	16	17	1	1	6	11	NA	NA	NA
+original_binary	native top100 diagnostic, not an inference family	100	81	81	51	56	7	40	64.0	65.0	96.0

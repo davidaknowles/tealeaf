@@ -1,0 +1,5 @@
+draw	strategy	n_tests	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01	BH_discoveries
+0	hybrid free-transcript EC mixed score, target-normalized rank	128	125	0.015625	0.0625	0.015625	0
+1	hybrid free-transcript EC mixed score, target-normalized rank	128	120	0.015625	0.0625	0.0078125	0
+2	hybrid free-transcript EC mixed score, target-normalized rank	128	119	0.015625	0.0546875	0.015625	0
+3	hybrid free-transcript EC mixed score, target-normalized rank	128	120	0.015625	0.0546875	0.015625	0

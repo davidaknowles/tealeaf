@@ -1,0 +1,2 @@
+strategy	n_tests	n_blocks	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01
+hybrid free-transcript EC mixed score, target-normalized rank	512	127	484	0.015625	0.05859375	0.013671875

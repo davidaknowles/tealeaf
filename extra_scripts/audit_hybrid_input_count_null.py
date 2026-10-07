@@ -17,6 +17,8 @@ from tealeaf.sc import ec_block_glmm
 from tealeaf.sc.path_simulation import simulate_counts
 from tealeaf.sc.path_score_mixed import shared_path_score_components, aggregate_path_scores, signed_path_score_p_value, MODEL_VERSION as MIXED_SCORE_VERSION
 from tealeaf.sc.replication_audit import complete_cluster_fit
+from tealeaf.sc.conditional_path_score import binary_fragment_opportunity_kernels
+from tealeaf.sc.ec_glmm import ECGLMMData
 
 
 def trial_header(record):
@@ -44,6 +46,10 @@ def main():
     parser.add_argument("--information-metric", choices=("absolute", "reference"), default="absolute")
     parser.add_argument("--residual-concentration", type=float)
     parser.add_argument("--within-path-type-scale", type=float)
+    parser.add_argument("--count-likelihood", choices=("multinomial", "conditional"), default="multinomial")
+    parser.add_argument("--ec-opportunity-scale", type=float, default=0.)
+    parser.add_argument("--kernel-units", choices=("prepared", "fragment"), default="prepared")
+    parser.add_argument("--simulation-kernel-units", choices=("analysis", "prepared", "fragment"), default="analysis")
     args = parser.parse_args()
     if not 0 <= args.shard_index < args.shard_count:
         raise ValueError("invalid null shard")
@@ -53,6 +59,8 @@ def main():
         raise ValueError("proportion coordinates require mixed-score inference")
     if args.information_metric != "absolute" and args.inference != "mixed-score":
         raise ValueError("reference rank metric requires mixed-score inference")
+    if args.count_likelihood != "multinomial" and args.inference != "mixed-score":
+        raise ValueError("conditional count likelihood requires mixed-score inference")
     if not np.isfinite(args.subject_scale) or args.subject_scale < 0 or not args.concentrations or len(set(args.concentrations)) != len(args.concentrations) or any(not np.isfinite(value) or value <= 0 for value in args.concentrations):
         raise ValueError("nonnegative subject scale and unique positive concentrations required")
     source = args.cache / f"{args.source}_paired"
@@ -61,6 +69,11 @@ def main():
     if settings["subject_fold"] != 0 or settings["min_gene_umis"] != 25:
         raise ValueError("count-null control requires the frozen production fold0 coverage recipe")
     metadata, counts, genes, gene_tx, gene_ecs, designs = filtered_inputs(source / "prepared.pkl", settings)
+    original_designs = designs
+    fragment_designs = binary_fragment_opportunity_kernels(designs) if "fragment" in (args.kernel_units, args.simulation_kernel_units) else None
+    if args.kernel_units == "fragment":
+        designs = fragment_designs
+    simulation_designs = designs if args.simulation_kernel_units == "analysis" else (fragment_designs if args.simulation_kernel_units == "fragment" else original_designs)
     if metadata.duplicated(["mouse", "cell_type"]).any():
         raise ValueError("expected one pseudobulk per subject/type")
     features = (source / "features.txt").read_text().splitlines()
@@ -87,6 +100,12 @@ def main():
     expected_strategies = ["hybrid free-transcript EC mixed score" + (", proportion contrast" if args.score_coordinate == "proportion" else "")] if args.inference == "mixed-score" else [f"hybrid profiled ILR A{value:g}" for value in args.concentrations]
     if args.information_metric == "reference":
         expected_strategies = [value + ", target-normalized rank" for value in expected_strategies]
+    if args.count_likelihood == "conditional":
+        expected_strategies = [value + ", conditional EC opportunities" for value in expected_strategies]
+    if args.kernel_units == "fragment":
+        expected_strategies = [value + ", fragment kernel" for value in expected_strategies]
+    if args.simulation_kernel_units != "analysis":
+        expected_strategies = [value + f", {args.simulation_kernel_units}-kernel null" for value in expected_strategies]
     observed, null, failures, contexts, diagnostics = [], [], [], {}, []
     for record in requested[args.shard_index::args.shard_count]:
         test_id = record["test_id"]
@@ -110,16 +129,22 @@ def main():
                 raise ValueError("sampled event no longer has complete transcript support")
             base, _, _ = local_gene_data(tuple(value[rows] for value in counts), designs, transcripts, gene_ecs[gene], np.ones((len(rows), 1)), subjects, drop_zero=False)
             baseline = ec_block_glmm.pooled_isoform_weights(base)
+            if args.simulation_kernel_units == "analysis":
+                simulation_base, simulation_baseline = base, baseline
+            else:
+                simulation_base, _, _ = local_gene_data(tuple(value[rows] for value in counts), simulation_designs, transcripts, gene_ecs[gene], np.ones((len(rows), 1)), subjects, drop_zero=False)
+                simulation_baseline = ec_block_glmm.pooled_isoform_weights(simulation_base)
             rng = np.random.default_rng(381924 + zlib.crc32(test_id.encode()))
             for draw in range(args.draws):
-                generated = simulate_counts(base, baseline, subjects, rng, args.subject_scale, labels=labels, path_index=path_index, residual_concentration=args.residual_concentration, within_path_type_scale=args.within_path_type_scale)
+                generated = simulate_counts(simulation_base, simulation_baseline, subjects, rng, args.subject_scale, labels=labels, path_index=path_index, residual_concentration=args.residual_concentration, within_path_type_scale=args.within_path_type_scale, ec_opportunity_scale=args.ec_opportunity_scale)
+                generated = ECGLMMData(generated.counts, base.compatibility, base.design, base.clusters)
                 fitted_baseline = ec_block_glmm.pooled_isoform_weights(generated)
                 if args.inference == "profiled":
                     collapsed, collapsed_paths, collapsed_baseline = collapse_event_nuisance(generated, path_index, fitted_baseline)
                 for concentration, strategy in zip(([0.] if args.inference == "mixed-score" else args.concentrations), expected_strategies):
                     try:
                         if args.inference == "mixed-score":
-                            components = shared_path_score_components(generated, path_index, labels, subjects, baseline=fitted_baseline, max_iter=args.max_iter, null_multistart=args.null_multistart, score_coordinate=args.score_coordinate)
+                            components = shared_path_score_components(generated, path_index, labels, subjects, baseline=fitted_baseline, max_iter=args.max_iter, null_multistart=args.null_multistart, score_coordinate=args.score_coordinate, count_likelihood=args.count_likelihood)
                             for index, subject in enumerate(components.subject_ids):
                                 fit = components.null_fits[index]
                                 diagnostics.append({**header, "draw": draw, "subject": subject, "null_inclusion": fit.path_proportions[0], "null_event_mass_min": fit.theta[:, path_index >= 0].sum(axis=1).min(), "null_event_mass_max": fit.theta[:, path_index >= 0].sum(axis=1).max(), "information": components.information[index, 0, 0], "score": components.scores[index, 0], "starts": fit.starts, "selected_start": fit.selected_start, "pooled_refit_inclusion": fitted_baseline[path_index == 0].sum() / fitted_baseline[path_index >= 0].sum(), "pooled_refit_event_mass": fitted_baseline[path_index >= 0].sum()})
@@ -160,6 +185,7 @@ def main():
     manifest["score_coordinate"] = args.score_coordinate if args.inference == "mixed-score" else None
     manifest["information_metric"] = args.information_metric if args.inference == "mixed-score" else None
     manifest["completeness"] = "every eligible subject null must fit; mixed-score degrees of freedom count informative clusters separately from fitted clusters"
+    manifest.update(count_likelihood=args.count_likelihood, ec_opportunity_scale=args.ec_opportunity_scale, kernel_units=args.kernel_units, simulation_kernel_units=args.simulation_kernel_units)
     (args.output_dir / "settings.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
 

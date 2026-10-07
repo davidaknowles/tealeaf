@@ -15,9 +15,17 @@ source /gpfs/commons/home/daknowles/venv/jax/bin/activate
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}" OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 SCORE_COORDINATE=${SCORE_COORDINATE:-proportion}
 SCORE_INFORMATION_METRIC=${SCORE_INFORMATION_METRIC:-absolute}
+SCORE_COUNT_LIKELIHOOD=${SCORE_COUNT_LIKELIHOOD:-multinomial}
+SCORE_KERNEL_UNITS=${SCORE_KERNEL_UNITS:-prepared}
 SCORE_OUTPUT="${REPO_ROOT}/.cache/event_information_20261007/observed_score_${SCORE_COORDINATE}"
 if [[ "${SCORE_INFORMATION_METRIC}" != "absolute" ]]; then
   SCORE_OUTPUT="${SCORE_OUTPUT}_${SCORE_INFORMATION_METRIC}"
+fi
+if [[ "${SCORE_COUNT_LIKELIHOOD}" != "multinomial" ]]; then
+  SCORE_OUTPUT="${SCORE_OUTPUT}_${SCORE_COUNT_LIKELIHOOD}"
+fi
+if [[ "${SCORE_KERNEL_UNITS}" != "prepared" ]]; then
+  SCORE_OUTPUT="${SCORE_OUTPUT}_${SCORE_KERNEL_UNITS}"
 fi
 SHARD_COUNT=8
 SOURCE_INDEX=$((SLURM_ARRAY_TASK_ID / SHARD_COUNT))
@@ -31,4 +39,4 @@ python "${REPO_ROOT}/extra_scripts/audit_observed_event_score.py" \
   --native-support "${REPO_ROOT}/analyses/event_information_audit/native_event_support.tsv.gz" \
   --null-panel "${REPO_ROOT}/.cache/event_information_20261007/count_null/parsimony_binary/strict/shard_0/settings.json" \
   --output-dir "${SCORE_OUTPUT}/${SOURCE_NAME}/shard_${SHARD_INDEX}" \
-  --score-coordinate "${SCORE_COORDINATE}" --information-metric "${SCORE_INFORMATION_METRIC}" --shard-index "${SHARD_INDEX}" --shard-count "${SHARD_COUNT}"
+  --score-coordinate "${SCORE_COORDINATE}" --information-metric "${SCORE_INFORMATION_METRIC}" --count-likelihood "${SCORE_COUNT_LIKELIHOOD}" --kernel-units "${SCORE_KERNEL_UNITS}" --shard-index "${SHARD_INDEX}" --shard-count "${SHARD_COUNT}"
