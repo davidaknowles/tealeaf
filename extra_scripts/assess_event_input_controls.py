@@ -15,27 +15,49 @@ from extra_scripts.plot_tilgner_method_replication import _rank_table
 from extra_scripts.run_ec_block_glmm import group_metadata
 from extra_scripts.evaluate_suppa2_statistics import normalize_pairs
 from tealeaf.sc.replication_audit import complete_paired_fits, coverage_correlation, ranked_direction_summary
+from tealeaf.sc.path_score_mixed import MODEL_VERSION
+from extra_scripts.run_suppa2_tealeaf_hybrid import MIXED_SCORE_EMPTY_COLUMNS
 
 
-def guard_completed_shards(root, output, concentration, shard_count=32):
+def guard_completed_shards(root, output, concentration, shard_count=32, inference="paired"):
     """Never mistake a partial array or partial subject fit for a full family."""
     summaries = []
     all_ids = []
+    reference_settings = None
     for index in range(shard_count):
         shard = root / f"shard_{index}"
         summary = json.loads((shard / "summary.json").read_text())
-        table = pd.read_csv(shard / "paired_path.tsv", sep="\t")
+        try:
+            table = pd.read_csv(shard / "paired_path.tsv", sep="\t")
+        except pd.errors.EmptyDataError:
+            if inference != "mixed-score" or summary["completed"] != 0:
+                raise
+            table = pd.DataFrame(columns=MIXED_SCORE_EMPTY_COLUMNS)
         failures = json.loads((shard / "failures.json").read_text())
         if len(table) != summary["completed"] or len(failures) != summary["failures"] or len(table) + len(failures) != summary["tests_in_shard"]:
             raise ValueError("shard completion does not match its declared family")
         if not table.path_pseudocount.eq(concentration).all() or not table.profile_event_mass.astype(str).str.lower().eq("true").all() or not table.report_pseudocount.eq(1).all():
             raise ValueError("input-control fitting recipe changed within the array")
-        complete, reporting = complete_paired_fits(table)
+        if inference == "mixed-score":
+            settings = json.loads((shard / "settings.json").read_text())
+            settings["arguments"].pop("output_dir")
+            settings["arguments"].pop("shard_index")
+            if reference_settings is not None and settings != reference_settings:
+                raise ValueError("mixed-score settings differ across shards")
+            reference_settings = settings
+            if settings["model_version"] != MODEL_VERSION or settings["target_prior"] != "none" or settings["arguments"]["null_replicates"] != 32 or settings["arguments"]["shard_count"] != shard_count or not settings["arguments"]["scan_all_events"] or settings["arguments"]["max_tests"] is not None:
+                raise ValueError("mixed-score model or complete-family recipe mismatch")
+            if not table.inference_backend.eq("mixed-score").all() or not table.model_version.eq(MODEL_VERSION).all():
+                raise ValueError("mixed-score backend differs within an array")
+            complete = table.converged.astype(str).str.lower().eq("true") & table.n_subjects.ge(4) & table.n_fitted_subjects.eq(table.n_expected_subjects) & table.n_samples.eq(2 * table.n_expected_subjects)
+            reporting = complete & table.complete_reporting_fits.astype(str).str.lower().eq("true") & table.report_n_subjects.eq(table.n_expected_subjects)
+        else:
+            complete, reporting = complete_paired_fits(table)
         table["complete_subject_fits"] = complete
         table["complete_reporting_fits"] = reporting
         table.loc[~complete, ["p_value", "statistic"]] = [1., 0.]
         table.loc[~complete, "converged"] = False
-        table.loc[~reporting, ["effect_size", "report_psi_effect", "report_ilr_effect"]] = np.nan
+        table.loc[~reporting, [column for column in ("effect_size", "report_psi_effect", "report_ilr_effect") if column in table]] = np.nan
         try:
             null = pd.read_csv(shard / "paired_path_null.tsv.gz", sep="\t")
         except pd.errors.EmptyDataError:
@@ -83,6 +105,8 @@ def main():
     parser.add_argument("--gtf", type=Path, required=True)
     parser.add_argument("--event-catalog", type=Path, required=True)
     parser.add_argument("--split-only", action="store_true", help="Assess both complete subject halves without waiting for full-data fits.")
+    parser.add_argument("--inference", choices=("paired", "mixed-score"), default="paired")
+    parser.add_argument("--shard-count", type=int, default=32)
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
     control = args.cache / f"{args.source}_paired"
@@ -91,21 +115,30 @@ def main():
     metadata = group_metadata(groups)
     if metadata.duplicated(["mouse", "cell_type"]).any():
         raise ValueError("n_samples/2 guard requires one pseudobulk per subject/type")
-    method = f"Hybrid, {args.source} input control"
+    method = f"Hybrid, {args.source} input control" if args.inference == "paired" else f"Hybrid full-transcript EC mixed score, {args.source}"
     args.output_dir.mkdir(parents=True, exist_ok=True)
     cohorts = []
     for fold in ((0, 1) if args.split_only else (0, 1, "full")):
-        root = args.cache / (f"full/{args.source}" if fold == "full" else f"split/{args.source}/fold{fold}")
-        staged = args.cache / f"assess/{args.source}/{fold}/guarded"
-        checks = guard_completed_shards(root, staged, 64 if fold == "full" else 32)
+        if args.inference == "mixed-score":
+            root = args.cache / f"mixed_score/{args.source}/{'full' if fold == 'full' else f'fold{fold}'}"
+            staged = args.cache / f"assess_mixed_score/{args.source}/{fold}/guarded"
+        else:
+            root = args.cache / (f"full/{args.source}" if fold == "full" else f"split/{args.source}/fold{fold}")
+            staged = args.cache / f"assess/{args.source}/{fold}/guarded"
+        checks = guard_completed_shards(root, staged, (0. if args.inference == "mixed-score" else (64 if fold == "full" else 32)), args.shard_count, args.inference)
         merged = staged.parent / "merged"
-        command = [sys.executable, str(repo / "extra_scripts/merge_paired_path_test.py"), "--shards", *map(str, [staged / f"shard_{index}" for index in range(32)]), "--output-dir", str(merged), "--calibration", "empirical", "--retain-failed-family"]
-        if fold == "full":
+        command = [sys.executable, str(repo / "extra_scripts/merge_paired_path_test.py"), "--shards", *map(str, [staged / f"shard_{index}" for index in range(args.shard_count)]), "--output-dir", str(merged), "--calibration", "empirical", "--retain-failed-family"]
+        if fold == "full" and args.inference == "paired":
             command.append("--moderate-variances")
         subprocess.run(command, check=True)
         cohorts.append({"fold": fold, "root": str(root), "merged": str(merged), "shards": checks})
     folds = [fold_table(Path(cohorts[fold]["merged"]) / "paired_path.tsv", method) for fold in (0, 1)]
     split_assessment(folds, repo, args.output_dir, method)
+    if args.inference == "mixed-score":
+        raw_output = args.output_dir / "raw_F"
+        raw_output.mkdir(exist_ok=True)
+        raw_folds = [table.assign(p_value=table.raw_p_value) for table in folds]
+        split_assessment(raw_folds, repo, raw_output, method + ", native F reference")
     test_output = args.output_dir / "testing_directions"
     test_output.mkdir(exist_ok=True)
     split_assessment([fold_table(Path(cohorts[fold]["merged"]) / "paired_path.tsv", method, True) for fold in (0, 1)], repo, test_output, method + ", testing ILR directions")
@@ -128,6 +161,10 @@ def main():
     ranked = _rank_table(eligible, len(eligible))
     pd.DataFrame(ranked_direction_summary(ranked)).to_csv(args.output_dir / "lr_rank_summary.tsv", sep="\t", index=False)
     ranked.head(200).to_csv(args.output_dir / "lr_rank.tsv.gz", sep="\t", index=False)
+    if args.inference == "mixed-score":
+        raw_ranked = _rank_table(eligible.assign(p_value=eligible.raw_p_value, method=method + ", native F reference"), len(eligible))
+        pd.DataFrame(ranked_direction_summary(raw_ranked)).to_csv(args.output_dir / "raw_F/lr_rank_summary.tsv", sep="\t", index=False)
+        raw_ranked.head(200).to_csv(args.output_dir / "raw_F/lr_rank.tsv.gz", sep="\t", index=False)
     (args.output_dir / "manifest.json").write_text(json.dumps({"control": json.loads((control / "manifest.json").read_text()), "cohorts": cohorts, "family": "all screened events, failed subject fits retained at p1; fixed published matched gene-pair split universes", "LR": "fresh all-complete-tested mapping with unchanged source depth and zero-effect policy; no FDR filter", "null_limitation": "independent event sign flips are training calibration, not an actual biological count-null validation", "production_changes": False}, indent=2) + "\n")
 
 

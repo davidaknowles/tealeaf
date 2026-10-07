@@ -49,6 +49,17 @@ def test_shared_path_null_allows_different_nuisance_mixtures_and_outside_mass():
     assert np.allclose(expected[0].sum(axis=1), [1000, 2000])
 
 
+def test_multistart_null_uses_same_objective_and_no_target_prior():
+    truth = np.array([[.36, .04, .1, .5], [.028, .252, .07, .65]])
+    problem = SharedPathNullProblem((truth * np.array([[1000], [2000]]),), (np.eye(4),), np.array([1e-10, 1e-10, 1e-10, 1.]), [0, 0, 1, -1])
+    single = problem.fit(max_iter=2000)
+    multiple = problem.fit(max_iter=2000, multistart=True)
+    assert multiple.converged
+    assert multiple.starts == 2 and multiple.selected_start in (0, 1)
+    assert multiple.objective <= single.objective + 1e-6
+    assert np.allclose(multiple.path_proportions, [.8, .2], atol=3e-6)
+
+
 def test_expected_counts_preserve_separate_primer_totals_and_zero_maps():
     counts = (np.array([[5., 5.], [10., 20.]]), np.zeros((2, 3)))
     theta = np.array([[.8, .2], [.3, .7]])

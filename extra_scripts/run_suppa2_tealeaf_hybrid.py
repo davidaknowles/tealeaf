@@ -13,6 +13,12 @@ testing effect is the subject-mean included-minus-excluded ILR difference,
 level b minus level a, equal to the mean inclusion-logit difference divided
 by sqrt(2). Optional descriptive refits also export mean PSI differences
 under a separate reporting pseudocount, without changing test statistics.
+
+The opt-in experimental mixed-score backend instead retains every supported
+transcript, fits an unpenalized shared-path subject null with type-specific
+within-path nuisance, propagates efficient-score information into REML and an
+approximate small-sample F test, and reports independent weak-prior PSI fits.
+It never applies the default backend's target smoothing or variance moderation.
 """
 
 from __future__ import annotations
@@ -36,6 +42,10 @@ from extra_scripts.run_ec_glmm import local_gene_data
 from extra_scripts.run_paired_path_test import filtered_inputs, signed_null_p_value
 from tealeaf.sc import ec_block_glmm
 from tealeaf.sc.event_paths import collapse_event_nuisance
+from tealeaf.sc.path_score_mixed import shared_path_score_components, aggregate_path_scores, paired_score_reporting, signed_path_score_p_value, MODEL_VERSION
+from tealeaf.sc.replication_audit import complete_cluster_fit
+
+MIXED_SCORE_EMPTY_COLUMNS = ("test_id", "path_pseudocount", "profile_event_mass", "report_pseudocount", "inference_backend", "model_version", "converged", "n_subjects", "n_expected_subjects", "n_fitted_subjects", "n_samples", "complete_reporting_fits", "report_n_subjects", "effect_size", "report_psi_effect", "p_value", "statistic")
 
 
 def canonical(value):
@@ -89,6 +99,30 @@ def partition_event_tests(tests, shard_count):
     return shards
 
 
+def mixed_event_record(base, path_index, labels, clusters, baseline, event, gene_id, tested_levels, totals, n_ecs, args):
+    """Experimental full-transcript event score, not fixed-share paired t."""
+    components = shared_path_score_components(base, path_index, labels, clusters, baseline=baseline, max_iter=args.max_iter, null_multistart=args.null_multistart, reporting_concentration=args.report_pseudocount)
+    result = aggregate_path_scores(components)
+    expected = len(np.unique(clusters))
+    complete = complete_cluster_fit(result, expected)
+    report = paired_score_reporting(components)
+    event_id = str(event.event_id)
+    test_id = f"SUPPA2:{event_id}|cell_type|{'|'.join(tested_levels)}"
+    row = dict(test_id=test_id, block_id=event_id, gene_id=gene_id, contrast="cell_type_pairwise", contrast_id=f"cell_type__{tested_levels[0]}__{tested_levels[1]}", effect="cell_type", level_a=tested_levels[0], level_b=tested_levels[1], method="Tealeaf EC mixed score; SUPPA2 event definitions", inference_backend="mixed-score", model_version=MODEL_VERSION, path_pseudocount=0., path_prior_center="none", path_pseudocount_scaling="total", retain_uncertainty=True, uncertainty_scale=1., n_paths=2, n_isoforms=base.n_isoforms, n_source_isoforms=base.n_isoforms, n_ecs=n_ecs, n_samples=len(labels), n_expected_subjects=expected, n_subjects=result["n_subjects"], n_fitted_subjects=result["n_fitted_subjects"], degrees_of_freedom=result["degrees_of_freedom"], denominator_degrees_of_freedom=result["denominator_degrees_of_freedom"], median_gene_umis=float(np.median(totals)), statistic=result["statistic"] if complete else 0., p_value=result["p_value"] if complete else 1., chi_square_p_value=result["chi_square_p_value"], biological_variance=result["biological_variance"], restricted_objective=result["restricted_objective"], residual_inflation=result["residual_inflation"], converged=complete, complete_subject_fits=complete, complete_reporting_fits=report["complete"], mean_difference_norm=float(np.linalg.norm(result["mean_difference"])), effect_size=float(report["effect"][0]), effect_coordinate="psi", test_ilr_effect_size=float(result["mean_difference"][0]), report_psi_effect=float(report["effect"][0]), report_n_subjects=report["n_reported_subjects"], report_pseudocount=args.report_pseudocount, profile_event_mass=True, baseline_event_mass=float(baseline[path_index >= 0].sum()), event_type=event.event_type, event_id=event_id, feature_id=event.feature_id)
+    nulls = []
+    if complete:
+        test_hash = zlib.crc32(test_id.encode("utf-8"))
+        for replicate in range(args.null_replicates):
+            rng = np.random.default_rng(np.random.SeedSequence((args.seed, test_hash, replicate)))
+            nulls.append(dict(test_id=test_id, block_id=event_id, replicate=replicate, p_value=signed_path_score_p_value(components, rng)))
+    usage = []
+    if args.export_path_usage:
+        for subject, reports in zip(components.subject_ids, components.reporting_proportions):
+            for level, proportions in reports:
+                usage.append(dict(test_id=test_id, feature_id=event.feature_id, contrast_id=row["contrast_id"], subject=subject, cell_type=tested_levels[int(level)], inclusion=float(proportions[0])))
+    return row, nulls, usage
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-cache", required=True, type=Path)
@@ -109,6 +143,8 @@ def parse_args():
     parser.add_argument("--profile-event-mass", action="store_true", help="Estimate included-plus-excluded mass separately for each subject and cell type.")
     parser.add_argument("--report-pseudocount", type=float, help="Optional separate smoothing strength for descriptive effect estimates; testing is unchanged.")
     parser.add_argument("--export-path-usage", action="store_true")
+    parser.add_argument("--inference", choices=("paired", "mixed-score"), default="paired", help="Experimental mixed score profiles all within-path transcript shares; the default paired procedure is unchanged.")
+    parser.add_argument("--null-multistart", action="store_true", help="Experimental mixed-score null fit with pooled and interior starts.")
     return parser.parse_args()
 
 
@@ -116,6 +152,10 @@ def main():
     args = parse_args()
     if not 0 <= args.shard_index < args.shard_count:
         raise ValueError("invalid shard index")
+    if args.inference == "mixed-score" and (args.report_pseudocount is None or not args.profile_event_mass):
+        raise ValueError("mixed score requires explicit independent reporting strength and profiled event mass")
+    if args.null_multistart and args.inference != "mixed-score":
+        raise ValueError("null multistart is only available for mixed score")
     with args.candidate_cache.open("rb") as handle:
         cached = pickle.load(handle)
     settings = cached["settings"]
@@ -212,7 +252,9 @@ def main():
     observed, null, failures, usage = [], [], [], []
     baseline_cache = {}
     started = time.perf_counter()
-    for candidate, event, path_index in tests:
+    for test_number, (candidate, event, path_index) in enumerate(tests):
+        if args.inference == "mixed-score" and test_number % 100 == 0:
+            print(f"mixed-score shard {args.shard_index}, {test_number}/{len(tests)} requested tests, {len(observed)} completed records, {len(failures)} exceptions, {time.perf_counter() - started:.1f}s", flush=True)
         test_id, _, gene_id, gene, _, _, _, rows, _, tested_levels = candidate
         event_id = str(event.event_id)
         event_test_id = f"SUPPA2:{event_id}|cell_type|{'|'.join(tested_levels)}"
@@ -235,6 +277,12 @@ def main():
             cache_key = (gene, tuple(rows))
             if cache_key not in baseline_cache:
                 baseline_cache[cache_key] = ec_block_glmm.pooled_isoform_weights(base)
+            if args.inference == "mixed-score":
+                record, generated_null, generated_usage = mixed_event_record(base, path_index, labels, clusters, baseline_cache[cache_key], event, gene_id, tested_levels, totals, len(gene_ecs[gene]), args)
+                observed.append(record)
+                null.extend(generated_null)
+                usage.extend(generated_usage)
+                continue
             fit_base, fit_path_index, fit_baseline = collapse_event_nuisance(
                 base, path_index, baseline_cache[cache_key]
             )
@@ -324,7 +372,10 @@ def main():
             failures.append({"test_id": event_test_id, "error": repr(error)})
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(observed).to_csv(args.output_dir / "paired_path.tsv", sep="\t", index=False)
+    table = pd.DataFrame(observed)
+    if args.inference == "mixed-score" and table.empty:
+        table = pd.DataFrame(columns=MIXED_SCORE_EMPTY_COLUMNS)
+    table.to_csv(args.output_dir / "paired_path.tsv", sep="\t", index=False)
     pd.DataFrame(null).to_csv(args.output_dir / "paired_path_null.tsv.gz", sep="\t", index=False)
     if args.export_path_usage:
         pd.DataFrame(usage).to_csv(args.output_dir / "path_usage.tsv.gz", sep="\t", index=False)
@@ -339,6 +390,8 @@ def main():
         "failures": len(failures),
         "elapsed_seconds": time.perf_counter() - started,
     }, indent=2) + "\n")
+    if args.inference == "mixed-score":
+        (args.output_dir / "settings.json").write_text(json.dumps({"arguments": {key: str(value) if isinstance(value, Path) else value for key, value in vars(args).items()}, "candidate_settings": settings, "model_version": MODEL_VERSION, "target_prior": "none", "nuisance_pseudocount": 1e-4, "production_changes": False}, indent=2) + "\n")
     print(f"wrote {len(observed):,} tests and {len(null):,} nulls; skipped {skipped_events:,} unsupported catalogue events")
 
 

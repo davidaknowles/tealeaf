@@ -63,3 +63,22 @@ def test_collapse_event_nuisance_preserves_fixed_mixture_and_event_paths():
     np.testing.assert_allclose(collapsed.compatibility[0][:, 0], mapping[:, 0])
     np.testing.assert_allclose(collapsed.compatibility[0][:, 1], mapping[:, 1])
     np.testing.assert_allclose(collapsed.compatibility[0][:, 2], expected_nuisance)
+
+
+def test_mixed_event_record_profiles_transcripts_and_exports_complete_psi():
+    from types import SimpleNamespace
+    from extra_scripts.run_suppa2_tealeaf_hybrid import mixed_event_record
+    subjects = np.repeat(np.arange(6), 2)
+    labels = np.tile([0, 1], 6)
+    counts = np.tile([[30., 20., 40., 10.], [50., 20., 20., 10.]], (6, 1))
+    base = ECGLMMData((counts,), (np.eye(4),), np.ones((12, 1)), subjects)
+    event = SimpleNamespace(event_id="gene;SE:example", feature_id="SUPPA2:gene;SE:example", event_type="SE")
+    args = SimpleNamespace(max_iter=300, null_multistart=False, report_pseudocount=1., null_replicates=2, seed=20260927, export_path_usage=True)
+    record, null, usage = mixed_event_record(base, np.array([0, 0, 1, -1]), labels, subjects, np.array([.4, .2, .3, .1]), event, "gene", ("A", "B"), counts.sum(axis=1), 4, args)
+    assert record["converged"] and record["complete_reporting_fits"]
+    assert record["n_isoforms"] == record["n_source_isoforms"] == 4
+    assert record["n_expected_subjects"] == record["n_fitted_subjects"] == 6
+    assert record["path_pseudocount"] == 0 and record["report_pseudocount"] == 1
+    assert record["effect_size"] > 0 and record["test_ilr_effect_size"] > 0
+    assert len(null) == 2 and len(usage) == 12
+    assert {row["replicate"] for row in null} == {0, 1}

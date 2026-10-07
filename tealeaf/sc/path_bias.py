@@ -28,6 +28,8 @@ class SharedPathNullFit:
     iterations: int
     gradient_norm: float
     termination_message: str = ""
+    starts: int = 1
+    selected_start: int = 0
 
 
 class SharedPathNullProblem:
@@ -121,7 +123,7 @@ class SharedPathNullProblem:
                 gradient += jacobian[cell].T @ score
         return value, gradient
 
-    def fit(self, *, max_iter=300, tolerance=1e-12):
+    def fit(self, *, max_iter=300, tolerance=1e-12, multistart=False):
         # Scaling the entire objective, including its nuisance penalty, leaves
         # the model and optimum unchanged. A gradient tolerance per molecule
         # avoids demanding sub-roundoff absolute likelihood changes at depth.
@@ -131,9 +133,23 @@ class SharedPathNullProblem:
             value, gradient = self.objective(parameters)
             return value / scale, gradient / scale
 
-        result = optimize.minimize(scaled_objective, self.initial, jac=True, method="L-BFGS-B", bounds=[(-30., 30.)] * self.dimension, options={"maxiter": int(max_iter), "maxls": 50, "ftol": float(tolerance), "gtol": 1e-8})
+        starts = [self.initial]
+        if multistart:
+            # An interior initialization is not a prior or a usage estimate.
+            # Both starts optimize the identical unpenalized target null.
+            starts.append(np.zeros(self.dimension))
+        results = [optimize.minimize(scaled_objective, initial, jac=True, method="L-BFGS-B", bounds=[(-30., 30.)] * self.dimension, options={"maxiter": int(max_iter), "maxls": 50, "ftol": float(tolerance), "gtol": 1e-8}) for initial in starts]
+        finite = [index for index, value in enumerate(results) if np.isfinite(value.fun)]
+        selected = min(finite, key=lambda index: results[index].fun) if finite else 0
+        # Prefer a converged solution only when objectives are indistinguishable
+        # at the requested tolerance; never hide a materially better failed fit.
+        if finite:
+            best = results[selected].fun
+            tied = [index for index in finite if results[index].fun <= best + tolerance * max(1., abs(best))]
+            selected = min(tied, key=lambda index: (not results[index].success, results[index].fun))
+        result = results[selected]
         theta, _, psi, _, _ = self.composition(result.x)
-        return SharedPathNullFit(psi, theta, bool(result.success), float(result.fun * scale), int(result.nit), float(np.linalg.norm(result.jac, ord=np.inf) * scale), str(result.message))
+        return SharedPathNullFit(psi, theta, bool(result.success), float(result.fun * scale), int(result.nit), float(np.linalg.norm(result.jac, ord=np.inf) * scale), str(result.message), len(starts), selected)
 
 
 def expected_ec_counts(counts, designs, theta):

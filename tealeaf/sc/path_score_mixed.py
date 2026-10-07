@@ -131,7 +131,7 @@ def efficient_shared_path_score(counts, designs, theta, path_index, observed_lev
     return score, (information + information.T) / 2, biological_shape
 
 
-def shared_path_score_components(data, path_index, labels, subjects, *, baseline=None, max_iter=300, reporting_concentration=None):
+def shared_path_score_components(data, path_index, labels, subjects, *, baseline=None, max_iter=300, reporting_concentration=None, null_multistart=False):
     """Fit each subject null once; failures invalidate the complete hypothesis.
 
     Missing/zero-total types are structural exclusions, not optimizer-based
@@ -158,7 +158,7 @@ def shared_path_score_components(data, path_index, labels, subjects, *, baseline
         local_levels, counts = local_levels[positive], tuple(value[positive] for value in counts)
         if len(local_levels) < 2:
             continue
-        shared = SharedPathNullProblem(counts, data.compatibility, baseline, path_index).fit(max_iter=max_iter)
+        shared = SharedPathNullProblem(counts, data.compatibility, baseline, path_index).fit(max_iter=max_iter, multistart=null_multistart)
         if not shared.converged:
             raise ValueError(f"shared-path null failed for subject {subject}, iterations={shared.iterations}, gradient={shared.gradient_norm:.6g}, termination={shared.termination_message}")
         score, info, shape = efficient_shared_path_score(counts, data.compatibility, shared.theta, path_index, local_levels, len(levels))
@@ -255,10 +255,53 @@ def mixed_score_test(scores, information, biological_shapes=None, *, biological_
     return {"p_value": float(stats.f.sf(statistic, dimension, clusters - 1)), "statistic": statistic, "degrees_of_freedom": dimension, "denominator_degrees_of_freedom": clusters - 1, "n_subjects": clusters, "converged": True, "mean_difference": mean, "mean_covariance": inflation * covariance, "biological_variance": float(biological_variance), "residual_inflation": inflation, "residual_degrees_of_freedom": residual_df, "restricted_objective": objective, "chi_square_p_value": float(stats.chi2.sf(wald, dimension)), "residual_F_p_value": float(stats.f.sf(statistic, dimension, residual_df))}
 
 
-def mixed_path_score_test(data, path_index, labels, subjects, **kwargs):
-    """General C-type experimental EC score test, with optional usage reports."""
-    components = shared_path_score_components(data, path_index, labels, subjects, **kwargs)
+def aggregate_path_scores(components):
+    """Aggregate already-fitted subject scores without repeating null fits."""
     result = mixed_score_test(components.scores, components.information, components.biological_shapes)
     # Unweighted one-step responses are diagnostic only, NOT the fitted mean.
     differences = np.array([linalg.pinvh(info, rtol=1e-10) @ score for score, info in zip(components.scores, components.information)])
     return {**result, "differences": differences, "components": components, "subject_ids": components.subject_ids, "levels": components.levels, "n_fitted_subjects": len(components.subject_ids)}
+
+
+def signed_path_score_p_value(components, rng):
+    """Paired subject-sign diagnostic, refitting REML for every realization.
+
+    This is not an independent count-null calibration. The binary type
+    contrast changes sign, its subject information and heterogeneity shape
+    do not. Components are never modified in place.
+    """
+    if len(components.levels) != 2:
+        raise ValueError("subject sign null requires exactly two types")
+    signs = rng.choice((-1., 1.), size=len(components.subject_ids))
+    return mixed_score_test(components.scores * signs[:, None], components.information, components.biological_shapes)["p_value"]
+
+
+def paired_score_reporting(components):
+    """Complete-subject arithmetic PSI reporting, separate from score testing.
+
+    For two types and S paths, returns an S-vector of type1-minus-type0 means.
+    Missing or failed reports make the complete estimand unavailable rather
+    than silently defining a successful-subject reporting subset.
+    """
+    if len(components.levels) != 2 or len(components.reporting_proportions) != len(components.subject_ids):
+        raise ValueError("paired reporting requires aligned two-type subject reports")
+    size = components.scores.shape[1] + 1
+    differences = []
+    for reports in components.reporting_proportions:
+        local = dict(reports)
+        if len(local) != len(reports):
+            raise ValueError("duplicate type in subject reporting")
+        if set(local) != {0, 1}:
+            continue
+        values = np.asarray([local[level] for level in (0, 1)], dtype=float)
+        if values.shape != (2, size):
+            raise ValueError("paired reporting path dimension differs")
+        if np.isfinite(values).all() and (values >= 0).all() and np.allclose(values.sum(axis=1), 1.):
+            differences.append(values[1] - values[0])
+    complete = len(differences) == len(components.subject_ids) and len(differences) > 0
+    return {"effect": np.mean(differences, axis=0) if complete else np.full(size, np.nan), "n_reported_subjects": len(differences), "complete": complete}
+
+
+def mixed_path_score_test(data, path_index, labels, subjects, **kwargs):
+    """General C-type experimental EC score test, with optional usage reports."""
+    return aggregate_path_scores(shared_path_score_components(data, path_index, labels, subjects, **kwargs))

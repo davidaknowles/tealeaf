@@ -7,6 +7,35 @@ from tealeaf.sc.path_bias import SharedPathNullProblem
 from tealeaf.sc.path_score_mixed import efficient_shared_path_score, mixed_score_test, mixed_path_score_test, score_contrast_proportions
 
 
+def test_paired_reporting_preserves_type_orientation_and_missing_subjects():
+    from tealeaf.sc.path_score_mixed import PathScoreComponents, paired_score_reporting
+    reports = [[(1, [.6, .4]), (0, [.2, .8])], [(0, [.3, .7]), (1, [.5, .5])]]
+    components = PathScoreComponents(np.zeros((2, 1)), np.zeros((2, 1, 1)), np.ones((2, 1, 1)), np.arange(2), (0, 1), [], reports)
+    result = paired_score_reporting(components)
+    assert np.allclose(result["effect"], [.3, -.3])
+    assert result["complete"] and result["n_reported_subjects"] == 2
+    components.reporting_proportions[1][1] = (1, [np.nan, np.nan])
+    failed = paired_score_reporting(components)
+    assert np.isnan(failed["effect"]).all()
+    assert not failed["complete"] and failed["n_reported_subjects"] == 1
+
+
+def test_signed_score_null_refits_without_modifying_components():
+    from tealeaf.sc.path_score_mixed import PathScoreComponents, signed_path_score_p_value
+    scores = np.arange(1., 7.)[:, None]
+    information = np.ones((6, 1, 1))
+    components = PathScoreComponents(scores.copy(), information.copy(), information.copy(), np.arange(6), (0, 1), [], [])
+    rng = np.random.default_rng(719)
+    signs = rng.choice((-1., 1.), size=6)
+    expected = mixed_score_test(scores * signs[:, None], information, information)["p_value"]
+    assert signed_path_score_p_value(components, np.random.default_rng(719)) == pytest.approx(expected)
+    np.testing.assert_array_equal(components.scores, scores)
+    np.testing.assert_array_equal(components.information, information)
+    components.levels = (0, 1, 2)
+    with pytest.raises(ValueError, match="exactly two"):
+        signed_path_score_p_value(components, np.random.default_rng(719))
+
+
 def test_scalar_mixed_score_matches_inverse_variance_and_modified_kh():
     values = np.array([.4, -.2, .6, .1, .8])
     variances = np.array([.05, .5, .1, .2, 1.])

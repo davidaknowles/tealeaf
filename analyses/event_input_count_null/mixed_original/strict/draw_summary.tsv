@@ -1,0 +1,3 @@
+draw	strategy	n_tests	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01	BH_discoveries
+0	hybrid free-transcript EC mixed score	32	9	0.0	0.03125	0.0	0
+1	hybrid free-transcript EC mixed score	32	12	0.0	0.0	0.0	0

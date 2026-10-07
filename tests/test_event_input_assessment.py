@@ -56,3 +56,45 @@ def test_guard_rejects_incomplete_arrays_or_null_families(tmp_path):
     null.to_csv(shard / "paired_path_null.tsv.gz", sep="\t", index=False)
     with pytest.raises(ValueError, match="null realizations"):
         guard_completed_shards(tmp_path / "raw", tmp_path / "out2", 32, shard_count=1)
+
+
+def test_mixed_guard_keeps_uninformative_fitted_subjects_and_rejects_smokes(tmp_path):
+    from tealeaf.sc.path_score_mixed import MODEL_VERSION
+    shard = write_shard(tmp_path / "raw")
+    table = pd.read_csv(shard / "paired_path.tsv", sep="\t")
+    table["path_pseudocount"] = 0.
+    table["inference_backend"] = "mixed-score"
+    table["model_version"] = MODEL_VERSION
+    table["n_expected_subjects"] = 5
+    table["n_fitted_subjects"] = [5, 4]
+    table["n_subjects"] = 4
+    table["report_n_subjects"] = 5
+    table["complete_reporting_fits"] = True
+    table.to_csv(shard / "paired_path.tsv", sep="\t", index=False)
+    settings = dict(model_version=MODEL_VERSION, target_prior="none", arguments=dict(output_dir=str(shard), shard_index=0, shard_count=1, scan_all_events=True, null_replicates=32, max_tests=None))
+    (shard / "settings.json").write_text(json.dumps(settings))
+    checks = guard_completed_shards(tmp_path / "raw", tmp_path / "out", 0, shard_count=1, inference="mixed-score")
+    result = pd.read_csv(tmp_path / "out/shard_0/paired_path.tsv", sep="\t").set_index("test_id")
+    assert checks[0]["complete_subject_fits"] == 1
+    assert result.loc["t1", "p_value"] == .01
+    assert result.loc["t2", "p_value"] == 1.
+    settings["arguments"]["max_tests"] = 2
+    (shard / "settings.json").write_text(json.dumps(settings))
+    with pytest.raises(ValueError, match="recipe mismatch"):
+        guard_completed_shards(tmp_path / "raw", tmp_path / "out2", 0, shard_count=1, inference="mixed-score")
+
+
+def test_mixed_guard_retains_a_wholly_failed_declared_shard(tmp_path):
+    from tealeaf.sc.path_score_mixed import MODEL_VERSION
+    shard = tmp_path / "raw/shard_0"
+    shard.mkdir(parents=True)
+    (shard / "paired_path.tsv").write_text("\n")
+    pd.DataFrame().to_csv(shard / "paired_path_null.tsv.gz", sep="\t", index=False)
+    failures = [dict(test_id="SUPPA2:g;SE:event|cell_type|A|B", error="test")]
+    (shard / "failures.json").write_text(json.dumps(failures))
+    (shard / "summary.json").write_text(json.dumps(dict(completed=0, failures=1, tests_in_shard=1)))
+    settings = dict(model_version=MODEL_VERSION, target_prior="none", arguments=dict(output_dir=str(shard), shard_index=0, shard_count=1, scan_all_events=True, null_replicates=32, max_tests=None))
+    (shard / "settings.json").write_text(json.dumps(settings))
+    guard_completed_shards(tmp_path / "raw", tmp_path / "out", 0, shard_count=1, inference="mixed-score")
+    result = pd.read_csv(tmp_path / "out/shard_0/paired_path.tsv", sep="\t")
+    assert len(result) == 1 and result.p_value.eq(1).all()

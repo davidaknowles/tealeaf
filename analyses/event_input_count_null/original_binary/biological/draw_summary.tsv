@@ -1,0 +1,5 @@
+draw	strategy	n_tests	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01	BH_discoveries
+0	hybrid profiled ILR A32	32	32	0.09375	0.21875	0.03125	0
+0	hybrid profiled ILR A64	32	32	0.09375	0.1875	0.0	0
+1	hybrid profiled ILR A32	32	32	0.28125	0.375	0.0625	0
+1	hybrid profiled ILR A64	32	32	0.21875	0.28125	0.03125	0
