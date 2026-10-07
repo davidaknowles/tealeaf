@@ -1,0 +1,19 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking	direction
+published_p, published_effect	40	51495	37	0.925	0.9707867326720498	published own universe	published normal-approximation ranking	published expression effect
+published_p, published_effect	100	51495	78	0.78	0.9069097444493801	published own universe	published normal-approximation ranking	published expression effect
+published_p, published_effect	200	51495	142	0.71	0.818630406903077	published own universe	published normal-approximation ranking	published expression effect
+exact_p, exact_effect	40	63091	29	0.725	0.9112771423754108	cached exact own universe	cached exact-test ranking	cached exact expression effect
+exact_p, exact_effect	100	63091	66	0.66	0.776129931101567	cached exact own universe	cached exact-test ranking	cached exact expression effect
+exact_p, exact_effect	200	63091	119	0.595	0.701835425457794	cached exact own universe	cached exact-test ranking	cached exact expression effect
+published_p, published_effect	40	51382	37	0.925	0.9707867326720498	shared event-contrast universe	published normal-approximation ranking	published expression effect
+published_p, published_effect	100	51382	78	0.78	0.9069097444493801	shared event-contrast universe	published normal-approximation ranking	published expression effect
+published_p, published_effect	200	51382	142	0.71	0.818630406903077	shared event-contrast universe	published normal-approximation ranking	published expression effect
+published_p, exact_effect	40	51382	37	0.925	0.9707867326720498	shared event-contrast universe	published normal-approximation ranking	cached exact expression effect
+published_p, exact_effect	100	51382	76	0.76	0.9020855789290653	shared event-contrast universe	published normal-approximation ranking	cached exact expression effect
+published_p, exact_effect	200	51382	132	0.66	0.7985476182025641	shared event-contrast universe	published normal-approximation ranking	cached exact expression effect
+exact_p, published_effect	40	51382	30	0.75	0.8907758754983082	shared event-contrast universe	cached exact-test ranking	published expression effect
+exact_p, published_effect	100	51382	67	0.67	0.7770177691377583	shared event-contrast universe	cached exact-test ranking	published expression effect
+exact_p, published_effect	200	51382	122	0.61	0.7066623781504043	shared event-contrast universe	cached exact-test ranking	published expression effect
+exact_p, exact_effect	40	51382	29	0.725	0.9112771423754108	shared event-contrast universe	cached exact-test ranking	cached exact expression effect
+exact_p, exact_effect	100	51382	66	0.66	0.776129931101567	shared event-contrast universe	cached exact-test ranking	cached exact expression effect
+exact_p, exact_effect	200	51382	119	0.595	0.701835425457794	shared event-contrast universe	cached exact-test ranking	cached exact expression effect

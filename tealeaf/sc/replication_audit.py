@@ -1,6 +1,7 @@
 """Coverage and direction diagnostics, distinct from discovery testing."""
 
 import numpy as np
+import pandas as pd
 from scipy.stats import rankdata, spearmanr
 
 
@@ -29,6 +30,24 @@ def ranked_direction_summary(table, cutoffs=(40, 100, 200)):
             available = len(local) >= cutoff
             rows.append({"method": str(method), "cutoff": int(cutoff), "n_available": len(local), "n_agree": int(agreement[:cutoff].sum()) if available else np.nan, "agreement": float(curve[cutoff - 1]) if available else np.nan, "normalized_auc": float(curve[:cutoff].mean()) if available else np.nan})
     return rows
+
+
+def complete_paired_fits(table):
+    """Require every eligible pair to fit, for one row per subject/type.
+
+    N_samples equals twice the number of pairs before optimization. This
+    invariant must be checked against input metadata by the calling analysis.
+    Reporting completeness is separate from inferential eligibility.
+    """
+    required = ["n_samples", "n_subjects", "converged"]
+    if any(column not in table for column in required):
+        raise ValueError("paired completeness requires sample and subject counts")
+    samples = pd.to_numeric(table.n_samples, errors="coerce")
+    subjects = pd.to_numeric(table.n_subjects, errors="coerce")
+    complete = table.converged.astype(str).str.lower().eq("true") & samples.ge(8) & samples.mod(2).eq(0) & samples.eq(2 * subjects)
+    report_subjects = pd.to_numeric(table.get("report_n_subjects", table.n_subjects), errors="coerce")
+    reporting = complete & samples.eq(2 * report_subjects)
+    return complete, reporting
 
 
 def coverage_correlation(pvalues, coverage, controls=None):

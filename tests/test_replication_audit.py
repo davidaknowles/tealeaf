@@ -85,3 +85,13 @@ def test_majiq_directions_preserve_edge_identity(tmp_path):
     assert np.allclose(result.effect_vector.iloc[:2].tolist(), [[-.4], [.4]])
     assert np.isnan(result.effect_vector.iloc[2][0])
     assert result.effect_features.iloc[0] == [features.iloc[1]]
+
+
+def test_pair_completeness_never_averages_away_failed_subject_fits():
+    import pandas as pd
+    from tealeaf.sc.replication_audit import complete_paired_fits
+
+    table = pd.DataFrame({"n_samples": [10, 10, 10, 10, 9], "n_subjects": [5, 4, 5, 5, 4], "converged": [True, True, True, False, True], "report_n_subjects": [5, 4, 4, 5, 4]})
+    tested, reported = complete_paired_fits(table)
+    assert tested.tolist() == [True, False, True, False, False]
+    assert reported.tolist() == [True, False, False, False, False]

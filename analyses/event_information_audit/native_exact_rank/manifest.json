@@ -1,0 +1,10 @@
+{
+  "n_shared": 51382,
+  "maximum_effect_difference": 0.8110995232448563,
+  "effects_equal_at_1e10": false,
+  "external_truth": "identical event membership and source-count truth checked before crossing",
+  "eligibility": "all finite nonzero short directions at pooled LR depth20; exact-zero LR effects remain nonagreement",
+  "scope": "diagnostic; cached exact source includes a broader event family and potentially different quantification, not silently replacing the published baseline",
+  "interpretation": "not a pure tail-calculation ablation when cached effects differ",
+  "production_changes": false
+}

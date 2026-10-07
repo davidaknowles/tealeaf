@@ -1,0 +1,8 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	direction_selected	direction_evaluable	direction_agreement	common_events	failed_tests_fold0	failed_tests_fold1
+LeafCutter	Hybrid, parsimony_binary input control, testing ILR directions	simes	simes	747	139	103	96	90	0.9306229773462784	0.899558611219464	1245	1245	0.9582329317269076	2367	0	0
+MAJIQ Heterogen	Hybrid, parsimony_binary input control, testing ILR directions	simes	simes	2499	479	244	233	202	0.916581650601562	0.9068449309823324	3033	3028	0.9623513870541611	7857	0	0
+SUPPA2	Hybrid, parsimony_binary input control, testing ILR directions	simes	simes	2342	457	251	242	210	0.9030489611800732	0.8463698656520234	3052	3047	0.9616015753199869	8195	0	0
+SUPPA2 primer-aware	Hybrid, parsimony_binary input control, testing ILR directions	simes	simes	2191	431	240	231	202	0.9134469696969697	0.8520953394469184	2978	2973	0.9619912546249579	7931	0	0
+SUPPA2/Tealeaf hybrid	Hybrid, parsimony_binary input control, testing ILR directions	simes	simes	1755	354	161	147	124	0.8914522330671399	0.8310314759448633	1758	1754	0.9697833523375142	5701	0	0
+rMATS (paired)	Hybrid, parsimony_binary input control, testing ILR directions	simes	simes	3109	597	266	247	214	0.9094852515905147	0.9108902937465841	3178	3173	0.9615505830444374	8519	0	0
+scQuint	Hybrid, parsimony_binary input control, testing ILR directions	simes	simes	2599	506	249	241	211	0.914662800579913	0.9086839729150057	3099	3094	0.9612152553329024	7940	0	0
