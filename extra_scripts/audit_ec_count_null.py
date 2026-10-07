@@ -73,8 +73,13 @@ def main():
     parser.add_argument("--mode", choices=("omnibus", "pairwise"), default="omnibus")
     parser.add_argument("--prior-center", choices=("uniform", "baseline"), default="uniform")
     parser.add_argument("--include-score", action="store_true")
-    parser.add_argument("--joint-dm-only", action="store_true")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--joint-dm-only", action="store_true")
+    group.add_argument("--cox-reid-only", action="store_true")
+    parser.add_argument("--known-concentration", type=float, help="Known latent biological concentration control, only for Cox-Reid count-null diagnostics.")
     args = parser.parse_args()
+    if args.known_concentration is not None and (not args.cox_reid_only or args.residual_concentration != args.known_concentration):
+        parser.error("known latent precision must match the simulated finite concentration and requires --cox-reid-only")
     if args.free_isoforms:
         differential.fit_path_perturbation = differential.fit_free_isoform_paths
     with args.candidate_cache.open("rb") as handle:
@@ -104,8 +109,8 @@ def main():
                 try:
                     # A failed fit must not prevent later, independent count draws.
                     baseline = ec_block_glmm.pooled_isoform_weights(simulated)
-                    if args.joint_dm_only:
-                        statistics, null, details = joint_dm_reports(simulated, baseline, path_index, labels, subjects, args.null_replicates, zlib.crc32(test_id.encode()) + draw * 1721)
+                    if args.joint_dm_only or args.cox_reid_only:
+                        statistics, null, details = joint_dm_reports(simulated, baseline, path_index, labels, subjects, args.null_replicates, zlib.crc32(test_id.encode()) + draw * 1721, dispersion_method="cox_reid" if args.cox_reid_only else "ml", known_concentration=args.known_concentration)
                     elif args.mode == "omnibus":
                         statistics, null, details = omnibus_reports(simulated, baseline, path_index, labels, subjects, args.null_replicates, zlib.crc32(test_id.encode()) + draw * 1721, prior_center=args.prior_center, include_score=args.include_score)
                     else:
@@ -117,6 +122,9 @@ def main():
                 for name, result in statistics.items():
                     mean_norm = np.linalg.norm(result["differences"].mean(axis=0)) if "differences" in result and len(result["differences"]) else np.nan
                     outputs.append({**header, "draw": draw, "strategy": name, "p_value": result["p_value"], "statistic": result["statistic"], "degrees_of_freedom": result["degrees_of_freedom"], "n_subjects": result.get("n_subjects", details["n_subjects"]), "n_observations": details["n_observations"], "converged": result.get("converged", True), "mean_difference_norm": mean_norm})
+                    if args.cox_reid_only:
+                        outputs[-1].update({key: result.get(key, np.nan) for key in ("alternative_concentration", "profile_index", "profile_boundary", "residual_degrees_of_freedom", "effective_depth_median")})
+                        outputs[-1]["report_error"] = details["report_error"]
                 nulls.extend({**header, "draw": draw, "n_subjects": details["n_subjects"], **row} for row in null)
         except (ValueError, np.linalg.LinAlgError) as exception:
             failures.append({**header, "error": str(exception)})
@@ -126,7 +134,7 @@ def main():
     pd.DataFrame(nulls).to_csv(args.output_dir / "null.tsv.gz", sep="\t", index=False, na_rep="NA")
     (args.output_dir / "failures.json").write_text(json.dumps(failures, indent=2) + "\n")
     null_description = "common transcript mixture for all cell types within each subject" if args.residual_concentration is None else "independent subject/type Dirichlet path compositions with identical conditional mean across types"
-    (args.output_dir / "settings.json").write_text(json.dumps({"candidate_settings": cached["settings"], "selected_blocks": args.blocks, "draws": args.draws, "null_replicates": args.null_replicates, "subject_scale": args.subject_scale, "residual_concentration": args.residual_concentration, "free_isoforms": args.free_isoforms, "mode": args.mode, "prior_center": args.prior_center, "include_score": args.include_score, "joint_dm_only": args.joint_dm_only, "null": null_description + ", observed primer/depth totals preserved", "baseline": "refitted for each simulated count draw", "seed": 381924}, indent=2, default=str) + "\n")
+    (args.output_dir / "settings.json").write_text(json.dumps({"candidate_settings": cached["settings"], "selected_blocks": args.blocks, "draws": args.draws, "null_replicates": args.null_replicates, "subject_scale": args.subject_scale, "residual_concentration": args.residual_concentration, "free_isoforms": args.free_isoforms, "mode": args.mode, "prior_center": args.prior_center, "include_score": args.include_score, "joint_dm_only": args.joint_dm_only, "cox_reid_only": args.cox_reid_only, "known_latent_concentration": args.known_concentration, "null": null_description + ", observed primer/depth totals preserved", "baseline": "refitted for each simulated count draw", "seed": 381924}, indent=2, default=str) + "\n")
 
 
 if __name__ == "__main__":

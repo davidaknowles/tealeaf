@@ -16,6 +16,9 @@ ARGS=()
 if [[ "${JOINT_DM_ONLY:-0}" == 1 ]]; then
   ARGS+=(--joint-dm-only)
 fi
+if [[ "${COX_REID_ONLY:-0}" == 1 ]]; then
+  ARGS+=(--cox-reid-only)
+fi
 if [[ "${INCLUDE_SCORE:-0}" == 1 ]]; then
   ARGS+=(--include-score)
 fi

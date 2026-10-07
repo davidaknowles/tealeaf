@@ -1,0 +1,13 @@
+{
+  "output_dir": "analyses/dm_dispersion_integer_null/types2_paths3",
+  "draws": 128,
+  "subjects": 12,
+  "types": 2,
+  "paths": 3,
+  "concentration": 20.0,
+  "effect": 0.0,
+  "distribution": "exact integer-count subject-blocked DM, same model as fitted, unequal cell-type depths",
+  "null": true,
+  "seed": 302028,
+  "interpretation": "Native-tail diagnostic, not EC calibration or real-data endpoint"
+}

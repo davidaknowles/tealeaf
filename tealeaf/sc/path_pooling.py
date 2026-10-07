@@ -64,7 +64,7 @@ def quantify_effective_paths(data, path_index, labels, subjects, *, baseline=Non
     return {"proportions": proportions, "counts": effective[:, None] * proportions, "depths": np.asarray(depths), "effective_depths": effective, "labels": np.asarray(selected_labels), "subjects": np.asarray(selected_subjects), "concentration": concentration, "covariance_source": covariance_source}
 
 
-def joint_path_dm_test(quantified, *, labels=None, fitted_null=None, max_iter=250):
+def joint_path_dm_test(quantified, *, labels=None, fitted_null=None, max_iter=250, dispersion_method="ml", concentration=None):
     """Subject-blocked DM likelihood-ratio test, re-estimating dispersion.
 
     Conditional means are softmax(X B), with B of shape P by (S-1).
@@ -74,6 +74,8 @@ def joint_path_dm_test(quantified, *, labels=None, fitted_null=None, max_iter=25
     Gamma-function likelihood on fractional effective counts is approximate.
     The analytic chi-square tail requires calibration with count-level nulls;
     label exchangeability alone does not establish biological calibration.
+    Experimental Cox-Reid selection refits precision for each tested design;
+    fixed precision is a diagnostic. Neither permits reuse of fitted_null.
     """
     counts = np.asarray(quantified["counts"], dtype=float)
     subjects = np.asarray(quantified["subjects"])
@@ -84,7 +86,15 @@ def joint_path_dm_test(quantified, *, labels=None, fitted_null=None, max_iter=25
     if len(counts) <= design.shape[1]:
         raise ValueError("subject-blocked regression needs residual observations")
     null_design = design[:, :tested[0]]
-    result = differential.dirichlet_multinomial_test(counts, null_design, design, max_iter=max_iter, fix_null_concentration=False, fitted_null=fitted_null)
+    if dispersion_method == "ml" and concentration is None:
+        result = differential.dirichlet_multinomial_test(counts, null_design, design, max_iter=max_iter, fix_null_concentration=False, fitted_null=fitted_null)
+    elif dispersion_method in ("cox_reid", "fixed"):
+        from .path_dispersion import corrected_dm_test
+        if fitted_null is not None or (dispersion_method == "fixed") != (concentration is not None):
+            raise ValueError("corrected dispersion needs fresh fits and fixed precision only in diagnostic mode")
+        result = corrected_dm_test(counts, null_design, design, concentration=concentration, max_iter=max_iter)
+    else:
+        raise ValueError("unsupported dispersion method or precision")
     converged = bool(result["null_converged"] and result["alternative_converged"])
     if not converged:
         result["p_value"] = 1.

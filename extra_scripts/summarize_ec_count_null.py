@@ -47,6 +47,10 @@ def main():
     summary.to_csv(args.output_dir / "draw_summary.tsv", sep="\t", index=False, na_rep="NA")
     aggregate = tests.groupby("strategy", observed=True).agg(n_tests=("p_value", "size"), n_blocks=("block_id", "nunique"), n_converged=("converged", "sum"), raw_reject_0_05=("raw_p_value", lambda p: p.le(.05).mean()), calibrated_reject_0_05=("p_value", lambda p: p.le(.05).mean()), calibrated_reject_0_01=("p_value", lambda p: p.le(.01).mean())).reset_index()
     aggregate.to_csv(args.output_dir / "summary.tsv", sep="\t", index=False, na_rep="NA")
+    if "converged" in null:
+        flagged = null.copy()
+        flagged["fit_available"] = flagged.converged.astype(str).str.lower().eq("true")
+        flagged.groupby("strategy").agg(n_null_trials=("p_value", "size"), n_converged=("fit_available", "sum"), failed_fraction=("fit_available", lambda values: (~values).mean())).reset_index().to_csv(args.output_dir / "null_fit_summary.tsv", sep="\t", index=False)
     # Overall nominal calibration can hide failure in individual dimensions or
     # repeated rejection of the same null hypothesis across count draws.
     diagnostics = {

@@ -19,6 +19,12 @@ fi
 if [[ "${JOINT_DM_ONLY:-0}" == 1 ]]; then
   ARGS+=(--joint-dm-only)
 fi
+if [[ "${COX_REID_ONLY:-0}" == 1 ]]; then
+  ARGS+=(--cox-reid-only)
+fi
+if [[ -n "${KNOWN_CONCENTRATION:-}" ]]; then
+  ARGS+=(--known-concentration "${KNOWN_CONCENTRATION}")
+fi
 if [[ "${FREE_ISOFORMS:-0}" == 1 ]]; then
   ARGS+=(--free-isoforms)
 fi
