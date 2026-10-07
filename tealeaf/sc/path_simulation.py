@@ -6,7 +6,7 @@ from scipy.special import softmax
 from .ec_glmm import ECGLMMData
 
 
-def simulate_counts(base, baseline, subjects, rng, subject_scale=.5, *, labels=None, path_index=None, residual_concentration=None):
+def simulate_counts(base, baseline, subjects, rng, subject_scale=.5, *, labels=None, path_index=None, residual_concentration=None, return_details=False):
     """Generate primer-conditioned EC counts under a conditional-mean null.
 
     Baseline is length T; subjects/labels are length N; path_index is length T.
@@ -19,6 +19,8 @@ def simulate_counts(base, baseline, subjects, rng, subject_scale=.5, *, labels=N
     Within-path transcript ratios and outside-block mass stay subject-specific
     and constant across labels. Depths, compatibility and missingness are fixed.
     Count totals are rounded to the nearest integer.
+    Optional details retain the generating subject and observation mixtures
+    for diagnostic oracle fits and conditional repeated-count resampling.
     """
     baseline, subjects = np.asarray(baseline, float), np.asarray(subjects)
     if baseline.shape != (base.n_isoforms,) or np.any(~np.isfinite(baseline)) or np.any(baseline < 0) or baseline.sum() <= 0:
@@ -49,9 +51,24 @@ def simulate_counts(base, baseline, subjects, rng, subject_scale=.5, *, labels=N
                 for path in range(size):
                     positions = path_index == path
                     observation_weights[np.ix_(selected, positions)] = weight[positions] * (latent[path] / proportions[path])
+    generated = resample_counts(base, observation_weights, rng)
+    if return_details:
+        return generated, {"subject_levels": levels, "subject_weights": weights, "observation_weights": observation_weights}
+    return generated
+
+
+def resample_counts(base, weights, rng):
+    """Resample actual EC counts conditional on fixed N by T transcript weights.
+
+    Primer counts use their own compatibility and observed rounded totals.
+    This does not redraw biological compositions or alter sample missingness.
+    """
+    weights = np.asarray(weights, dtype=float)
+    if weights.shape != (len(base.counts[0]), base.n_isoforms) or not np.isfinite(weights).all() or np.any(weights < 0) or np.any(weights.sum(axis=1) <= 0):
+        raise ValueError("finite nonnegative observation-by-transcript weights required")
     generated = []
     for counts, mapping in zip(base.counts, base.compatibility):
-        mass = observation_weights @ np.asarray(mapping).T
+        mass = weights @ np.asarray(mapping).T
         totals = np.rint(np.asarray(counts).sum(axis=1)).astype(int)
         sums = mass.sum(axis=1)
         if np.any((totals > 0) & (sums <= 0)):

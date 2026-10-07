@@ -1,0 +1,24 @@
+{
+  "settings": {
+    "draws": 128,
+    "subjects": 12,
+    "types": 2,
+    "concentration": 20.0,
+    "subject_scale": 0.5,
+    "mean_logit_offset": -2.2,
+    "effect": 0.8,
+    "minimum_depth": 20,
+    "maximum_depth": 200,
+    "subject_nodes": 96,
+    "path_nodes": 16,
+    "shard_count": 8,
+    "model_version": "binary_ec_random_subject_beta_v2_objective_check",
+    "quadrature_validation": "Both fitted objectives and their LR must agree on doubling both integration orders to absolute tolerance .001, no refitting at doubled order",
+    "generating_model": "Gaussian random subject offset, Beta subject/type composition, independent primer binomials sharing composition",
+    "unsupported": "multi-path blocks; no EC ambiguity in this synthetic control",
+    "production_changes": false
+  },
+  "failure_policy": "All requested trials retained, nonconverged or inaccurate-quadrature fits p=1",
+  "comparison": "Synthetic control only, no claim about actual-EC calibration or split/LR performance",
+  "production_changes": false
+}

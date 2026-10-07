@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+joint DM LRT A1 likelihood	40	2106	28.0	0.7	0.7954896496975633	all tested	calibrated then raw
+joint DM LRT A1 likelihood	100	2106	60.0	0.6	0.7016102625179907	all tested	calibrated then raw
+joint DM LRT A1 likelihood	200	2106	120.0	0.6	0.6533802889855345	all tested	calibrated then raw
+joint DM LRT A1 likelihood	40	2106	29.0	0.725	0.8308600218764102	all tested	continuous raw
+joint DM LRT A1 likelihood	100	2106	66.0	0.66	0.7484648070895971	all tested	continuous raw
+joint DM LRT A1 likelihood	200	2106	123.0	0.615	0.6802395922553743	all tested	continuous raw
+joint DM LRT A1 likelihood	40	73	28.0	0.7	0.7954896496975633	BH discoveries	calibrated then raw
+joint DM LRT A1 likelihood	100	73	NA	NA	NA	BH discoveries	calibrated then raw
+joint DM LRT A1 likelihood	200	73	NA	NA	NA	BH discoveries	calibrated then raw
+joint DM LRT A1 likelihood	40	73	28.0	0.7	0.8249060431150358	BH discoveries	continuous raw
+joint DM LRT A1 likelihood	100	73	NA	NA	NA	BH discoveries	continuous raw
+joint DM LRT A1 likelihood	200	73	NA	NA	NA	BH discoveries	continuous raw

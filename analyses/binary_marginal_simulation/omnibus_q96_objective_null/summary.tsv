@@ -1,0 +1,2 @@
+n_trials	n_converged	reject_0_05	reject_0_01	null_precision_median	alternative_precision_median	null_subject_sd_median	alternative_subject_sd_median	n_precision_upper_boundary	runtime_median_seconds	max_quadrature_error_converged
+128	127	0.078125	0.015625	19.87361883594881	22.61308508613624	0.4757424769316693	0.4833475988018675	0	0.3470517620444298	0.0001416966092619

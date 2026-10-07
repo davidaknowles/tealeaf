@@ -1,0 +1,6 @@
+strategy	n_tests	n_converged	reject_0_05	reject_0_01	precision_median
+Cox-Reid F	128	126	0.1015625	0.0390625	50.0
+Cox-Reid chi2	128	126	0.1328125	0.046875	50.0
+Known precision F	128	128	0.046875	0.0	20.0
+Known precision chi2	128	128	0.0703125	0.03125	20.0
+ML chi2	128	128	0.2578125	0.125	inf

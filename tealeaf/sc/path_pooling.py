@@ -1,13 +1,38 @@
 """Experimental joint regression over covariance-matched local-path counts."""
 
 import numpy as np
+from dataclasses import replace
 from scipy.special import softmax
 
 from . import differential
 from .ec_block_glmm import pooled_isoform_weights, blocked_multilevel_design
+from .ec_glmm import ECGLMMData
+from .path_reporting import proportion_covariance
 
 
-def quantify_effective_paths(data, path_index, labels, subjects, *, baseline=None, concentration=.25, covariance_source="likelihood", max_iter=100):
+def subject_isoform_baselines(data, subjects, *, max_iter=250):
+    """Label-blind T-dimensional nuisance mixture estimated for each subject.
+
+    All types of a subject share within-path transcript ratios and outside
+    mass. No cell-type labels or external outcomes enter this estimate.
+    Failed positive-depth baseline fits fail the sensitivity, not silently
+    reverting to another baseline model. Baseline uncertainty is conditional.
+    """
+    subjects = np.asarray(subjects)
+    if subjects.shape != (len(data.counts[0]),):
+        raise ValueError("subjects must align with EC observations")
+    result = {}
+    for subject in np.unique(subjects):
+        selected = subjects == subject
+        local = ECGLMMData(tuple(counts[selected] for counts in data.counts), data.compatibility, data.design[selected], data.clusters[selected])
+        weights, converged = pooled_isoform_weights(local, max_iter=max_iter, return_status=True)
+        if not converged:
+            raise ValueError(f"subject baseline fit failed for {subject}")
+        result[subject] = weights
+    return result
+
+
+def quantify_effective_paths(data, path_index, labels, subjects, *, baseline=None, concentration=.25, covariance_source="likelihood", max_iter=100, subject_baselines=None):
     """Aggregate primer counts by subject/type and retain path uncertainty.
 
     Returned proportions/counts are N by S, labels/subjects/depths length N.
@@ -18,6 +43,8 @@ def quantify_effective_paths(data, path_index, labels, subjects, *, baseline=Non
     A failure rejects the block instead of silently changing its design.
     Effective counts are fractional measurement approximations, not read counts.
     Within-path transcript shares and outside-block mass condition on baseline.
+    Optional subject_baselines maps subject IDs to their fixed T-vector of
+    nuisance weights, shared across all labels. The default remains pooled.
     """
     labels, subjects = np.asarray(labels), np.asarray(subjects)
     path_index = np.asarray(path_index, dtype=int)
@@ -33,8 +60,16 @@ def quantify_effective_paths(data, path_index, labels, subjects, *, baseline=Non
     if baseline is None:
         baseline = pooled_isoform_weights(data)
     basis = differential.helmert_basis(size)
-    proportions, depths, effective, selected_labels, selected_subjects = [], [], [], [], []
+    proportions, depths, effective, selected_labels, selected_subjects, covariances = [], [], [], [], [], []
     for subject in np.unique(subjects):
+        local_baseline = baseline
+        if subject_baselines is not None:
+            if subject not in subject_baselines:
+                raise ValueError(f"missing subject baseline for {subject}")
+            local_baseline = np.asarray(subject_baselines[subject], dtype=float)
+            if local_baseline.shape != (data.n_isoforms,) or not np.isfinite(local_baseline).all() or np.any(local_baseline < 0) or local_baseline.sum() <= 0:
+                raise ValueError("valid aligned subject baseline required")
+            local_baseline = local_baseline / local_baseline.sum()
         for level in np.unique(labels[subjects == subject]):
             selected = (subjects == subject) & (labels == level)
             counts = tuple(np.asarray(matrix[selected], dtype=float).sum(axis=0) for matrix in data.counts)
@@ -42,7 +77,7 @@ def quantify_effective_paths(data, path_index, labels, subjects, *, baseline=Non
             depth = sum(totals)
             if depth <= 0:
                 continue
-            fitted = differential.fit_path_perturbation(counts, data.compatibility, baseline, path_index, path_pseudocount=concentration, path_pseudocount_scaling="total", max_iter=max_iter)
+            fitted = differential.fit_path_perturbation(counts, data.compatibility, local_baseline, path_index, path_pseudocount=concentration, path_pseudocount_scaling="total", max_iter=max_iter)
             if not fitted.converged:
                 raise ValueError(f"path quantification failed for subject {subject}, level {level}")
             covariance = fitted.covariance
@@ -53,6 +88,7 @@ def quantify_effective_paths(data, path_index, labels, subjects, *, baseline=Non
                 raise ValueError(f"unidentifiable {covariance_source} covariance for subject {subject}, level {level}")
             number = differential.effective_multinomial_size(fitted.path_proportions, covariance.covariance, maximum=depth)
             proportions.append(fitted.path_proportions)
+            covariances.append(proportion_covariance(replace(fitted, covariance=covariance)))
             depths.append(depth)
             effective.append(number)
             selected_labels.append(level)
@@ -61,7 +97,7 @@ def quantify_effective_paths(data, path_index, labels, subjects, *, baseline=Non
         raise ValueError("fewer than four positive-count subject/type aggregates")
     proportions = np.asarray(proportions)
     effective = np.asarray(effective)
-    return {"proportions": proportions, "counts": effective[:, None] * proportions, "depths": np.asarray(depths), "effective_depths": effective, "labels": np.asarray(selected_labels), "subjects": np.asarray(selected_subjects), "concentration": concentration, "covariance_source": covariance_source}
+    return {"proportions": proportions, "counts": effective[:, None] * proportions, "depths": np.asarray(depths), "effective_depths": effective, "labels": np.asarray(selected_labels), "subjects": np.asarray(selected_subjects), "proportion_covariances": np.asarray(covariances), "scalar_proportion_covariances": (proportions[:, :, None] * np.eye(size) - proportions[:, :, None] * proportions[:, None, :]) / effective[:, None, None], "concentration": concentration, "covariance_source": covariance_source}
 
 
 def joint_path_dm_test(quantified, *, labels=None, fitted_null=None, max_iter=250, dispersion_method="ml", concentration=None):

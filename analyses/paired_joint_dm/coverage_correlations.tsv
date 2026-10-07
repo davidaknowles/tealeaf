@@ -1,0 +1,19 @@
+strategy	fold	p_column	n	rho_p_coverage	partial_rho
+joint DM LRT A0.25 likelihood	0	p_value	7671	-0.1197061657317037	
+joint DM LRT A0.25 likelihood	0	raw_p_value	7671	-0.11832802807802208	
+joint DM LRT A0.25 likelihood	1	p_value	5140	-0.09017014850887298	
+joint DM LRT A0.25 likelihood	1	raw_p_value	5140	-0.10018118384842119	
+joint DM LRT A0.25 likelihood	full	p_value	11462	-0.12346319104607358	
+joint DM LRT A0.25 likelihood	full	raw_p_value	11462	-0.12693438647875901	
+joint DM LRT A0.25 posterior	0	p_value	7671	-0.1290180261489199	
+joint DM LRT A0.25 posterior	0	raw_p_value	7671	-0.12737051351767945	
+joint DM LRT A0.25 posterior	1	p_value	5140	-0.09363988190183421	
+joint DM LRT A0.25 posterior	1	raw_p_value	5140	-0.10229489235625366	
+joint DM LRT A0.25 posterior	full	p_value	11462	-0.13397422840270443	
+joint DM LRT A0.25 posterior	full	raw_p_value	11462	-0.13578411005125238	
+joint DM LRT A1 likelihood	0	p_value	7671	-0.20495512698483498	
+joint DM LRT A1 likelihood	0	raw_p_value	7671	-0.20399428279722984	
+joint DM LRT A1 likelihood	1	p_value	5140	-0.16765412916147224	
+joint DM LRT A1 likelihood	1	raw_p_value	5140	-0.17911138788619532	
+joint DM LRT A1 likelihood	full	p_value	11462	-0.21659920336760619	
+joint DM LRT A1 likelihood	full	raw_p_value	11462	-0.2213599162195213	

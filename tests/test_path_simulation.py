@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from tealeaf.sc.ec_glmm import ECGLMMData
-from tealeaf.sc.path_simulation import simulate_counts
+from tealeaf.sc.path_simulation import simulate_counts, resample_counts
 
 
 def test_latent_path_draw_is_shared_across_technical_observations_and_primers():
@@ -50,3 +50,24 @@ def test_residual_variation_requires_valid_paths_and_labels():
         simulate_counts(data, [.4, .6], np.arange(4), np.random.default_rng(0), residual_concentration=20)
     with pytest.raises(ValueError, match="positive and finite"):
         simulate_counts(data, [.4, .6], np.arange(4), np.random.default_rng(0), labels=np.arange(4), path_index=[0, 1], residual_concentration=0)
+
+
+def test_truth_export_preserves_default_random_draws_and_fixed_composition():
+    subjects, labels = np.repeat(np.arange(4), 2), np.tile([0, 1], 4)
+    data = ECGLMMData((np.tile([40., 60.], (8, 1)), np.tile([50., 70.], (8, 1))), (np.eye(2), np.diag([2., 1.])), np.ones((8, 1)), subjects)
+    options = {"labels": labels, "path_index": [0, 1], "residual_concentration": 20}
+    first = simulate_counts(data, [.4, .6], subjects, np.random.default_rng(87), **options)
+    second, details = simulate_counts(data, [.4, .6], subjects, np.random.default_rng(87), return_details=True, **options)
+    assert all(np.array_equal(a, b) for a, b in zip(first.counts, second.counts))
+    assert details["observation_weights"].shape == (8, 2)
+    assert np.allclose(details["subject_weights"].sum(axis=1), 1)
+    repeated = resample_counts(data, details["observation_weights"], np.random.default_rng(5))
+    assert all(np.array_equal(a.sum(axis=1), b.sum(axis=1)) for a, b in zip(repeated.counts, data.counts))
+    assert not np.array_equal(repeated.counts[0], first.counts[0])
+
+
+def test_fixed_composition_resampling_rejects_bad_weights():
+    data = ECGLMMData((np.ones((4, 2)),), (np.eye(2),), np.ones((4, 1)), np.arange(4))
+    for weights in (np.ones((3, 2)), np.zeros((4, 2)), -np.ones((4, 2))):
+        with pytest.raises(ValueError, match="observation-by-transcript"):
+            resample_counts(data, weights, np.random.default_rng(0))

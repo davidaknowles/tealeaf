@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+joint DM LRT A0.25 posterior	40	2126	28.0	0.7	0.7475730967243852	all tested	calibrated then raw
+joint DM LRT A0.25 posterior	100	2126	60.0	0.6	0.6727545420539603	all tested	calibrated then raw
+joint DM LRT A0.25 posterior	200	2126	123.0	0.615	0.6444725512298669	all tested	calibrated then raw
+joint DM LRT A0.25 posterior	40	2126	27.0	0.675	0.7956744354764393	all tested	continuous raw
+joint DM LRT A0.25 posterior	100	2126	68.0	0.68	0.7191080262833401	all tested	continuous raw
+joint DM LRT A0.25 posterior	200	2126	122.0	0.61	0.6741994397853759	all tested	continuous raw
+joint DM LRT A0.25 posterior	40	39	NA	NA	NA	BH discoveries	calibrated then raw
+joint DM LRT A0.25 posterior	100	39	NA	NA	NA	BH discoveries	calibrated then raw
+joint DM LRT A0.25 posterior	200	39	NA	NA	NA	BH discoveries	calibrated then raw
+joint DM LRT A0.25 posterior	40	39	NA	NA	NA	BH discoveries	continuous raw
+joint DM LRT A0.25 posterior	100	39	NA	NA	NA	BH discoveries	continuous raw
+joint DM LRT A0.25 posterior	200	39	NA	NA	NA	BH discoveries	continuous raw

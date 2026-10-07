@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from tealeaf.sc.ec_glmm import ECGLMMData
-from tealeaf.sc.path_pooling import quantify_effective_paths, joint_path_dm_test
+from tealeaf.sc.path_pooling import quantify_effective_paths, joint_path_dm_test, subject_isoform_baselines
 
 
 def direct_data(subjects=12, paths=2):
@@ -24,6 +24,29 @@ def test_identity_mapping_recovers_effective_depth(covariance_source):
     expected = (depths[:, None] * proportions + .25 / 3) / (depths[:, None] + .25)
     assert np.allclose(result["proportions"], expected, atol=2e-5)
     assert np.allclose(result["counts"].sum(axis=1), depths)
+    assert result["proportion_covariances"].shape == (24, 3, 3)
+    assert np.allclose(result["proportion_covariances"].sum(axis=2), 0, atol=1e-12)
+    if covariance_source == "likelihood":
+        assert np.allclose(result["proportion_covariances"], result["scalar_proportion_covariances"], rtol=1e-7, atol=1e-12)
+
+
+def test_subject_nuisance_baselines_are_label_blind_and_row_equivariant():
+    data, labels, subjects, proportions, _ = direct_data(paths=3)
+    baselines = subject_isoform_baselines(data, subjects)
+    assert all(np.allclose(baselines[subject], proportions[2 * subject], atol=2e-5) for subject in baselines)
+    reverse = ECGLMMData(tuple(values[::-1] for values in data.counts), data.compatibility, data.design[::-1], data.clusters[::-1])
+    reversed_baselines = subject_isoform_baselines(reverse, subjects[::-1])
+    assert all(np.allclose(baselines[subject], reversed_baselines[subject], atol=2e-5) for subject in baselines)
+    result = quantify_effective_paths(data, [0, 1, 2], labels, subjects, subject_baselines=baselines)
+    assert result["proportions"].shape == (24, 3)
+
+
+def test_missing_or_invalid_subject_baseline_is_not_silently_replaced():
+    data, labels, subjects, _, _ = direct_data()
+    with pytest.raises(ValueError, match="missing subject baseline"):
+        quantify_effective_paths(data, [0, 1], labels, subjects, subject_baselines={})
+    with pytest.raises(ValueError, match="aligned subject baseline"):
+        quantify_effective_paths(data, [0, 1], labels, subjects, subject_baselines={0: np.asarray([1., -1.])})
 
 
 def test_joint_dm_null_subject_offsets_are_not_a_cell_type_effect():
