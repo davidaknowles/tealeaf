@@ -12,6 +12,22 @@ from extra_scripts.merge_paired_path_test import add_calibration_strata, empiric
 from tealeaf.sc.ds_benchmark import benjamini_hochberg
 
 
+def validate_requested_trials(table, settings):
+    """Preserve and validate a declared nuisance-stress trial family."""
+    if "requested_ids" not in settings:
+        return table
+    keys = ["test_id", "draw", "strategy"]
+    expected = {(test_id, draw, strategy) for test_id in settings["requested_ids"] for draw in range(settings["draws"]) for strategy in settings["expected_strategies"]}
+    if table.duplicated(keys).any() or set(map(tuple, table[keys].values)) != expected:
+        raise ValueError("missing or duplicate requested nuisance-stress trials")
+    table = table.copy()
+    failed = ~table.converged.astype(str).str.lower().eq("true")
+    table.loc[failed, "p_value"] = 1.
+    if not np.isfinite(table.p_value).all() or not table.p_value.between(0, 1).all():
+        raise ValueError("invalid successful nuisance-stress p-value")
+    return table
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cache", type=Path, required=True)
@@ -25,7 +41,17 @@ def main():
     if any(item != settings[0] for item in settings[1:]):
         raise ValueError("count-null settings differ between shards")
     observed = pd.concat([pd.read_csv(path, sep="\t") for path in paths], ignore_index=True)
-    null = pd.concat([pd.read_csv(path.parent / "null.tsv.gz", sep="\t") for path in paths], ignore_index=True)
+    null_tables = []
+    for path in paths:
+        try:
+            null_tables.append(pd.read_csv(path.parent / "null.tsv.gz", sep="\t"))
+        except pd.errors.EmptyDataError:
+            if "requested_ids" not in settings[0]:
+                raise
+    if not null_tables:
+        raise ValueError("no successful null-training fits available")
+    null = pd.concat(null_tables, ignore_index=True)
+    observed = validate_requested_trials(observed, settings[0])
     observed = observed.loc[np.isfinite(observed.p_value)].copy()
     null = null.loc[np.isfinite(null.p_value)].copy()
     results, summaries = [], []
@@ -37,6 +63,9 @@ def main():
         if strategy.startswith("maximum-coordinate"):
             table["calibration_stratum"] += "|paths=" + table.n_paths.astype(str)
         calibrated, _ = empirical_null_calibration(table, training)
+        if "requested_ids" in settings[0]:
+            failed = ~calibrated.converged.astype(str).str.lower().eq("true")
+            calibrated.loc[failed, ["p_value", "raw_p_value"]] = 1.
         calibrated["draw"] = draw
         results.append(calibrated)
         summaries.append({"draw": draw, "strategy": strategy, "n_tests": len(calibrated), "n_converged": int(calibrated.converged.sum()), "raw_reject_0_05": calibrated.raw_p_value.le(.05).mean(), "calibrated_reject_0_05": calibrated.p_value.le(.05).mean(), "calibrated_reject_0_01": calibrated.p_value.le(.01).mean(), "BH_discoveries": int(np.sum(benjamini_hochberg(calibrated.p_value.to_numpy(float)) <= .05))})

@@ -1,0 +1,4 @@
+strategy	n_requested	n_converged	native_reject_0_05	native_reject_rate_0_05	median_estimated_delta	mean_effect_bias	direction_agreement	median_runtime_seconds
+Fixed within-path shares, A1	64	64	1	0.015625	-0.0013870650877684499	0.0005223264580441966	NA	0.5466746622696519
+Fixed within-path shares, A32	64	64	1	0.015625	-0.00126940435917625	0.00040815604484021955	NA	0.5387461930513382
+Free within-path shares, A1	64	0	0	0.0	NA	NA	NA	0.18851969297975296

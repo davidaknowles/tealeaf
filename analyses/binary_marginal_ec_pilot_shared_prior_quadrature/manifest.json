@@ -1,0 +1,55 @@
+{
+  "settings": {
+    "candidate_settings": {
+      "version": 3,
+      "data_cache": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/differential/ec_glmm_prepared.pkl",
+      "features": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/hierarchical/weighted_rank32_joint_glm_cols.txt",
+      "block_cache": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/differential/gencode_vM32_splice_blocks.json.gz",
+      "event_table": null,
+      "test_effect": "cell_type_pairwise",
+      "min_gene_umis": 25.0,
+      "min_gene_samples": 0,
+      "min_cell_types": 2,
+      "min_celltype_mice": 4,
+      "min_conditions": 2,
+      "min_condition_mice": 3,
+      "max_isoforms": 10,
+      "max_ecs": 128,
+      "subject_folds": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/junction_benchmark/reproducibility/subject_folds.tsv",
+      "subject_fold": 0
+    },
+    "model_version": "binary_ec_random_subject_beta_v3_hybrid_scores",
+    "selected_ids": [
+      "ENSMUSG00000022263.11:B1|cell_type|EX_cortical|INH_medium_spiny",
+      "ENSMUSG00000027309.19:B1|cell_type|EX_hippocampus_pyramidal|INH_migrating_interneuron",
+      "ENSMUSG00000030134.12:B2|cell_type|EX_cerebellum_granule|INH_medium_spiny",
+      "ENSMUSG00000072825.12:B2|cell_type|EX_cortical|INH_midbrain"
+    ],
+    "shard_count": 4,
+    "requested_scenarios": [
+      {
+        "scenario": "observed",
+        "draw": -1
+      },
+      {
+        "scenario": "common composition",
+        "draw": 0
+      },
+      {
+        "scenario": "biological precision 20",
+        "draw": 0
+      }
+    ],
+    "subject_nodes": 48,
+    "path_nodes": 32,
+    "max_iter": 100,
+    "failure_policy": "p=1, retained cases",
+    "scope": "binary runtime/accuracy or count-null panel only, no calibrated or full-family endpoint claim",
+    "production_changes": false,
+    "quadrature_backend": "shared_prior_gauss_jacobi"
+  },
+  "scope": "Independently selected binary runtime/accuracy or count-null panel, not a full-dimensional calibration or split/LR assessment",
+  "selection": "covered production-eligible tests, seed311381, without discovery or LR outcome filtering",
+  "failure_policy": "All requested cases retained, failed p=1 and direction unavailable",
+  "production_changes": false
+}

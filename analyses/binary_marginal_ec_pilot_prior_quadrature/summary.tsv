@@ -1,0 +1,4 @@
+scenario	n_requested	n_converged	native_reject_0_05	native_reject_rate_0_05	median_runtime_seconds	max_quadrature_error
+biological precision 20	4	4	0	0.0	45.98525373823941	6.086686710204958e-12
+common composition	4	4	0	0.0	44.19311923906207	3.432809592140984e-12
+observed	4	4	1	0.25	48.5100278230384	1.0810621423829048e-05

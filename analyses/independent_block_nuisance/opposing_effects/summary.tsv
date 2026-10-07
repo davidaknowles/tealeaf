@@ -1,0 +1,4 @@
+strategy	n_requested	n_converged	native_reject_0_05	native_reject_rate_0_05	median_estimated_delta	mean_effect_bias	direction_agreement	median_runtime_seconds
+All gene reads, fixed within-path shares	64	64	64	1.0	0.09631547582559345	-0.050638590845501034	1.0	8.016084558330476
+Local junction and exon reads	64	64	64	1.0	0.1497005313566365	0.0033498556648041133	1.0	11.492474868427962
+Local junction reads	64	64	64	1.0	0.15085388925275384	0.005257428507364844	1.0	11.433425903320312

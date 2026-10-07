@@ -255,3 +255,28 @@ def test_subject_centering_eliminates_uniform_prior_coverage_shift():
     # The pooled anchor has concentration 1 and finite-depth noise; centering
     # therefore attenuates rather than exactly eliminates the residual bias.
     assert np.max(np.abs(result["differences"])) < .005
+def test_linear_simplex_information_matches_logit_pullback_in_interior():
+    from tealeaf.sc.differential import conditional_path_information, helmert_basis, simplex_fisher_information
+
+    theta = np.array([.2, .3, .5])
+    basis = helmert_basis(3)
+    maps = (np.array([[1., .3, .2], [.2, 1., .1], [.1, .2, 2.]]),)
+    totals = (200.,)
+    logit_information = conditional_path_information(theta, np.arange(3), basis, maps, totals)
+    tangent_to_logit = basis.T @ (basis / theta[:, None])
+    expected = tangent_to_logit.T @ logit_information @ tangent_to_logit
+    np.testing.assert_allclose(simplex_fisher_information(theta, maps, totals), expected, rtol=1e-12, atol=1e-10)
+
+
+def test_free_path_covariance_remains_identifiable_at_nuisance_boundary():
+    from tealeaf.sc.differential import fit_free_isoform_paths
+    from tealeaf.sc.path_simulation import simulate_independent_binary_blocks
+
+    data, truth = simulate_independent_binary_blocks(np.random.default_rng(7314159), b_effect=2.2)
+    # Row 1 previously converged but failed the numerical covariance rank gate.
+    fitted = fit_free_isoform_paths(tuple(count[1] for count in data.counts), data.compatibility, truth["baseline"], truth["path_index"], path_pseudocount=1.)
+    assert fitted.converged
+    assert fitted.theta.min() < 3e-5
+    assert fitted.covariance.identifiable
+    assert np.isfinite(fitted.covariance.covariance).all()
+    assert 0 < fitted.covariance.covariance[0, 0] < .1

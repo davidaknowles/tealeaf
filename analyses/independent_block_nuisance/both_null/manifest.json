@@ -1,0 +1,19 @@
+{
+  "settings": {
+    "draws": 64,
+    "subjects": 12,
+    "gene_depth": 100,
+    "a_effect": 0.0,
+    "b_effect": 0.0,
+    "shard_count": 8,
+    "true_subject_sd": 0.3,
+    "biological_type_residuals": "none, same A usage within a subject when a-effect=0",
+    "baseline": "label-blind mean of generating transcript weights, diagnostic oracle",
+    "test_model": "same random-subject Beta EC LRT for all three read selections",
+    "latent_model": "independent A/B path composition, four Cartesian-product transcripts",
+    "production_changes": false
+  },
+  "scope": "Controlled independent-block misspecification challenge, not real-data split/LR performance",
+  "failure_policy": "all requested trials retained, failed p=1 and effects unavailable",
+  "production_changes": false
+}

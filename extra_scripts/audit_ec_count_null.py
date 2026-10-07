@@ -69,6 +69,7 @@ def main():
     parser.add_argument("--shard-count", type=int, default=16)
     parser.add_argument("--subject-scale", type=float, default=.5)
     parser.add_argument("--residual-concentration", type=float, help="Independent subject/type path Dirichlet variation, with the same conditional mean across types.")
+    parser.add_argument("--within-path-type-scale", type=float, help="Label-specific within-path transcript shifts preserving the target path null; paired ILR sensitivity only.")
     parser.add_argument("--free-isoforms", action="store_true")
     parser.add_argument("--mode", choices=("omnibus", "pairwise"), default="omnibus")
     parser.add_argument("--prior-center", choices=("uniform", "baseline"), default="uniform")
@@ -78,6 +79,10 @@ def main():
     group.add_argument("--cox-reid-only", action="store_true")
     parser.add_argument("--known-concentration", type=float, help="Known latent biological concentration control, only for Cox-Reid count-null diagnostics.")
     args = parser.parse_args()
+    if args.within_path_type_scale is not None and (args.mode != "pairwise" or args.include_score or args.joint_dm_only or args.cox_reid_only):
+        parser.error("within-path nuisance stress currently requires the paired ILR-only sensitivity")
+    if args.within_path_type_scale is not None and (not np.isfinite(args.within_path_type_scale) or args.within_path_type_scale < 0):
+        parser.error("within-path type scale must be finite and nonnegative")
     if args.known_concentration is not None and (not args.cox_reid_only or args.residual_concentration != args.known_concentration):
         parser.error("known latent precision must match the simulated finite concentration and requires --cox-reid-only")
     if args.free_isoforms:
@@ -90,12 +95,16 @@ def main():
     # Fixed random subset of the whole tested universe, not the discoveries.
     rng = np.random.default_rng(381924)
     selected = rng.choice(len(candidates), size=min(args.blocks, len(candidates)), replace=False)
+    requested_ids = [candidates[index][0] for index in sorted(selected)]
     candidates = partition_candidates([candidates[index] for index in sorted(selected)], args.shard_count)[args.shard_index]
     metadata, counts, _, _, gene_ecs, designs = filtered_inputs(args.data_cache, cached["settings"])
     outputs, nulls, failures, baseline_cache = [], [], [], {}
     for candidate in candidates:
         test_id, block_id, gene_id, gene, transcripts, path_index, signatures, rows, _, tested_levels = candidate
         header = {"test_id": test_id, "block_id": block_id, "gene_id": gene_id, "n_paths": len(signatures)}
+        if args.within_path_type_scale is not None:
+            multiplicities = np.bincount(np.asarray(path_index)[np.asarray(path_index) >= 0], minlength=len(signatures))
+            header.update(n_transcripts=len(transcripts), n_multiplet_paths=int((multiplicities > 1).sum()), n_outside_transcripts=int((np.asarray(path_index) < 0).sum()))
         try:
             local_metadata, _, labels = local_test_design(metadata, rows, tested_levels, "cell_type" if args.mode == "omnibus" else "cell_type_pairwise")
             subjects = local_metadata.mouse.astype(str).to_numpy()
@@ -105,7 +114,7 @@ def main():
                 baseline_cache[key] = ec_block_glmm.pooled_isoform_weights(base)
             rng = np.random.default_rng(zlib.crc32(test_id.encode()) + 381924)
             for draw in range(args.draws):
-                simulated = simulate_counts(base, baseline_cache[key], subjects, rng, args.subject_scale, labels=labels, path_index=path_index, residual_concentration=args.residual_concentration)
+                simulated = simulate_counts(base, baseline_cache[key], subjects, rng, args.subject_scale, labels=labels, path_index=path_index, residual_concentration=args.residual_concentration, within_path_type_scale=args.within_path_type_scale)
                 try:
                     # A failed fit must not prevent later, independent count draws.
                     baseline = ec_block_glmm.pooled_isoform_weights(simulated)
@@ -118,6 +127,8 @@ def main():
                         details = {"n_subjects": statistics["paired ILR A32"]["n_subjects"], "n_observations": 2 * statistics["paired ILR A32"]["n_subjects"]}
                 except (ValueError, np.linalg.LinAlgError) as exception:
                     failures.append({**header, "draw": draw, "error": str(exception)})
+                    if args.within_path_type_scale is not None:
+                        outputs.extend({**header, "draw": draw, "strategy": strategy, "p_value": 1., "statistic": 0., "degrees_of_freedom": len(signatures) - 1, "n_subjects": 0, "n_observations": len(labels), "converged": False, "mean_difference_norm": np.nan} for strategy in ("paired ILR A32", "paired ILR A1"))
                     continue
                 for name, result in statistics.items():
                     mean_norm = np.linalg.norm(result["differences"].mean(axis=0)) if "differences" in result and len(result["differences"]) else np.nan
@@ -128,13 +139,19 @@ def main():
                 nulls.extend({**header, "draw": draw, "n_subjects": details["n_subjects"], **row} for row in null)
         except (ValueError, np.linalg.LinAlgError) as exception:
             failures.append({**header, "error": str(exception)})
+            if args.within_path_type_scale is not None:
+                recorded = {(row["test_id"], row["draw"], row["strategy"]) for row in outputs}
+                outputs.extend({**header, "draw": draw, "strategy": strategy, "p_value": 1., "statistic": 0., "degrees_of_freedom": len(signatures) - 1, "n_subjects": 0, "n_observations": 0, "converged": False, "mean_difference_norm": np.nan} for draw in range(args.draws) for strategy in ("paired ILR A32", "paired ILR A1") if (test_id, draw, strategy) not in recorded)
         print(f"{test_id}, cumulative observed={len(outputs)}, failed blocks={len(failures)}", flush=True)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(outputs).to_csv(args.output_dir / "observed.tsv", sep="\t", index=False, na_rep="NA")
     pd.DataFrame(nulls).to_csv(args.output_dir / "null.tsv.gz", sep="\t", index=False, na_rep="NA")
     (args.output_dir / "failures.json").write_text(json.dumps(failures, indent=2) + "\n")
     null_description = "common transcript mixture for all cell types within each subject" if args.residual_concentration is None else "independent subject/type Dirichlet path compositions with identical conditional mean across types"
-    (args.output_dir / "settings.json").write_text(json.dumps({"candidate_settings": cached["settings"], "selected_blocks": args.blocks, "draws": args.draws, "null_replicates": args.null_replicates, "subject_scale": args.subject_scale, "residual_concentration": args.residual_concentration, "free_isoforms": args.free_isoforms, "mode": args.mode, "prior_center": args.prior_center, "include_score": args.include_score, "joint_dm_only": args.joint_dm_only, "cox_reid_only": args.cox_reid_only, "known_latent_concentration": args.known_concentration, "null": null_description + ", observed primer/depth totals preserved", "baseline": "refitted for each simulated count draw", "seed": 381924}, indent=2, default=str) + "\n")
+    settings = {"candidate_settings": cached["settings"], "selected_blocks": args.blocks, "draws": args.draws, "null_replicates": args.null_replicates, "subject_scale": args.subject_scale, "residual_concentration": args.residual_concentration, "free_isoforms": args.free_isoforms, "mode": args.mode, "prior_center": args.prior_center, "include_score": args.include_score, "joint_dm_only": args.joint_dm_only, "cox_reid_only": args.cox_reid_only, "known_latent_concentration": args.known_concentration, "null": null_description + ", observed primer/depth totals preserved", "baseline": "refitted for each simulated count draw", "seed": 381924}
+    if args.within_path_type_scale is not None:
+        settings.update(within_path_type_scale=args.within_path_type_scale, requested_ids=requested_ids, expected_strategies=["paired ILR A32", "paired ILR A1"], null="same target path usage within subject; within-path transcript composition changes across cell types; observed primer/depth totals preserved", failure_policy="all requested tests retained with p=1 and unavailable effects")
+    (args.output_dir / "settings.json").write_text(json.dumps(settings, indent=2, default=str) + "\n")
 
 
 if __name__ == "__main__":

@@ -71,3 +71,29 @@ def test_fixed_composition_resampling_rejects_bad_weights():
     for weights in (np.ones((3, 2)), np.zeros((4, 2)), -np.ones((4, 2))):
         with pytest.raises(ValueError, match="observation-by-transcript"):
             resample_counts(data, weights, np.random.default_rng(0))
+def test_independent_binary_blocks_preserve_null_A_and_primer_totals():
+    from tealeaf.sc.path_simulation import simulate_independent_binary_blocks
+
+    data, truth = simulate_independent_binary_blocks(np.random.default_rng(5), n_subjects=6, b_effect=2.2)
+    assert data.n_isoforms == 4
+    assert truth["true_delta"] == 0.
+    np.testing.assert_array_equal(truth["a_usage"][::2], truth["a_usage"][1::2])
+    assert np.all(truth["b_usage"][::2] < .11)
+    assert np.all(truth["b_usage"][1::2] > .89)
+    np.testing.assert_allclose(truth["observation_weights"][:, :2].sum(axis=1), truth["a_usage"])
+    for primer, counts in enumerate(data.counts):
+        assert counts.shape == (12, 7)
+        np.testing.assert_array_equal(counts.sum(axis=1), 100 * (primer + 1))
+    again, _ = simulate_independent_binary_blocks(np.random.default_rng(5), n_subjects=6, b_effect=2.2)
+    for first, second in zip(data.counts, again.counts):
+        np.testing.assert_array_equal(first, second)
+def test_within_path_type_tilts_preserve_local_null_and_outside_mass():
+    baseline = np.array([.15, .25, .4, .2])
+    subjects, labels = np.repeat(np.arange(6), 2), np.tile([0, 1], 6)
+    counts = np.tile([3, 5, 8, 4], (12, 1))
+    base = ECGLMMData((counts,), (np.eye(4),), np.ones((12, 1)), subjects)
+    _, truth = simulate_counts(base, baseline, subjects, np.random.default_rng(31), labels=labels, path_index=np.array([0, 0, 1, -1]), within_path_type_scale=2., return_details=True)
+    weights = truth["observation_weights"]
+    np.testing.assert_allclose(weights[::2, :2].sum(axis=1), weights[1::2, :2].sum(axis=1))
+    np.testing.assert_allclose(weights[::2, 2:], weights[1::2, 2:])
+    assert not np.allclose(weights[::2, 0] / weights[::2, :2].sum(axis=1), weights[1::2, 0] / weights[1::2, :2].sum(axis=1))

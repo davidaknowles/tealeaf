@@ -1,0 +1,3 @@
+scenario	n_requested	n_converged	native_reject_0_05	n_subject_rule_failed	n_path_rule_failed	median_true_minimum_path_mean	median_proposal_effective_depth	median_gene_depth	median_true_block_mass	max_subject_quadrature_error	max_path_quadrature_error
+biological precision 20	64	62	3	2	0	0.07903921367487149	31.68895020939103	66.0	1.0	0.0083162783470669	3.0089786662301776e-07
+common composition	64	64	0	0	0	0.0897615036353427	30.89695579296054	66.0	1.0	0.0006127105020752	4.156675004196586e-13

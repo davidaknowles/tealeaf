@@ -14,7 +14,8 @@ source "${HOME}/venv/jax/bin/activate"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}" OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 panel_args=()
 if [[ "${ONLY_NULL:-0}" == 1 ]]; then panel_args+=(--only-null); fi
-python -m extra_scripts.audit_binary_marginal_ec \
+if [[ "${DIAGNOSTICS:-0}" == 1 ]]; then panel_args+=(--diagnostics); fi
+python -m "${EC_PILOT_MODULE:-extra_scripts.audit_binary_marginal_ec}" \
   --data-cache "${RUN_ROOT}/differential/ec_glmm_prepared.pkl" \
   --candidate-cache "${CANDIDATE_CACHE}" --reference "${REFERENCE}" \
   --output-dir "${OUTPUT_ROOT}/shard_${SLURM_ARRAY_TASK_ID}" \

@@ -1,0 +1,23 @@
+{
+  "settings": {
+    "draws": 64,
+    "a_effect": 0.0,
+    "b_effect": 2.2,
+    "shard_count": 8,
+    "strategies": [
+      "Fixed within-path shares, A1",
+      "Fixed within-path shares, A32",
+      "Free within-path shares, A1"
+    ],
+    "subjects": 12,
+    "gene_depth": 100,
+    "subject_sd": 0.3,
+    "test": "unmoderated paired mean test of ILRs, no production calibration",
+    "baseline": "label-blind generating pooled baseline, diagnostic oracle",
+    "biological_type_residuals": "none",
+    "production_changes": false
+  },
+  "scope": "Controlled independent-block misspecification challenge, not real-data split/LR performance",
+  "failure_policy": "all requested trials retained, failed p=1 and effects unavailable",
+  "production_changes": false
+}

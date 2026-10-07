@@ -512,6 +512,33 @@ def transcript_fisher_information(theta, designs, totals):
     return 0.5 * (information + information.T)
 
 
+def simplex_fisher_information(theta, designs, totals):
+    """Primer-conditioned information in linear simplex tangent coordinates.
+
+    Theta has length T and sums to one. The returned matrix is (T-1) by
+    (T-1), using the orthonormal Helmert tangent basis. Unlike log-abundance
+    coordinates, these directions do not vanish when a nuisance transcript
+    has nearly zero abundance. This does not change the likelihood.
+    """
+    theta = np.asarray(theta, dtype=float)
+    basis = helmert_basis(len(theta))
+    information = np.zeros((len(theta) - 1, len(theta) - 1))
+    for design, total in zip(designs, totals):
+        if total <= 0:
+            continue
+        mapping = sp.csr_matrix(design)
+        mass = np.asarray(mapping @ theta).ravel()
+        positive = mass > 0
+        normalizer = float(mass.sum())
+        if not positive.any() or normalizer <= 0:
+            continue
+        derivative = np.asarray(mapping[positive] @ basis)
+        scaled = derivative / np.sqrt(mass[positive, None])
+        exposure = derivative.sum(axis=0) / normalizer
+        information += total * (scaled.T @ scaled / normalizer - np.outer(exposure, exposure))
+    return .5 * (information + information.T)
+
+
 def path_proportions(theta, path_index):
     """Collapse transcript abundance to normalized splice-path proportions."""
     theta = np.asarray(theta, dtype=float)
@@ -1039,11 +1066,15 @@ def fit_free_isoform_paths(counts, designs, baseline, path_index, *, max_iter=20
     fitted = scipy.optimize.minimize(objective, basis.T @ np.log(baseline), jac=True, method="L-BFGS-B", bounds=[(-30., 30.)] * (transcripts - 1), options={"maxiter": int(max_iter), "ftol": float(tolerance)})
     theta = scipy.special.softmax(basis @ fitted.x)
     proportions = path_proportions(theta, path_index)
-    log_path_gradient = np.stack([(theta[group] / theta[group].sum()) @ basis[group] for group in groups])
+    # Compute the same working covariance in linear simplex coordinates.
+    # Near a transcript boundary, ILR-coordinate information and target
+    # derivatives both vanish, causing relative eigenvalue truncation to
+    # mistake a numerical nuisance direction for an unidentifiable path.
+    log_path_gradient = np.stack([basis[group].sum(axis=0) / theta[group].sum() for group in groups])
     jacobian = path_basis.T @ log_path_gradient
-    information = conditional_path_information(theta, np.arange(transcripts), basis, mappings, totals)
+    information = simplex_fisher_information(theta, mappings, totals)
     information += prior.sum() * log_path_gradient.T @ (np.diag(proportions) - np.outer(proportions, proportions)) @ log_path_gradient
-    information += isoform_pseudocount * basis.T @ (np.diag(theta) - np.outer(theta, theta)) @ basis
+    information += isoform_pseudocount * basis.T @ (basis / theta[:, None])
     covariance = identifiable_covariance(information, jacobian, rtol=1e-8)
     logratios = path_basis.T @ np.log(proportions)
     return PathFit(delta=logratios - path_basis.T @ np.log(baseline_paths), path_logratios=logratios, path_proportions=proportions, theta=theta, covariance=covariance, converged=bool(fitted.success), iterations=int(fitted.nit), objective=float(fitted.fun))
