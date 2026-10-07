@@ -13,6 +13,12 @@ module load "${PYTHON_MODULE}"
 source "${HOME}/venv/jax/bin/activate"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}" OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 ARGS=()
+if [[ "${INCLUDE_SCORE:-0}" == 1 ]]; then
+  ARGS+=(--include-score)
+fi
+if [[ "${SCORE_ONLY:-0}" == 1 ]]; then
+  ARGS+=(--score-only)
+fi
 if [[ -n "${REFERENCE:-}" ]]; then
   ARGS+=(--reference "${REFERENCE}")
 fi
@@ -24,4 +30,5 @@ python "${REPO_ROOT}/extra_scripts/audit_path_reporting_omnibus.py" \
   --candidate-cache "${CANDIDATE_CACHE}" --mode "${MODE}" \
   --output-dir "${OUTPUT_ROOT}/shard_${SLURM_ARRAY_TASK_ID}" \
   --shard-index "${SLURM_ARRAY_TASK_ID}" --shard-count "${SHARD_COUNT:-32}" \
-  --null-replicates "${NULL_REPLICATES:-64}" --test-concentration "${TEST_CONCENTRATION:-32}" "${ARGS[@]}"
+  --null-replicates "${NULL_REPLICATES:-64}" --test-concentration "${TEST_CONCENTRATION:-32}" \
+  --prior-center "${PRIOR_CENTER:-uniform}" "${ARGS[@]}"

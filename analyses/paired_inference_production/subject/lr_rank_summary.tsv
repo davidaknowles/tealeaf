@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+subject	40	2116	27.0	0.675	0.7354878740198773	all tested	calibrated then raw
+subject	100	2116	68.0	0.68	0.6972347939952676	all tested	calibrated then raw
+subject	200	2116	122.0	0.61	0.667882267103989	all tested	calibrated then raw
+subject	40	2116	27.0	0.675	0.8231112302302197	all tested	continuous raw
+subject	100	2116	70.0	0.7	0.7493310410193318	all tested	continuous raw
+subject	200	2116	123.0	0.615	0.6935430909325848	all tested	continuous raw
+subject	40	141	27.0	0.675	0.7354878740198773	BH discoveries	calibrated then raw
+subject	100	141	68.0	0.68	0.6972347939952676	BH discoveries	calibrated then raw
+subject	200	141	NA	NA	NA	BH discoveries	calibrated then raw
+subject	40	141	27.0	0.675	0.8231112302302197	BH discoveries	continuous raw
+subject	100	141	70.0	0.7	0.7493310410193318	BH discoveries	continuous raw
+subject	200	141	NA	NA	NA	BH discoveries	continuous raw

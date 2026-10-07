@@ -969,6 +969,86 @@ def fit_path_perturbation(
     )
 
 
+def fit_free_isoform_paths(counts, designs, baseline, path_index, *, max_iter=200, tolerance=1e-9, path_pseudocount=0.0, path_prior_center="uniform", path_pseudocount_scaling="total", isoform_pseudocount=1e-4):
+    """Fit all T transcript weights while reporting only S local paths.
+
+    Unlike local perturbation fitting, within-path transcript shares and
+    outside-block shares may vary between observations. Counts and primer
+    normalization are unchanged. The path prior is on conditional S-path
+    proportions, not on individual transcript weights; a small total uniform
+    transcript pseudocount stabilizes nuisance mixtures. Conditional Fisher
+    covariance is profiled from T-1 fitted coordinates to S-1 path ILRs.
+    The path-prior contribution is a first-order pullback, not the exact
+    Hessian of its nonlinear transcript-coordinate representation.
+    This experimental fitter does not change production defaults.
+    """
+    baseline = np.asarray(baseline, dtype=float)
+    path_index = np.asarray(path_index, dtype=int)
+    if baseline.ndim != 1 or path_index.shape != baseline.shape or not np.isfinite(baseline).all() or np.any(baseline < 0) or baseline.sum() <= 0 or np.any(path_index < -1):
+        raise ValueError("baseline and path_index must align")
+    baseline = np.maximum(baseline, 1e-12)
+    baseline /= baseline.sum()
+    paths = np.unique(path_index[path_index >= 0])
+    if len(paths) < 2 or not np.array_equal(paths, np.arange(len(paths))):
+        raise ValueError("at least two consecutive paths required")
+    size, transcripts = len(paths), len(baseline)
+    basis, path_basis = helmert_basis(transcripts), helmert_basis(size)
+    mappings = tuple(np.asarray(sp.csr_matrix(mapping).todense()) for mapping in designs)
+    counts = tuple(np.asarray(value, dtype=float) for value in counts)
+    if len(counts) != len(mappings) or any(mapping.shape[1] != transcripts or value.shape != (mapping.shape[0],) or not np.isfinite(mapping).all() or np.any(mapping < 0) or not np.isfinite(value).all() or np.any(value < 0) for value, mapping in zip(counts, mappings)):
+        raise ValueError("finite nonnegative counts and mappings must align")
+    totals = tuple(float(value.sum()) for value in counts)
+    if sum(totals) <= 0 or isoform_pseudocount < 0:
+        raise ValueError("positive count total and nonnegative nuisance prior required")
+    baseline_paths = path_proportions(baseline, path_index)
+    if path_prior_center == "uniform":
+        center = np.full(size, 1 / size)
+    elif path_prior_center == "baseline":
+        center = baseline_paths
+    else:
+        raise ValueError("invalid path prior center")
+    prior = _path_prior_counts(path_pseudocount, size, center, path_pseudocount_scaling)
+    selected = path_index >= 0
+    groups = [path_index == path for path in paths]
+    columns = [mapping.sum(axis=0) for mapping in mappings]
+
+    def objective(coordinates):
+        theta = scipy.special.softmax(basis @ coordinates)
+        loss, score = 0., np.zeros(transcripts)
+        for observed, mapping, column, total in zip(counts, mappings, columns, totals):
+            if total <= 0:
+                continue
+            mass = mapping @ theta
+            normalizer = mass.sum()
+            if normalizer <= 0 or np.any((observed > 0) & (mass <= 0)):
+                return np.inf, np.zeros_like(coordinates)
+            safe = np.maximum(mass, 1e-300)
+            loss -= float(observed @ np.log(safe)) - total * np.log(normalizer)
+            score -= theta * (mapping.T @ (observed / safe))
+            score += total * theta * column / normalizer
+        local_mass = theta[selected].sum()
+        proportions = path_proportions(theta, path_index)
+        loss -= float(prior @ np.log(proportions))
+        score[selected] += prior.sum() * theta[selected] / local_mass
+        for path, group in enumerate(groups):
+            score[group] -= prior[path] * theta[group] / theta[group].sum()
+        loss -= isoform_pseudocount * float(np.log(theta).mean())
+        score += isoform_pseudocount * (theta - 1 / transcripts)
+        return loss, basis.T @ score
+
+    fitted = scipy.optimize.minimize(objective, basis.T @ np.log(baseline), jac=True, method="L-BFGS-B", bounds=[(-30., 30.)] * (transcripts - 1), options={"maxiter": int(max_iter), "ftol": float(tolerance)})
+    theta = scipy.special.softmax(basis @ fitted.x)
+    proportions = path_proportions(theta, path_index)
+    log_path_gradient = np.stack([(theta[group] / theta[group].sum()) @ basis[group] for group in groups])
+    jacobian = path_basis.T @ log_path_gradient
+    information = conditional_path_information(theta, np.arange(transcripts), basis, mappings, totals)
+    information += prior.sum() * log_path_gradient.T @ (np.diag(proportions) - np.outer(proportions, proportions)) @ log_path_gradient
+    information += isoform_pseudocount * basis.T @ (np.diag(theta) - np.outer(theta, theta)) @ basis
+    covariance = identifiable_covariance(information, jacobian, rtol=1e-8)
+    logratios = path_basis.T @ np.log(proportions)
+    return PathFit(delta=logratios - path_basis.T @ np.log(baseline_paths), path_logratios=logratios, path_proportions=proportions, theta=theta, covariance=covariance, converged=bool(fitted.success), iterations=int(fitted.nit), objective=float(fitted.fun))
+
+
 def fit_profiled_path_perturbation(counts, designs, baseline, path_index, *, max_iter=100, tolerance=1e-9, path_pseudocount=0.0, path_prior_center="uniform", path_pseudocount_scaling="total"):
     """Fit absolute path ILRs and profile block mass against other isoforms.
 

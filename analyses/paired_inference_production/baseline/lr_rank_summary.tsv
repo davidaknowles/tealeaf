@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+baseline	40	1878	30.0	0.75	0.8395621315582613	all tested	calibrated then raw
+baseline	100	1878	67.0	0.67	0.7605524521812608	all tested	calibrated then raw
+baseline	200	1878	121.0	0.605	0.6930728124913457	all tested	calibrated then raw
+baseline	40	1878	32.0	0.8	0.8896191185507283	all tested	continuous raw
+baseline	100	1878	66.0	0.66	0.7845585189700286	all tested	continuous raw
+baseline	200	1878	122.0	0.61	0.7073889814341037	all tested	continuous raw
+baseline	40	65	30.0	0.75	0.8395621315582613	BH discoveries	calibrated then raw
+baseline	100	65	NA	NA	NA	BH discoveries	calibrated then raw
+baseline	200	65	NA	NA	NA	BH discoveries	calibrated then raw
+baseline	40	65	32.0	0.8	0.8896191185507283	BH discoveries	continuous raw
+baseline	100	65	NA	NA	NA	BH discoveries	continuous raw
+baseline	200	65	NA	NA	NA	BH discoveries	continuous raw

@@ -1,0 +1,8 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	direction_selected	direction_evaluable	direction_agreement	common_events	failed_tests_fold0	failed_tests_fold1
+LeafCutter	baseline	simes	simes	747	139	14	5	1	0.8571428571428572	0.5278414876685328	29	29	0.9310344827586207	1056	61	79
+MAJIQ Heterogen	baseline	simes	simes	2499	479	0	0	0	NA	0.4161069202858356	93	93	0.956989247311828	3456	234	285
+SUPPA2	baseline	simes	simes	2342	457	0	0	0	NA	0.4428943513731613	49	49	0.9591836734693877	3361	251	304
+SUPPA2 primer-aware	baseline	simes	simes	2191	431	0	1	0	0.0	0.4313523179710315	50	50	0.96	3200	243	292
+SUPPA2/Tealeaf hybrid	baseline	simes	simes	1755	354	0	0	0	NA	0.5016244504289582	35	35	0.9428571428571428	2340	229	287
+rMATS (paired)	baseline	simes	simes	3109	597	0	0	0	NA	0.4710832095540207	74	74	0.9594594594594594	4159	291	351
+scQuint	baseline	simes	simes	2599	506	0	0	0	NA	0.4527472906017995	79	79	0.9493670886075949	3569	244	293

@@ -1,0 +1,8 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	direction_selected	direction_evaluable	direction_agreement	common_events	failed_tests_fold0	failed_tests_fold1
+LeafCutter	score	simes	simes	747	139	13	7	5	0.7362637362637363	0.4430207370983785	33	33	0.8181818181818182	1056	6	9
+MAJIQ Heterogen	score	simes	simes	2499	479	0	2	0	0.5	0.3211968813155364	100	100	0.89	3456	34	36
+SUPPA2	score	simes	simes	2342	457	0	0	0	NA	0.36096754532196007	37	37	0.918918918918919	3361	35	37
+SUPPA2 primer-aware	score	simes	simes	2191	431	0	0	0	NA	0.3519533315719898	39	39	0.9230769230769231	3200	33	36
+SUPPA2/Tealeaf hybrid	score	simes	simes	1755	354	0	2	0	0.5	0.3842911165638306	31	31	0.9032258064516129	2340	31	40
+rMATS (paired)	score	simes	simes	3109	597	0	0	0	NA	0.32249327682103296	71	71	0.9154929577464789	4159	38	42
+scQuint	score	simes	simes	2599	506	0	0	0	NA	0.35020753256468756	77	77	0.9090909090909091	3569	36	38

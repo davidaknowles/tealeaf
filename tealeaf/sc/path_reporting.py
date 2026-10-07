@@ -1,15 +1,85 @@
 """Subject-aware descriptive pooling of uncertain local-path proportions."""
 
 import numpy as np
-from scipy.optimize import minimize
+from scipy.optimize import minimize, minimize_scalar
 from scipy.special import digamma, gammaln, softmax
 
 from .differential import helmert_basis
 
 
+def paired_reporting(proportions, covariances, depths):
+    """Descriptive estimators using identical weights for both members of a pair.
+
+    Inputs have shapes M x 2 x S, M x 2 x S x S and M x 2. The
+    random-effects estimator matches each difference covariance to an
+    isotropic variance in the S-1 dimensional simplex tangent space and
+    estimates between-subject variance by restricted likelihood. It is a
+    scalar-weight reporting approximation, not a statistical test. It omits
+    shared-baseline measurement dependence and anisotropic uncertainty.
+    No long-read outcomes or other subject folds enter any estimator.
+    """
+    proportions = np.asarray(proportions, dtype=float)
+    covariances = np.asarray(covariances, dtype=float)
+    depths = np.asarray(depths, dtype=float)
+    if proportions.ndim != 3 or proportions.shape[1] != 2 or proportions.shape[2] < 2:
+        raise ValueError("proportions must have shape M by 2 by S")
+    m, _, s = proportions.shape
+    if m < 2 or covariances.shape != (m, 2, s, s) or depths.shape != (m, 2):
+        raise ValueError("at least two aligned subject pairs required")
+    if not np.isfinite(proportions).all() or np.any(proportions <= 0) or not np.allclose(proportions.sum(axis=2), 1):
+        raise ValueError("finite positive simplex proportions required")
+    if not np.isfinite(depths).all() or np.any(depths <= 0):
+        raise ValueError("positive finite paired depths required")
+    differences = proportions[:, 1] - proportions[:, 0]
+    harmonic = 1 / np.sum(1 / depths, axis=1)
+    harmonic /= harmonic.sum()
+    equal = np.full(m, 1 / m)
+    log_proportions = np.log(proportions)
+    geometric = softmax(log_proportions.mean(axis=0), axis=1)
+    # Median CLR differences are path-permutation equivariant, unlike taking
+    # coordinate medians in an arbitrary ILR basis.
+    clr = log_proportions - log_proportions.mean(axis=2, keepdims=True)
+    median = np.median(clr[:, 1] - clr[:, 0], axis=0)
+    anchor = clr.mean(axis=(0, 1))
+    median_means = softmax(np.stack([anchor - median / 2, anchor + median / 2]), axis=1)
+    reports = {
+        "subject arithmetic mean": {"effect": differences.mean(axis=0), "weights": equal},
+        "subject geometric mean": {"effect": geometric[1] - geometric[0], "weights": equal},
+        "paired median CLR": {"effect": median_means[1] - median_means[0], "weights": equal},
+        "paired harmonic depth": {"effect": harmonic @ differences, "weights": harmonic},
+    }
+    try:
+        if not np.isfinite(covariances).all() or not np.allclose(covariances, covariances.swapaxes(-1, -2)) or np.min(np.linalg.eigvalsh(covariances)) < -1e-10:
+            raise ValueError("finite symmetric positive-semidefinite covariance required")
+        variances = np.trace(covariances.sum(axis=1), axis1=1, axis2=2) / (s - 1)
+        if np.any(variances <= 0):
+            raise ValueError("positive paired measurement uncertainty required")
+        tangent = differences @ helmert_basis(s)
+
+        def reml(tau):
+            total = variances + tau
+            precision = 1 / total
+            mean = precision @ tangent / precision.sum()
+            return (s - 1) * (np.log(total).sum() + np.log(precision.sum())) + (np.square(tangent - mean) * precision[:, None]).sum()
+
+        upper = max(float(np.square(tangent - tangent.mean(axis=0)).sum() / ((m - 1) * (s - 1))), float(variances.max()), 1e-6) * 10
+        optimum = minimize_scalar(reml, bounds=(0., upper), method="bounded", options={"xatol": 1e-10})
+        if not optimum.success:
+            raise ValueError("paired reporting REML failed")
+        tau = float(optimum.x) if reml(optimum.x) < reml(0.) else 0.
+        weights = 1 / (variances + tau)
+        weights /= weights.sum()
+        reports["paired random effects"] = {"effect": weights @ differences, "weights": weights, "between_subject_variance": tau, "fallback": False}
+    except (ValueError, np.linalg.LinAlgError) as exception:
+        reports["paired random effects"] = {"effect": differences.mean(axis=0), "weights": equal, "between_subject_variance": np.nan, "fallback": True, "error": str(exception)}
+    return reports
+
+
 def proportion_covariance(fit):
     """Propagate an S-1 dimensional ILR covariance to S proportions."""
     proportions = np.asarray(fit.path_proportions, dtype=float)
+    if not fit.covariance.identifiable or not np.isfinite(fit.covariance.covariance).all():
+        return np.full((len(proportions), len(proportions)), np.nan)
     jacobian = (np.diag(proportions) - np.outer(proportions, proportions)) @ helmert_basis(len(proportions))
     return jacobian @ fit.covariance.covariance @ jacobian.T
 

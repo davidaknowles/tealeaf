@@ -1,0 +1,193 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	strategy	ranking	n_fallback
+Dirichlet pooling with subject-mean fallback; calibrated then raw	40	704	26	0.65	0.7456744861964191	Dirichlet pooling with subject-mean fallback	calibrated then raw	2
+Dirichlet pooling with subject-mean fallback; calibrated then raw	100	704	61	0.61	0.6642523493274877	Dirichlet pooling with subject-mean fallback	calibrated then raw	2
+Dirichlet pooling with subject-mean fallback; calibrated then raw	200	704	126	0.63	0.6475316276248039	Dirichlet pooling with subject-mean fallback	calibrated then raw	8
+Dirichlet pooling with subject-mean fallback; continuous raw	40	704	32	0.8	0.8008400303267488	Dirichlet pooling with subject-mean fallback	continuous raw	1
+Dirichlet pooling with subject-mean fallback; continuous raw	100	704	66	0.66	0.7362059847502219	Dirichlet pooling with subject-mean fallback	continuous raw	4
+Dirichlet pooling with subject-mean fallback; continuous raw	200	704	121	0.605	0.6809502634889358	Dirichlet pooling with subject-mean fallback	continuous raw	9
+effective-count Dirichlet pooling; calibrated then raw	40	704	26	0.65	0.7456744861964191	effective-count Dirichlet pooling	calibrated then raw	2
+effective-count Dirichlet pooling; calibrated then raw	100	704	61	0.61	0.6642523493274877	effective-count Dirichlet pooling	calibrated then raw	2
+effective-count Dirichlet pooling; calibrated then raw	200	704	126	0.63	0.6475316276248039	effective-count Dirichlet pooling	calibrated then raw	8
+effective-count Dirichlet pooling; continuous raw	40	704	32	0.8	0.8008400303267488	effective-count Dirichlet pooling	continuous raw	1
+effective-count Dirichlet pooling; continuous raw	100	704	66	0.66	0.7362059847502219	effective-count Dirichlet pooling	continuous raw	4
+effective-count Dirichlet pooling; continuous raw	200	704	121	0.605	0.6809502634889358	effective-count Dirichlet pooling	continuous raw	9
+paired harmonic depth A1; calibrated then raw	40	704	26	0.65	0.7456744861964191	paired harmonic depth A1	calibrated then raw	0
+paired harmonic depth A1; calibrated then raw	100	704	59	0.59	0.6567455944917007	paired harmonic depth A1	calibrated then raw	0
+paired harmonic depth A1; calibrated then raw	200	704	123	0.615	0.6357918326057418	paired harmonic depth A1	calibrated then raw	0
+paired harmonic depth A1; continuous raw	40	704	32	0.8	0.8008400303267488	paired harmonic depth A1	continuous raw	0
+paired harmonic depth A1; continuous raw	100	704	65	0.65	0.7297126490808001	paired harmonic depth A1	continuous raw	0
+paired harmonic depth A1; continuous raw	200	704	119	0.595	0.6698735142856479	paired harmonic depth A1	continuous raw	0
+paired harmonic depth A16; calibrated then raw	40	704	26	0.65	0.7786750938401455	paired harmonic depth A16	calibrated then raw	0
+paired harmonic depth A16; calibrated then raw	100	704	61	0.61	0.6749872221243034	paired harmonic depth A16	calibrated then raw	0
+paired harmonic depth A16; calibrated then raw	200	704	121	0.605	0.6446857083745076	paired harmonic depth A16	calibrated then raw	0
+paired harmonic depth A16; continuous raw	40	704	31	0.775	0.7782246384467911	paired harmonic depth A16	continuous raw	0
+paired harmonic depth A16; continuous raw	100	704	64	0.64	0.7103355422261867	paired harmonic depth A16	continuous raw	0
+paired harmonic depth A16; continuous raw	200	704	117	0.585	0.658113601356822	paired harmonic depth A16	continuous raw	0
+paired harmonic depth A32; calibrated then raw	40	704	26	0.65	0.7786750938401455	paired harmonic depth A32	calibrated then raw	0
+paired harmonic depth A32; calibrated then raw	100	704	60	0.6	0.6746841712069666	paired harmonic depth A32	calibrated then raw	0
+paired harmonic depth A32; calibrated then raw	200	704	120	0.6	0.6410809157634302	paired harmonic depth A32	calibrated then raw	0
+paired harmonic depth A32; continuous raw	40	704	31	0.775	0.7782246384467911	paired harmonic depth A32	continuous raw	0
+paired harmonic depth A32; continuous raw	100	704	64	0.64	0.7103355422261867	paired harmonic depth A32	continuous raw	0
+paired harmonic depth A32; continuous raw	200	704	115	0.575	0.6558020668291068	paired harmonic depth A32	continuous raw	0
+paired harmonic depth A4; calibrated then raw	40	704	27	0.675	0.7799411194811713	paired harmonic depth A4	calibrated then raw	0
+paired harmonic depth A4; calibrated then raw	100	704	59	0.59	0.6691190358392379	paired harmonic depth A4	calibrated then raw	0
+paired harmonic depth A4; calibrated then raw	200	704	121	0.605	0.6382353790138201	paired harmonic depth A4	calibrated then raw	0
+paired harmonic depth A4; continuous raw	40	704	32	0.8	0.8022324895894757	paired harmonic depth A4	continuous raw	0
+paired harmonic depth A4; continuous raw	100	704	64	0.64	0.7290077568294024	paired harmonic depth A4	continuous raw	0
+paired harmonic depth A4; continuous raw	200	704	118	0.59	0.6650043934612739	paired harmonic depth A4	continuous raw	0
+paired harmonic depth A64; calibrated then raw	40	704	26	0.65	0.7786750938401455	paired harmonic depth A64	calibrated then raw	0
+paired harmonic depth A64; calibrated then raw	100	704	60	0.6	0.6746841712069666	paired harmonic depth A64	calibrated then raw	0
+paired harmonic depth A64; calibrated then raw	200	704	120	0.6	0.6428583514870294	paired harmonic depth A64	calibrated then raw	0
+paired harmonic depth A64; continuous raw	40	704	32	0.8	0.7822329646590647	paired harmonic depth A64	continuous raw	0
+paired harmonic depth A64; continuous raw	100	704	64	0.64	0.7170469663954946	paired harmonic depth A64	continuous raw	0
+paired harmonic depth A64; continuous raw	200	704	115	0.575	0.6591577789137608	paired harmonic depth A64	continuous raw	0
+paired median CLR A1; calibrated then raw	40	704	25	0.625	0.7068802315807635	paired median CLR A1	calibrated then raw	0
+paired median CLR A1; calibrated then raw	100	704	63	0.63	0.653813740299451	paired median CLR A1	calibrated then raw	0
+paired median CLR A1; calibrated then raw	200	704	125	0.625	0.6465758580621055	paired median CLR A1	calibrated then raw	0
+paired median CLR A1; continuous raw	40	704	31	0.775	0.7550534984357009	paired median CLR A1	continuous raw	0
+paired median CLR A1; continuous raw	100	704	66	0.66	0.7086870073269632	paired median CLR A1	continuous raw	0
+paired median CLR A1; continuous raw	200	704	124	0.62	0.6694206127467467	paired median CLR A1	continuous raw	0
+paired median CLR A16; calibrated then raw	40	704	26	0.65	0.7786750938401455	paired median CLR A16	calibrated then raw	0
+paired median CLR A16; calibrated then raw	100	704	60	0.6	0.6746841712069666	paired median CLR A16	calibrated then raw	0
+paired median CLR A16; calibrated then raw	200	704	122	0.61	0.6449682415396546	paired median CLR A16	calibrated then raw	0
+paired median CLR A16; continuous raw	40	704	32	0.8	0.8022324895894757	paired median CLR A16	continuous raw	0
+paired median CLR A16; continuous raw	100	704	65	0.65	0.7290270274702929	paired median CLR A16	continuous raw	0
+paired median CLR A16; continuous raw	200	704	118	0.59	0.6697080851860935	paired median CLR A16	continuous raw	0
+paired median CLR A32; calibrated then raw	40	704	26	0.65	0.7786750938401455	paired median CLR A32	calibrated then raw	0
+paired median CLR A32; calibrated then raw	100	704	60	0.6	0.6746841712069666	paired median CLR A32	calibrated then raw	0
+paired median CLR A32; calibrated then raw	200	704	120	0.6	0.6411366265021017	paired median CLR A32	calibrated then raw	0
+paired median CLR A32; continuous raw	40	704	32	0.8	0.8022324895894757	paired median CLR A32	continuous raw	0
+paired median CLR A32; continuous raw	100	704	64	0.64	0.7250467763676589	paired median CLR A32	continuous raw	0
+paired median CLR A32; continuous raw	200	704	116	0.58	0.663655475723253	paired median CLR A32	continuous raw	0
+paired median CLR A4; calibrated then raw	40	704	25	0.625	0.773931473510225	paired median CLR A4	calibrated then raw	0
+paired median CLR A4; calibrated then raw	100	704	57	0.57	0.6485384878767944	paired median CLR A4	calibrated then raw	0
+paired median CLR A4; calibrated then raw	200	704	120	0.6	0.6233493411216462	paired median CLR A4	calibrated then raw	0
+paired median CLR A4; continuous raw	40	704	32	0.8	0.8022324895894757	paired median CLR A4	continuous raw	0
+paired median CLR A4; continuous raw	100	704	62	0.62	0.7191430938118376	paired median CLR A4	continuous raw	0
+paired median CLR A4; continuous raw	200	704	114	0.57	0.6525731416707744	paired median CLR A4	continuous raw	0
+paired median CLR A64; calibrated then raw	40	704	26	0.65	0.7786750938401455	paired median CLR A64	calibrated then raw	0
+paired median CLR A64; calibrated then raw	100	704	60	0.6	0.6746841712069666	paired median CLR A64	calibrated then raw	0
+paired median CLR A64; calibrated then raw	200	704	120	0.6	0.641175996580842	paired median CLR A64	calibrated then raw	0
+paired median CLR A64; continuous raw	40	704	33	0.825	0.8062408158017493	paired median CLR A64	continuous raw	0
+paired median CLR A64; continuous raw	100	704	64	0.64	0.7321930440395853	paired median CLR A64	continuous raw	0
+paired median CLR A64; continuous raw	200	704	115	0.575	0.6667308177358062	paired median CLR A64	continuous raw	0
+paired random effects A1; calibrated then raw	40	704	24	0.6	0.6954066838324829	paired random effects A1	calibrated then raw	0
+paired random effects A1; calibrated then raw	100	704	60	0.6	0.6356074943082946	paired random effects A1	calibrated then raw	0
+paired random effects A1; calibrated then raw	200	704	124	0.62	0.625586370505825	paired random effects A1	calibrated then raw	0
+paired random effects A1; continuous raw	40	704	30	0.75	0.7534708072501652	paired random effects A1	continuous raw	0
+paired random effects A1; continuous raw	100	704	66	0.66	0.7055052913237442	paired random effects A1	continuous raw	0
+paired random effects A1; continuous raw	200	704	118	0.59	0.6620056722397578	paired random effects A1	continuous raw	0
+paired random effects A16; calibrated then raw	40	704	26	0.65	0.7786750938401455	paired random effects A16	calibrated then raw	0
+paired random effects A16; calibrated then raw	100	704	60	0.6	0.6746841712069666	paired random effects A16	calibrated then raw	0
+paired random effects A16; calibrated then raw	200	704	120	0.6	0.6410809157634302	paired random effects A16	calibrated then raw	0
+paired random effects A16; continuous raw	40	704	31	0.775	0.7782246384467911	paired random effects A16	continuous raw	0
+paired random effects A16; continuous raw	100	704	64	0.64	0.7103355422261867	paired random effects A16	continuous raw	0
+paired random effects A16; continuous raw	200	704	116	0.58	0.6562998586525168	paired random effects A16	continuous raw	0
+paired random effects A32; calibrated then raw	40	704	26	0.65	0.7786750938401455	paired random effects A32	calibrated then raw	0
+paired random effects A32; calibrated then raw	100	704	60	0.6	0.6746841712069666	paired random effects A32	calibrated then raw	0
+paired random effects A32; calibrated then raw	200	704	119	0.595	0.6405554996306279	paired random effects A32	calibrated then raw	0
+paired random effects A32; continuous raw	40	704	31	0.775	0.7782246384467911	paired random effects A32	continuous raw	0
+paired random effects A32; continuous raw	100	704	63	0.63	0.7063552911235527	paired random effects A32	continuous raw	0
+paired random effects A32; continuous raw	200	704	115	0.575	0.6508564659487908	paired random effects A32	continuous raw	0
+paired random effects A4; calibrated then raw	40	704	27	0.675	0.7799411194811713	paired random effects A4	calibrated then raw	0
+paired random effects A4; calibrated then raw	100	704	59	0.59	0.6691190358392379	paired random effects A4	calibrated then raw	0
+paired random effects A4; calibrated then raw	200	704	122	0.61	0.641305686868295	paired random effects A4	calibrated then raw	0
+paired random effects A4; continuous raw	40	704	32	0.8	0.8022324895894757	paired random effects A4	continuous raw	0
+paired random effects A4; continuous raw	100	704	64	0.64	0.7290077568294024	paired random effects A4	continuous raw	0
+paired random effects A4; continuous raw	200	704	118	0.59	0.6650043934612739	paired random effects A4	continuous raw	0
+paired random effects A64; calibrated then raw	40	704	26	0.65	0.7786750938401455	paired random effects A64	calibrated then raw	0
+paired random effects A64; calibrated then raw	100	704	60	0.6	0.6746841712069666	paired random effects A64	calibrated then raw	0
+paired random effects A64; calibrated then raw	200	704	120	0.6	0.6428583514870294	paired random effects A64	calibrated then raw	0
+paired random effects A64; continuous raw	40	704	32	0.8	0.7822329646590647	paired random effects A64	continuous raw	0
+paired random effects A64; continuous raw	100	704	64	0.64	0.7170469663954946	paired random effects A64	continuous raw	0
+paired random effects A64; continuous raw	200	704	115	0.575	0.6591577789137608	paired random effects A64	continuous raw	0
+paired-subject balanced pooled local; calibrated then raw	40	704	27	0.675	0.8136260996239857	paired-subject balanced pooled local	calibrated then raw	0
+paired-subject balanced pooled local; calibrated then raw	100	704	62	0.62	0.7068483081993169	paired-subject balanced pooled local	calibrated then raw	0
+paired-subject balanced pooled local; calibrated then raw	200	704	124	0.62	0.6670102261984482	paired-subject balanced pooled local	calibrated then raw	0
+paired-subject balanced pooled local; continuous raw	40	704	33	0.825	0.9077917858228218	paired-subject balanced pooled local	continuous raw	0
+paired-subject balanced pooled local; continuous raw	100	704	67	0.67	0.7996706173668261	paired-subject balanced pooled local	continuous raw	0
+paired-subject balanced pooled local; continuous raw	200	704	123	0.615	0.7204283625056087	paired-subject balanced pooled local	continuous raw	0
+paired-subject pooled local; calibrated then raw	40	704	26	0.65	0.8045675049538892	paired-subject pooled local	calibrated then raw	0
+paired-subject pooled local; calibrated then raw	100	704	61	0.61	0.6965327286853289	paired-subject pooled local	calibrated then raw	0
+paired-subject pooled local; calibrated then raw	200	704	120	0.6	0.6553111784950815	paired-subject pooled local	calibrated then raw	0
+paired-subject pooled local; continuous raw	40	704	33	0.825	0.9034332601131932	paired-subject pooled local	continuous raw	0
+paired-subject pooled local; continuous raw	100	704	67	0.67	0.793685271213742	paired-subject pooled local	continuous raw	0
+paired-subject pooled local; continuous raw	200	704	120	0.6	0.7113948890378974	paired-subject pooled local	continuous raw	0
+pooled local; calibrated then raw	40	704	26	0.65	0.8045675049538892	pooled local	calibrated then raw	0
+pooled local; calibrated then raw	100	704	61	0.61	0.6965327286853289	pooled local	calibrated then raw	0
+pooled local; calibrated then raw	200	704	120	0.6	0.6553111784950815	pooled local	calibrated then raw	0
+pooled local; continuous raw	40	704	33	0.825	0.9034332601131932	pooled local	continuous raw	0
+pooled local; continuous raw	100	704	67	0.67	0.793685271213742	pooled local	continuous raw	0
+pooled local; continuous raw	200	704	120	0.6	0.7113948890378974	pooled local	continuous raw	0
+primer-balanced pooled local; calibrated then raw	40	704	27	0.675	0.8136260996239857	primer-balanced pooled local	calibrated then raw	0
+primer-balanced pooled local; calibrated then raw	100	704	62	0.62	0.7068483081993169	primer-balanced pooled local	calibrated then raw	0
+primer-balanced pooled local; calibrated then raw	200	704	124	0.62	0.6670102261984482	primer-balanced pooled local	calibrated then raw	0
+primer-balanced pooled local; continuous raw	40	704	33	0.825	0.9077917858228218	primer-balanced pooled local	continuous raw	0
+primer-balanced pooled local; continuous raw	100	704	67	0.67	0.7996706173668261	primer-balanced pooled local	continuous raw	0
+primer-balanced pooled local; continuous raw	200	704	123	0.615	0.7204283625056087	primer-balanced pooled local	continuous raw	0
+subject arithmetic mean A1; calibrated then raw	40	704	26	0.65	0.7456744861964191	subject arithmetic mean A1	calibrated then raw	0
+subject arithmetic mean A1; calibrated then raw	100	704	58	0.58	0.6560236379875741	subject arithmetic mean A1	calibrated then raw	0
+subject arithmetic mean A1; calibrated then raw	200	704	121	0.605	0.6267687911992065	subject arithmetic mean A1	calibrated then raw	0
+subject arithmetic mean A1; continuous raw	40	704	32	0.8	0.8008400303267488	subject arithmetic mean A1	continuous raw	0
+subject arithmetic mean A1; continuous raw	100	704	65	0.65	0.7297126490808001	subject arithmetic mean A1	continuous raw	0
+subject arithmetic mean A1; continuous raw	200	704	118	0.59	0.6695625701887784	subject arithmetic mean A1	continuous raw	0
+subject arithmetic mean A16; calibrated then raw	40	704	26	0.65	0.7786750938401455	subject arithmetic mean A16	calibrated then raw	0
+subject arithmetic mean A16; calibrated then raw	100	704	61	0.61	0.6749872221243034	subject arithmetic mean A16	calibrated then raw	0
+subject arithmetic mean A16; calibrated then raw	200	704	122	0.61	0.6452668352459816	subject arithmetic mean A16	calibrated then raw	0
+subject arithmetic mean A16; continuous raw	40	704	32	0.8	0.8022324895894757	subject arithmetic mean A16	continuous raw	0
+subject arithmetic mean A16; continuous raw	100	704	65	0.65	0.7290270274702929	subject arithmetic mean A16	continuous raw	0
+subject arithmetic mean A16; continuous raw	200	704	118	0.59	0.6709126111312841	subject arithmetic mean A16	continuous raw	0
+subject arithmetic mean A32; calibrated then raw	40	704	26	0.65	0.7786750938401455	subject arithmetic mean A32	calibrated then raw	0
+subject arithmetic mean A32; calibrated then raw	100	704	60	0.6	0.6746841712069666	subject arithmetic mean A32	calibrated then raw	0
+subject arithmetic mean A32; calibrated then raw	200	704	120	0.6	0.6411366265021017	subject arithmetic mean A32	calibrated then raw	0
+subject arithmetic mean A32; continuous raw	40	704	32	0.8	0.8022324895894757	subject arithmetic mean A32	continuous raw	0
+subject arithmetic mean A32; continuous raw	100	704	64	0.64	0.7250467763676589	subject arithmetic mean A32	continuous raw	0
+subject arithmetic mean A32; continuous raw	200	704	116	0.58	0.663655475723253	subject arithmetic mean A32	continuous raw	0
+subject arithmetic mean A4; calibrated then raw	40	704	26	0.65	0.7786750938401455	subject arithmetic mean A4	calibrated then raw	0
+subject arithmetic mean A4; calibrated then raw	100	704	59	0.59	0.6658289372199337	subject arithmetic mean A4	calibrated then raw	0
+subject arithmetic mean A4; calibrated then raw	200	704	122	0.61	0.637657535860627	subject arithmetic mean A4	calibrated then raw	0
+subject arithmetic mean A4; continuous raw	40	704	32	0.8	0.8022324895894757	subject arithmetic mean A4	continuous raw	0
+subject arithmetic mean A4; continuous raw	100	704	63	0.63	0.7247267368439103	subject arithmetic mean A4	continuous raw	0
+subject arithmetic mean A4; continuous raw	200	704	117	0.585	0.662059521538678	subject arithmetic mean A4	continuous raw	0
+subject arithmetic mean A64; calibrated then raw	40	704	26	0.65	0.7786750938401455	subject arithmetic mean A64	calibrated then raw	0
+subject arithmetic mean A64; calibrated then raw	100	704	60	0.6	0.6746841712069666	subject arithmetic mean A64	calibrated then raw	0
+subject arithmetic mean A64; calibrated then raw	200	704	121	0.605	0.6434394783585033	subject arithmetic mean A64	calibrated then raw	0
+subject arithmetic mean A64; continuous raw	40	704	33	0.825	0.8062408158017493	subject arithmetic mean A64	continuous raw	0
+subject arithmetic mean A64; continuous raw	100	704	65	0.65	0.7357384516396008	subject arithmetic mean A64	continuous raw	0
+subject arithmetic mean A64; continuous raw	200	704	116	0.58	0.6719567886882232	subject arithmetic mean A64	continuous raw	0
+subject geometric mean A1; calibrated then raw	40	704	26	0.65	0.7456744861964191	subject geometric mean A1	calibrated then raw	0
+subject geometric mean A1; calibrated then raw	100	704	61	0.61	0.6592076972923805	subject geometric mean A1	calibrated then raw	0
+subject geometric mean A1; calibrated then raw	200	704	125	0.625	0.6407782001061204	subject geometric mean A1	calibrated then raw	0
+subject geometric mean A1; continuous raw	40	704	31	0.775	0.7850104219724076	subject geometric mean A1	continuous raw	0
+subject geometric mean A1; continuous raw	100	704	66	0.66	0.7272041762357035	subject geometric mean A1	continuous raw	0
+subject geometric mean A1; continuous raw	200	704	120	0.6	0.6765238747383242	subject geometric mean A1	continuous raw	0
+subject geometric mean A16; calibrated then raw	40	704	26	0.65	0.7786750938401455	subject geometric mean A16	calibrated then raw	0
+subject geometric mean A16; calibrated then raw	100	704	60	0.6	0.6746841712069666	subject geometric mean A16	calibrated then raw	0
+subject geometric mean A16; calibrated then raw	200	704	121	0.605	0.641662042634904	subject geometric mean A16	calibrated then raw	0
+subject geometric mean A16; continuous raw	40	704	32	0.8	0.8022324895894757	subject geometric mean A16	continuous raw	0
+subject geometric mean A16; continuous raw	100	704	65	0.65	0.7290270274702929	subject geometric mean A16	continuous raw	0
+subject geometric mean A16; continuous raw	200	704	117	0.585	0.6690988684269792	subject geometric mean A16	continuous raw	0
+subject geometric mean A32; calibrated then raw	40	704	26	0.65	0.7786750938401455	subject geometric mean A32	calibrated then raw	0
+subject geometric mean A32; calibrated then raw	100	704	60	0.6	0.6746841712069666	subject geometric mean A32	calibrated then raw	0
+subject geometric mean A32; calibrated then raw	200	704	120	0.6	0.6411366265021017	subject geometric mean A32	calibrated then raw	0
+subject geometric mean A32; continuous raw	40	704	32	0.8	0.8022324895894757	subject geometric mean A32	continuous raw	0
+subject geometric mean A32; continuous raw	100	704	64	0.64	0.7250467763676589	subject geometric mean A32	continuous raw	0
+subject geometric mean A32; continuous raw	200	704	116	0.58	0.663655475723253	subject geometric mean A32	continuous raw	0
+subject geometric mean A4; calibrated then raw	40	704	26	0.65	0.7786750938401455	subject geometric mean A4	calibrated then raw	0
+subject geometric mean A4; calibrated then raw	100	704	59	0.59	0.6658289372199337	subject geometric mean A4	calibrated then raw	0
+subject geometric mean A4; calibrated then raw	200	704	121	0.605	0.6345872280061521	subject geometric mean A4	calibrated then raw	0
+subject geometric mean A4; continuous raw	40	704	32	0.8	0.8022324895894757	subject geometric mean A4	continuous raw	0
+subject geometric mean A4; continuous raw	100	704	63	0.63	0.7247267368439103	subject geometric mean A4	continuous raw	0
+subject geometric mean A4; continuous raw	200	704	117	0.585	0.662059521538678	subject geometric mean A4	continuous raw	0
+subject geometric mean A64; calibrated then raw	40	704	26	0.65	0.7786750938401455	subject geometric mean A64	calibrated then raw	0
+subject geometric mean A64; calibrated then raw	100	704	60	0.6	0.6746841712069666	subject geometric mean A64	calibrated then raw	0
+subject geometric mean A64; calibrated then raw	200	704	121	0.605	0.6434394783585033	subject geometric mean A64	calibrated then raw	0
+subject geometric mean A64; continuous raw	40	704	33	0.825	0.8062408158017493	subject geometric mean A64	continuous raw	0
+subject geometric mean A64; continuous raw	100	704	65	0.65	0.7357384516396008	subject geometric mean A64	continuous raw	0
+subject geometric mean A64; continuous raw	200	704	116	0.58	0.6719567886882232	subject geometric mean A64	continuous raw	0
+subject-mean A1; calibrated then raw	40	704	26	0.65	0.7456744861964191	subject-mean A1	calibrated then raw	0
+subject-mean A1; calibrated then raw	100	704	58	0.58	0.6560236379875741	subject-mean A1	calibrated then raw	0
+subject-mean A1; calibrated then raw	200	704	121	0.605	0.6267687911992065	subject-mean A1	calibrated then raw	0
+subject-mean A1; continuous raw	40	704	32	0.8	0.8008400303267488	subject-mean A1	continuous raw	0
+subject-mean A1; continuous raw	100	704	65	0.65	0.7297126490808001	subject-mean A1	continuous raw	0
+subject-mean A1; continuous raw	200	704	118	0.59	0.6695625701887784	subject-mean A1	continuous raw	0

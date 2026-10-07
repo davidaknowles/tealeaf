@@ -1,0 +1,36 @@
+{
+  "settings": {
+    "candidate_settings": {
+      "version": 3,
+      "data_cache": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/differential/ec_glmm_prepared.pkl",
+      "features": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/hierarchical/weighted_rank32_joint_glm_cols.txt",
+      "block_cache": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/differential/gencode_vM32_splice_blocks.json.gz",
+      "event_table": null,
+      "test_effect": "cell_type",
+      "min_gene_umis": 25.0,
+      "min_gene_samples": 0,
+      "min_cell_types": 2,
+      "min_celltype_mice": 4,
+      "min_conditions": 2,
+      "min_condition_mice": 3,
+      "max_isoforms": 10,
+      "max_ecs": 128,
+      "subject_folds": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/junction_benchmark/reproducibility/subject_folds.tsv",
+      "subject_fold": 0
+    },
+    "selected_blocks": 128,
+    "draws": 16,
+    "null_replicates": 32,
+    "subject_scale": 0.5,
+    "free_isoforms": true,
+    "null": "common transcript mixture for all cell types within each subject, observed primer/depth totals preserved",
+    "baseline": "refitted for each simulated count draw",
+    "seed": 381924
+  },
+  "null": "Exactly equal transcript mixtures across cell types within each subject; observed primer/depth totals retained",
+  "assessment": "True EC count nulls, distinct from label-permutation nulls",
+  "calibration": "32 within-subject permutations/sign flips per simulated test and draw; own test excluded from pooled empirical calibration",
+  "variance_moderation": false,
+  "limitation": "Fixed compatibility, no biological cell-type heteroscedasticity, no EB reselection; block-wise simulations do not preserve a coherent joint-gene null",
+  "interpretation": "Reject fractions diagnose conditional testing calibration; per-draw BH counts do not certify joint real-data FDR"
+}

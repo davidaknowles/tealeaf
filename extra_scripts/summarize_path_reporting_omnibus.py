@@ -21,9 +21,10 @@ from tealeaf.sc.replication_audit import aligned_direction, ranked_direction_sum
 KEYS = ["gene_id", "pair_id", "block_id"]
 
 
-def load_shards(root, name="observed.tsv"):
+def load_shards(root, name="observed.tsv", expected=None):
     paths = sorted(root.glob(f"shard_*/{name}"))
-    expected = 32 if root.name in ("pairwise_fold0", "pairwise_fold1") else 16
+    if expected is None:
+        expected = 32 if root.name in ("pairwise_fold0", "pairwise_fold1") else 16
     if len(paths) != expected:
         raise ValueError(f"expected {expected} completed shards, found {len(paths)} in {root}")
     table = pd.concat([pd.read_csv(path, sep="\t", low_memory=False) for path in paths], ignore_index=True)
@@ -62,7 +63,7 @@ def prepare_effects(table):
     return table
 
 
-def reporting_summary(joined, masks, output):
+def reporting_summary(joined, masks, output, compact_details=False):
     summaries, details = [], []
     for strategy, local in joined.groupby("strategy"):
         records = []
@@ -94,7 +95,11 @@ def reporting_summary(joined, masks, output):
                 effects_rho = float(spearmanr(np.concatenate([a for a, b in arrays]), np.concatenate([b for a, b in arrays])).statistic) if arrays else np.nan
                 summaries.append({"comparison": comparison, "strategy": strategy, "selection": scope, "n_selected": len(subset), "n_evaluable": int(finite.sum()), "n_agree": int(observed.direction_agrees.sum()), "agreement": observed.direction_agrees.mean(), "median_cosine": observed.cosine.median(), "rho_effect_components": effects_rho, "rho_effect_norms": norms_rho, "median_absolute_difference": norms.difference_norm.median(), "n_fallback_either": int(subset.report_fallback_either.fillna(False).sum())})
     pd.DataFrame(summaries).to_csv(output / "split_reporting_summary.tsv", sep="\t", index=False, na_rep="NA")
-    pd.concat(details, ignore_index=True).to_csv(output / "split_reporting_directions.tsv.gz", sep="\t", index=False, na_rep="NA")
+    detail_table = pd.concat(details, ignore_index=True)
+    if compact_details:
+        columns = [*KEYS, "strategy", "report_fallback_either", "direction_agrees", "cosine", "nonzero_components", "agreeing_components", "norm_0", "norm_1", "difference_norm", "effect_0", "effect_1"]
+        detail_table = detail_table[[column for column in columns if column in detail_table]].drop_duplicates([*KEYS, "strategy"])
+    detail_table.to_csv(output / "split_reporting_directions.tsv.gz", sep="\t", index=False, na_rep="NA")
     return pd.DataFrame(summaries)
 
 

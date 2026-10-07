@@ -17,6 +17,7 @@ from extra_scripts.run_ec_block_glmm import local_test_design, partition_candida
 from tealeaf.sc import differential, ec_block_glmm, ec_glmm
 from tealeaf.sc.omnibus import regression_omnibus
 from tealeaf.sc.path_reporting import dirichlet_pooling, proportion_covariance
+from tealeaf.sc.path_score import omnibus_path_score_test
 
 
 def paired_reports(base, baseline, path_index, labels, subjects):
@@ -57,8 +58,34 @@ def omnibus_statistics(values, proportions, labels, subjects):
     return stats
 
 
-def omnibus_reports(base, baseline, path_index, labels, subjects, replicates, seed, test_concentration=32.):
-    results = {concentration: ec_block_glmm.blocked_multilevel_path_test(base, path_index, labels, subjects, baseline=baseline, path_pseudocount=concentration, path_pseudocount_scaling="total") for concentration in (test_concentration, 1.)}
+def score_omnibus_reports(base, baseline, path_index, labels, subjects, replicates, seed, test_concentration=32.):
+    """Score inference survives a failed descriptive A1 regression fit."""
+    statistics, null = {}, []
+    for denominator in (1., test_concentration):
+        name = f"subject-score wild omnibus D{denominator:g}"
+        result = omnibus_path_score_test(base, path_index, labels, subjects, baseline=baseline, denominator_concentration=denominator, replicates=replicates, seed=seed)
+        null.extend({"strategy": name, **row} for row in result.pop("null"))
+        statistics[name] = result
+    levels = np.unique(labels)
+    size = int(np.max(path_index)) + 1
+    adjusted = np.full((len(levels), size), np.nan)
+    report_error = ""
+    quantified = {"labels": [], "subjects": [], "proportions": [], "values": {}}
+    try:
+        report = ec_block_glmm.blocked_multilevel_path_test(base, path_index, labels, subjects, baseline=baseline, path_pseudocount=1., path_pseudocount_scaling="total")
+        proportions = np.asarray([fit.path_proportions for fit in report["path_fits"]])
+        design, tested, fitted_levels, _ = ec_block_glmm.blocked_multilevel_design(report["observation_labels"], report["observation_subjects"])
+        coefficients = np.linalg.lstsq(design, proportions, rcond=None)[0][tested]
+        for level, value in zip(fitted_levels, np.vstack([np.zeros(size), coefficients])):
+            adjusted[np.flatnonzero(levels == level)[0]] = value
+        quantified = {"labels": report["observation_labels"].tolist(), "subjects": report["observation_subjects"].tolist(), "proportions": proportions.tolist(), "values": {"1.0": report["values"].tolist()}}
+    except (ValueError, np.linalg.LinAlgError) as exception:
+        report_error = str(exception)
+    return statistics, null, {"n_subjects": next(iter(statistics.values()))["n_subjects"], "n_observations": len(labels), "levels": levels, "adjusted_effects": adjusted, "report_error": report_error, "quantified": quantified}
+
+
+def omnibus_reports(base, baseline, path_index, labels, subjects, replicates, seed, test_concentration=32., prior_center="uniform", include_score=False):
+    results = {concentration: ec_block_glmm.blocked_multilevel_path_test(base, path_index, labels, subjects, baseline=baseline, path_pseudocount=concentration, path_pseudocount_scaling="total", path_prior_center=prior_center) for concentration in (test_concentration, 1.)}
     # Quantification failures must not silently create a different design.
     first, second = results[test_concentration], results[1.]
     keys = [(str(subject), int(level)) for subject, level in zip(first["observation_subjects"], first["observation_labels"])]
@@ -84,6 +111,12 @@ def omnibus_reports(base, baseline, path_index, labels, subjects, replicates, se
             permuted[positions] = rng.permutation(permuted[positions])
         permuted_stats = omnibus_statistics(indexed, proportions, permuted, observation_subjects)
         null.extend({"strategy": name, "replicate": replicate, **{key: result[key] for key in ("p_value", "statistic", "degrees_of_freedom")}} for name, result in permuted_stats.items())
+    if include_score:
+        for denominator in (1., test_concentration):
+            name = f"subject-score wild omnibus D{denominator:g}"
+            result = omnibus_path_score_test(base, path_index, labels, subjects, baseline=baseline, denominator_concentration=denominator, replicates=replicates, seed=seed)
+            null.extend({"strategy": name, **row} for row in result.pop("null"))
+            statistics[name] = result
     # Subject-blocked adjusted usage differences share one reference design.
     design, tested, levels, _ = ec_block_glmm.blocked_multilevel_design(observation_labels, observation_subjects)
     coefficients = np.linalg.lstsq(design, proportions, rcond=None)[0][tested]
@@ -103,6 +136,9 @@ def main():
     parser.add_argument("--null-replicates", type=int, default=32)
     parser.add_argument("--test-concentration", type=float, default=32.)
     parser.add_argument("--profile-mass", action="store_true")
+    parser.add_argument("--prior-center", choices=("uniform", "baseline"), default="uniform")
+    parser.add_argument("--include-score", action="store_true")
+    parser.add_argument("--score-only", action="store_true")
     args = parser.parse_args()
     if args.profile_mass:
         # Audit-process-only override, never the default production fitting path.
@@ -136,7 +172,10 @@ def main():
                     report["effect"] = json.dumps(report["effect"].tolist())
                     outputs.append({**header, "level_a": tested_levels[0], "level_b": tested_levels[1], **report})
             else:
-                statistics, null, details = omnibus_reports(base, baseline, path_index, labels, subjects, args.null_replicates, zlib.crc32(test_id.encode()), args.test_concentration)
+                if args.score_only:
+                    statistics, null, details = score_omnibus_reports(base, baseline, path_index, labels, subjects, args.null_replicates, zlib.crc32(test_id.encode()), args.test_concentration)
+                else:
+                    statistics, null, details = omnibus_reports(base, baseline, path_index, labels, subjects, args.null_replicates, zlib.crc32(test_id.encode()), args.test_concentration, prior_center=args.prior_center, include_score=args.include_score)
                 quantified.append({**header, "quantified": json.dumps(details.pop("quantified"))})
                 adjusted = details.pop("adjusted_effects")
                 level_names = [tested_levels[int(level)] for level in details.pop("levels")]
@@ -154,7 +193,7 @@ def main():
     if quantified:
         pd.DataFrame(quantified).to_csv(args.output_dir / "quantified.tsv.gz", sep="\t", index=False, na_rep="NA")
     (args.output_dir / "failures.json").write_text(json.dumps(failures, indent=2) + "\n")
-    (args.output_dir / "settings.json").write_text(json.dumps({"mode": args.mode, "candidate_settings": cached["settings"], "baseline": "current analytic EC optimizer, refitted within this subject fold", "profile_mass": args.profile_mass, "test_concentration": args.test_concentration, "null_replicates": args.null_replicates, "n_candidates": len(candidates), "n_failures": len(failures)}, default=str, indent=2) + "\n")
+    (args.output_dir / "settings.json").write_text(json.dumps({"mode": args.mode, "candidate_settings": cached["settings"], "baseline": "current analytic EC optimizer, refitted within this subject fold", "profile_mass": args.profile_mass, "prior_center": args.prior_center, "include_score": args.include_score, "score_only": args.score_only, "test_concentration": args.test_concentration, "null_replicates": args.null_replicates, "n_candidates": len(candidates), "n_failures": len(failures)}, default=str, indent=2) + "\n")
 
 
 if __name__ == "__main__":

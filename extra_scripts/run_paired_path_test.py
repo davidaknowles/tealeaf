@@ -9,9 +9,11 @@ from pathlib import Path
 import pickle
 import time
 import zlib
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
+from scipy.special import softmax
 
 from extra_scripts.run_ec_block_glmm import (
     group_metadata,
@@ -20,6 +22,7 @@ from extra_scripts.run_ec_block_glmm import (
 )
 from extra_scripts.run_ec_glmm import local_gene_data
 from tealeaf.sc import differential, ec_block_glmm
+from tealeaf.sc.path_score import paired_path_score_test, paired_subject_centered_test
 
 
 def parse_args():
@@ -54,6 +57,9 @@ def parse_args():
     parser.add_argument("--max-candidates", type=int)
     parser.add_argument("--test-id-file", type=Path)
     parser.add_argument("--export-path-usage", action="store_true")
+    parser.add_argument("--paired-inference", choices=("local", "ec-score", "subject-centered"), default="local", help="Experimental paired inference alternatives; local remains production.")
+    parser.add_argument("--score-null-concentration", type=float, default=1.)
+    parser.add_argument("--score-free-null", action="store_true")
     return parser.parse_args()
 
 
@@ -273,19 +279,37 @@ def main():
                 )
             baseline = pooled_cache[cache_key]
             if test_effect == "cell_type_pairwise":
-                result = ec_block_glmm.paired_path_test(
-                    base,
-                    path_index,
-                    labels,
-                    clusters,
-                    baseline=baseline,
-                    max_iter=args.max_iter,
-                    path_pseudocount=path_pseudocount,
-                    path_prior_center=args.path_prior_center,
-                    path_pseudocount_scaling=args.path_pseudocount_scaling,
-                    retain_uncertainty=args.retain_uncertainty,
-                    uncertainty_scale=uncertainty_scale,
-                )
+                if args.paired_inference != "local":
+                    if args.retain_uncertainty or args.uncertainty_scale_grid or args.uncertainty_scale_map:
+                        raise ValueError("experimental paired backends do not support measurement-error testing")
+                    if args.paired_inference == "subject-centered":
+                        result = paired_subject_centered_test(base, path_index, labels, clusters, baseline=baseline, concentration=path_pseudocount)
+                        result["difference_covariances"] = np.asarray([first.covariance.covariance + second.covariance.covariance for first, second in result["path_fits"]])
+                    else:
+                        result = paired_path_score_test(base, path_index, labels, clusters, baseline=baseline, denominator_concentration=path_pseudocount, null_concentration=args.score_null_concentration, free_null=args.score_free_null)
+                        proxy_fits = []
+                        basis = differential.helmert_basis(len(signatures))
+                        for fitted, response in zip(result.pop("null_fits"), result["differences"]):
+                            anchor = basis.T @ np.log(fitted.path_proportions)
+                            proxy_fits.append([SimpleNamespace(path_proportions=softmax(basis @ (anchor - response / 2))), SimpleNamespace(path_proportions=softmax(basis @ (anchor + response / 2)))])
+                        result["path_fits"] = proxy_fits
+                        # These zeros are unused by paired_mean_test and sign
+                        # flips; measurement-error CLI paths are forbidden.
+                        result["difference_covariances"] = np.zeros((len(result["differences"]), len(signatures) - 1, len(signatures) - 1))
+                else:
+                    result = ec_block_glmm.paired_path_test(
+                        base,
+                        path_index,
+                        labels,
+                        clusters,
+                        baseline=baseline,
+                        max_iter=args.max_iter,
+                        path_pseudocount=path_pseudocount,
+                        path_prior_center=args.path_prior_center,
+                        path_pseudocount_scaling=args.path_pseudocount_scaling,
+                        retain_uncertainty=args.retain_uncertainty,
+                        uncertainty_scale=uncertainty_scale,
+                    )
                 values = result.pop("differences")
                 value_covariances = result.pop("difference_covariances")
                 null_labels = None
@@ -373,6 +397,9 @@ def main():
                 "level_b": tested_levels[1] if test_effect == "cell_type_pairwise" else "",
                 "tested_cell_type": candidate[8] if test_effect == "condition_within_cell_type" else "",
                 "method": "local_path",
+                "inference_backend": args.paired_inference if test_effect == "cell_type_pairwise" else "local",
+                "score_null_concentration": args.score_null_concentration if args.paired_inference == "ec-score" else np.nan,
+                "score_free_null": args.score_free_null if args.paired_inference == "ec-score" else False,
                 "path_pseudocount": path_pseudocount,
                 "path_prior_center": args.path_prior_center,
                 "path_pseudocount_scaling": args.path_pseudocount_scaling,
@@ -502,6 +529,10 @@ def main():
         "completed": len(observed_rows),
         "failures": len(failures),
         "elapsed_seconds": time.perf_counter() - started,
+        "inference_backend": args.paired_inference,
+        "experimental": args.paired_inference != "local",
+        "candidate_settings": settings,
+        "score_report": "One-step ILR displacement mapped through subject-null softmax, not separately quantified cell-type usage" if args.paired_inference == "ec-score" else None,
     }, indent=2) + "\n")
 
 

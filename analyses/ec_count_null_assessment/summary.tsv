@@ -1,0 +1,11 @@
+strategy	n_tests	n_blocks	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01
+Pillai ILR A1	2000	125	2000	0.1425	0.154	0.0635
+Pillai ILR A32	2000	125	2000	0.4165	0.4275	0.292
+Pillai proportions A1	2000	125	2000	0.116	0.134	0.046
+maximum-coordinate F ILR A1	2000	125	2000	0.1775	0.1515	0.0635
+maximum-coordinate F ILR A32	2000	125	2000	0.474	0.4345	0.3145
+maximum-coordinate F proportions A1	2000	125	2000	0.1325	0.1145	0.0335
+null-variance Wald A32	2000	125	2000	0.3975	0.4405	0.3065
+trace F ILR A1	2000	125	2000	0.162	0.16	0.0625
+trace F ILR A32	2000	125	2000	0.467	0.446	0.314
+trace F proportions A1	2000	125	2000	0.1225	0.118	0.034

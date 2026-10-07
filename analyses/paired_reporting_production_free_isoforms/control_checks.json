@@ -1,0 +1,23 @@
+[
+  {
+    "fold": 0,
+    "n_tests": 7522,
+    "maximum_absolute_component_difference": 1.168840208483346e-05,
+    "median_absolute_component_difference": 1.3877787807814457e-16,
+    "tolerance": 5e-05
+  },
+  {
+    "fold": 1,
+    "n_tests": 5055,
+    "maximum_absolute_component_difference": 5.047668358154622e-07,
+    "median_absolute_component_difference": 9.367506770274758e-17,
+    "tolerance": 5e-05
+  },
+  {
+    "fold": "full",
+    "n_tests": 2950,
+    "maximum_absolute_component_difference": 2.107846992119994e-06,
+    "median_absolute_component_difference": 9.020562075079397e-17,
+    "tolerance": 5e-05
+  }
+]

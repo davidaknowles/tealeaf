@@ -1,0 +1,161 @@
+draw	strategy	n_tests	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01	BH_discoveries
+0	Pillai ILR A1	125	125	0.16	0.208	0.056	1
+0	Pillai ILR A32	125	125	0.4	0.408	0.288	42
+0	Pillai proportions A1	125	125	0.104	0.136	0.048	0
+0	maximum-coordinate F ILR A1	125	125	0.2	0.192	0.048	1
+0	maximum-coordinate F ILR A32	125	125	0.472	0.432	0.304	39
+0	maximum-coordinate F proportions A1	125	125	0.136	0.12	0.032	0
+0	null-variance Wald A32	125	125	0.376	0.4	0.28	39
+0	trace F ILR A1	125	125	0.192	0.192	0.056	1
+0	trace F ILR A32	125	125	0.456	0.408	0.288	41
+0	trace F proportions A1	125	125	0.112	0.096	0.032	0
+1	Pillai ILR A1	125	125	0.128	0.144	0.048	4
+1	Pillai ILR A32	125	125	0.432	0.456	0.248	35
+1	Pillai proportions A1	125	125	0.12	0.128	0.056	1
+1	maximum-coordinate F ILR A1	125	125	0.136	0.128	0.048	4
+1	maximum-coordinate F ILR A32	125	125	0.496	0.44	0.264	37
+1	maximum-coordinate F proportions A1	125	125	0.136	0.096	0.032	1
+1	null-variance Wald A32	125	125	0.424	0.472	0.272	36
+1	trace F ILR A1	125	125	0.12	0.128	0.04	4
+1	trace F ILR A32	125	125	0.496	0.48	0.28	35
+1	trace F proportions A1	125	125	0.096	0.096	0.048	0
+2	Pillai ILR A1	125	125	0.16	0.16	0.056	2
+2	Pillai ILR A32	125	125	0.432	0.464	0.32	41
+2	Pillai proportions A1	125	125	0.136	0.136	0.072	0
+2	maximum-coordinate F ILR A1	125	125	0.168	0.136	0.064	2
+2	maximum-coordinate F ILR A32	125	125	0.496	0.456	0.344	44
+2	maximum-coordinate F proportions A1	125	125	0.144	0.112	0.048	0
+2	null-variance Wald A32	125	125	0.408	0.432	0.352	46
+2	trace F ILR A1	125	125	0.152	0.136	0.064	3
+2	trace F ILR A32	125	125	0.496	0.456	0.328	50
+2	trace F proportions A1	125	125	0.16	0.136	0.04	0
+3	Pillai ILR A1	125	125	0.16	0.168	0.072	3
+3	Pillai ILR A32	125	125	0.352	0.376	0.272	36
+3	Pillai proportions A1	125	125	0.104	0.112	0.048	1
+3	maximum-coordinate F ILR A1	125	125	0.184	0.176	0.08	1
+3	maximum-coordinate F ILR A32	125	125	0.456	0.432	0.288	38
+3	maximum-coordinate F proportions A1	125	125	0.12	0.088	0.032	1
+3	null-variance Wald A32	125	125	0.352	0.408	0.296	41
+3	trace F ILR A1	125	125	0.152	0.168	0.08	4
+3	trace F ILR A32	125	125	0.432	0.4	0.304	42
+3	trace F proportions A1	125	125	0.096	0.08	0.032	0
+4	Pillai ILR A1	125	125	0.128	0.128	0.024	2
+4	Pillai ILR A32	125	125	0.368	0.368	0.264	34
+4	Pillai proportions A1	125	125	0.12	0.12	0.04	1
+4	maximum-coordinate F ILR A1	125	125	0.168	0.144	0.024	2
+4	maximum-coordinate F ILR A32	125	125	0.464	0.424	0.288	40
+4	maximum-coordinate F proportions A1	125	125	0.104	0.096	0.016	1
+4	null-variance Wald A32	125	125	0.344	0.416	0.288	41
+4	trace F ILR A1	125	125	0.16	0.144	0.032	2
+4	trace F ILR A32	125	125	0.464	0.416	0.304	41
+4	trace F proportions A1	125	125	0.096	0.088	0.016	0
+5	Pillai ILR A1	125	125	0.112	0.12	0.048	3
+5	Pillai ILR A32	125	125	0.384	0.392	0.256	37
+5	Pillai proportions A1	125	125	0.088	0.104	0.032	2
+5	maximum-coordinate F ILR A1	125	125	0.168	0.128	0.056	3
+5	maximum-coordinate F ILR A32	125	125	0.448	0.384	0.28	40
+5	maximum-coordinate F proportions A1	125	125	0.096	0.08	0.024	2
+5	null-variance Wald A32	125	125	0.392	0.424	0.264	42
+5	trace F ILR A1	125	125	0.128	0.128	0.056	2
+5	trace F ILR A32	125	125	0.424	0.408	0.264	44
+5	trace F proportions A1	125	125	0.096	0.096	0.024	2
+6	Pillai ILR A1	125	125	0.152	0.176	0.088	9
+6	Pillai ILR A32	125	125	0.432	0.44	0.296	40
+6	Pillai proportions A1	125	125	0.096	0.112	0.032	0
+6	maximum-coordinate F ILR A1	125	125	0.184	0.168	0.064	3
+6	maximum-coordinate F ILR A32	125	125	0.472	0.44	0.304	40
+6	maximum-coordinate F proportions A1	125	125	0.136	0.104	0.024	0
+6	null-variance Wald A32	125	125	0.408	0.44	0.304	41
+6	trace F ILR A1	125	125	0.184	0.184	0.072	0
+6	trace F ILR A32	125	125	0.456	0.456	0.296	43
+6	trace F proportions A1	125	125	0.112	0.112	0.008	0
+7	Pillai ILR A1	125	125	0.176	0.176	0.088	6
+7	Pillai ILR A32	125	125	0.424	0.424	0.328	43
+7	Pillai proportions A1	125	125	0.144	0.176	0.08	0
+7	maximum-coordinate F ILR A1	125	125	0.192	0.176	0.096	3
+7	maximum-coordinate F ILR A32	125	125	0.448	0.424	0.368	47
+7	maximum-coordinate F proportions A1	125	125	0.16	0.152	0.072	0
+7	null-variance Wald A32	125	125	0.392	0.432	0.312	45
+7	trace F ILR A1	125	125	0.176	0.176	0.08	8
+7	trace F ILR A32	125	125	0.472	0.44	0.336	48
+7	trace F proportions A1	125	125	0.128	0.128	0.04	0
+8	Pillai ILR A1	125	125	0.136	0.136	0.056	5
+8	Pillai ILR A32	125	125	0.424	0.424	0.272	37
+8	Pillai proportions A1	125	125	0.144	0.144	0.04	2
+8	maximum-coordinate F ILR A1	125	125	0.152	0.12	0.048	4
+8	maximum-coordinate F ILR A32	125	125	0.464	0.416	0.28	43
+8	maximum-coordinate F proportions A1	125	125	0.152	0.128	0.024	0
+8	null-variance Wald A32	125	125	0.384	0.416	0.312	42
+8	trace F ILR A1	125	125	0.136	0.128	0.056	4
+8	trace F ILR A32	125	125	0.448	0.424	0.304	41
+8	trace F proportions A1	125	125	0.136	0.128	0.032	0
+9	Pillai ILR A1	125	125	0.12	0.12	0.056	4
+9	Pillai ILR A32	125	125	0.408	0.424	0.28	42
+9	Pillai proportions A1	125	125	0.12	0.128	0.032	1
+9	maximum-coordinate F ILR A1	125	125	0.168	0.12	0.04	4
+9	maximum-coordinate F ILR A32	125	125	0.488	0.424	0.32	47
+9	maximum-coordinate F proportions A1	125	125	0.144	0.088	0.032	1
+9	null-variance Wald A32	125	125	0.416	0.432	0.296	46
+9	trace F ILR A1	125	125	0.176	0.168	0.048	5
+9	trace F ILR A32	125	125	0.464	0.456	0.312	49
+9	trace F proportions A1	125	125	0.128	0.128	0.024	0
+10	Pillai ILR A1	125	125	0.16	0.176	0.088	6
+10	Pillai ILR A32	125	125	0.44	0.44	0.328	43
+10	Pillai proportions A1	125	125	0.096	0.128	0.04	0
+10	maximum-coordinate F ILR A1	125	125	0.2	0.168	0.096	5
+10	maximum-coordinate F ILR A32	125	125	0.48	0.464	0.36	48
+10	maximum-coordinate F proportions A1	125	125	0.12	0.12	0.04	1
+10	null-variance Wald A32	125	125	0.432	0.48	0.328	50
+10	trace F ILR A1	125	125	0.184	0.184	0.072	2
+10	trace F ILR A32	125	125	0.504	0.488	0.32	52
+10	trace F proportions A1	125	125	0.12	0.12	0.064	0
+11	Pillai ILR A1	125	125	0.112	0.128	0.064	8
+11	Pillai ILR A32	125	125	0.416	0.416	0.304	43
+11	Pillai proportions A1	125	125	0.104	0.128	0.056	0
+11	maximum-coordinate F ILR A1	125	125	0.16	0.12	0.064	2
+11	maximum-coordinate F ILR A32	125	125	0.48	0.44	0.336	47
+11	maximum-coordinate F proportions A1	125	125	0.136	0.12	0.04	0
+11	null-variance Wald A32	125	125	0.384	0.432	0.328	44
+11	trace F ILR A1	125	125	0.136	0.144	0.064	4
+11	trace F ILR A32	125	125	0.448	0.448	0.344	45
+11	trace F proportions A1	125	125	0.128	0.128	0.048	0
+12	Pillai ILR A1	125	125	0.16	0.16	0.096	0
+12	Pillai ILR A32	125	125	0.424	0.448	0.32	45
+12	Pillai proportions A1	125	125	0.104	0.136	0.04	0
+12	maximum-coordinate F ILR A1	125	125	0.24	0.184	0.104	0
+12	maximum-coordinate F ILR A32	125	125	0.488	0.448	0.336	48
+12	maximum-coordinate F proportions A1	125	125	0.112	0.12	0.016	0
+12	null-variance Wald A32	125	125	0.408	0.464	0.336	49
+12	trace F ILR A1	125	125	0.208	0.208	0.096	0
+12	trace F ILR A32	125	125	0.488	0.48	0.36	52
+12	trace F proportions A1	125	125	0.128	0.128	0.008	0
+13	Pillai ILR A1	125	125	0.128	0.128	0.048	2
+13	Pillai ILR A32	125	125	0.448	0.456	0.312	40
+13	Pillai proportions A1	125	125	0.104	0.136	0.04	2
+13	maximum-coordinate F ILR A1	125	125	0.176	0.152	0.056	1
+13	maximum-coordinate F ILR A32	125	125	0.464	0.44	0.328	44
+13	maximum-coordinate F proportions A1	125	125	0.112	0.104	0.032	0
+13	null-variance Wald A32	125	125	0.416	0.456	0.312	47
+13	trace F ILR A1	125	125	0.16	0.152	0.064	4
+13	trace F ILR A32	125	125	0.464	0.456	0.336	44
+13	trace F proportions A1	125	125	0.12	0.12	0.032	0
+14	Pillai ILR A1	125	125	0.16	0.184	0.08	4
+14	Pillai ILR A32	125	125	0.44	0.448	0.296	40
+14	Pillai proportions A1	125	125	0.168	0.184	0.056	0
+14	maximum-coordinate F ILR A1	125	125	0.192	0.176	0.072	0
+14	maximum-coordinate F ILR A32	125	125	0.496	0.464	0.312	45
+14	maximum-coordinate F proportions A1	125	125	0.2	0.184	0.04	0
+14	null-variance Wald A32	125	125	0.4	0.496	0.296	40
+14	trace F ILR A1	125	125	0.184	0.176	0.056	0
+14	trace F ILR A32	125	125	0.496	0.464	0.312	44
+14	trace F proportions A1	125	125	0.168	0.168	0.064	1
+15	Pillai ILR A1	125	125	0.128	0.152	0.048	2
+15	Pillai ILR A32	125	125	0.44	0.456	0.288	43
+15	Pillai proportions A1	125	125	0.104	0.136	0.024	0
+15	maximum-coordinate F ILR A1	125	125	0.152	0.136	0.056	0
+15	maximum-coordinate F ILR A32	125	125	0.472	0.424	0.32	46
+15	maximum-coordinate F proportions A1	125	125	0.112	0.12	0.032	0
+15	null-variance Wald A32	125	125	0.424	0.448	0.328	49
+15	trace F ILR A1	125	125	0.144	0.144	0.064	0
+15	trace F ILR A32	125	125	0.464	0.456	0.336	47
+15	trace F proportions A1	125	125	0.136	0.136	0.032	0
