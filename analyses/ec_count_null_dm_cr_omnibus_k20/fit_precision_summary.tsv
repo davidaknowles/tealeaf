@@ -1,0 +1,5 @@
+strategy	n_fitted	median_precision	grid_boundary_fraction	median_effective_depth
+joint DM CR F-reference A0.25 likelihood	482	102400.0	0.7012448132780082	18.458146679644095
+joint DM CR LRT A0.25 likelihood	482	102400.0	0.7012448132780082	18.458146679644095
+joint DM known latent K20 F-reference A0.25 likelihood	484	20.0	0.0	18.2630281921689
+joint DM known latent K20 LRT A0.25 likelihood	484	20.0	0.0	18.2630281921689

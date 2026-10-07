@@ -1,0 +1,8 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	direction_selected	direction_evaluable	direction_agreement	common_events	failed_tests_fold0	failed_tests_fold1
+LeafCutter	joint DM LRT A1 likelihood	simes	simes	747	139	15	17	5	0.8450980392156863	0.5941873883579437	49	49	0.9795918367346939	1056	28	24
+MAJIQ Heterogen	joint DM LRT A1 likelihood	simes	simes	2499	479	7	0	0	1.0	0.5201075014778022	101	101	0.9900990099009901	3456	44	34
+SUPPA2	joint DM LRT A1 likelihood	simes	simes	2342	457	0	0	0	NA	0.5571307279056505	53	53	0.9811320754716981	3361	43	35
+SUPPA2 primer-aware	joint DM LRT A1 likelihood	simes	simes	2191	431	0	0	0	NA	0.5470243090439801	58	58	0.9827586206896551	3200	37	29
+SUPPA2/Tealeaf hybrid	joint DM LRT A1 likelihood	simes	simes	1755	354	3	0	0	1.0	0.6001850658499961	46	46	0.9782608695652174	2340	22	25
+rMATS (paired)	joint DM LRT A1 likelihood	simes	simes	3109	597	0	0	0	NA	0.5489489523361849	85	85	0.9882352941176471	4159	67	58
+scQuint	joint DM LRT A1 likelihood	simes	simes	2599	506	10	0	0	1.0	0.5449932989945226	98	98	0.9897959183673469	3569	65	54

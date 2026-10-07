@@ -1,0 +1,3 @@
+strategy	n_null_trials	n_converged	failed_fraction
+joint DM CR F-reference A0.25 likelihood	16384	15442	0.0574951171875
+joint DM CR LRT A0.25 likelihood	16384	15442	0.0574951171875

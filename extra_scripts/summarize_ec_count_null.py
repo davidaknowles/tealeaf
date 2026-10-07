@@ -51,6 +51,10 @@ def main():
         flagged = null.copy()
         flagged["fit_available"] = flagged.converged.astype(str).str.lower().eq("true")
         flagged.groupby("strategy").agg(n_null_trials=("p_value", "size"), n_converged=("fit_available", "sum"), failed_fraction=("fit_available", lambda values: (~values).mean())).reset_index().to_csv(args.output_dir / "null_fit_summary.tsv", sep="\t", index=False)
+    if "alternative_concentration" in tests:
+        fitted = tests.loc[tests.converged.astype(str).str.lower().eq("true")].copy()
+        fitted["grid_boundary"] = fitted.profile_boundary.astype(str).str.lower().eq("true")
+        fitted.groupby("strategy").agg(n_fitted=("p_value", "size"), median_precision=("alternative_concentration", "median"), grid_boundary_fraction=("grid_boundary", "mean"), median_effective_depth=("effective_depth_median", "median")).reset_index().to_csv(args.output_dir / "fit_precision_summary.tsv", sep="\t", index=False)
     # Overall nominal calibration can hide failure in individual dimensions or
     # repeated rejection of the same null hypothesis across count draws.
     diagnostics = {

@@ -1,0 +1,5 @@
+strategy	n_tests	n_blocks	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01
+joint DM CR F-reference A0.25 likelihood	512	128	482	0.08984375	0.0546875	0.009765625
+joint DM CR LRT A0.25 likelihood	512	128	482	0.14453125	0.05078125	0.00390625
+joint DM known latent K20 F-reference A0.25 likelihood	512	128	484	0.009765625	0.056640625	0.015625
+joint DM known latent K20 LRT A0.25 likelihood	512	128	484	0.01953125	0.056640625	0.01171875

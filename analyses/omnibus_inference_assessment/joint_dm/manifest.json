@@ -66,10 +66,43 @@
         "joint DM LRT A0.25 posterior, joint_dm": 4,
         "joint DM LRT A1 likelihood, joint_dm": 27
       }
+    },
+    {
+      "fold": "full",
+      "candidate_settings": {
+        "version": 3,
+        "data_cache": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/differential/ec_glmm_prepared.pkl",
+        "features": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/hierarchical/weighted_rank32_joint_glm_cols.txt",
+        "block_cache": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/differential/gencode_vM32_splice_blocks.json.gz",
+        "event_table": null,
+        "test_effect": "cell_type",
+        "min_gene_umis": 25.0,
+        "min_gene_samples": 0,
+        "min_cell_types": 2,
+        "min_celltype_mice": 3,
+        "min_conditions": 2,
+        "min_condition_mice": 3,
+        "max_isoforms": 10,
+        "max_ecs": 128,
+        "subject_folds": null,
+        "subject_fold": null,
+        "joint_gene_test": false
+      },
+      "test_concentration": null,
+      "quantification_concentrations": [
+        0.25,
+        1.0
+      ],
+      "control_testing_concentration": 64,
+      "n_control_blocks": 1942,
+      "n_missing_by_strategy": {
+        "joint DM LRT A0.25 likelihood, joint_dm": 93,
+        "joint DM LRT A0.25 posterior, joint_dm": 8,
+        "joint DM LRT A1 likelihood, joint_dm": 89
+      }
     }
   ],
-  "selection": "fixed eligible control block universe; missing experimental fits p=1",
-  "split_only": true,
-  "long_read": "not assessed by this invocation",
-  "production_changes": false
+  "selection": "fixed eligible control block universe; missing experimental fits have p=1 and unavailable direction",
+  "LR": "all tested control-universe blocks, remapped without a paired-discovery screen; largest effect contrast using each variant's standardized model means",
+  "interpretation": "exploratory conditional count-null, split and LR audits, not certification of FDR or an adopted production change"
 }

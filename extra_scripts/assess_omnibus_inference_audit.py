@@ -79,7 +79,7 @@ def main():
             # Older controls used the documented default 32; full-data controls
             # are rerun at 64 so both the prior center and score comparisons match.
             strengths = settings[len(frames)].get("test_concentration", 32.)
-            joint_dm = settings[len(frames)].get("joint_dm_only", False)
+            joint_dm = settings[len(frames)].get("joint_dm_only", False) or settings[len(frames)].get("cox_reid_only", False)
             if not joint_dm and strengths != (64. if fold == "full" else 32.):
                 raise ValueError("testing concentrations differ from the prespecified matched control")
             calibrated, _, audit = calibrate_omnibus(observed, null)
@@ -110,7 +110,7 @@ def main():
         return
     # No pooled reporting or old paired discovery list restricts the LR universe.
     # Select the largest source effect among supported types before LR checks.
-    if settings[0].get("joint_dm_only", False):
+    if settings[0].get("joint_dm_only", False) or settings[0].get("cox_reid_only", False):
         report = full[["block_id", "levels", "path_signatures", "adjusted_effects", "strategy", "converged"]].copy()
         report["strategy"] = "standardized means, " + report.strategy
     else:
@@ -125,7 +125,7 @@ def main():
         if "method" in table:
             table["method"] = table.method.str.replace("archived production omnibus", "refitted uniform control omnibus", regex=False)
         table.to_csv(path, sep="\t", index=False, na_rep="NA")
-    reporting_description = "each variant's standardized model means" if settings[0].get("joint_dm_only", False) else "source A1 means"
+    reporting_description = "each variant's standardized model means" if settings[0].get("joint_dm_only", False) or settings[0].get("cox_reid_only", False) else "source A1 means"
     (args.output_dir / "manifest.json").write_text(json.dumps({"variant": args.name, "cohorts": provenance, "selection": "fixed eligible control block universe; missing experimental fits have p=1 and unavailable direction", "LR": f"all tested control-universe blocks, remapped without a paired-discovery screen; largest effect contrast using {reporting_description}", "interpretation": "exploratory conditional count-null, split and LR audits, not certification of FDR or an adopted production change"}, indent=2) + "\n")
     print(summary.to_string(index=False), flush=True)
 

@@ -34,17 +34,23 @@ def main():
     parser.add_argument("--matrix-dir", type=Path, required=True)
     parser.add_argument("--gtf", type=Path, required=True)
     parser.add_argument("--block-cache", type=Path, required=True)
+    parser.add_argument("--split-only", action="store_true", help="Assess completed subject halves before the full-data LR fits finish.")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
     args.output_dir.mkdir(parents=True, exist_ok=True)
     tables, audit, provenance = [], [], []
-    for fold in (0, 1, "full"):
+    backend = None
+    for fold in ((0, 1) if args.split_only else (0, 1, "full")):
         root = args.cache / ("pairwise_full" if fold == "full" else f"pairwise_fold{fold}")
         paths = sorted(root.glob("shard_*/settings.json"))
         if len(paths) != 32 or {path.parent.name for path in paths} != {f"shard_{i}" for i in range(32)}:
             raise ValueError("expected 32 completed contiguous shards")
         settings = [json.loads(path.read_text()) for path in paths]
-        if any(item["candidate_settings"] != settings[0]["candidate_settings"] or not item.get("joint_dm_only") or item.get("mode") != "pairwise" for item in settings):
+        method = "cox_reid" if settings[0].get("cox_reid_only", False) else "ml"
+        if backend is not None and backend != method:
+            raise ValueError("different dispersion methods across subject folds")
+        backend = method
+        if any(item["candidate_settings"] != settings[0]["candidate_settings"] or not (item.get("joint_dm_only") or item.get("cox_reid_only")) or item.get("mode") != "pairwise" or item.get("cox_reid_only", False) != (method == "cox_reid") for item in settings):
             raise ValueError("inconsistent joint DM paired cohort")
         cohort = settings[0]["candidate_settings"]
         if cohort.get("min_gene_umis") != 25 or cohort.get("subject_fold") != (None if fold == "full" else fold):
@@ -61,15 +67,17 @@ def main():
         output.mkdir(parents=True, exist_ok=True)
         selected = [frame.loc[frame.strategy.eq(strategy)].copy() for frame in tables]
         split_assessment(selected[:2], repo, output, strategy)
-        effects = selected[2].set_index("test_id").effect_vector.to_dict()
-        long_read_assessment(selected[2], None, args.matrix_dir, args.gtf, args.block_cache, output, strategy, effect_vectors=effects)
-        for fold, frame in zip((0, 1, "full"), selected):
+        if not args.split_only:
+            effects = selected[2].set_index("test_id").effect_vector.to_dict()
+            long_read_assessment(selected[2], None, args.matrix_dir, args.gtf, args.block_cache, output, strategy, effect_vectors=effects)
+        for fold, frame in zip((0, 1) if args.split_only else (0, 1, "full"), selected):
             frame.to_csv(output / f"tests_{fold}.tsv.gz", sep="\t", index=False, na_rep="NA")
             for column in ("p_value", "raw_p_value"):
                 coverage.append({"strategy": strategy, "fold": fold, "p_column": column, **coverage_correlation(frame[column], frame.coverage)})
     pd.concat(audit, ignore_index=True).to_csv(args.output_dir / "held_null_summary.tsv", sep="\t", index=False)
     pd.DataFrame(coverage).to_csv(args.output_dir / "coverage_correlations.tsv", sep="\t", index=False)
-    (args.output_dir / "manifest.json").write_text(json.dumps({"cohorts": provenance, "testing": "joint subject-blocked DM LRT; concentration re-estimated under null and alternative; fractional covariance-matched path counts", "calibration": "32 within-subject label permutations, leave-own-test-out pooled calibration; another 32 families held for assessment", "reporting": "each model's means standardized over the same subjects, no cross-variant substitution", "split": "frozen Table 1 comparator-matched gene/pair universes with the original Simes/conjunction/BH; failed tests p=1", "long_read": "all tested pairs freshly remapped, no significance or historical discovery-list restriction", "production_changes": False}, indent=2) + "\n")
+    testing = "joint subject-blocked DM LRT; concentration re-estimated under null and alternative" if backend == "ml" else "joint subject-blocked Cox-Reid grid-selected fixed-precision DM, chi-square and heuristic F tails; precision reselected under every permutation design"
+    (args.output_dir / "manifest.json").write_text(json.dumps({"cohorts": provenance, "testing": testing + "; fractional covariance-matched path counts", "calibration": "32 within-subject label permutations, leave-own-test-out pooled calibration; another 32 families held for assessment", "reporting": "each model's means standardized over the same subjects, no cross-variant substitution", "split": "frozen Table 1 comparator-matched gene/pair universes with the original Simes/conjunction/BH; failed tests p=1", "split_only": args.split_only, "long_read": "not assessed by this invocation" if args.split_only else "all tested pairs freshly remapped, no significance or historical discovery-list restriction", "production_changes": False}, indent=2) + "\n")
 
 
 if __name__ == "__main__":
