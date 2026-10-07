@@ -221,7 +221,7 @@ def shared_path_score_components(data, path_index, labels, subjects, *, baseline
     return PathScoreComponents(np.asarray(scores).reshape(-1, dimension), np.asarray(information).reshape(-1, dimension, dimension), np.asarray(shapes).reshape(-1, dimension, dimension), np.asarray(retained), tuple(levels), fits, reports, score_coordinate, np.asarray(reference).reshape(-1, dimension, dimension))
 
 
-def mixed_score_test(scores, information, biological_shapes=None, *, biological_variance=None, reference_information=None):
+def mixed_score_test(scores, information, biological_shapes=None, *, biological_variance=None, reference_information=None, scalar_fast=False):
     """REML aggregation of g_u ~ N(I_u beta, I_u + tau^2 I_u B_u I_u).
 
     PSD/singular information is represented only in identifiable directions;
@@ -250,6 +250,8 @@ def mixed_score_test(scores, information, biological_shapes=None, *, biological_
         reference_information = np.asarray(reference_information, dtype=float)
         if reference_information.shape != information.shape or not np.isfinite(reference_information).all():
             raise ValueError("finite aligned reference information required")
+    if scalar_fast and dimension == 1:
+        return _scalar_mixed_score_test(scores[:, 0], information[:, 0, 0], biological_shapes[:, 0, 0], biological_variance, None if reference_information is None else reference_information[:, 0, 0])
     observations = []
     for index, (score, info, shape) in enumerate(zip(scores, information, biological_shapes)):
         if reference_information is not None:
@@ -341,17 +343,80 @@ def mixed_score_test(scores, information, biological_shapes=None, *, biological_
     return {"p_value": float(stats.f.sf(statistic, dimension, clusters - 1)), "statistic": statistic, "degrees_of_freedom": dimension, "denominator_degrees_of_freedom": clusters - 1, "n_subjects": clusters, "converged": True, "mean_difference": mean / mean_scales, "mean_covariance": inflation * covariance / mean_scales[:, None] / mean_scales[None, :], "biological_variance": float(biological_variance), "residual_inflation": inflation, "residual_degrees_of_freedom": residual_df, "restricted_objective": objective, "chi_square_p_value": float(stats.chi2.sf(wald, dimension)), "residual_F_p_value": float(stats.f.sf(statistic, dimension, residual_df))}
 
 
-def aggregate_path_scores(components, *, information_metric="absolute"):
+def _scalar_mixed_score_test(scores, information, shapes, biological_variance, reference):
+    """Exact scalar specialization, same rank rule, REML search and F tail."""
+    if (information < -np.maximum(information, 1.) * 1e-10).any() or (shapes < -1e-10).any():
+        raise ValueError("information and biological shapes must be positive semidefinite")
+    if reference is None:
+        keep = information > np.maximum(information, 1.) * 1e-10
+        values = scores[keep] / information[keep]
+        design = np.ones(keep.sum())
+        measurement, biological = 1 / information[keep], shapes[keep]
+        mean_scale = 1.
+    else:
+        tolerance = np.maximum(reference, np.finfo(float).tiny) * 1e-10
+        if (reference < -tolerance).any():
+            raise ValueError("reference information must be positive semidefinite")
+        supported = reference > tolerance
+        eigenvalues = information[supported] / reference[supported]
+        threshold = np.maximum(eigenvalues, 1.) * 1e-10
+        if (eigenvalues < -threshold).any():
+            raise ValueError("information and biological shapes must be positive semidefinite")
+        if (eigenvalues > 1 + 1e-8).any():
+            raise ValueError("profiled information exceeds its target reference")
+        keep = supported.copy()
+        keep[supported] = eigenvalues > threshold
+        design = np.sqrt(reference[keep])
+        values = (scores[keep] / design) / (information[keep] / reference[keep])
+        measurement = reference[keep] / information[keep]
+        biological = reference[keep] * shapes[keep]
+        mean_scale = linalg.norm(design)
+        if len(design) and mean_scale <= np.finfo(float).tiny:
+            raise ValueError("aggregate score design does not identify every requested contrast")
+        design = design / mean_scale if len(design) else design
+    clusters = len(values)
+    if clusters < 4:
+        raise ValueError("four informative subject clusters and positive residual df required")
+
+    def fit(variance):
+        variances = measurement + variance * biological
+        if (variances <= 0).any():
+            raise np.linalg.LinAlgError("scalar covariance is not positive definite")
+        weights = 1 / variances
+        precision = float(np.sum(design**2 * weights))
+        if precision <= 0:
+            raise np.linalg.LinAlgError("scalar mean is not identified")
+        rhs = float(np.sum(design * values * weights))
+        mean, covariance = rhs / precision, 1 / precision
+        residual = max(float(np.sum(values**2 * weights)) - rhs * mean, 0.)
+        objective = float(np.log(variances).sum()) + np.log(precision) + residual
+        return objective, mean, covariance, residual, precision
+
+    if biological_variance is None:
+        scale = np.median(measurement / np.maximum(biological, 1e-12))
+        search = optimize.minimize_scalar(lambda value: fit(np.exp(value))[0], bounds=(np.log(scale) - 24, np.log(scale) + 16), method="bounded", options={"xatol": 1e-6})
+        if not search.success:
+            raise ValueError("biological-variance REML optimization failed")
+        biological_variance = min((0., float(np.exp(search.x))), key=lambda value: fit(value)[0])
+    objective, mean, covariance, residual, precision = fit(biological_variance)
+    residual_df = clusters - 1
+    inflation = max(1., residual / residual_df)
+    wald = max(mean * precision * mean, 0.)
+    statistic = wald / inflation
+    return dict(p_value=float(stats.f.sf(statistic, 1, clusters - 1)), statistic=statistic, degrees_of_freedom=1, denominator_degrees_of_freedom=clusters - 1, n_subjects=clusters, converged=True, mean_difference=np.array([mean / mean_scale]), mean_covariance=np.array([[inflation * covariance / mean_scale**2]]), biological_variance=float(biological_variance), residual_inflation=inflation, residual_degrees_of_freedom=residual_df, restricted_objective=float(objective), chi_square_p_value=float(stats.chi2.sf(wald, 1)), residual_F_p_value=float(stats.f.sf(statistic, 1, residual_df)))
+
+
+def aggregate_path_scores(components, *, information_metric="absolute", scalar_fast=False):
     """Aggregate already-fitted subject scores without repeating null fits."""
     if information_metric not in ("absolute", "reference") or (information_metric == "reference" and components.reference_information is None):
         raise ValueError("reference rank metric requires unprofiled target information")
-    result = mixed_score_test(components.scores, components.information, components.biological_shapes, reference_information=components.reference_information if information_metric == "reference" else None)
+    result = mixed_score_test(components.scores, components.information, components.biological_shapes, reference_information=components.reference_information if information_metric == "reference" else None, scalar_fast=scalar_fast)
     # Unweighted one-step responses are diagnostic only, NOT the fitted mean.
     differences = np.array([linalg.pinvh(info, rtol=1e-10) @ score for score, info in zip(components.scores, components.information)])
     return {**result, "differences": differences, "components": components, "subject_ids": components.subject_ids, "levels": components.levels, "n_fitted_subjects": len(components.subject_ids), "score_coordinate": components.score_coordinate, "information_metric": information_metric}
 
 
-def signed_path_score_p_value(components, rng, *, information_metric="absolute"):
+def signed_path_score_p_value(components, rng, *, information_metric="absolute", scalar_fast=False):
     """Paired subject-sign diagnostic, refitting REML for every realization.
 
     This is not an independent count-null calibration. The binary type
@@ -363,7 +428,7 @@ def signed_path_score_p_value(components, rng, *, information_metric="absolute")
     if information_metric not in ("absolute", "reference") or (information_metric == "reference" and components.reference_information is None):
         raise ValueError("reference rank metric requires unprofiled target information")
     signs = rng.choice((-1., 1.), size=len(components.subject_ids))
-    return mixed_score_test(components.scores * signs[:, None], components.information, components.biological_shapes, reference_information=components.reference_information if information_metric == "reference" else None)["p_value"]
+    return mixed_score_test(components.scores * signs[:, None], components.information, components.biological_shapes, reference_information=components.reference_information if information_metric == "reference" else None, scalar_fast=scalar_fast)["p_value"]
 
 
 def paired_score_reporting(components):
@@ -418,9 +483,9 @@ def binary_subject_score_records(components, test_id):
     return output
 
 
-def mixed_path_score_test(data, path_index, labels, subjects, *, information_metric="absolute", **kwargs):
+def mixed_path_score_test(data, path_index, labels, subjects, *, information_metric="absolute", scalar_fast=False, **kwargs):
     """General C-type experimental EC score test, with optional usage reports."""
-    return aggregate_path_scores(shared_path_score_components(data, path_index, labels, subjects, **kwargs), information_metric=information_metric)
+    return aggregate_path_scores(shared_path_score_components(data, path_index, labels, subjects, **kwargs), information_metric=information_metric, scalar_fast=scalar_fast)
 
 
 def binary_score_components_from_records(records, *, levels=(0, 1), score_coordinate="ilr"):

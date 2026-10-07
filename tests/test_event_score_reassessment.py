@@ -67,6 +67,8 @@ def test_complete_shard_replay_keeps_unfitted_failures_and_matches_reference(tmp
     assert json.loads((output / "failures.json").read_text()) == [failure]
     assert json.loads((output / "summary.json").read_text())["tests_in_shard"] == 2
     assert len(pd.read_csv(output / "paired_path_null.tsv.gz", sep="\t")) == args.null_replicates
+    for name in ("score_contexts.tsv.gz", "subject_scores.tsv.gz"):
+        assert (output / name).read_bytes() == (source / name).read_bytes()
     with pytest.raises(ValueError, match="new output"):
         reassess(source, output, information_metric="reference")
 

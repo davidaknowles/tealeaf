@@ -1,0 +1,7 @@
+scenario	table	trials	p_value_matches	p_value_max_absolute_difference	p_value_max_scaled_difference	statistic_matches	statistic_max_absolute_difference	statistic_max_scaled_difference	mean_difference_norm_matches	mean_difference_norm_max_absolute_difference	mean_difference_norm_max_scaled_difference	converged_matches	converged_max_absolute_difference	converged_max_scaled_difference	n_subjects_matches	n_subjects_max_absolute_difference	n_subjects_max_scaled_difference	p_decisions_differ_at_0.05	p_decisions_differ_at_0.01	p_decisions_differ_at_0.001
+strict	observed.tsv	64	False	1.8013474854861045e-05	1.8014018887860945e-05	True	7.784642708230649e-09	0.24106981017374612	False	0.3615313147224638	0.45972854418081244	True	0.0	0.0	True	0.0	0.0	0	0	0
+strict	null.tsv.gz	1952	False	2.3186996209179078e-05	2.3187696490008178e-05										True	0.0	0.0	0	0	0
+biological	observed.tsv	64	True	1.3516088248621827e-10	2.386842748566183e-10	True	2.413608757301233e-10	7.036837290325594e-10	True	1.666132448008284e-05	7.079305593382653e-10	True	0.0	0.0	True	0.0	0.0	0	0	0
+biological	null.tsv.gz	2016	True	1.231875704776897e-07	3.189354899698575e-07										True	0.0	0.0	0	0	0
+nuisance	observed.tsv	64	True	8.426481734602476e-11	1.0663966538871651e-10	True	7.046720151837604e-11	8.335689329299022e-10	True	8.87991045601666e-05	9.32215586121853e-10	True	0.0	0.0	True	0.0	0.0	0	0	0
+nuisance	null.tsv.gz	2016	True	1.3248464381110381e-08	3.2279083758629956e-08										True	0.0	0.0	0	0	0

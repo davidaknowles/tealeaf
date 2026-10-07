@@ -78,6 +78,18 @@ def test_mixed_guard_keeps_uninformative_fitted_subjects_and_rejects_smokes(tmp_
     assert checks[0]["complete_subject_fits"] == 1
     assert result.loc["t1", "p_value"] == .01
     assert result.loc["t2", "p_value"] == 1.
+    settings["arguments"]["scalar_fast"] = True
+    (shard / "settings.json").write_text(json.dumps(settings))
+    checks = guard_completed_shards(tmp_path / "raw", tmp_path / "scalar", 0, shard_count=1, inference="mixed-score")
+    assert checks[0]["scalar_fast"]
+    scalar = pd.read_csv(tmp_path / "scalar/shard_0/paired_path.tsv", sep="\t")
+    assert scalar.scalar_fast.all()
+    table["scalar_fast"] = False
+    table.to_csv(shard / "paired_path.tsv", sep="\t", index=False)
+    with pytest.raises(ValueError, match="implementation trace"):
+        guard_completed_shards(tmp_path / "raw", tmp_path / "wrong_trace", 0, shard_count=1, inference="mixed-score")
+    table["scalar_fast"] = True
+    table.to_csv(shard / "paired_path.tsv", sep="\t", index=False)
     settings["arguments"]["max_tests"] = 2
     (shard / "settings.json").write_text(json.dumps(settings))
     with pytest.raises(ValueError, match="recipe mismatch"):

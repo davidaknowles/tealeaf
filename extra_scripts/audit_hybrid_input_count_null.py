@@ -44,6 +44,7 @@ def main():
     parser.add_argument("--null-multistart", action="store_true", help="Compare pooled and interior initializations of the same mixed-score null.")
     parser.add_argument("--score-coordinate", choices=("ilr", "proportion"), default="ilr")
     parser.add_argument("--information-metric", choices=("absolute", "reference"), default="absolute")
+    parser.add_argument("--scalar-fast", action="store_true", help="Numerically equivalent scalar REML specialization, unchanged statistical model.")
     parser.add_argument("--residual-concentration", type=float)
     parser.add_argument("--within-path-type-scale", type=float)
     parser.add_argument("--count-likelihood", choices=("multinomial", "conditional"), default="multinomial")
@@ -59,6 +60,8 @@ def main():
         raise ValueError("proportion coordinates require mixed-score inference")
     if args.information_metric != "absolute" and args.inference != "mixed-score":
         raise ValueError("reference rank metric requires mixed-score inference")
+    if args.scalar_fast and args.inference != "mixed-score":
+        raise ValueError("scalar REML optimization requires mixed-score inference")
     if args.count_likelihood != "multinomial" and args.inference != "mixed-score":
         raise ValueError("conditional count likelihood requires mixed-score inference")
     if not np.isfinite(args.subject_scale) or args.subject_scale < 0 or not args.concentrations or len(set(args.concentrations)) != len(args.concentrations) or any(not np.isfinite(value) or value <= 0 for value in args.concentrations):
@@ -127,12 +130,12 @@ def main():
             path_index = event_path_index(transcripts, features, event.included, event.excluded)
             if path_index is None:
                 raise ValueError("sampled event no longer has complete transcript support")
-            base, _, _ = local_gene_data(tuple(value[rows] for value in counts), designs, transcripts, gene_ecs[gene], np.ones((len(rows), 1)), subjects, drop_zero=False)
+            base, _, _ = local_gene_data(screening_counts, designs, transcripts, gene_ecs[gene], np.ones((len(rows), 1)), subjects, drop_zero=False, rows=rows)
             baseline = ec_block_glmm.pooled_isoform_weights(base)
             if args.simulation_kernel_units == "analysis":
                 simulation_base, simulation_baseline = base, baseline
             else:
-                simulation_base, _, _ = local_gene_data(tuple(value[rows] for value in counts), simulation_designs, transcripts, gene_ecs[gene], np.ones((len(rows), 1)), subjects, drop_zero=False)
+                simulation_base, _, _ = local_gene_data(screening_counts, simulation_designs, transcripts, gene_ecs[gene], np.ones((len(rows), 1)), subjects, drop_zero=False, rows=rows)
                 simulation_baseline = ec_block_glmm.pooled_isoform_weights(simulation_base)
             rng = np.random.default_rng(381924 + zlib.crc32(test_id.encode()))
             for draw in range(args.draws):
@@ -147,8 +150,8 @@ def main():
                             components = shared_path_score_components(generated, path_index, labels, subjects, baseline=fitted_baseline, max_iter=args.max_iter, null_multistart=args.null_multistart, score_coordinate=args.score_coordinate, count_likelihood=args.count_likelihood)
                             for index, subject in enumerate(components.subject_ids):
                                 fit = components.null_fits[index]
-                                diagnostics.append({**header, "draw": draw, "subject": subject, "null_inclusion": fit.path_proportions[0], "null_event_mass_min": fit.theta[:, path_index >= 0].sum(axis=1).min(), "null_event_mass_max": fit.theta[:, path_index >= 0].sum(axis=1).max(), "information": components.information[index, 0, 0], "score": components.scores[index, 0], "starts": fit.starts, "selected_start": fit.selected_start, "pooled_refit_inclusion": fitted_baseline[path_index == 0].sum() / fitted_baseline[path_index >= 0].sum(), "pooled_refit_event_mass": fitted_baseline[path_index >= 0].sum()})
-                            result = aggregate_path_scores(components, information_metric=args.information_metric)
+                                diagnostics.append({**header, "draw": draw, "subject": subject, "null_inclusion": fit.path_proportions[0], "null_event_mass_min": fit.theta[:, path_index >= 0].sum(axis=1).min(), "null_event_mass_max": fit.theta[:, path_index >= 0].sum(axis=1).max(), "information": components.information[index, 0, 0], "score": components.scores[index, 0], "biological_shape": components.biological_shapes[index, 0, 0], "reference_information": components.reference_information[index, 0, 0], "starts": fit.starts, "selected_start": fit.selected_start, "pooled_refit_inclusion": fitted_baseline[path_index == 0].sum() / fitted_baseline[path_index >= 0].sum(), "pooled_refit_event_mass": fitted_baseline[path_index >= 0].sum()})
+                            result = aggregate_path_scores(components, information_metric=args.information_metric, scalar_fast=args.scalar_fast)
                         else:
                             result = ec_block_glmm.paired_path_test(collapsed, collapsed_paths, labels, subjects, baseline=collapsed_baseline, path_pseudocount=concentration, path_pseudocount_scaling="total", profile_event_mass=True)
                         fitted_subjects = result.get("n_fitted_subjects", result["n_subjects"])
@@ -160,7 +163,7 @@ def main():
                             for replicate in range(32):
                                 if args.inference == "mixed-score":
                                     components = result["components"]
-                                    null_p = signed_path_score_p_value(components, signs, information_metric=args.information_metric)
+                                    null_p = signed_path_score_p_value(components, signs, information_metric=args.information_metric, scalar_fast=args.scalar_fast)
                                 else:
                                     null_p = signed_null_p_value(result["differences"], result["difference_covariances"], signs, False, 0.)
                                 trial_null.append({**header, "draw": draw, "strategy": strategy, "replicate": replicate, "n_subjects": n_expected, "p_value": null_p})
@@ -184,6 +187,7 @@ def main():
     manifest["null_multistart"] = args.null_multistart
     manifest["score_coordinate"] = args.score_coordinate if args.inference == "mixed-score" else None
     manifest["information_metric"] = args.information_metric if args.inference == "mixed-score" else None
+    manifest["scalar_fast"] = args.scalar_fast
     manifest["completeness"] = "every eligible subject null must fit; mixed-score degrees of freedom count informative clusters separately from fitted clusters"
     manifest.update(count_likelihood=args.count_likelihood, ec_opportunity_scale=args.ec_opportunity_scale, kernel_units=args.kernel_units, simulation_kernel_units=args.simulation_kernel_units)
     (args.output_dir / "settings.json").write_text(json.dumps(manifest, indent=2) + "\n")

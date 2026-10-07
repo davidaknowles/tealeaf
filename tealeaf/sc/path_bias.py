@@ -15,6 +15,7 @@ from scipy import optimize, sparse, special
 
 from . import differential
 from .ec_block_glmm import pooled_isoform_weights
+from .contrast_ops import helmert_multiply, helmert_transpose_multiply
 
 
 @dataclass
@@ -123,14 +124,75 @@ class SharedPathNullProblem:
                 gradient += jacobian[cell].T @ score
         return value, gradient
 
-    def fit(self, *, max_iter=300, tolerance=1e-12, multistart=False):
+    def objective_vector(self, parameters):
+        """Same null objective and gradient, without a C by T by P Jacobian.
+
+        Prefix/suffix Helmert operations avoid dense group-basis products.
+        This changes computation, not parameters, priors, data or bounds.
+        """
+        parameters = np.asarray(parameters, dtype=float)
+        if parameters.shape != (self.dimension,):
+            raise ValueError("parameter dimension differs from shared-path null")
+        psi = special.softmax(helmert_multiply(parameters[:self.size - 1]))
+        theta = np.zeros((self.types, len(self.baseline)))
+        gradient = np.zeros(self.dimension)
+        shares_by_cell, masses = [], []
+        value = 0.
+        for cell in range(self.types):
+            start = self.size - 1 + cell * self.nuisance_dimension
+            offset = start
+            h = special.expit(parameters[start + self.nuisance_dimension - 1]) if len(self.outside) else 1.
+            local_shares = []
+            for path, group in enumerate(self.groups):
+                dimension = len(group) - 1
+                shares = special.softmax(helmert_multiply(parameters[offset:offset + dimension]))
+                theta[cell, group] = shares * (h * psi[path] if path < self.size else 1 - h)
+                if dimension:
+                    value -= self.nuisance_pseudocount * float(np.log(shares).mean())
+                    gradient[offset:offset + dimension] += self.nuisance_pseudocount * helmert_transpose_multiply(shares)
+                local_shares.append(shares)
+                offset += dimension
+            shares_by_cell.append(local_shares)
+            masses.append(h)
+        log_theta_score = np.zeros_like(theta)
+        for counts, mapping, totals in zip(self.counts, self.maps, self.totals):
+            columns = mapping.sum(axis=0)
+            for cell, total in enumerate(totals):
+                if total <= 0:
+                    continue
+                mass = mapping @ theta[cell]
+                normalizer = mass.sum()
+                if normalizer <= 0 or ((counts[cell] > 0) & (mass <= 0)).any():
+                    return np.inf, np.zeros(self.dimension)
+                safe = np.maximum(mass, 1e-300)
+                value -= float(counts[cell] @ np.log(safe)) - total * np.log(normalizer)
+                log_theta_score[cell] += theta[cell] * (-mapping.T @ (counts[cell] / safe) + total * columns / normalizer)
+        for cell, local_shares in enumerate(shares_by_cell):
+            start = self.size - 1 + cell * self.nuisance_dimension
+            offset = start
+            group_scores = np.asarray([log_theta_score[cell, group].sum() for group in self.groups])
+            inside_total = group_scores[:self.size].sum()
+            gradient[:self.size - 1] += helmert_transpose_multiply(group_scores[:self.size]) - inside_total * helmert_transpose_multiply(psi)
+            for group, shares, total in zip(self.groups, local_shares, group_scores):
+                dimension = len(group) - 1
+                if dimension:
+                    gradient[offset:offset + dimension] += helmert_transpose_multiply(log_theta_score[cell, group]) - total * helmert_transpose_multiply(shares)
+                offset += dimension
+            if len(self.outside):
+                gradient[start + self.nuisance_dimension - 1] += (1 - masses[cell]) * inside_total - masses[cell] * group_scores[-1]
+        return value, gradient
+
+    def fit(self, *, max_iter=300, tolerance=1e-12, multistart=False, objective_method="dense"):
         # Scaling the entire objective, including its nuisance penalty, leaves
         # the model and optimum unchanged. A gradient tolerance per molecule
         # avoids demanding sub-roundoff absolute likelihood changes at depth.
         scale = float(sum(value.sum() for value in self.counts))
+        if objective_method not in ("dense", "vector"):
+            raise ValueError("shared null objective method must be dense or vector")
+        objective = self.objective if objective_method == "dense" else self.objective_vector
 
         def scaled_objective(parameters):
-            value, gradient = self.objective(parameters)
+            value, gradient = objective(parameters)
             return value / scale, gradient / scale
 
         starts = [self.initial]

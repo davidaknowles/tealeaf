@@ -44,6 +44,14 @@ def guard_completed_shards(root, output, concentration, shard_count=32, inferenc
             settings["arguments"].pop("shard_index")
             settings["arguments"].pop("export_score_components", None)
             settings["arguments"].setdefault("information_metric", "absolute")
+            # Same-score numerical validation permits mixed implementations,
+            # not mixed statistical recipes. Keep the actual kernel trace.
+            scalar_fast = settings["arguments"].pop("scalar_fast", False)
+            if not isinstance(scalar_fast, bool):
+                raise ValueError("scalar implementation setting must be boolean")
+            if "scalar_fast" in table and not table.scalar_fast.astype(str).str.lower().eq(str(scalar_fast).lower()).all():
+                raise ValueError("scalar implementation trace differs from shard settings")
+            table["scalar_fast"] = scalar_fast
             if information_metric is not None and settings["arguments"]["information_metric"] != information_metric:
                 raise ValueError("mixed-score information metric differs from requested assessment")
             if reference_settings is not None and settings != reference_settings:
@@ -82,7 +90,7 @@ def guard_completed_shards(root, output, concentration, shard_count=32, inferenc
         table.to_csv(target / "paired_path.tsv", sep="\t", index=False)
         null.to_csv(target / "paired_path_null.tsv.gz", sep="\t", index=False)
         (target / "failures.json").write_text(json.dumps(failures) + "\n")
-        summaries.append({**summary, "shard_index": index, "complete_subject_fits": int(complete.sum()), "complete_reporting_fits": int(reporting.sum())})
+        summaries.append({**summary, "shard_index": index, "complete_subject_fits": int(complete.sum()), "complete_reporting_fits": int(reporting.sum()), **({"scalar_fast": scalar_fast} if inference == "mixed-score" else {})})
     if len(set(all_ids)) != len(all_ids):
         raise ValueError("duplicate requested tests across shards")
     return summaries

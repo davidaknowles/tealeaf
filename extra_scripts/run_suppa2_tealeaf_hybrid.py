@@ -111,17 +111,19 @@ def mixed_event_record(base, path_index, labels, clusters, baseline, event, gene
         contexts.append(dict(test_id=test_id, block_id=event_id, feature_id=event.feature_id, gene_id=gene_id, event_type=event.event_type, level_a=tested_levels[0], level_b=tested_levels[1], n_expected_subjects=expected, n_samples=len(labels), n_isoforms=base.n_isoforms, n_ecs=n_ecs, median_gene_umis=float(np.median(totals)), baseline_event_mass=float(baseline[path_index >= 0].sum()), report_pseudocount=args.report_pseudocount, score_coordinate=components.score_coordinate, model_version=MODEL_VERSION))
         subject_scores.extend(binary_subject_score_records(components, test_id))
     information_metric = getattr(args, "information_metric", "absolute")
-    result = aggregate_path_scores(components, information_metric=information_metric)
+    scalar_fast = getattr(args, "scalar_fast", False)
+    result = aggregate_path_scores(components, information_metric=information_metric, scalar_fast=scalar_fast)
     complete = complete_cluster_fit(result, expected)
     report = paired_score_reporting(components)
     row = dict(test_id=test_id, block_id=event_id, gene_id=gene_id, contrast="cell_type_pairwise", contrast_id=f"cell_type__{tested_levels[0]}__{tested_levels[1]}", effect="cell_type", level_a=tested_levels[0], level_b=tested_levels[1], method="Tealeaf EC mixed score; SUPPA2 event definitions", inference_backend="mixed-score", model_version=MODEL_VERSION, path_pseudocount=0., path_prior_center="none", path_pseudocount_scaling="total", retain_uncertainty=True, uncertainty_scale=1., n_paths=2, n_isoforms=base.n_isoforms, n_source_isoforms=base.n_isoforms, n_ecs=n_ecs, n_samples=len(labels), n_expected_subjects=expected, n_subjects=result["n_subjects"], n_fitted_subjects=result["n_fitted_subjects"], degrees_of_freedom=result["degrees_of_freedom"], denominator_degrees_of_freedom=result["denominator_degrees_of_freedom"], median_gene_umis=float(np.median(totals)), statistic=result["statistic"] if complete else 0., p_value=result["p_value"] if complete else 1., chi_square_p_value=result["chi_square_p_value"], biological_variance=result["biological_variance"], restricted_objective=result["restricted_objective"], residual_inflation=result["residual_inflation"], converged=complete, complete_subject_fits=complete, complete_reporting_fits=report["complete"], mean_difference_norm=float(np.linalg.norm(result["mean_difference"])), effect_size=float(report["effect"][0]), effect_coordinate="psi", test_ilr_effect_size=float(result["mean_difference"][0]), report_psi_effect=float(report["effect"][0]), report_n_subjects=report["n_reported_subjects"], report_pseudocount=args.report_pseudocount, profile_event_mass=True, baseline_event_mass=float(baseline[path_index >= 0].sum()), event_type=event.event_type, event_id=event_id, feature_id=event.feature_id)
     nulls = []
     row["information_metric"] = information_metric
+    row["scalar_fast"] = scalar_fast
     if complete:
         test_hash = zlib.crc32(test_id.encode("utf-8"))
         for replicate in range(args.null_replicates):
             rng = np.random.default_rng(np.random.SeedSequence((args.seed, test_hash, replicate)))
-            nulls.append(dict(test_id=test_id, block_id=event_id, replicate=replicate, p_value=signed_path_score_p_value(components, rng, information_metric=information_metric)))
+            nulls.append(dict(test_id=test_id, block_id=event_id, replicate=replicate, p_value=signed_path_score_p_value(components, rng, information_metric=information_metric, scalar_fast=scalar_fast)))
     usage = []
     if args.export_path_usage:
         for subject, reports in zip(components.subject_ids, components.reporting_proportions):
@@ -154,6 +156,7 @@ def parse_args():
     parser.add_argument("--null-multistart", action="store_true", help="Experimental mixed-score null fit with pooled and interior starts.")
     parser.add_argument("--export-score-components", action=argparse.BooleanOptionalAction, default=True, help="Archive fitted binary subject scores for inexpensive rank-rule reassessment; no inference change.")
     parser.add_argument("--information-metric", choices=("absolute", "reference"), default="absolute", help="Experimental mixed-score numerical rank rule, not a change to effect units or priors.")
+    parser.add_argument("--scalar-fast", action=argparse.BooleanOptionalAction, default=True, help="Equivalent scalar REML algebra for binary contrasts; multivariate contrasts keep the generic solver. Disable only for numerical-reference checks.")
     return parser.parse_args()
 
 
@@ -172,11 +175,9 @@ def main():
     settings = cached["settings"]
     if settings.get("test_effect") != "cell_type_pairwise":
         raise ValueError("the hybrid currently requires paired cell-type candidates")
-    metadata, counts, _, _, gene_ecs, designs = filtered_inputs(
+    metadata, counts, genes, gene_transcripts, gene_ecs, designs = filtered_inputs(
         args.data_cache, settings
     )
-    with args.data_cache.open("rb") as handle:
-        _, _, genes, gene_transcripts, _, _ = pickle.load(handle)
     features = args.features.read_text().splitlines()
     if len(features) != max(int(indices.max()) for indices in gene_transcripts if len(indices)) + 1:
         raise ValueError("feature list does not align with prepared transcript indices")
@@ -192,9 +193,9 @@ def main():
     tests = []
     represented_event_ids = set()
     contexts = {}
+    screening_counts = tuple(matrix.tocsc() for matrix in counts)
     if args.scan_all_events:
         gene_lookup = {canonical(gene): index for index, gene in enumerate(genes)}
-        screening_counts = tuple(matrix.tocsc() for matrix in counts)
         candidate_genes = sorted({
             gene_lookup[gene_id]
             for gene_id in events_by_gene
@@ -264,6 +265,7 @@ def main():
     score_archive = ([], []) if args.inference == "mixed-score" and args.export_score_components else None
     baseline_cache = {}
     active_score_context, score_component_cache = None, {}
+    active_input_context, input_cache = None, None
     started = time.perf_counter()
     for test_number, (candidate, event, path_index) in enumerate(tests):
         if args.inference == "mixed-score" and test_number % 100 == 0:
@@ -275,18 +277,13 @@ def main():
             local_metadata, _, labels = local_test_design(
                 metadata, rows, tested_levels, "cell_type_pairwise"
             )
-            local_counts = tuple(matrix[rows] for matrix in counts)
             clusters = local_metadata.mouse.astype(str).to_numpy()
             transcripts = candidate[4]
-            base, _, totals = local_gene_data(
-                local_counts,
-                designs,
-                transcripts,
-                gene_ecs[gene],
-                np.ones((len(local_metadata), 1)),
-                clusters,
-                drop_zero=False,
-            )
+            input_context = (gene, tuple(rows), tuple(transcripts))
+            if input_context != active_input_context:
+                input_cache = local_gene_data(screening_counts, designs, transcripts, gene_ecs[gene], np.ones((len(local_metadata), 1)), clusters, drop_zero=False, rows=rows)
+                active_input_context = input_context
+            base, _, totals = input_cache
             cache_key = (gene, tuple(rows))
             if cache_key not in baseline_cache:
                 baseline_cache[cache_key] = ec_block_glmm.pooled_isoform_weights(base)

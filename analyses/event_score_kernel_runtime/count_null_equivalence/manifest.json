@@ -1,0 +1,11 @@
+{
+  "original": ".cache/event_information_20261007/count_null_score_ilr_reference/original_binary",
+  "candidate": ".cache/event_information_20261007/count_null_score_ilr_reference/original_binary_scalar_fast",
+  "passed": false,
+  "tolerance": {
+    "relative": 3e-06,
+    "absolute": 1e-08
+  },
+  "model_settings": "identical except scalar implementation; all trial identities and availability preserved",
+  "limitation": "fresh upstream count/null fitting, not fixed score arrays; consult upstream fit differences and separate same-score controls before attribution; not new power or LR performance"
+}

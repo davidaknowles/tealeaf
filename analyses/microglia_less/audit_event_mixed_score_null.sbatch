@@ -27,6 +27,7 @@ SCORE_COUNT_LIKELIHOOD=${SCORE_COUNT_LIKELIHOOD:-multinomial}
 SCORE_EC_OPPORTUNITY_SCALE=${SCORE_EC_OPPORTUNITY_SCALE:-0}
 SCORE_KERNEL_UNITS=${SCORE_KERNEL_UNITS:-prepared}
 SCORE_SIMULATION_KERNEL_UNITS=${SCORE_SIMULATION_KERNEL_UNITS:-analysis}
+SCORE_SCALAR_FAST=${SCORE_SCALAR_FAST:-0}
 if [[ "${SCORE_INFORMATION_METRIC}" != "absolute" ]]; then
   SCORE_OUTPUT="${REPO_ROOT}/.cache/event_information_20261007/count_null_score_${SCORE_COORDINATE}_${SCORE_INFORMATION_METRIC}/${SCORE_SOURCE}"
 elif [[ "${SCORE_COORDINATE}" == "ilr" && "${SCORE_SOURCE}" == "original_binary" ]]; then
@@ -50,6 +51,10 @@ if [[ "${SCORE_SIMULATION_KERNEL_UNITS}" != "analysis" ]]; then
   SCORE_OUTPUT="${SCORE_OUTPUT}_simulation${SCORE_SIMULATION_KERNEL_UNITS}"
 fi
 EXTRA=()
+if [[ "${SCORE_SCALAR_FAST}" == 1 ]]; then
+  EXTRA+=(--scalar-fast)
+  SCORE_OUTPUT="${SCORE_OUTPUT}_scalar_fast"
+fi
 if [[ "${SCENARIO}" == "biological" ]]; then
   EXTRA+=(--residual-concentration 20)
 elif [[ "${SCENARIO}" == "nuisance" ]]; then

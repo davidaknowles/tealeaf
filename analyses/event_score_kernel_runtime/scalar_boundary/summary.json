@@ -1,0 +1,18 @@
+{
+  "trials": 4224,
+  "available": 2673,
+  "same_availability": true,
+  "interpretation": "same score, information, reference and biological shape arrays; no count or null refitting between implementations",
+  "p_value_all_match": true,
+  "p_value_max_absolute_difference": 2.0972125758245141e-07,
+  "statistic_all_match": true,
+  "statistic_max_absolute_difference": 2.9421115144145915e-07,
+  "mean_difference_all_match": true,
+  "mean_difference_max_absolute_difference": 0.025861243326289696,
+  "mean_covariance_all_match": true,
+  "mean_covariance_max_absolute_difference": 2236672.0,
+  "restricted_objective_all_match": true,
+  "restricted_objective_max_absolute_difference": 5.684341886080802e-14,
+  "biological_variance_all_match": true,
+  "biological_variance_max_absolute_difference": 0.2872314453125
+}

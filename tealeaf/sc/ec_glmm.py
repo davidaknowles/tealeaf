@@ -16,6 +16,29 @@ import scipy.special
 import scipy.sparse as sp
 
 
+def subset_gene_data(counts, designs, transcripts, ecs, fixed, clusters, *, drop_zero=True, rows=None):
+    """Select EC columns before rows, preserving exact gene input semantics.
+
+    CSC global counts make column selection inexpensive. With explicit rows,
+    fixed design and cluster labels must already align with those rows. No
+    gene, event, subject, support or coverage criterion is introduced here.
+    """
+    local_counts, local_mappings = [], []
+    for observed, mapping in zip(counts, designs):
+        local_mapping = sp.csr_matrix(mapping)[ecs][:, transcripts].tocsr()
+        supported = np.asarray(local_mapping.sum(axis=1)).ravel() > 0
+        block = observed[:, ecs][:, supported]
+        if rows is not None:
+            block = block[rows]
+        local_counts.append(np.asarray(block.toarray() if sp.issparse(block) else block, dtype=float))
+        local_mappings.append(np.asarray(local_mapping[supported].toarray(), dtype=float))
+    totals = sum(value.sum(axis=1) for value in local_counts)
+    retained = totals > 0 if drop_zero else np.ones(len(totals), dtype=bool)
+    if totals.sum() <= 0:
+        raise ValueError("gene has no positive observations")
+    return ECGLMMData(tuple(value[retained] for value in local_counts), tuple(local_mappings), np.asarray(fixed)[retained], np.asarray(clusters)[retained]), retained, totals
+
+
 def _jax():
     try:
         import jax

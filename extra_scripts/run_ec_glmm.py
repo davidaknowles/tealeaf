@@ -84,25 +84,9 @@ def fixed_effect_design(groups, contrast):
 
 
 def local_gene_data(
-    counts, designs, transcripts, ecs, fixed, clusters, *, drop_zero=True
+    counts, designs, transcripts, ecs, fixed, clusters, *, drop_zero=True, rows=None
 ):
-    local_counts = []
-    local_mappings = []
-    for observed, mapping in zip(counts, designs):
-        local_mapping = mapping[ecs][:, transcripts].tocsr()
-        supported = np.asarray(local_mapping.sum(axis=1)).ravel() > 0
-        local_counts.append(np.asarray(observed[:, ecs][:, supported].toarray(), dtype=float))
-        local_mappings.append(np.asarray(local_mapping[supported].toarray(), dtype=float))
-    totals = sum(value.sum(axis=1) for value in local_counts)
-    retained = totals > 0 if drop_zero else np.ones(len(totals), dtype=bool)
-    if totals.sum() <= 0:
-        raise ValueError("gene has no positive observations")
-    return ec_glmm.ECGLMMData(
-        tuple(value[retained] for value in local_counts),
-        tuple(local_mappings),
-        fixed[retained],
-        clusters[retained],
-    ), retained, totals
+    return ec_glmm.subset_gene_data(counts, designs, transcripts, ecs, fixed, clusters, drop_zero=drop_zero, rows=rows)
 
 
 def fit_one(method, data, args, initial=None):

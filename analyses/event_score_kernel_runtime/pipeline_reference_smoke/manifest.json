@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "upstream_arrays_bit_identical": true,
+  "requested_tests": 4,
+  "completed": 4,
+  "generic_processing_seconds": null,
+  "scalar_processing_seconds": null,
+  "timing_scope": "archive replay, not count fitting; time unavailable for older untimed replay",
+  "limitation": "four-test pipeline smoke only, archive replay timing is not new count fitting, not full split or LR performance"
+}

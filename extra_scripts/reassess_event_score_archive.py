@@ -7,8 +7,10 @@ after the source shard has completed; source results are never overwritten.
 import argparse
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
+import time
 from types import SimpleNamespace
 
 import numpy as np
@@ -25,7 +27,8 @@ def read_table(path):
         return pd.DataFrame()
 
 
-def reassess(source, output, *, information_metric, refit_missing=False):
+def reassess(source, output, *, information_metric, refit_missing=False, scalar_fast=True):
+    started = time.perf_counter()
     if source.resolve() == output.resolve() or output.exists():
         raise ValueError("use a new output directory, never overwrite source or previous assessment")
     settings = json.loads((source / "settings.json").read_text())
@@ -33,7 +36,7 @@ def reassess(source, output, *, information_metric, refit_missing=False):
     arguments = dict(settings["arguments"])
     if arguments["inference"] != "mixed-score":
         raise ValueError("only mixed-score archives can be reassessed")
-    arguments.update(output_dir=str(output), information_metric=information_metric, export_score_components=True)
+    arguments.update(output_dir=str(output), information_metric=information_metric, export_score_components=True, scalar_fast=scalar_fast)
     contexts_path, scores_path = source / "score_contexts.tsv.gz", source / "subject_scores.tsv.gz"
     if not contexts_path.exists() or not scores_path.exists():
         if not refit_missing:
@@ -43,6 +46,8 @@ def reassess(source, output, *, information_metric, refit_missing=False):
             flag = "--" + name.replace("_", "-")
             if name == "export_score_components":
                 command.append(flag)
+            elif name == "scalar_fast":
+                command.append(flag if value else "--no-scalar-fast")
             elif value is True:
                 command.append(flag)
             elif value is not False and value is not None:
@@ -88,15 +93,17 @@ def reassess(source, output, *, information_metric, refit_missing=False):
     if len(observed) + len(retained_failures) != summary["tests_in_shard"]:
         raise ValueError("reassessment lost declared hypotheses")
     output.mkdir(parents=True)
+    shutil.copyfile(contexts_path, output / "score_contexts.tsv.gz")
+    shutil.copyfile(scores_path, output / "subject_scores.tsv.gz")
     pd.DataFrame(observed, columns=None if observed else MIXED_SCORE_EMPTY_COLUMNS).to_csv(output / "paired_path.tsv", sep="\t", index=False)
     pd.DataFrame(null, columns=None if null else ("test_id", "block_id", "replicate", "p_value")).to_csv(output / "paired_path_null.tsv.gz", sep="\t", index=False)
     if args.export_path_usage:
         pd.DataFrame(usage).to_csv(output / "path_usage.tsv.gz", sep="\t", index=False)
     settings["arguments"] = arguments
     (output / "settings.json").write_text(json.dumps(settings, indent=2) + "\n")
-    (output / "summary.json").write_text(json.dumps({**summary, "completed": len(observed), "failures": len(retained_failures)}, indent=2) + "\n")
+    (output / "summary.json").write_text(json.dumps({**summary, "completed": len(observed), "failures": len(retained_failures), "source_elapsed_seconds": summary.get("elapsed_seconds"), "elapsed_seconds": time.perf_counter() - started, "timing_scope": "archive replay, not original count fitting"}, indent=2) + "\n")
     (output / "failures.json").write_text(json.dumps(retained_failures, indent=2) + "\n")
-    (output / "reassessment.json").write_text(json.dumps({"source": str(source), "method": "saved complete-subject scores, no count or reporting refit", "information_metric": information_metric, "production_changes": False}, indent=2) + "\n")
+    (output / "reassessment.json").write_text(json.dumps({"source": str(source), "method": "saved complete-subject scores, no count or reporting refit", "information_metric": information_metric, "scalar_fast": scalar_fast, "production_changes": False}, indent=2) + "\n")
     return "reused score archive"
 
 
@@ -106,8 +113,9 @@ def main():
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--information-metric", choices=("absolute", "reference"), required=True)
     parser.add_argument("--refit-missing", action="store_true")
+    parser.add_argument("--scalar-fast", action=argparse.BooleanOptionalAction, default=True)
     args = parser.parse_args()
-    print(reassess(args.input_dir, args.output_dir, information_metric=args.information_metric, refit_missing=args.refit_missing), flush=True)
+    print(reassess(args.input_dir, args.output_dir, information_metric=args.information_metric, refit_missing=args.refit_missing, scalar_fast=args.scalar_fast), flush=True)
 
 
 if __name__ == "__main__":
