@@ -27,6 +27,7 @@ class SharedPathNullFit:
     objective: float
     iterations: int
     gradient_norm: float
+    termination_message: str = ""
 
 
 class SharedPathNullProblem:
@@ -121,9 +122,18 @@ class SharedPathNullProblem:
         return value, gradient
 
     def fit(self, *, max_iter=300, tolerance=1e-12):
-        result = optimize.minimize(self.objective, self.initial, jac=True, method="L-BFGS-B", bounds=[(-30., 30.)] * self.dimension, options={"maxiter": int(max_iter), "ftol": float(tolerance), "gtol": 1e-8})
+        # Scaling the entire objective, including its nuisance penalty, leaves
+        # the model and optimum unchanged. A gradient tolerance per molecule
+        # avoids demanding sub-roundoff absolute likelihood changes at depth.
+        scale = float(sum(value.sum() for value in self.counts))
+
+        def scaled_objective(parameters):
+            value, gradient = self.objective(parameters)
+            return value / scale, gradient / scale
+
+        result = optimize.minimize(scaled_objective, self.initial, jac=True, method="L-BFGS-B", bounds=[(-30., 30.)] * self.dimension, options={"maxiter": int(max_iter), "maxls": 50, "ftol": float(tolerance), "gtol": 1e-8})
         theta, _, psi, _, _ = self.composition(result.x)
-        return SharedPathNullFit(psi, theta, bool(result.success), float(result.fun), int(result.nit), float(np.linalg.norm(result.jac, ord=np.inf)))
+        return SharedPathNullFit(psi, theta, bool(result.success), float(result.fun * scale), int(result.nit), float(np.linalg.norm(result.jac, ord=np.inf) * scale), str(result.message))
 
 
 def expected_ec_counts(counts, designs, theta):

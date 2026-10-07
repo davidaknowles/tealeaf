@@ -1,0 +1,3 @@
+method	endpoint	scope	minimum_depth	n_tests	n_replicated	replication_rate	ci_low	ci_high	conditional_null_rate
+Hybrid, parsimony_binary input control	pooled direction	all converged tests	20.0	16397	7330	0.4470329938403366	0.4394362699885347	0.4546545299035766	0.5
+Hybrid, parsimony_binary input control	both biological replicates	all converged tests	20.0	11108	3070	0.27637738566798703	0.2681393319249056	0.2847700559195052	0.5

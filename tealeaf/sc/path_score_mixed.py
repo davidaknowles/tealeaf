@@ -14,7 +14,7 @@ from . import differential
 from .ec_block_glmm import pooled_isoform_weights
 from .path_bias import SharedPathNullProblem
 
-MODEL_VERSION = "v2_analytic_linear_nuisance"
+MODEL_VERSION = "v3_scaled_shared_null"
 
 
 def score_contrast_proportions(anchor, contrast):
@@ -160,7 +160,7 @@ def shared_path_score_components(data, path_index, labels, subjects, *, baseline
             continue
         shared = SharedPathNullProblem(counts, data.compatibility, baseline, path_index).fit(max_iter=max_iter)
         if not shared.converged:
-            raise ValueError(f"shared-path null failed for subject {subject}")
+            raise ValueError(f"shared-path null failed for subject {subject}, iterations={shared.iterations}, gradient={shared.gradient_norm:.6g}, termination={shared.termination_message}")
         score, info, shape = efficient_shared_path_score(counts, data.compatibility, shared.theta, path_index, local_levels, len(levels))
         scores.append(score)
         information.append(info)
@@ -261,4 +261,4 @@ def mixed_path_score_test(data, path_index, labels, subjects, **kwargs):
     result = mixed_score_test(components.scores, components.information, components.biological_shapes)
     # Unweighted one-step responses are diagnostic only, NOT the fitted mean.
     differences = np.array([linalg.pinvh(info, rtol=1e-10) @ score for score, info in zip(components.scores, components.information)])
-    return {**result, "differences": differences, "components": components, "subject_ids": components.subject_ids, "levels": components.levels}
+    return {**result, "differences": differences, "components": components, "subject_ids": components.subject_ids, "levels": components.levels, "n_fitted_subjects": len(components.subject_ids)}

@@ -6,6 +6,15 @@ import pytest
 
 from extra_scripts.assess_event_input_controls import guard_completed_shards
 from extra_scripts.audit_hybrid_input_count_null import trial_header
+from tealeaf.sc.replication_audit import complete_cluster_fit
+
+
+def test_informative_clusters_are_not_mistaken_for_successful_subject_fits():
+    fitted = {"converged": True, "n_subjects": 4, "n_fitted_subjects": 6}
+    assert complete_cluster_fit(fitted, 6)
+    assert not complete_cluster_fit(fitted, 7)
+    assert not complete_cluster_fit({**fitted, "n_subjects": 3}, 6)
+    assert not complete_cluster_fit({"converged": True, "n_subjects": 4}, 6)
 
 
 def test_count_null_header_has_event_identity_for_shared_summarizer():

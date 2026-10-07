@@ -1,0 +1,4 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc
+Hybrid, parsimony_binary input control	40	16397	13	0.325	0.3803060249175339
+Hybrid, parsimony_binary input control	100	16397	42	0.42	0.41053994330235855
+Hybrid, parsimony_binary input control	200	16397	85	0.425	0.4121897859166029

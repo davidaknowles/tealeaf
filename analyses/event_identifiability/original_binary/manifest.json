@@ -1,0 +1,16 @@
+{
+  "source": ".cache/event_information_20261007/original_binary_paired/prepared.pkl",
+  "interior_inclusion": [
+    0.2,
+    0.5,
+    0.8
+  ],
+  "event_mass_if_outside": 0.7,
+  "total_per_type_primer": 10000,
+  "positive_information_threshold": 1e-06,
+  "null": "two types with identical positive class-uniform transcript mixture, expected counts only",
+  "profile": "type-specific within-class transcript shares and outside mass versus class-fixed shares",
+  "limitation": "generic interior likelihood information, not a calibration result or actual expression-level eligibility; finite precision and annotation/mapping assumptions remain",
+  "selection": "fixed null-family random panel plus labeled native-top100 diagnosis, not production/LR-selected model training",
+  "production_changes": false
+}

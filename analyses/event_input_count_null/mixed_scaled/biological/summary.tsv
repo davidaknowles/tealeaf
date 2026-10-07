@@ -1,0 +1,2 @@
+strategy	n_tests	n_blocks	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01
+hybrid free-transcript EC mixed score	64	32	7	0.0	0.015625	0.0

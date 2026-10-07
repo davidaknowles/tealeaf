@@ -1,0 +1,10 @@
+strategy	degrees_of_freedom	n_subjects	n_tests	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01
+hybrid free-transcript EC mixed score	1	0	46	0	0.0	0.0	0.0
+hybrid free-transcript EC mixed score	1	4	4	4	0.0	0.25	0.0
+hybrid free-transcript EC mixed score	1	5	5	5	0.0	0.2	0.0
+hybrid free-transcript EC mixed score	1	6	1	1	0.0	0.0	0.0
+hybrid free-transcript EC mixed score	1	7	3	3	0.0	0.0	0.0
+hybrid free-transcript EC mixed score	1	8	1	1	0.0	0.0	0.0
+hybrid free-transcript EC mixed score	1	15	1	1	0.0	0.0	0.0
+hybrid free-transcript EC mixed score	1	16	1	1	0.0	0.0	0.0
+hybrid free-transcript EC mixed score	1	17	2	2	0.0	0.0	0.0

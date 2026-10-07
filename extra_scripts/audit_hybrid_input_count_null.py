@@ -15,6 +15,8 @@ from extra_scripts.run_paired_path_test import filtered_inputs, signed_null_p_va
 from extra_scripts.run_suppa2_tealeaf_hybrid import canonical, collapse_event_nuisance, event_path_index, supported_gene_transcripts
 from tealeaf.sc import ec_block_glmm
 from tealeaf.sc.path_simulation import simulate_counts
+from tealeaf.sc.path_score_mixed import mixed_path_score_test, mixed_score_test, MODEL_VERSION as MIXED_SCORE_VERSION
+from tealeaf.sc.replication_audit import complete_cluster_fit
 
 
 def trial_header(record):
@@ -35,6 +37,8 @@ def main():
     parser.add_argument("--draws", type=int, default=2)
     parser.add_argument("--subject-scale", type=float, default=.5)
     parser.add_argument("--concentrations", type=float, nargs="+", default=[32, 64])
+    parser.add_argument("--inference", choices=("profiled", "mixed-score"), default="profiled")
+    parser.add_argument("--max-iter", type=int, default=300, help="Shared-null iteration limit for the mixed-score diagnostic.")
     parser.add_argument("--residual-concentration", type=float)
     parser.add_argument("--within-path-type-scale", type=float)
     args = parser.parse_args()
@@ -71,7 +75,7 @@ def main():
     requested = [family[index] for index in sorted(selection)]
     gene_lookup = {canonical(value): index for index, value in enumerate(genes)}
     screening_counts = tuple(value.tocsc() for value in counts)
-    expected_strategies = [f"hybrid profiled ILR A{value:g}" for value in args.concentrations]
+    expected_strategies = ["hybrid free-transcript EC mixed score"] if args.inference == "mixed-score" else [f"hybrid profiled ILR A{value:g}" for value in args.concentrations]
     observed, null, failures, contexts = [], [], [], {}
     for record in requested[args.shard_index::args.shard_count]:
         test_id = record["test_id"]
@@ -99,16 +103,30 @@ def main():
             for draw in range(args.draws):
                 generated = simulate_counts(base, baseline, subjects, rng, args.subject_scale, labels=labels, path_index=path_index, residual_concentration=args.residual_concentration, within_path_type_scale=args.within_path_type_scale)
                 fitted_baseline = ec_block_glmm.pooled_isoform_weights(generated)
-                collapsed, collapsed_paths, collapsed_baseline = collapse_event_nuisance(generated, path_index, fitted_baseline)
-                for concentration, strategy in zip(args.concentrations, expected_strategies):
+                if args.inference == "profiled":
+                    collapsed, collapsed_paths, collapsed_baseline = collapse_event_nuisance(generated, path_index, fitted_baseline)
+                for concentration, strategy in zip(([0.] if args.inference == "mixed-score" else args.concentrations), expected_strategies):
                     try:
-                        result = ec_block_glmm.paired_path_test(collapsed, collapsed_paths, labels, subjects, baseline=collapsed_baseline, path_pseudocount=concentration, path_pseudocount_scaling="total", profile_event_mass=True)
-                        complete = result["converged"] and result["n_subjects"] == n_expected and n_expected >= 4
-                        norm = float(np.linalg.norm(result["differences"].mean(axis=0))) if complete else np.nan
-                        observed.append({**header, "draw": draw, "strategy": strategy, "p_value": result["p_value"] if complete else 1., "statistic": result["statistic"] if complete else 0., "degrees_of_freedom": 1, "n_subjects": result["n_subjects"], "n_observations": len(rows), "mean_difference_norm": norm, "converged": complete})
+                        if args.inference == "mixed-score":
+                            result = mixed_path_score_test(generated, path_index, labels, subjects, baseline=fitted_baseline, max_iter=args.max_iter)
+                        else:
+                            result = ec_block_glmm.paired_path_test(collapsed, collapsed_paths, labels, subjects, baseline=collapsed_baseline, path_pseudocount=concentration, path_pseudocount_scaling="total", profile_event_mass=True)
+                        fitted_subjects = result.get("n_fitted_subjects", result["n_subjects"])
+                        complete = complete_cluster_fit(result, n_expected)
+                        norm = float(np.linalg.norm(result["mean_difference"] if args.inference == "mixed-score" else result["differences"].mean(axis=0))) if complete else np.nan
+                        trial_null = []
                         if complete:
                             signs = np.random.default_rng(381924 + zlib.crc32(test_id.encode()) + 1721 * draw)
-                            null.extend({**header, "draw": draw, "strategy": strategy, "replicate": replicate, "n_subjects": n_expected, "p_value": signed_null_p_value(result["differences"], result["difference_covariances"], signs, False, 0.)} for replicate in range(32))
+                            for replicate in range(32):
+                                if args.inference == "mixed-score":
+                                    components = result["components"]
+                                    sign_vector = signs.choice([-1., 1.], size=(len(components.scores), 1))
+                                    null_p = mixed_score_test(components.scores * sign_vector, components.information, components.biological_shapes)["p_value"]
+                                else:
+                                    null_p = signed_null_p_value(result["differences"], result["difference_covariances"], signs, False, 0.)
+                                trial_null.append({**header, "draw": draw, "strategy": strategy, "replicate": replicate, "n_subjects": n_expected, "p_value": null_p})
+                        observed.append({**header, "draw": draw, "strategy": strategy, "p_value": result["p_value"] if complete else 1., "statistic": result["statistic"] if complete else 0., "degrees_of_freedom": 1, "n_subjects": result["n_subjects"], "n_fitted_subjects": fitted_subjects, "n_expected_subjects": n_expected, "n_observations": len(rows), "mean_difference_norm": norm, "converged": complete})
+                        null.extend(trial_null)
                     except (ValueError, np.linalg.LinAlgError) as error:
                         failures.append({**header, "draw": draw, "strategy": strategy, "error": repr(error)})
         except (ValueError, KeyError, np.linalg.LinAlgError) as error:
@@ -120,7 +138,9 @@ def main():
     pd.DataFrame(observed).to_csv(args.output_dir / "observed.tsv", sep="\t", index=False)
     pd.DataFrame(null, columns=["test_id", "block_id", "gene_id", "n_paths", "draw", "strategy", "replicate", "n_subjects", "p_value"]).to_csv(args.output_dir / "null.tsv.gz", sep="\t", index=False)
     (args.output_dir / "failures.json").write_text(json.dumps(failures, indent=2) + "\n")
-    manifest = {"source": args.source, "candidate_settings": settings, "requested_ids": [row["test_id"] for row in requested], "expected_strategies": expected_strategies, "draws": args.draws, "null_replicates": 32, "subject_scale": args.subject_scale, "concentrations": args.concentrations, "residual_concentration": args.residual_concentration, "within_path_type_scale": args.within_path_type_scale, "seed": 381924, "selection": "fixed random sample of the whole screened event family, including fit failures; no significance or LR selection", "baseline": "full transcript pooled fit refitted on each generated count draw before actual event-class collapse", "null": "zero conditional-mean target-path contrast; observed primer totals, compatibility, coverage and subject missingness retained", "failure_policy": "all requested trials at p1 on exceptions or incomplete subject fits"}
+    manifest = {"source": args.source, "candidate_settings": settings, "requested_ids": [row["test_id"] for row in requested], "expected_strategies": expected_strategies, "draws": args.draws, "null_replicates": 32, "subject_scale": args.subject_scale, "concentrations": [0.] if args.inference == "mixed-score" else args.concentrations, "inference": args.inference, "mixed_score_version": MIXED_SCORE_VERSION if args.inference == "mixed-score" else None, "residual_concentration": args.residual_concentration, "within_path_type_scale": args.within_path_type_scale, "seed": 381924, "selection": "fixed random sample of the whole screened event family, including fit failures; no significance or LR selection", "baseline": "full transcript pooled fit refitted on each generated count draw; profiled backend collapses event classes, mixed-score retains every supported transcript and frees type-specific nuisance", "null": "zero conditional-mean target-path contrast; observed primer totals, compatibility, coverage and subject missingness retained", "failure_policy": "all requested trials at p1 on exceptions or incomplete subject fits"}
+    manifest["max_iter"] = args.max_iter if args.inference == "mixed-score" else None
+    manifest["completeness"] = "every eligible subject null must fit; mixed-score degrees of freedom count informative clusters separately from fitted clusters"
     (args.output_dir / "settings.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
 

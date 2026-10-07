@@ -50,6 +50,12 @@ def complete_paired_fits(table):
     return complete, reporting
 
 
+def complete_cluster_fit(result, expected_subjects):
+    """Distinguish failed fits from structurally uninformative fitted clusters."""
+    fitted = result.get("n_fitted_subjects", result["n_subjects"])
+    return bool(result["converged"] and expected_subjects >= 4 and fitted == expected_subjects and result["n_subjects"] >= 4)
+
+
 def coverage_correlation(pvalues, coverage, controls=None):
     """Correlate p (not -log p) with depth, optionally residualizing ranks.
 

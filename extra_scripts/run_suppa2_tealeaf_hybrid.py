@@ -35,7 +35,7 @@ from extra_scripts.run_ec_block_glmm import (
 from extra_scripts.run_ec_glmm import local_gene_data
 from extra_scripts.run_paired_path_test import filtered_inputs, signed_null_p_value
 from tealeaf.sc import ec_block_glmm
-from tealeaf.sc import ec_glmm
+from tealeaf.sc.event_paths import collapse_event_nuisance
 
 
 def canonical(value):
@@ -71,37 +71,6 @@ def supported_gene_transcripts(gene, gene_transcripts, gene_ecs, designs):
         local = design[ecs][:, transcripts]
         supported |= np.asarray(local.sum(axis=0)).ravel() > 0
     return transcripts[supported]
-
-
-def collapse_event_nuisance(data, path_index, baseline):
-    """Collapse non-event isoforms to one fixed-mixture nuisance component."""
-    path_index = np.asarray(path_index, dtype=int)
-    baseline = np.asarray(baseline, dtype=float)
-    groups = [
-        np.flatnonzero(path_index == 0),
-        np.flatnonzero(path_index == 1),
-        np.flatnonzero(path_index < 0),
-    ]
-    groups = [group for group in groups if len(group)]
-    collapsed_maps = []
-    for mapping in data.compatibility:
-        columns = []
-        for group in groups:
-            weights = baseline[group]
-            if weights.sum() <= 0:
-                weights = np.ones(len(group), dtype=float)
-            weights = weights / weights.sum()
-            columns.append(mapping[:, group] @ weights)
-        collapsed_maps.append(np.column_stack(columns))
-    collapsed = ec_glmm.ECGLMMData(
-        data.counts,
-        tuple(collapsed_maps),
-        data.design,
-        data.clusters,
-    )
-    collapsed_baseline = np.asarray([baseline[group].sum() for group in groups])
-    collapsed_path_index = np.asarray([0, 1] + ([-1] if len(groups) == 3 else []))
-    return collapsed, collapsed_path_index, collapsed_baseline
 
 
 def partition_event_tests(tests, shard_count):

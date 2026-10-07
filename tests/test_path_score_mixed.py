@@ -74,6 +74,7 @@ def test_three_types_three_paths_with_missing_reference_in_one_subject():
     result = mixed_path_score_test(data, [0, 1, 2], labels, subjects, baseline=np.ones(3) / 3)
     assert result["degrees_of_freedom"] == 4
     assert result["n_subjects"] == 6
+    assert result["n_fitted_subjects"] == 6
     assert result["components"].information.shape == (6, 4, 4)
     assert np.linalg.matrix_rank(result["components"].information[0]) == 2
 

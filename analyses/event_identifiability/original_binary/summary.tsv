@@ -1,0 +1,3 @@
+scope	n_associations	n_events	n_complete	free_informative	fixed_informative	requires_fixed_shares
+fixed random whole-family null panel	32	32	32	32	32	0
+native top100 diagnostic, not a model-selection family	100	56	100	100	100	0

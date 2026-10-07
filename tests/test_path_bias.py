@@ -5,6 +5,17 @@ from tealeaf.sc.ec_glmm import ECGLMMData
 from tealeaf.sc.path_bias import SharedPathNullProblem, expected_ec_counts, paired_null_corrected_path_test, null_corrected_path_responses
 
 
+@pytest.mark.parametrize("depth_scale", [1., 1e5])
+def test_scaled_shared_null_recovers_categorical_mle_at_different_depths(depth_scale):
+    counts = np.array([[104., 52., 44.], [106., 50., 44.], [106., 57., 37.]]) * depth_scale
+    problem = SharedPathNullProblem((counts,), (np.eye(3),), np.ones(3), [0, 1, 2])
+    fitted = problem.fit()
+    assert fitted.converged
+    assert fitted.termination_message
+    assert np.allclose(fitted.path_proportions, counts.sum(axis=0) / counts.sum(), atol=1e-7)
+    assert fitted.objective == pytest.approx(problem.objective(problem.basis.T @ np.log(fitted.path_proportions))[0])
+
+
 @pytest.mark.parametrize("outside", [False, True])
 def test_shared_path_null_gradient_matches_independent_differences(outside):
     rng = np.random.default_rng(714)
