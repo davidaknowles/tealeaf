@@ -11,7 +11,11 @@ source /gpfs/commons/home/daknowles/projects/tealeaf/analyses/microglia_less/con
 module load "${PYTHON_MODULE}"
 source "${HOME}/venv/jax/bin/activate"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}" OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+ARGS=()
+if [[ "${SPLIT_ONLY:-0}" == 1 ]]; then
+  ARGS+=(--split-only)
+fi
 python -m extra_scripts.assess_omnibus_inference_audit \
   --cache "${AUDIT_CACHE}" --control-cache "${CONTROL_CACHE}" --name "${VARIANT}" \
   --output-dir "${AUDIT_OUTPUT}" --run-root "${RUN_ROOT}" \
-  --matrix-dir "${REPO_ROOT}/.cache/tilgner_scisorseq/LR_annotTranscripts_byCT" --gtf "${GENCODE_GTF}"
+  --matrix-dir "${REPO_ROOT}/.cache/tilgner_scisorseq/LR_annotTranscripts_byCT" --gtf "${GENCODE_GTF}" "${ARGS[@]}"

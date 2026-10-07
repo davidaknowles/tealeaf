@@ -9,7 +9,6 @@ import zlib
 
 import numpy as np
 import pandas as pd
-from scipy.special import softmax
 
 from extra_scripts.run_paired_path_test import filtered_inputs
 from extra_scripts.run_ec_glmm import local_gene_data
@@ -17,31 +16,7 @@ from extra_scripts.run_ec_block_glmm import local_test_design, partition_candida
 from extra_scripts.audit_path_reporting_omnibus import omnibus_reports, joint_dm_reports
 from tealeaf.sc import ec_block_glmm, ec_glmm, differential
 from tealeaf.sc.path_score import paired_path_score_test, paired_subject_centered_test
-
-
-def simulate_counts(base, baseline, subjects, rng, subject_scale=.5):
-    """Draw primer-conditioned counts with exactly zero within-subject effects.
-
-    Subject transcript mixtures may differ, but every cell type of a subject
-    has the same mixture. Observed per-observation/primer totals are retained
-    to the nearest integer. Compatibility and missing observations are fixed.
-    """
-    levels, encoded = np.unique(subjects, return_inverse=True)
-    offsets = rng.normal(scale=subject_scale, size=(len(levels), len(baseline)))
-    weights = softmax(np.log(np.maximum(baseline, 1e-12))[None, :] + offsets, axis=1)
-    generated = []
-    for counts, mapping in zip(base.counts, base.compatibility):
-        mass = weights[encoded] @ np.asarray(mapping).T
-        totals = np.rint(np.asarray(counts).sum(axis=1)).astype(int)
-        sums = mass.sum(axis=1)
-        if np.any((totals > 0) & (sums <= 0)):
-            raise ValueError("positive-count observation has no simulated compatibility mass")
-        draws = np.zeros_like(np.asarray(counts), dtype=float)
-        for index, total in enumerate(totals):
-            if total:
-                draws[index] = rng.multinomial(total, mass[index] / sums[index])
-        generated.append(draws)
-    return ec_glmm.ECGLMMData(tuple(generated), base.compatibility, base.design, base.clusters)
+from tealeaf.sc.path_simulation import simulate_counts
 
 
 def paired_statistics(base, baseline, path_index, labels, subjects, replicates, seed, prior_center, include_score=False):
@@ -93,6 +68,7 @@ def main():
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--shard-count", type=int, default=16)
     parser.add_argument("--subject-scale", type=float, default=.5)
+    parser.add_argument("--residual-concentration", type=float, help="Independent subject/type path Dirichlet variation, with the same conditional mean across types.")
     parser.add_argument("--free-isoforms", action="store_true")
     parser.add_argument("--mode", choices=("omnibus", "pairwise"), default="omnibus")
     parser.add_argument("--prior-center", choices=("uniform", "baseline"), default="uniform")
@@ -124,7 +100,7 @@ def main():
                 baseline_cache[key] = ec_block_glmm.pooled_isoform_weights(base)
             rng = np.random.default_rng(zlib.crc32(test_id.encode()) + 381924)
             for draw in range(args.draws):
-                simulated = simulate_counts(base, baseline_cache[key], subjects, rng, args.subject_scale)
+                simulated = simulate_counts(base, baseline_cache[key], subjects, rng, args.subject_scale, labels=labels, path_index=path_index, residual_concentration=args.residual_concentration)
                 try:
                     # A failed fit must not prevent later, independent count draws.
                     baseline = ec_block_glmm.pooled_isoform_weights(simulated)
@@ -149,7 +125,8 @@ def main():
     pd.DataFrame(outputs).to_csv(args.output_dir / "observed.tsv", sep="\t", index=False, na_rep="NA")
     pd.DataFrame(nulls).to_csv(args.output_dir / "null.tsv.gz", sep="\t", index=False, na_rep="NA")
     (args.output_dir / "failures.json").write_text(json.dumps(failures, indent=2) + "\n")
-    (args.output_dir / "settings.json").write_text(json.dumps({"candidate_settings": cached["settings"], "selected_blocks": args.blocks, "draws": args.draws, "null_replicates": args.null_replicates, "subject_scale": args.subject_scale, "free_isoforms": args.free_isoforms, "mode": args.mode, "prior_center": args.prior_center, "include_score": args.include_score, "joint_dm_only": args.joint_dm_only, "null": "common transcript mixture for all cell types within each subject, observed primer/depth totals preserved", "baseline": "refitted for each simulated count draw", "seed": 381924}, indent=2, default=str) + "\n")
+    null_description = "common transcript mixture for all cell types within each subject" if args.residual_concentration is None else "independent subject/type Dirichlet path compositions with identical conditional mean across types"
+    (args.output_dir / "settings.json").write_text(json.dumps({"candidate_settings": cached["settings"], "selected_blocks": args.blocks, "draws": args.draws, "null_replicates": args.null_replicates, "subject_scale": args.subject_scale, "residual_concentration": args.residual_concentration, "free_isoforms": args.free_isoforms, "mode": args.mode, "prior_center": args.prior_center, "include_score": args.include_score, "joint_dm_only": args.joint_dm_only, "null": null_description + ", observed primer/depth totals preserved", "baseline": "refitted for each simulated count draw", "seed": 381924}, indent=2, default=str) + "\n")
 
 
 if __name__ == "__main__":

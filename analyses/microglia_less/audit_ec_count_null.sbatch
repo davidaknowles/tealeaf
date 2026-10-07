@@ -13,6 +13,9 @@ module load "${PYTHON_MODULE}"
 source "${HOME}/venv/jax/bin/activate"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}" OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 ARGS=()
+if [[ -n "${RESIDUAL_CONCENTRATION:-}" ]]; then
+  ARGS+=(--residual-concentration "${RESIDUAL_CONCENTRATION}")
+fi
 if [[ "${JOINT_DM_ONLY:-0}" == 1 ]]; then
   ARGS+=(--joint-dm-only)
 fi

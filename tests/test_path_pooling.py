@@ -111,3 +111,18 @@ def test_multilevel_joint_dm_tests_all_cell_types_and_is_path_equivariant():
     assert reverse["converged"]
     assert np.allclose(reverse["standardized_means"], result["standardized_means"][:, order], atol=2e-5)
     assert reverse["statistic"] == pytest.approx(result["statistic"], rel=1e-5)
+
+
+def test_failed_omnibus_fit_cannot_retain_an_extreme_p_value():
+    import json
+    import pandas as pd
+    from extra_scripts.assess_omnibus_inference_audit import complete_failed_tests
+    reference = pd.DataFrame([{"block_id": "b", "test_id": "b", "adjusted_effects": json.dumps([[0, 0], [.4, -.4]])}])
+    failed = reference.assign(strategy="joint DM", converged=False, p_value=1e-10, raw_p_value=1e-12, fdr=1e-9, statistic=50.)
+    result = complete_failed_tests(failed, reference)
+    assert not result.loc[0, "fit_available"]
+    assert result.loc[0, "p_value"] == 1
+    assert result.loc[0, "raw_p_value"] == 1
+    assert result.loc[0, "fdr"] == 1
+    assert result.loc[0, "statistic"] == 0
+    assert np.isnan(np.asarray(json.loads(result.loc[0, "adjusted_effects"]))).all()

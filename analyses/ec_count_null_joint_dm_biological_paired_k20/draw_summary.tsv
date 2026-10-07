@@ -1,0 +1,13 @@
+draw	strategy	n_tests	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01	BH_discoveries
+0	joint DM LRT A0.25 likelihood	128	126	0.1328125	0.046875	0.0078125	1
+0	joint DM LRT A0.25 posterior	128	128	0.140625	0.046875	0.0078125	0
+0	joint DM LRT A1 likelihood	128	126	0.125	0.0625	0.0078125	1
+1	joint DM LRT A0.25 likelihood	128	126	0.125	0.046875	0.0078125	0
+1	joint DM LRT A0.25 posterior	128	128	0.1171875	0.03125	0.0078125	0
+1	joint DM LRT A1 likelihood	128	126	0.125	0.046875	0.0078125	0
+2	joint DM LRT A0.25 likelihood	128	126	0.171875	0.0625	0.015625	0
+2	joint DM LRT A0.25 posterior	128	128	0.1796875	0.0546875	0.0234375	0
+2	joint DM LRT A1 likelihood	128	126	0.15625	0.0546875	0.0078125	0
+3	joint DM LRT A0.25 likelihood	128	126	0.125	0.078125	0.0234375	0
+3	joint DM LRT A0.25 posterior	128	128	0.140625	0.0859375	0.0234375	0
+3	joint DM LRT A1 likelihood	128	126	0.1328125	0.0703125	0.015625	0

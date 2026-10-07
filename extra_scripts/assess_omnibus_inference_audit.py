@@ -25,6 +25,9 @@ def complete_failed_tests(frame, reference):
         missing["converged"] = False
         missing["adjusted_effects"] = missing.adjusted_effects.map(lambda value: json.dumps(np.full(np.asarray(json.loads(value)).shape, np.nan).tolist()))
         retained["fit_available"] = retained.converged.astype(str).str.lower().eq("true") if "converged" in retained else True
+        retained.loc[~retained.fit_available, ["p_value", "raw_p_value"]] = 1.
+        retained.loc[~retained.fit_available, "statistic"] = 0.
+        retained.loc[~retained.fit_available, "adjusted_effects"] = retained.loc[~retained.fit_available, "adjusted_effects"].map(lambda value: json.dumps(np.full(np.asarray(json.loads(value)).shape, np.nan).tolist()))
         missing["fit_available"] = False
         completed = pd.concat([retained, missing], ignore_index=True)
         completed["fdr"] = benjamini_hochberg(completed.p_value.to_numpy(float))
@@ -44,11 +47,12 @@ def main():
     parser.add_argument("--run-root", type=Path, required=True)
     parser.add_argument("--name", required=True)
     parser.add_argument("--control-fold-shards", type=int, default=16)
+    parser.add_argument("--split-only", action="store_true", help="Assess completed subject halves before full-data fits finish.")
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     folds, audits, provenance = [], [], []
     full, full_control = None, None
-    for fold in (0, 1, "full"):
+    for fold in ((0, 1) if args.split_only else (0, 1, "full")):
         folder = "omnibus_full" if fold == "full" else f"omnibus_fold{fold}"
         experimental = args.cache / folder
         if fold == "full" and not experimental.exists():
@@ -100,6 +104,10 @@ def main():
             folds.append(combined)
     summary = split_omnibus_summary(folds, args.output_dir)
     pd.concat(audits, ignore_index=True).to_csv(args.output_dir / "held_null_summary.tsv", sep="\t", index=False, na_rep="NA")
+    if args.split_only:
+        (args.output_dir / "manifest.json").write_text(json.dumps({"variant": args.name, "cohorts": provenance, "selection": "fixed eligible control block universe; missing experimental fits p=1", "split_only": True, "long_read": "not assessed by this invocation", "production_changes": False}, indent=2) + "\n")
+        print(summary.to_string(index=False), flush=True)
+        return
     # No pooled reporting or old paired discovery list restricts the LR universe.
     # Select the largest source effect among supported types before LR checks.
     if settings[0].get("joint_dm_only", False):

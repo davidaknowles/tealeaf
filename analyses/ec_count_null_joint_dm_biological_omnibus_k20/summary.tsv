@@ -1,0 +1,4 @@
+strategy	n_tests	n_blocks	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01
+joint DM LRT A0.25 likelihood	512	128	482	0.17578125	0.0390625	0.01171875
+joint DM LRT A0.25 posterior	512	128	510	0.201171875	0.046875	0.00390625
+joint DM LRT A1 likelihood	512	128	484	0.162109375	0.046875	0.009765625
