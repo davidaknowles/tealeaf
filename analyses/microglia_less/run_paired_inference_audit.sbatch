@@ -20,6 +20,7 @@ python "${REPO_ROOT}/extra_scripts/run_paired_path_test.py" \
   --data-cache "${RUN_ROOT}/differential/ec_glmm_prepared.pkl" \
   --candidate-cache "${CANDIDATE_CACHE}" --output-dir "${OUTPUT_ROOT}/shard_${SLURM_ARRAY_TASK_ID}" \
   --shard-index "${SLURM_ARRAY_TASK_ID}" --shard-count "${SHARD_COUNT:-32}" \
+  --max-iter "${MAX_ITER:-100}" \
   --null-replicates 64 --path-pseudocount "${CONCENTRATION:-32}" \
   --path-prior-center "${PRIOR_CENTER:-uniform}" --path-pseudocount-scaling total \
   --paired-inference "${BACKEND:-ec-score}" --score-null-concentration "${NULL_CONCENTRATION:-1}" \

@@ -1,0 +1,7 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+baseline	40	1878	32.0	0.8	0.8896191185507283	all tested	native diagnostic
+baseline	100	1878	66.0	0.66	0.7845585189700286	all tested	native diagnostic
+baseline	200	1878	122.0	0.61	0.7073889814341037	all tested	native diagnostic
+baseline	40	54	32.0	0.8	0.8896191185507283	BH discoveries	native diagnostic
+baseline	100	54	NA	NA	NA	BH discoveries	native diagnostic
+baseline	200	54	NA	NA	NA	BH discoveries	native diagnostic

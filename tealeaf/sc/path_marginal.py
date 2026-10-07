@@ -18,7 +18,7 @@ from scipy.stats import chi2
 from . import differential
 from .ec_block_glmm import collapse_isoforms_to_paths, pooled_isoform_weights
 
-MODEL_VERSION = "binary_ec_random_subject_beta_v3_hybrid_scores"
+MODEL_VERSION = "binary_ec_random_subject_beta_v4_supported_primer_endpoints"
 
 
 def beta_quadrature(a, b, nodes=16):
@@ -73,8 +73,8 @@ class BinaryECPathLikelihood:
         for counts, components in zip(self.counts, self.components):
             if counts.ndim != 2 or counts.shape[0] != n or components.shape != (counts.shape[1], 3) or not np.isfinite(counts).all() or not np.isfinite(components).all() or (counts < 0).any() or (components < 0).any():
                 raise ValueError("finite nonnegative N by K counts and K by 3 EC components required")
-            if min((components[:, 0] + components[:, 1]).sum(), (components[:, 0] + components[:, 2]).sum()) <= 0:
-                raise ValueError("positive primer masses required at both path endpoints")
+            if max((components[:, 0] + components[:, 1]).sum(), (components[:, 0] + components[:, 2]).sum()) <= 0 and counts.sum() > 0:
+                raise ValueError("observed primer requires positive mass at an interior path composition")
             impossible = components.sum(axis=1) == 0
             if (counts[:, impossible] > 0).any():
                 raise ValueError("positive EC counts require a nonzero model probability")
@@ -90,8 +90,19 @@ class BinaryECPathLikelihood:
         """
         terms = np.zeros((len(self.subjects), 3))
         for counts, components in zip(self.counts, self.components):
+            if counts.sum() == 0:
+                continue
             first = components[:, 0] + components[:, 1]
             second = components[:, 0] + components[:, 2]
+            # A primer can see just one path, or both in the same EC ratios.
+            # Conditional on its gene total it then carries no path-usage
+            # information, and its normalized likelihood is constant. A zero
+            # endpoint normalizer is not an invalid interior likelihood.
+            first_sum, second_sum = first.sum(), second.sum()
+            if min(first_sum, second_sum) == 0 or np.allclose(first / first_sum, second / second_sum, rtol=1e-12, atol=0):
+                probabilities = first / first_sum if first_sum > 0 else second / second_sum
+                terms[:, 2] += counts @ np.log(np.maximum(probabilities, 1e-300))
+                continue
             if not np.isclose(first.sum(), second.sum(), rtol=1e-12, atol=1e-15):
                 terms[counts.sum(axis=1) > 0] = np.nan
                 continue

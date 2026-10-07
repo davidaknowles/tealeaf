@@ -59,6 +59,8 @@ def matrix_log_likelihood(likelihood, rows, points):
     rows, points = np.asarray(rows, dtype=int), np.asarray(points, dtype=float)
     result = np.zeros((len(rows), len(points)))
     for counts, components in zip(likelihood.counts, likelihood.components):
+        if counts[rows].sum() == 0:
+            continue
         mass = components[:, 0, None] + points[None, :] * components[:, 1, None] + (1 - points[None, :]) * components[:, 2, None]
         observed = counts[rows]
         result += observed @ np.log(np.maximum(mass, 1e-300)) - observed.sum(axis=1, keepdims=True) * np.log(mass.sum(axis=0))[None, :]

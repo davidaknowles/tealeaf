@@ -1,0 +1,7 @@
+strategy	n_tests	n_blocks	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01
+null-corrected Pillai A1	64	32	56	0.03125	0.015625	0.0
+null-corrected Pillai A32	64	32	56	0.03125	0.03125	0.0
+null-corrected maximum-coordinate F A1	64	32	56	0.046875	0.015625	0.015625
+null-corrected maximum-coordinate F A32	64	32	56	0.046875	0.03125	0.0
+null-corrected trace F A1	64	32	56	0.046875	0.046875	0.015625
+null-corrected trace F A32	64	32	56	0.046875	0.03125	0.015625

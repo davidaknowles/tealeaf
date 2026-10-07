@@ -23,6 +23,7 @@ from extra_scripts.run_ec_block_glmm import (
 from extra_scripts.run_ec_glmm import local_gene_data
 from tealeaf.sc import differential, ec_block_glmm
 from tealeaf.sc.path_score import paired_path_score_test, paired_subject_centered_test
+from tealeaf.sc.path_bias import paired_null_corrected_path_test
 
 
 def parse_args():
@@ -57,7 +58,7 @@ def parse_args():
     parser.add_argument("--max-candidates", type=int)
     parser.add_argument("--test-id-file", type=Path)
     parser.add_argument("--export-path-usage", action="store_true")
-    parser.add_argument("--paired-inference", choices=("local", "ec-score", "subject-centered"), default="local", help="Experimental paired inference alternatives; local remains production.")
+    parser.add_argument("--paired-inference", choices=("local", "ec-score", "subject-centered", "null-corrected"), default="local", help="Experimental paired inference alternatives; local remains production.")
     parser.add_argument("--score-null-concentration", type=float, default=1.)
     parser.add_argument("--score-free-null", action="store_true")
     return parser.parse_args()
@@ -205,6 +206,8 @@ def main():
         if np.any(uncertainty_grid < 0):
             raise ValueError("uncertainty scale grid must be nonnegative")
     test_effect = settings.get("test_effect")
+    if args.paired_inference == "null-corrected" and (test_effect != "cell_type_pairwise" or args.path_prior_center != "uniform" or args.path_pseudocount_scaling != "total" or args.smoothing_map is not None):
+        raise ValueError("null-corrected sensitivity requires paired uniform total concentration, without a smoothing map")
     if test_effect not in {
         "cell_type",
         "cell_type_pairwise",
@@ -282,7 +285,12 @@ def main():
                 if args.paired_inference != "local":
                     if args.retain_uncertainty or args.uncertainty_scale_grid or args.uncertainty_scale_map:
                         raise ValueError("experimental paired backends do not support measurement-error testing")
-                    if args.paired_inference == "subject-centered":
+                    if args.paired_inference == "null-corrected":
+                        result = paired_null_corrected_path_test(base, path_index, labels, clusters, baseline=baseline, concentration=path_pseudocount, max_iter=args.max_iter, reporting_concentration=1.)
+                        reported = result["reporting_proportions"].reshape(-1, 2, len(signatures))
+                        result["path_fits"] = [[SimpleNamespace(path_proportions=proportion) for proportion in pair] for pair in reported]
+                        result["difference_covariances"] = np.zeros((len(result["differences"]), len(signatures) - 1, len(signatures) - 1))
+                    elif args.paired_inference == "subject-centered":
                         result = paired_subject_centered_test(base, path_index, labels, clusters, baseline=baseline, concentration=path_pseudocount)
                         result["difference_covariances"] = np.asarray([first.covariance.covariance + second.covariance.covariance for first, second in result["path_fits"]])
                     else:
@@ -507,6 +515,14 @@ def main():
                     })
         except Exception as error:
             failures.append({"test_id": test_id, "error": repr(error)})
+            if args.paired_inference == "null-corrected":
+                # Unlike historical runners, this prototype explicitly retains
+                # every failed candidate in the tested/BH/Simes family.
+                observed_rows = [row for row in observed_rows if row["test_id"] != test_id]
+                null_rows = [row for row in null_rows if row["test_id"] != test_id]
+                path_usage_rows = [row for row in path_usage_rows if row["test_id"] != test_id]
+                observed_rows.append({"test_id": test_id, "block_id": block_id, "gene_id": gene_id, "contrast": test_effect, "level_a": tested_levels[0], "level_b": tested_levels[1], "method": "local_path", "inference_backend": args.paired_inference, "path_pseudocount": args.path_pseudocount, "path_prior_center": args.path_prior_center, "path_pseudocount_scaling": args.path_pseudocount_scaling, "n_paths": len(signatures), "n_isoforms": len(transcripts), "n_ecs": len(gene_ecs[gene]), "n_samples": len(rows), "n_subjects": 0, "degrees_of_freedom": len(signatures) - 1, "median_gene_umis": np.nan, "statistic": 0., "p_value": 1., "converged": False, "mean_difference_norm": np.nan, "mean_difference": "[]", "path_signatures": json.dumps(signatures)})
+                null_rows.extend({"test_id": test_id, "block_id": block_id, "replicate": replicate, "p_value": 1.} for replicate in range(args.null_replicates))
     args.output_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(observed_rows).to_csv(
         args.output_dir / "paired_path.tsv", sep="\t", index=False
@@ -533,6 +549,7 @@ def main():
         "experimental": args.paired_inference != "local",
         "candidate_settings": settings,
         "score_report": "One-step ILR displacement mapped through subject-null softmax, not separately quantified cell-type usage" if args.paired_inference == "ec-score" else None,
+        "null_corrected_report": "Independent free-transcript total-A1 arithmetic subject usage; statistics use strong smoothed-minus-expected-null proportion differences" if args.paired_inference == "null-corrected" else None,
     }, indent=2) + "\n")
 
 

@@ -1,0 +1,3 @@
+strategy	n_tests	n_blocks	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01
+paired null-corrected proportions A1	64	32	62	0.046875	0.046875	0.03125
+paired null-corrected proportions A32	64	32	62	0.046875	0.046875	0.015625

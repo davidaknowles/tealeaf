@@ -65,7 +65,8 @@ def long_read_assessment(tests, root, matrix_dir, gtf, block_path, output, model
     represented = set(level for level, rep in groups)
     tests = tests.loc[tests.converged & tests.n_subjects.ge(4) & tests.level_a.isin(represented) & tests.level_b.isin(represented)].copy()
     if usage is None and effect_vectors is None:
-        usage = load_path_usage(root, set(tests.test_id)).set_index(["test_id", "cell_type", "path_number"]).proportion
+        complete_reporting = "inference_backend" in tests and tests.inference_backend.eq("null-corrected").all()
+        usage = load_path_usage(root, set(tests.test_id), require_complete=complete_reporting).set_index(["test_id", "cell_type", "path_number"]).proportion
     # Retain original matrix row indices while avoiding a whole-annotation
     # string scan for every tested contrast of the same block.
     feature_groups = {gene: frame for gene, frame in features.groupby("stable_gene_id")}
@@ -145,8 +146,26 @@ def main():
     folds = [fit_table(args.cache / f"{args.model}_{fold}/merged/paired_path.tsv") for fold in (0, 1)]
     split_assessment(folds, repo, args.output_dir, args.model)
     full = pd.read_csv(args.cache / f"{args.model}_full/merged/paired_path.tsv", sep="\t")
+    corrected = "inference_backend" in full and full.inference_backend.eq("null-corrected").all()
+    if corrected:
+        reporting_folds = []
+        for fold, original in enumerate(folds):
+            local = original.copy()
+            usage = load_path_usage(args.cache / f"{args.model}_{fold}", set(local.test_id), require_complete=True).set_index(["test_id", "cell_type", "path_number"]).proportion
+            effects = []
+            for row in local.itertuples(index=False):
+                size = len(json.loads(row.path_signatures))
+                first = np.asarray([usage.get((row.test_id, row.level_a, path), np.nan) for path in range(1, size + 1)])
+                second = np.asarray([usage.get((row.test_id, row.level_b, path), np.nan) for path in range(1, size + 1)])
+                vector = second - first
+                effects.append(-vector if str(row.level_a) > str(row.level_b) else vector)
+            local["effect_vector"] = effects
+            reporting_folds.append(local)
+        report_output = args.output_dir / "reporting_A1"
+        report_output.mkdir(exist_ok=True)
+        split_assessment(reporting_folds, repo, report_output, f"{args.model}, free A1 reported direction")
     long_read_assessment(full, args.cache / f"{args.model}_full", args.matrix_dir, args.gtf, args.block_cache, args.output_dir, args.model)
-    (args.output_dir / "manifest.json").write_text(json.dumps({"model": args.model, "cohort_checks": cohort_checks, "production_changes": False, "split_universe": "Frozen published comparator-matched gene/pair families, unavailable prototype families assigned p=1", "split_testing": "Same gene/pair Simes, gene Simes, conjunction and BH as Table 1", "variance_moderation": True, "calibration_families": 32, "long_read": "Complete finite converged tested pairwise family, freshly remapped without discovery or historical 704-event restriction", "long_read_reporting": "Testing-strength subject-mean fitted usage; score backend uses one-step softmax proxies", "primary_rank": "calibrated then raw", "interpretation": "Exploratory, requires matched endpoint checks and biological-null validation before promotion"}, indent=2) + "\n")
+    (args.output_dir / "manifest.json").write_text(json.dumps({"model": args.model, "cohort_checks": cohort_checks, "production_changes": False, "split_universe": "Frozen published comparator-matched gene/pair families, unavailable prototype families assigned p=1", "split_testing": "Same gene/pair Simes, gene Simes, conjunction and BH as Table 1", "variance_moderation": True, "calibration_families": 32, "long_read": "Complete finite converged tested pairwise family, freshly remapped without discovery or historical 704-event restriction", "long_read_reporting": "Independent free-transcript A1 subject arithmetic mean; any failed reporting aggregate invalidates the entire effect" if corrected else "Testing-strength subject-mean fitted usage; score backend uses one-step softmax proxies", "split_direction": "Null-corrected linear-proportion testing response" if corrected else "Testing response", "primary_rank": "calibrated then raw", "interpretation": "Exploratory, requires matched endpoint checks and biological-null validation before promotion"}, indent=2) + "\n")
 
 
 if __name__ == "__main__":

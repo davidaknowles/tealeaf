@@ -166,3 +166,33 @@ def test_exact_integral_score_respects_numerical_mean_clipping():
     likelihood = binomial_likelihood([[3, 7]])
     _, eta, _ = likelihood.log_integrals(np.array([[-50., 50.]]), 20., gradient=True)
     assert np.array_equal(eta, [[0., 0.]])
+
+
+def test_primer_with_one_invisible_path_has_constant_conditional_likelihood():
+    counts = (np.array([[3., 7.]]), np.array([[5., 5.]]))
+    components = (np.array([[0, 1, 0], [0, 2, 0]], float), np.array([[0, 1, 0], [0, 0, 1]], float))
+    likelihood = BinaryECPathLikelihood(counts, components, np.array([0]), np.array([0]), np.ones((1, 2)), np.zeros(1))
+    expected = betaln(15, 15) - betaln(10, 10) + 3 * np.log(1 / 3) + 7 * np.log(2 / 3)
+    assert likelihood.log_integrals(np.array([[0.]]), 20)[0, 0] == pytest.approx(expected, abs=1e-12)
+    assert np.isfinite(likelihood.row_log_likelihood(0, np.array([1e-14, .5, 1 - 1e-14]))).all()
+
+
+def test_zero_map_with_zero_primer_counts_does_not_change_integral():
+    from tealeaf.sc.path_marginal_quadrature import shared_prior_quadrature
+
+    counts = (np.array([[3., 7.]]), np.zeros((1, 2)))
+    components = (np.array([[0, 1, 0], [0, 0, 1]], float), np.zeros((2, 3)))
+    likelihood = BinaryECPathLikelihood(counts, components, np.array([0]), np.array([0]), np.ones((1, 2)), np.zeros(1))
+    assert shared_prior_quadrature(likelihood).log_integrals(np.array([[0.]]), 20)[0, 0] == pytest.approx(betaln(13, 17) - betaln(10, 10))
+
+
+def test_proportional_endpoint_maps_and_empty_primer_are_constant_on_numeric_grid():
+    from tealeaf.sc.path_marginal_quadrature import matrix_log_likelihood, shared_prior_quadrature
+
+    counts = (np.array([[3., 7.]]), np.zeros((1, 2)))
+    components = (np.array([[0, 1, 4], [0, 2, 8]], float), np.zeros((2, 3)))
+    likelihood = BinaryECPathLikelihood(counts, components, np.array([0]), np.array([0]), np.ones((1, 2)), np.zeros(1))
+    expected = 3 * np.log(1 / 3) + 7 * np.log(2 / 3)
+    points = np.array([1e-14, .4, 1 - 1e-14])
+    assert np.allclose(matrix_log_likelihood(likelihood, [0], points), expected)
+    assert np.allclose(shared_prior_quadrature(likelihood).log_integrals(np.array([[-2., 0., 2.]]), 20), expected)

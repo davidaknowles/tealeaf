@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 from extra_scripts.merge_paired_path_test import moderate_scalar_tests
+from types import SimpleNamespace
 
 
 def test_moderate_scalar_tests_refits_each_null_family():
@@ -27,3 +28,21 @@ def test_moderate_scalar_tests_refits_each_null_family():
     assert np.isfinite(moderated_null.p_value).all()
     assert not np.allclose(moderated.p_value, table.p_value)
     assert not np.allclose(moderated_null.p_value, null.p_value)
+
+
+def test_complete_family_merge_counts_failed_hypotheses_in_bh(tmp_path, monkeypatch):
+    from extra_scripts import merge_paired_path_test
+    from tealeaf.sc.ds_benchmark import benjamini_hochberg
+
+    shard = tmp_path / "shard_0"
+    shard.mkdir()
+    table = pd.DataFrame({"test_id": ["a", "b", "failed"], "converged": [True, True, False], "degrees_of_freedom": [1, 1, 1], "n_subjects": [6, 6, 0], "p_value": [.001, .2, 1.]})
+    table["path_pseudocount"] = 32.
+    table["path_pseudocount_scaling"] = "total"
+    table.to_csv(shard / "paired_path.tsv", sep="\t", index=False)
+    output = tmp_path / "merged"
+    monkeypatch.setattr(merge_paired_path_test, "parse_args", lambda: SimpleNamespace(shards=[shard], output_dir=output, min_stratum_tests=100, calibration="native", moderate_variances=False, max_null_replicates=None, retain_failed_family=True))
+    merge_paired_path_test.main()
+    observed = pd.read_csv(output / "paired_path.tsv", sep="\t")
+    assert np.allclose(observed.fdr, benjamini_hochberg(np.array([.001, .2, 1.])))
+    assert observed.loc[observed.test_id.eq("failed"), "p_value"].iloc[0] == 1

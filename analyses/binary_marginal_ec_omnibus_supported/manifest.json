@@ -1,0 +1,60 @@
+{
+  "settings": {
+    "candidate_settings": {
+      "version": 3,
+      "data_cache": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/differential/ec_glmm_prepared.pkl",
+      "features": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/hierarchical/weighted_rank32_joint_glm_cols.txt",
+      "block_cache": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/differential/gencode_vM32_splice_blocks.json.gz",
+      "event_table": null,
+      "test_effect": "cell_type",
+      "min_gene_umis": 25.0,
+      "min_gene_samples": 0,
+      "min_cell_types": 2,
+      "min_celltype_mice": 4,
+      "min_conditions": 2,
+      "min_condition_mice": 3,
+      "max_isoforms": 10,
+      "max_ecs": 128,
+      "subject_folds": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/junction_benchmark/reproducibility/subject_folds.tsv",
+      "subject_fold": 0
+    },
+    "model_version": "binary_ec_random_subject_beta_v4_supported_primer_endpoints",
+    "selected_ids": [
+      "ENSMUSG00000022285.18:B1",
+      "ENSMUSG00000022456.19:B2",
+      "ENSMUSG00000025855.14:B1",
+      "ENSMUSG00000027457.16:B2",
+      "ENSMUSG00000030854.18:B1",
+      "ENSMUSG00000031626.19:B2",
+      "ENSMUSG00000055013.17:B1",
+      "ENSMUSG00000074923.11:B1"
+    ],
+    "shard_count": 8,
+    "requested_scenarios": [
+      {
+        "scenario": "observed",
+        "draw": -1
+      },
+      {
+        "scenario": "common composition",
+        "draw": 0
+      },
+      {
+        "scenario": "biological precision 20",
+        "draw": 0
+      }
+    ],
+    "subject_nodes": 192,
+    "path_nodes": 64,
+    "max_iter": 100,
+    "failure_policy": "p=1, retained cases",
+    "scope": "binary runtime/accuracy or count-null panel only, no calibrated or full-family endpoint claim",
+    "production_changes": false,
+    "quadrature_backend": "shared_prior_gauss_jacobi",
+    "diagnostics": "generating support, raw fit coefficients, and subject-only/path-only doubled-order errors; proposals are not true observed path counts"
+  },
+  "scope": "Independently selected binary runtime/accuracy or count-null panel, not a full-dimensional calibration or split/LR assessment",
+  "selection": "covered production-eligible tests, seed311381, without discovery or LR outcome filtering",
+  "failure_policy": "All requested cases retained, failed p=1 and direction unavailable",
+  "production_changes": false
+}

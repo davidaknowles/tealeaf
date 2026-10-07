@@ -1,0 +1,13 @@
+draw	strategy	n_tests	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01	BH_discoveries
+0	null-corrected Pillai A1	32	27	0.125	0.15625	0.03125	0
+0	null-corrected Pillai A32	32	27	0.15625	0.15625	0.0625	0
+0	null-corrected maximum-coordinate F A1	32	27	0.125	0.0625	0.0	0
+0	null-corrected maximum-coordinate F A32	32	27	0.15625	0.09375	0.0	0
+0	null-corrected trace F A1	32	27	0.125	0.0625	0.0	0
+0	null-corrected trace F A32	32	27	0.15625	0.09375	0.0	0
+1	null-corrected Pillai A1	32	28	0.03125	0.03125	0.0	0
+1	null-corrected Pillai A32	32	28	0.0	0.0	0.0	0
+1	null-corrected maximum-coordinate F A1	32	28	0.03125	0.03125	0.0	0
+1	null-corrected maximum-coordinate F A32	32	28	0.0	0.0	0.0	0
+1	null-corrected trace F A1	32	28	0.0625	0.0625	0.0	0
+1	null-corrected trace F A32	32	28	0.0	0.0	0.0	0

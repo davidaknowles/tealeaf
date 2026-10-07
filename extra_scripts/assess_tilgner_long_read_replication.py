@@ -108,7 +108,7 @@ def load_blocks(path):
     return {row["block_id"]: row for row in blocks}
 
 
-def load_path_usage(root, selected_tests):
+def load_path_usage(root, selected_tests, *, require_complete=False):
     tables = []
     for path in sorted(Path(root).glob("shard_*/path_usage.tsv")):
         table = pd.read_csv(path, sep="\t", usecols=["test_id", "cell_type", "path_number", "proportion"])
@@ -117,13 +117,19 @@ def load_path_usage(root, selected_tests):
             tables.append(table)
     if not tables:
         raise FileNotFoundError(f"no selected path usages under {root}")
-    return pd.concat(tables, ignore_index=True).groupby(["test_id", "cell_type", "path_number"], as_index=False)["proportion"].mean()
+    table = pd.concat(tables, ignore_index=True)
+    if require_complete:
+        failed = table.loc[~np.isfinite(table.proportion), "test_id"]
+        table.loc[table.test_id.isin(failed), "proportion"] = np.nan
+    return table.groupby(["test_id", "cell_type", "path_number"], as_index=False)["proportion"].mean()
 
 
 def block_feature_rows(block, tested_signatures, features):
     signature_to_path = {tuple(tuple(interval) for interval in signature): index + 1 for index, signature in enumerate(tested_signatures)}
     transcript_paths = {}
     for transcript, path_index in zip(block["transcripts"], block["path_index"]):
+        if path_index < 0:
+            continue
         signature = tuple(tuple(interval) for interval in block["path_signatures"][path_index])
         if signature in signature_to_path:
             transcript_paths[stable_identifier(transcript)] = signature_to_path[signature]

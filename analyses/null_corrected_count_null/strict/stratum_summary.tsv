@@ -1,0 +1,27 @@
+strategy	degrees_of_freedom	n_subjects	n_tests	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01
+paired null-corrected proportions A1	1	0	1	0	0.0	0.0	0.0
+paired null-corrected proportions A1	1	4	16	16	0.0	0.0	0.0
+paired null-corrected proportions A1	1	5	6	6	0.16666666666666666	0.16666666666666666	0.0
+paired null-corrected proportions A1	1	6	8	8	0.125	0.125	0.0
+paired null-corrected proportions A1	1	7	5	5	0.0	0.0	0.0
+paired null-corrected proportions A1	1	8	2	2	0.5	0.5	0.0
+paired null-corrected proportions A1	1	11	2	2	0.0	0.0	0.0
+paired null-corrected proportions A1	1	13	2	2	0.0	0.0	0.0
+paired null-corrected proportions A1	2	0	2	0	0.0	0.0	0.0
+paired null-corrected proportions A1	2	4	6	6	0.0	0.0	0.0
+paired null-corrected proportions A1	2	5	8	8	0.0	0.0	0.0
+paired null-corrected proportions A1	2	6	4	4	0.0	0.0	0.0
+paired null-corrected proportions A1	3	5	2	2	0.0	0.0	0.0
+paired null-corrected proportions A32	1	0	1	0	0.0	0.0	0.0
+paired null-corrected proportions A32	1	4	16	16	0.0625	0.0625	0.0
+paired null-corrected proportions A32	1	5	6	6	0.16666666666666666	0.0	0.0
+paired null-corrected proportions A32	1	6	8	8	0.0	0.0	0.0
+paired null-corrected proportions A32	1	7	5	5	0.0	0.0	0.0
+paired null-corrected proportions A32	1	8	2	2	0.0	0.0	0.0
+paired null-corrected proportions A32	1	11	2	2	0.0	0.0	0.0
+paired null-corrected proportions A32	1	13	2	2	0.0	0.0	0.0
+paired null-corrected proportions A32	2	0	2	0	0.0	0.0	0.0
+paired null-corrected proportions A32	2	4	6	6	0.0	0.0	0.0
+paired null-corrected proportions A32	2	5	8	8	0.0	0.0	0.0
+paired null-corrected proportions A32	2	6	4	4	0.0	0.0	0.0
+paired null-corrected proportions A32	3	5	2	2	0.0	0.0	0.0

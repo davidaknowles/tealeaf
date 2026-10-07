@@ -30,6 +30,7 @@ def parse_args():
         action="store_true",
         help="Moderate scalar paired-test variances across blocks.",
     )
+    parser.add_argument("--retain-failed-family", action="store_true", help="Preserve all declared failed candidates as p=1 in BH, for complete-family prototype audits.")
     parser.add_argument(
         "--max-null-replicates",
         type=int,
@@ -223,10 +224,13 @@ def main():
             null["raw_p_value"] = null["p_value"]
             lookup = table.set_index("test_id")["calibration_stratum"]
             null["calibration_stratum"] = null.test_id.map(lookup)
+    if args.retain_failed_family:
+        table.loc[~table.converged.astype(str).str.lower().eq("true"), ["p_value", "raw_p_value"]] = 1.
     table["fdr"] = np.nan
     eligible = table.converged & table.p_value.notna()
-    table.loc[eligible, "fdr"] = benjamini_hochberg(
-        table.loc[eligible, "p_value"].to_numpy()
+    bh_family = table.p_value.notna() if args.retain_failed_family else eligible
+    table.loc[bh_family, "fdr"] = benjamini_hochberg(
+        table.loc[bh_family, "p_value"].to_numpy()
     )
     family_rows = []
     if not null.empty:
@@ -265,6 +269,7 @@ def main():
         "failures": len(failures),
         "calibration": args.calibration,
         "moderate_variances": args.moderate_variances,
+        "retain_failed_family": args.retain_failed_family,
         "retain_uncertainty": (
             bool(table.retain_uncertainty.any())
             if "retain_uncertainty" in table

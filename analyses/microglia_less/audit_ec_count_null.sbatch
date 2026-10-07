@@ -13,6 +13,9 @@ module load "${PYTHON_MODULE}"
 source "${HOME}/venv/jax/bin/activate"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}" OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 ARGS=()
+if [[ "${NULL_CORRECTED:-0}" == 1 ]]; then
+  ARGS+=(--null-corrected)
+fi
 if [[ -n "${WITHIN_PATH_TYPE_SCALE:-}" ]]; then
   ARGS+=(--within-path-type-scale "${WITHIN_PATH_TYPE_SCALE}")
 fi

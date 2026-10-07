@@ -14,6 +14,8 @@ export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}" OMP_NUM_THREADS=1 OPENBLAS_NUM_
 for FOLDER in "${OUTPUT_ROOT}"/shard_*; do
   [[ -f "${FOLDER}/paired_path.tsv" ]] || exit 1
 done
+ARGS=()
+if [[ "${RETAIN_FAILED_FAMILY:-0}" == 1 ]]; then ARGS+=(--retain-failed-family); fi
 python "${REPO_ROOT}/extra_scripts/merge_paired_path_test.py" \
   --shards "${OUTPUT_ROOT}"/shard_* --output-dir "${OUTPUT_ROOT}/merged" \
-  --moderate-variances --max-null-replicates 32
+  --moderate-variances --max-null-replicates 32 "${ARGS[@]}"
