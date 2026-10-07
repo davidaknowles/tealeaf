@@ -13,6 +13,7 @@ from extra_scripts.audit_split_coverage_direction import direction_rows
 from extra_scripts.assess_tilgner_long_read_replication import read_tilgner_matrix, load_blocks, block_feature_rows, normalized_difference, vector_agreement, load_path_usage
 from tealeaf.sc.differential import helmert_basis
 from tealeaf.sc.replication_audit import ranked_direction_summary
+from tealeaf.sc.path_score_mixed import score_contrast_proportions
 
 
 def fit_table(path):
@@ -65,7 +66,7 @@ def long_read_assessment(tests, root, matrix_dir, gtf, block_path, output, model
     represented = set(level for level, rep in groups)
     tests = tests.loc[tests.converged & tests.n_subjects.ge(4) & tests.level_a.isin(represented) & tests.level_b.isin(represented)].copy()
     if usage is None and effect_vectors is None:
-        complete_reporting = "inference_backend" in tests and tests.inference_backend.eq("null-corrected").all()
+        complete_reporting = "inference_backend" in tests and tests.inference_backend.isin(["null-corrected", "mixed-score"]).all()
         usage = load_path_usage(root, set(tests.test_id), require_complete=complete_reporting).set_index(["test_id", "cell_type", "path_number"]).proportion
     # Retain original matrix row indices while avoiding a whole-annotation
     # string scan for every tested contrast of the same block.
@@ -146,26 +147,58 @@ def main():
     folds = [fit_table(args.cache / f"{args.model}_{fold}/merged/paired_path.tsv") for fold in (0, 1)]
     split_assessment(folds, repo, args.output_dir, args.model)
     full = pd.read_csv(args.cache / f"{args.model}_full/merged/paired_path.tsv", sep="\t")
-    corrected = "inference_backend" in full and full.inference_backend.eq("null-corrected").all()
+    corrected = "inference_backend" in full and full.inference_backend.isin(["null-corrected", "mixed-score"]).all()
+    mixed = "inference_backend" in full and full.inference_backend.eq("mixed-score").all()
     if corrected:
         reporting_folds = []
+        score_reporting_folds = []
         for fold, original in enumerate(folds):
             local = original.copy()
             usage = load_path_usage(args.cache / f"{args.model}_{fold}", set(local.test_id), require_complete=True).set_index(["test_id", "cell_type", "path_number"]).proportion
             effects = []
+            score_effects = []
             for row in local.itertuples(index=False):
                 size = len(json.loads(row.path_signatures))
                 first = np.asarray([usage.get((row.test_id, row.level_a, path), np.nan) for path in range(1, size + 1)])
                 second = np.asarray([usage.get((row.test_id, row.level_b, path), np.nan) for path in range(1, size + 1)])
                 vector = second - first
                 effects.append(-vector if str(row.level_a) > str(row.level_b) else vector)
+                if mixed:
+                    anchor = (first + second) / 2
+                    delta = np.asarray(json.loads(row.mean_difference))
+                    if np.isfinite(anchor).all() and delta.shape == (size - 1,):
+                        pair = score_contrast_proportions(anchor, delta)
+                        score_vector = pair[1] - pair[0]
+                    else:
+                        score_vector = np.full(size, np.nan)
+                    score_effects.append(-score_vector if str(row.level_a) > str(row.level_b) else score_vector)
             local["effect_vector"] = effects
             reporting_folds.append(local)
+            if mixed:
+                score_local = local.copy()
+                score_local["effect_vector"] = score_effects
+                score_reporting_folds.append(score_local)
         report_output = args.output_dir / "reporting_A1"
         report_output.mkdir(exist_ok=True)
         split_assessment(reporting_folds, repo, report_output, f"{args.model}, free A1 reported direction")
+        if mixed:
+            score_output = args.output_dir / "reporting_mixed_contrast"
+            score_output.mkdir(exist_ok=True)
+            split_assessment(score_reporting_folds, repo, score_output, f"{args.model}, fitted mixed-score contrast")
+            usage = load_path_usage(args.cache / f"{args.model}_full", set(full.test_id), require_complete=True).set_index(["test_id", "cell_type", "path_number"]).proportion
+            score_vectors = {}
+            for row in full.itertuples(index=False):
+                size = len(json.loads(row.path_signatures))
+                first = np.asarray([usage.get((row.test_id, row.level_a, path), np.nan) for path in range(1, size + 1)])
+                second = np.asarray([usage.get((row.test_id, row.level_b, path), np.nan) for path in range(1, size + 1)])
+                delta = np.asarray(json.loads(row.mean_difference))
+                if np.isfinite(first + second).all() and delta.shape == (size - 1,):
+                    pair = score_contrast_proportions((first + second) / 2, delta)
+                    score_vectors[row.test_id] = pair[1] - pair[0]
+            long_read_assessment(full, args.cache / f"{args.model}_full", args.matrix_dir, args.gtf, args.block_cache, score_output, f"{args.model}, fitted mixed-score contrast", effect_vectors=score_vectors)
+            (score_output / "manifest.json").write_text(json.dumps({"statistics": "Exactly the same mixed-score fits, p-values and event selections as the parent assessment", "reporting": "Gaussian fitted ILR contrast mapped by symmetric softmax about the mean weak-A1 source usage anchor", "interpretation": "One-step approximate model usage, not an independent EC quantification fit", "selection": "Complete tested families; no LR-informed tuning; missing weak reports retained as unavailable"}, indent=2) + "\n")
     long_read_assessment(full, args.cache / f"{args.model}_full", args.matrix_dir, args.gtf, args.block_cache, args.output_dir, args.model)
-    (args.output_dir / "manifest.json").write_text(json.dumps({"model": args.model, "cohort_checks": cohort_checks, "production_changes": False, "split_universe": "Frozen published comparator-matched gene/pair families, unavailable prototype families assigned p=1", "split_testing": "Same gene/pair Simes, gene Simes, conjunction and BH as Table 1", "variance_moderation": True, "calibration_families": 32, "long_read": "Complete finite converged tested pairwise family, freshly remapped without discovery or historical 704-event restriction", "long_read_reporting": "Independent free-transcript A1 subject arithmetic mean; any failed reporting aggregate invalidates the entire effect" if corrected else "Testing-strength subject-mean fitted usage; score backend uses one-step softmax proxies", "split_direction": "Null-corrected linear-proportion testing response" if corrected else "Testing response", "primary_rank": "calibrated then raw", "interpretation": "Exploratory, requires matched endpoint checks and biological-null validation before promotion"}, indent=2) + "\n")
+    (args.output_dir / "manifest.json").write_text(json.dumps({"model": args.model, "cohort_checks": cohort_checks, "production_changes": False, "split_universe": "Frozen published comparator-matched gene/pair families, unavailable prototype families assigned p=1", "split_testing": "Same gene/pair Simes, gene Simes, conjunction and BH as Table 1", "variance_moderation": not mixed, "calibration_families": 32, "long_read": "Complete finite converged tested pairwise family, freshly remapped without discovery or historical 704-event restriction", "long_read_reporting": "Independent free-transcript A1 subject arithmetic mean; any failed reporting aggregate invalidates the entire effect" if corrected else "Testing-strength subject-mean fitted usage; score backend uses one-step softmax proxies", "split_direction": "REML uncertainty-weighted reference ILR contrast" if mixed else "Null-corrected linear-proportion testing response" if corrected else "Testing response", "primary_rank": "calibrated then raw", "interpretation": "Exploratory, requires matched endpoint checks and biological-null validation before promotion"}, indent=2) + "\n")
 
 
 if __name__ == "__main__":

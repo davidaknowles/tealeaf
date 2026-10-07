@@ -1,0 +1,7 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+mixed	40	1917	30.0	0.75	0.8647280775327788	all tested	native diagnostic
+mixed	100	1917	64.0	0.64	0.7746418922393907	all tested	native diagnostic
+mixed	200	1917	126.0	0.63	0.7063560069223955	all tested	native diagnostic
+mixed	40	95	30.0	0.75	0.8647280775327788	BH discoveries	native diagnostic
+mixed	100	95	NA	NA	NA	BH discoveries	native diagnostic
+mixed	200	95	NA	NA	NA	BH discoveries	native diagnostic

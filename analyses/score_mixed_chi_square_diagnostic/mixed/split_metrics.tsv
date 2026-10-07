@@ -1,0 +1,8 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	direction_selected	direction_evaluable	direction_agreement	common_events	failed_tests_fold0	failed_tests_fold1
+LeafCutter	mixed, native diagnostic	simes	simes	747	139	16	14	11	0.8705357142857143	0.620157629621601	52	47	0.8297872340425532	1056	80	102
+MAJIQ Heterogen	mixed, native diagnostic	simes	simes	2499	479	28	18	15	0.8472222222222222	0.5232696640680652	125	118	0.9491525423728814	3456	304	310
+SUPPA2	mixed, native diagnostic	simes	simes	2342	457	22	13	11	0.8706293706293706	0.5082474793178079	108	101	0.9504950495049505	3361	396	409
+SUPPA2 primer-aware	mixed, native diagnostic	simes	simes	2191	431	21	13	11	0.8663003663003663	0.4956081454837524	107	102	0.9411764705882353	3200	350	356
+SUPPA2/Tealeaf hybrid	mixed, native diagnostic	simes	simes	1755	354	17	10	9	0.8911764705882352	0.5348664230307771	80	77	0.987012987012987	2340	334	342
+rMATS (paired)	mixed, native diagnostic	simes	simes	3109	597	29	18	14	0.8409961685823755	0.5311143142951001	128	121	0.9338842975206612	4159	496	514
+scQuint	mixed, native diagnostic	simes	simes	2599	506	27	18	14	0.8796296296296295	0.548422654843991	124	118	0.940677966101695	3569	355	370

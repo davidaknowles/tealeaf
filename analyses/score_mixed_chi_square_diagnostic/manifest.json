@@ -1,0 +1,8 @@
+{
+  "scope": "Native-tail diagnostic using unchanged fitted statistics and complete mapped LR families",
+  "native_p_column": "chi_square_p_value",
+  "cohort_guard": "Every inference shard exactly matches its prior production-cohort assessment; mapped calibrated p-values match the same fitted table",
+  "production_changes": false,
+  "limitation": "Count-null nominal calibration does not validate extreme tails, biological overdispersion or family FDR",
+  "selection": "Frozen comparator-matched gene/pair universes and existing all-tested LR mappings"
+}

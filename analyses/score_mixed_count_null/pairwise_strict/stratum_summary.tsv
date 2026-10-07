@@ -1,0 +1,43 @@
+strategy	degrees_of_freedom	n_subjects	n_tests	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01
+mixed EC score chi-square	1	0	6	0	0.0	0.0	0.0
+mixed EC score chi-square	1	4	14	14	0.07142857142857142	0.14285714285714285	0.07142857142857142
+mixed EC score chi-square	1	5	8	8	0.0	0.125	0.0
+mixed EC score chi-square	1	6	3	3	0.0	0.0	0.0
+mixed EC score chi-square	1	7	5	5	0.0	0.2	0.0
+mixed EC score chi-square	1	8	2	2	0.0	0.0	0.0
+mixed EC score chi-square	1	11	2	2	0.0	0.5	0.0
+mixed EC score chi-square	1	13	2	2	0.0	0.0	0.0
+mixed EC score chi-square	2	0	4	0	0.0	0.0	0.0
+mixed EC score chi-square	2	4	6	6	0.0	0.0	0.0
+mixed EC score chi-square	2	5	7	7	0.0	0.14285714285714285	0.0
+mixed EC score chi-square	2	6	2	2	0.0	0.0	0.0
+mixed EC score chi-square	2	7	1	1	0.0	0.0	0.0
+mixed EC score chi-square	3	5	2	2	0.0	0.0	0.0
+mixed EC score cluster F	1	0	6	0	0.0	0.0	0.0
+mixed EC score cluster F	1	4	14	14	0.0	0.14285714285714285	0.0
+mixed EC score cluster F	1	5	8	8	0.0	0.125	0.0
+mixed EC score cluster F	1	6	3	3	0.0	0.0	0.0
+mixed EC score cluster F	1	7	5	5	0.0	0.2	0.0
+mixed EC score cluster F	1	8	2	2	0.0	0.0	0.0
+mixed EC score cluster F	1	11	2	2	0.0	0.5	0.0
+mixed EC score cluster F	1	13	2	2	0.0	0.0	0.0
+mixed EC score cluster F	2	0	4	0	0.0	0.0	0.0
+mixed EC score cluster F	2	4	6	6	0.0	0.0	0.0
+mixed EC score cluster F	2	5	7	7	0.0	0.0	0.0
+mixed EC score cluster F	2	6	2	2	0.0	0.0	0.0
+mixed EC score cluster F	2	7	1	1	0.0	0.0	0.0
+mixed EC score cluster F	3	5	2	2	0.0	0.0	0.0
+mixed EC score residual F	1	0	6	0	0.0	0.0	0.0
+mixed EC score residual F	1	4	14	14	0.0	0.14285714285714285	0.0
+mixed EC score residual F	1	5	8	8	0.0	0.125	0.0
+mixed EC score residual F	1	6	3	3	0.0	0.0	0.0
+mixed EC score residual F	1	7	5	5	0.0	0.2	0.0
+mixed EC score residual F	1	8	2	2	0.0	0.0	0.0
+mixed EC score residual F	1	11	2	2	0.0	0.5	0.0
+mixed EC score residual F	1	13	2	2	0.0	0.0	0.0
+mixed EC score residual F	2	0	4	0	0.0	0.0	0.0
+mixed EC score residual F	2	4	6	6	0.0	0.0	0.0
+mixed EC score residual F	2	5	7	7	0.0	0.14285714285714285	0.0
+mixed EC score residual F	2	6	2	2	0.0	0.0	0.0
+mixed EC score residual F	2	7	1	1	0.0	0.0	0.0
+mixed EC score residual F	3	5	2	2	0.0	0.0	0.0

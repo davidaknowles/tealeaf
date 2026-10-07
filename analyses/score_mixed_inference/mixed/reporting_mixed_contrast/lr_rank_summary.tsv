@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+mixed, fitted mixed-score contrast	40	1917	29.0	0.725	0.764881274030531	all tested	calibrated then raw
+mixed, fitted mixed-score contrast	100	1917	62.0	0.62	0.6915259389333889	all tested	calibrated then raw
+mixed, fitted mixed-score contrast	200	1917	126.0	0.63	0.6609871324328952	all tested	calibrated then raw
+mixed, fitted mixed-score contrast	40	1917	27.0	0.675	0.7583816777935003	all tested	continuous raw
+mixed, fitted mixed-score contrast	100	1917	70.0	0.7	0.7246695571100394	all tested	continuous raw
+mixed, fitted mixed-score contrast	200	1917	129.0	0.645	0.6960241757078562	all tested	continuous raw
+mixed, fitted mixed-score contrast	40	62	29.0	0.725	0.764881274030531	BH discoveries	calibrated then raw
+mixed, fitted mixed-score contrast	100	62	NA	NA	NA	BH discoveries	calibrated then raw
+mixed, fitted mixed-score contrast	200	62	NA	NA	NA	BH discoveries	calibrated then raw
+mixed, fitted mixed-score contrast	40	62	27.0	0.675	0.7583816777935003	BH discoveries	continuous raw
+mixed, fitted mixed-score contrast	100	62	NA	NA	NA	BH discoveries	continuous raw
+mixed, fitted mixed-score contrast	200	62	NA	NA	NA	BH discoveries	continuous raw

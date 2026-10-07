@@ -1,0 +1,40 @@
+strategy	degrees_of_freedom	n_subjects	n_tests	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01
+mixed EC score chi-square	1	0	8	0	0.0	0.0	0.0
+mixed EC score chi-square	1	4	13	13	0.0	0.0	0.0
+mixed EC score chi-square	1	5	7	7	0.0	0.0	0.0
+mixed EC score chi-square	1	6	2	2	0.0	0.0	0.0
+mixed EC score chi-square	1	7	6	6	0.16666666666666666	0.16666666666666666	0.0
+mixed EC score chi-square	1	8	2	2	0.0	0.0	0.0
+mixed EC score chi-square	1	10	2	2	0.0	0.0	0.0
+mixed EC score chi-square	1	13	2	2	0.5	0.5	0.0
+mixed EC score chi-square	2	0	5	0	0.0	0.0	0.0
+mixed EC score chi-square	2	4	6	6	0.0	0.0	0.0
+mixed EC score chi-square	2	5	7	7	0.0	0.0	0.0
+mixed EC score chi-square	2	6	2	2	0.5	0.0	0.0
+mixed EC score chi-square	3	5	2	2	0.0	0.0	0.0
+mixed EC score cluster F	1	0	8	0	0.0	0.0	0.0
+mixed EC score cluster F	1	4	13	13	0.0	0.0	0.0
+mixed EC score cluster F	1	5	7	7	0.0	0.0	0.0
+mixed EC score cluster F	1	6	2	2	0.0	0.0	0.0
+mixed EC score cluster F	1	7	6	6	0.16666666666666666	0.16666666666666666	0.16666666666666666
+mixed EC score cluster F	1	8	2	2	0.0	0.0	0.0
+mixed EC score cluster F	1	10	2	2	0.0	0.0	0.0
+mixed EC score cluster F	1	13	2	2	0.5	0.5	0.5
+mixed EC score cluster F	2	0	5	0	0.0	0.0	0.0
+mixed EC score cluster F	2	4	6	6	0.0	0.0	0.0
+mixed EC score cluster F	2	5	7	7	0.0	0.0	0.0
+mixed EC score cluster F	2	6	2	2	0.0	0.0	0.0
+mixed EC score cluster F	3	5	2	2	0.0	0.0	0.0
+mixed EC score residual F	1	0	8	0	0.0	0.0	0.0
+mixed EC score residual F	1	4	13	13	0.0	0.0	0.0
+mixed EC score residual F	1	5	7	7	0.0	0.0	0.0
+mixed EC score residual F	1	6	2	2	0.0	0.0	0.0
+mixed EC score residual F	1	7	6	6	0.16666666666666666	0.16666666666666666	0.0
+mixed EC score residual F	1	8	2	2	0.0	0.0	0.0
+mixed EC score residual F	1	10	2	2	0.0	0.0	0.0
+mixed EC score residual F	1	13	2	2	0.5	0.5	0.5
+mixed EC score residual F	2	0	5	0	0.0	0.0	0.0
+mixed EC score residual F	2	4	6	6	0.0	0.0	0.0
+mixed EC score residual F	2	5	7	7	0.0	0.0	0.0
+mixed EC score residual F	2	6	2	2	0.0	0.0	0.0
+mixed EC score residual F	3	5	2	2	0.0	0.0	0.0

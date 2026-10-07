@@ -1,0 +1,6 @@
+{
+  "statistics": "Exactly the same mixed-score fits, p-values and event selections as the parent assessment",
+  "reporting": "Gaussian fitted ILR contrast mapped by symmetric softmax about the mean weak-A1 source usage anchor",
+  "interpretation": "One-step approximate model usage, not an independent EC quantification fit",
+  "selection": "Complete tested families; no LR-informed tuning; missing weak reports retained as unavailable"
+}

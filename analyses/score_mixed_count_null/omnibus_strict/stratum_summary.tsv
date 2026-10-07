@@ -1,0 +1,106 @@
+strategy	degrees_of_freedom	n_subjects	n_tests	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01
+mixed EC score chi-square	1	0	8	0	0.0	0.0	0.0
+mixed EC score chi-square	1	4	4	4	0.0	0.0	0.0
+mixed EC score chi-square	1	5	2	2	0.0	0.0	0.0
+mixed EC score chi-square	2	0	4	0	0.0	0.0	0.0
+mixed EC score chi-square	2	6	2	2	0.0	0.0	0.0
+mixed EC score chi-square	2	8	2	2	0.0	0.0	0.0
+mixed EC score chi-square	3	0	1	0	0.0	0.0	0.0
+mixed EC score chi-square	3	4	2	2	0.0	0.0	0.0
+mixed EC score chi-square	3	7	3	3	0.0	0.6666666666666666	0.0
+mixed EC score chi-square	3	8	3	3	0.0	0.0	0.0
+mixed EC score chi-square	3	10	1	1	0.0	0.0	0.0
+mixed EC score chi-square	3	11	1	1	0.0	0.0	0.0
+mixed EC score chi-square	4	0	2	0	0.0	0.0	0.0
+mixed EC score chi-square	4	4	2	2	0.0	0.0	0.0
+mixed EC score chi-square	4	7	1	1	0.0	0.0	0.0
+mixed EC score chi-square	4	8	1	1	0.0	0.0	0.0
+mixed EC score chi-square	4	9	2	2	0.0	0.0	0.0
+mixed EC score chi-square	5	0	1	0	0.0	0.0	0.0
+mixed EC score chi-square	5	5	1	1	0.0	0.0	0.0
+mixed EC score chi-square	5	6	1	1	0.0	0.0	0.0
+mixed EC score chi-square	5	14	1	1	0.0	0.0	0.0
+mixed EC score chi-square	5	16	2	2	0.0	0.0	0.0
+mixed EC score chi-square	5	17	1	1	0.0	0.0	0.0
+mixed EC score chi-square	6	0	2	0	0.0	0.0	0.0
+mixed EC score chi-square	6	7	1	1	0.0	0.0	0.0
+mixed EC score chi-square	6	8	1	1	0.0	0.0	0.0
+mixed EC score chi-square	6	19	1	1	0.0	0.0	0.0
+mixed EC score chi-square	7	17	1	1	0.0	0.0	0.0
+mixed EC score chi-square	7	18	1	1	0.0	0.0	0.0
+mixed EC score chi-square	7	19	2	2	0.0	0.0	0.0
+mixed EC score chi-square	10	10	2	2	0.0	0.0	0.0
+mixed EC score chi-square	10	11	1	1	0.0	0.0	0.0
+mixed EC score chi-square	10	12	1	1	0.0	0.0	0.0
+mixed EC score chi-square	12	7	1	1	0.0	0.0	0.0
+mixed EC score chi-square	20	13	2	2	0.0	0.0	0.0
+mixed EC score cluster F	1	0	8	0	0.0	0.0	0.0
+mixed EC score cluster F	1	4	4	4	0.0	0.0	0.0
+mixed EC score cluster F	1	5	2	2	0.0	0.0	0.0
+mixed EC score cluster F	2	0	4	0	0.0	0.0	0.0
+mixed EC score cluster F	2	6	2	2	0.0	0.0	0.0
+mixed EC score cluster F	2	8	2	2	0.0	0.0	0.0
+mixed EC score cluster F	3	0	1	0	0.0	0.0	0.0
+mixed EC score cluster F	3	4	2	2	0.0	0.0	0.0
+mixed EC score cluster F	3	7	3	3	0.0	0.6666666666666666	0.0
+mixed EC score cluster F	3	8	3	3	0.0	0.0	0.0
+mixed EC score cluster F	3	10	1	1	0.0	0.0	0.0
+mixed EC score cluster F	3	11	1	1	0.0	0.0	0.0
+mixed EC score cluster F	4	0	2	0	0.0	0.0	0.0
+mixed EC score cluster F	4	4	2	2	0.0	0.0	0.0
+mixed EC score cluster F	4	7	1	1	0.0	0.0	0.0
+mixed EC score cluster F	4	8	1	1	0.0	0.0	0.0
+mixed EC score cluster F	4	9	2	2	0.0	0.0	0.0
+mixed EC score cluster F	5	0	1	0	0.0	0.0	0.0
+mixed EC score cluster F	5	5	1	1	0.0	0.0	0.0
+mixed EC score cluster F	5	6	1	1	0.0	0.0	0.0
+mixed EC score cluster F	5	14	1	1	0.0	0.0	0.0
+mixed EC score cluster F	5	16	2	2	0.0	0.0	0.0
+mixed EC score cluster F	5	17	1	1	0.0	0.0	0.0
+mixed EC score cluster F	6	0	2	0	0.0	0.0	0.0
+mixed EC score cluster F	6	7	1	1	0.0	0.0	0.0
+mixed EC score cluster F	6	8	1	1	0.0	0.0	0.0
+mixed EC score cluster F	6	19	1	1	0.0	0.0	0.0
+mixed EC score cluster F	7	17	1	1	0.0	0.0	0.0
+mixed EC score cluster F	7	18	1	1	0.0	0.0	0.0
+mixed EC score cluster F	7	19	2	2	0.0	0.0	0.0
+mixed EC score cluster F	10	10	2	2	0.0	0.0	0.0
+mixed EC score cluster F	10	11	1	1	0.0	0.0	0.0
+mixed EC score cluster F	10	12	1	1	0.0	0.0	0.0
+mixed EC score cluster F	12	7	1	1	0.0	0.0	0.0
+mixed EC score cluster F	20	13	2	2	0.0	0.0	0.0
+mixed EC score residual F	1	0	8	0	0.0	0.0	0.0
+mixed EC score residual F	1	4	4	4	0.0	0.0	0.0
+mixed EC score residual F	1	5	2	2	0.0	0.0	0.0
+mixed EC score residual F	2	0	4	0	0.0	0.0	0.0
+mixed EC score residual F	2	6	2	2	0.0	0.0	0.0
+mixed EC score residual F	2	8	2	2	0.0	0.0	0.0
+mixed EC score residual F	3	0	1	0	0.0	0.0	0.0
+mixed EC score residual F	3	4	2	2	0.0	0.0	0.0
+mixed EC score residual F	3	7	3	3	0.0	0.3333333333333333	0.0
+mixed EC score residual F	3	8	3	3	0.0	0.0	0.0
+mixed EC score residual F	3	10	1	1	0.0	0.0	0.0
+mixed EC score residual F	3	11	1	1	0.0	0.0	0.0
+mixed EC score residual F	4	0	2	0	0.0	0.0	0.0
+mixed EC score residual F	4	4	2	2	0.0	0.0	0.0
+mixed EC score residual F	4	7	1	1	0.0	0.0	0.0
+mixed EC score residual F	4	8	1	1	0.0	0.0	0.0
+mixed EC score residual F	4	9	2	2	0.0	0.0	0.0
+mixed EC score residual F	5	0	1	0	0.0	0.0	0.0
+mixed EC score residual F	5	5	1	1	0.0	0.0	0.0
+mixed EC score residual F	5	6	1	1	0.0	0.0	0.0
+mixed EC score residual F	5	14	1	1	0.0	0.0	0.0
+mixed EC score residual F	5	16	2	2	0.0	0.0	0.0
+mixed EC score residual F	5	17	1	1	0.0	0.0	0.0
+mixed EC score residual F	6	0	2	0	0.0	0.0	0.0
+mixed EC score residual F	6	7	1	1	0.0	0.0	0.0
+mixed EC score residual F	6	8	1	1	0.0	0.0	0.0
+mixed EC score residual F	6	19	1	1	0.0	0.0	0.0
+mixed EC score residual F	7	17	1	1	0.0	0.0	0.0
+mixed EC score residual F	7	18	1	1	0.0	0.0	0.0
+mixed EC score residual F	7	19	2	2	0.0	0.0	0.0
+mixed EC score residual F	10	10	2	2	0.0	0.0	0.0
+mixed EC score residual F	10	11	1	1	0.0	0.0	0.0
+mixed EC score residual F	10	12	1	1	0.0	0.0	0.0
+mixed EC score residual F	12	7	1	1	0.0	0.0	0.0
+mixed EC score residual F	20	13	2	2	0.0	0.0	0.0

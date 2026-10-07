@@ -19,6 +19,23 @@ from tealeaf.sc.path_score import paired_path_score_test, paired_subject_centere
 from tealeaf.sc.path_simulation import simulate_counts
 from tealeaf.sc.path_bias import paired_null_corrected_path_test, null_corrected_path_responses
 from tealeaf.sc.omnibus import regression_omnibus
+from tealeaf.sc.path_score_mixed import mixed_path_score_test, mixed_score_test, MODEL_VERSION as MIXED_SCORE_VERSION
+
+
+def mixed_score_statistics(base, baseline, path_index, labels, subjects, replicates, seed):
+    """Fixed three reference diagnostics, sharing one fitted EC score model."""
+    result = mixed_path_score_test(base, path_index, labels, subjects, baseline=baseline)
+    components = result["components"]
+    references = {"mixed EC score cluster F": "p_value", "mixed EC score residual F": "residual_F_p_value", "mixed EC score chi-square": "chi_square_p_value"}
+    observed = {name: {**result, "p_value": result[key]} for name, key in references.items()}
+    null = []
+    rng = np.random.default_rng(seed)
+    for replicate in range(replicates):
+        flipped = components.scores * rng.choice([-1., 1.], size=(len(components.scores), 1))
+        tested = mixed_score_test(flipped, components.information, components.biological_shapes)
+        for name, key in references.items():
+            null.append({"strategy": name, "replicate": replicate, "n_subjects": result["n_subjects"], "p_value": tested[key], "statistic": tested["statistic"], "degrees_of_freedom": tested["degrees_of_freedom"]})
+    return observed, null, {"n_subjects": result["n_subjects"], "n_observations": len(labels)}
 
 
 def paired_statistics(base, baseline, path_index, labels, subjects, replicates, seed, prior_center, include_score=False, null_corrected=False):
@@ -101,6 +118,7 @@ def main():
     parser.add_argument("--within-path-type-scale", type=float, help="Label-specific within-path transcript shifts preserving the target path null; paired ILR sensitivity only.")
     parser.add_argument("--free-isoforms", action="store_true")
     parser.add_argument("--null-corrected", action="store_true", help="Experimental subtraction of smoothed expected-null path proportions, with type-specific transcript nuisance.")
+    parser.add_argument("--mixed-score-only", action="store_true", help="Experimental likelihood-score REML with count uncertainty and type-specific transcript nuisance.")
     parser.add_argument("--mode", choices=("omnibus", "pairwise"), default="omnibus")
     parser.add_argument("--prior-center", choices=("uniform", "baseline"), default="uniform")
     parser.add_argument("--include-score", action="store_true")
@@ -109,13 +127,17 @@ def main():
     group.add_argument("--cox-reid-only", action="store_true")
     parser.add_argument("--known-concentration", type=float, help="Known latent biological concentration control, only for Cox-Reid count-null diagnostics.")
     args = parser.parse_args()
+    if args.mixed_score_only and (args.null_corrected or args.include_score or args.joint_dm_only or args.cox_reid_only or args.free_isoforms or args.prior_center != "uniform"):
+        parser.error("mixed-score audit cannot be combined with alternative fit overrides")
     if args.null_corrected and (args.include_score or args.joint_dm_only or args.cox_reid_only or args.free_isoforms or args.prior_center != "uniform"):
         parser.error("null correction requires uniform-prior sensitivity, without fitter overrides")
     expected_strategies = [f"paired null-corrected proportions A{concentration}" if args.null_corrected else f"paired ILR A{concentration}" for concentration in (32, 1)]
     if args.null_corrected and args.mode == "omnibus":
         expected_strategies = [f"null-corrected {test} A{concentration}" for concentration in (32, 1) for test in ("trace F", "Pillai", "maximum-coordinate F")]
-    preserve_failures = args.within_path_type_scale is not None or args.null_corrected
-    if args.within_path_type_scale is not None and ((args.mode != "pairwise" and not args.null_corrected) or args.include_score or args.joint_dm_only or args.cox_reid_only):
+    if args.mixed_score_only:
+        expected_strategies = ["mixed EC score cluster F", "mixed EC score residual F", "mixed EC score chi-square"]
+    preserve_failures = args.within_path_type_scale is not None or args.null_corrected or args.mixed_score_only
+    if args.within_path_type_scale is not None and ((args.mode != "pairwise" and not args.null_corrected and not args.mixed_score_only) or args.include_score or args.joint_dm_only or args.cox_reid_only):
         parser.error("within-path nuisance stress currently requires the paired ILR-only sensitivity")
     if args.within_path_type_scale is not None and (not np.isfinite(args.within_path_type_scale) or args.within_path_type_scale < 0):
         parser.error("within-path type scale must be finite and nonnegative")
@@ -154,7 +176,9 @@ def main():
                 try:
                     # A failed fit must not prevent later, independent count draws.
                     baseline = ec_block_glmm.pooled_isoform_weights(simulated)
-                    if args.null_corrected and args.mode == "omnibus":
+                    if args.mixed_score_only:
+                        statistics, null, details = mixed_score_statistics(simulated, baseline, path_index, labels, subjects, args.null_replicates, zlib.crc32(test_id.encode()) + draw * 1721)
+                    elif args.null_corrected and args.mode == "omnibus":
                         statistics, null, details = corrected_omnibus_statistics(simulated, baseline, path_index, labels, subjects, args.null_replicates, zlib.crc32(test_id.encode()) + draw * 1721)
                     elif args.joint_dm_only or args.cox_reid_only:
                         statistics, null, details = joint_dm_reports(simulated, baseline, path_index, labels, subjects, args.null_replicates, zlib.crc32(test_id.encode()) + draw * 1721, dispersion_method="cox_reid" if args.cox_reid_only else "ml", known_concentration=args.known_concentration)
@@ -188,7 +212,9 @@ def main():
     null_description = "common transcript mixture for all cell types within each subject" if args.residual_concentration is None else "independent subject/type Dirichlet path compositions with identical conditional mean across types"
     settings = {"candidate_settings": cached["settings"], "selected_blocks": args.blocks, "draws": args.draws, "null_replicates": args.null_replicates, "subject_scale": args.subject_scale, "residual_concentration": args.residual_concentration, "free_isoforms": args.free_isoforms, "mode": args.mode, "prior_center": args.prior_center, "include_score": args.include_score, "joint_dm_only": args.joint_dm_only, "cox_reid_only": args.cox_reid_only, "known_latent_concentration": args.known_concentration, "null": null_description + ", observed primer/depth totals preserved", "baseline": "refitted for each simulated count draw", "seed": 381924}
     if preserve_failures:
-        settings.update(requested_ids=requested_ids, expected_strategies=expected_strategies, null_corrected=args.null_corrected, failure_policy="all requested tests retained with p=1 and unavailable effects")
+        settings.update(requested_ids=requested_ids, expected_strategies=expected_strategies, null_corrected=args.null_corrected, mixed_score_only=args.mixed_score_only, failure_policy="all requested tests retained with p=1 and unavailable effects")
+    if args.mixed_score_only:
+        settings.update(mixed_score_version=MIXED_SCORE_VERSION, primary_reference="Modified-Knapp-Hartung-style cluster F; chi-square and residual F diagnostic only", variance_shape="Dirichlet ILR contrast shape, estimated shared REML multiplier per hypothesis")
     if args.within_path_type_scale is not None:
         settings.update(within_path_type_scale=args.within_path_type_scale, null="same target path usage within subject; within-path transcript composition changes across cell types; observed primer/depth totals preserved")
     (args.output_dir / "settings.json").write_text(json.dumps(settings, indent=2, default=str) + "\n")

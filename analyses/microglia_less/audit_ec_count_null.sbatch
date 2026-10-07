@@ -13,6 +13,9 @@ module load "${PYTHON_MODULE}"
 source "${HOME}/venv/jax/bin/activate"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}" OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 ARGS=()
+if [[ "${MIXED_SCORE_ONLY:-0}" == 1 ]]; then
+  ARGS+=(--mixed-score-only)
+fi
 if [[ "${NULL_CORRECTED:-0}" == 1 ]]; then
   ARGS+=(--null-corrected)
 fi

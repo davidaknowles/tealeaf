@@ -1,0 +1,7 @@
+draw	strategy	n_tests	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01	BH_discoveries
+0	mixed EC score chi-square	32	26	0.0625	0.03125	0.0	0
+0	mixed EC score cluster F	32	26	0.03125	0.03125	0.03125	1
+0	mixed EC score residual F	32	26	0.03125	0.03125	0.03125	0
+1	mixed EC score chi-square	32	25	0.03125	0.03125	0.0	0
+1	mixed EC score cluster F	32	25	0.03125	0.03125	0.03125	1
+1	mixed EC score residual F	32	25	0.03125	0.03125	0.0	0

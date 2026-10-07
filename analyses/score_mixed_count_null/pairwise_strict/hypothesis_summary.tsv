@@ -1,0 +1,97 @@
+strategy	test_id	block_id	n_tests	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01
+mixed EC score chi-square	ENSMUSG00000000826.17:B1|cell_type|EX_cerebellum_granule|EX_cortical	ENSMUSG00000000826.17:B1	2	1	0.0	0.5	0.0
+mixed EC score chi-square	ENSMUSG00000004110.18:B1|cell_type|EX_cortical|EX_hippocampus_pyramidal	ENSMUSG00000004110.18:B1	2	2	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000006800.15:B1|cell_type|EX_cortical|INH_midbrain	ENSMUSG00000006800.15:B1	2	2	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000014592.22:B1|cell_type|EX_cerebellum_granule|EX_cortical	ENSMUSG00000014592.22:B1	2	2	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000014602.16:B4|cell_type|ASC|INH_midbrain	ENSMUSG00000014602.16:B4	2	2	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000015599.10:B1|cell_type|EX_cerebellum_granule|EX_cortical	ENSMUSG00000015599.10:B1	2	2	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000020315.19:B1|cell_type|EX_cortical|ODC	ENSMUSG00000020315.19:B1	2	2	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000021010.10:B1|cell_type|EX_cortical|ODC	ENSMUSG00000021010.10:B1	2	1	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000021244.16:B2|cell_type|EX_cerebellum_granule|INH_migrating_interneuron	ENSMUSG00000021244.16:B2	2	2	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000022194.16:B3|cell_type|ASC|INH_medium_spiny	ENSMUSG00000022194.16:B3	2	2	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000022456.19:B1|cell_type|EX_cortical|INH_migrating_interneuron	ENSMUSG00000022456.19:B1	2	2	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000022565.16:B4|cell_type|ASC|INH_medium_spiny	ENSMUSG00000022565.16:B4	2	1	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000024073.17:B1|cell_type|EX_cerebellum_granule|EX_cortical	ENSMUSG00000024073.17:B1	2	2	0.5	0.5	0.5
+mixed EC score chi-square	ENSMUSG00000024163.18:B2|cell_type|ASC|INH_migrating_interneuron	ENSMUSG00000024163.18:B2	2	2	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000024163.18:B6|cell_type|ASC|INH_migrating_interneuron	ENSMUSG00000024163.18:B6	2	0	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000025372.17:B2|cell_type|EX_cerebellum_granule|INH_migrating_interneuron	ENSMUSG00000025372.17:B2	2	1	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000027692.17:B2|cell_type|ASC|INH_medium_spiny	ENSMUSG00000027692.17:B2	2	2	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000028649.23:B1|cell_type|EX_cortical|ODC	ENSMUSG00000028649.23:B1	2	2	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000029267.18:B1|cell_type|EX_cortical|INH_midbrain	ENSMUSG00000029267.18:B1	2	2	0.0	0.5	0.0
+mixed EC score chi-square	ENSMUSG00000029420.15:B3|cell_type|INH_medium_spiny|INH_midbrain	ENSMUSG00000029420.15:B3	2	2	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000031229.17:B1|cell_type|EX_hippocampus_pyramidal|INH_midbrain	ENSMUSG00000031229.17:B1	2	1	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000031425.16:B1|cell_type|EX_cortical|ODC	ENSMUSG00000031425.16:B1	2	2	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000031865.17:B3|cell_type|INH_medium_spiny|INH_midbrain	ENSMUSG00000031865.17:B3	2	2	0.0	0.5	0.0
+mixed EC score chi-square	ENSMUSG00000032011.6:B1|cell_type|ASC|EX_cerebellum_granule	ENSMUSG00000032011.6:B1	2	2	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000032216.16:B1|cell_type|INH_medium_spiny|INH_migrating_interneuron	ENSMUSG00000032216.16:B1	2	2	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000032637.16:B1|cell_type|INH_midbrain|INH_migrating_interneuron	ENSMUSG00000032637.16:B1	2	2	0.0	0.5	0.0
+mixed EC score chi-square	ENSMUSG00000035133.10:B1|cell_type|INH_medium_spiny|INH_migrating_interneuron	ENSMUSG00000035133.10:B1	2	0	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000037754.14:B1|cell_type|EX_cerebellum_granule|ODC	ENSMUSG00000037754.14:B1	2	1	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000051149.16:B1|cell_type|EX_cortical|INH_migrating_interneuron	ENSMUSG00000051149.16:B1	2	2	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000055421.9:B1|cell_type|EX_cerebellum_granule|INH_migrating_interneuron	ENSMUSG00000055421.9:B1	2	2	0.0	0.0	0.0
+mixed EC score chi-square	ENSMUSG00000092341.5:B1|cell_type|ASC|EX_hippocampus_pyramidal	ENSMUSG00000092341.5:B1	2	2	0.0	0.5	0.0
+mixed EC score chi-square	ENSMUSG00000096054.4:B1|cell_type|EX_hippocampus_granule|INH_migrating_interneuron	ENSMUSG00000096054.4:B1	2	2	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000000826.17:B1|cell_type|EX_cerebellum_granule|EX_cortical	ENSMUSG00000000826.17:B1	2	1	0.0	0.5	0.0
+mixed EC score cluster F	ENSMUSG00000004110.18:B1|cell_type|EX_cortical|EX_hippocampus_pyramidal	ENSMUSG00000004110.18:B1	2	2	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000006800.15:B1|cell_type|EX_cortical|INH_midbrain	ENSMUSG00000006800.15:B1	2	2	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000014592.22:B1|cell_type|EX_cerebellum_granule|EX_cortical	ENSMUSG00000014592.22:B1	2	2	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000014602.16:B4|cell_type|ASC|INH_midbrain	ENSMUSG00000014602.16:B4	2	2	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000015599.10:B1|cell_type|EX_cerebellum_granule|EX_cortical	ENSMUSG00000015599.10:B1	2	2	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000020315.19:B1|cell_type|EX_cortical|ODC	ENSMUSG00000020315.19:B1	2	2	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000021010.10:B1|cell_type|EX_cortical|ODC	ENSMUSG00000021010.10:B1	2	1	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000021244.16:B2|cell_type|EX_cerebellum_granule|INH_migrating_interneuron	ENSMUSG00000021244.16:B2	2	2	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000022194.16:B3|cell_type|ASC|INH_medium_spiny	ENSMUSG00000022194.16:B3	2	2	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000022456.19:B1|cell_type|EX_cortical|INH_migrating_interneuron	ENSMUSG00000022456.19:B1	2	2	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000022565.16:B4|cell_type|ASC|INH_medium_spiny	ENSMUSG00000022565.16:B4	2	1	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000024073.17:B1|cell_type|EX_cerebellum_granule|EX_cortical	ENSMUSG00000024073.17:B1	2	2	0.0	0.5	0.0
+mixed EC score cluster F	ENSMUSG00000024163.18:B2|cell_type|ASC|INH_migrating_interneuron	ENSMUSG00000024163.18:B2	2	2	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000024163.18:B6|cell_type|ASC|INH_migrating_interneuron	ENSMUSG00000024163.18:B6	2	0	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000025372.17:B2|cell_type|EX_cerebellum_granule|INH_migrating_interneuron	ENSMUSG00000025372.17:B2	2	1	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000027692.17:B2|cell_type|ASC|INH_medium_spiny	ENSMUSG00000027692.17:B2	2	2	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000028649.23:B1|cell_type|EX_cortical|ODC	ENSMUSG00000028649.23:B1	2	2	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000029267.18:B1|cell_type|EX_cortical|INH_midbrain	ENSMUSG00000029267.18:B1	2	2	0.0	0.5	0.0
+mixed EC score cluster F	ENSMUSG00000029420.15:B3|cell_type|INH_medium_spiny|INH_midbrain	ENSMUSG00000029420.15:B3	2	2	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000031229.17:B1|cell_type|EX_hippocampus_pyramidal|INH_midbrain	ENSMUSG00000031229.17:B1	2	1	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000031425.16:B1|cell_type|EX_cortical|ODC	ENSMUSG00000031425.16:B1	2	2	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000031865.17:B3|cell_type|INH_medium_spiny|INH_midbrain	ENSMUSG00000031865.17:B3	2	2	0.0	0.5	0.0
+mixed EC score cluster F	ENSMUSG00000032011.6:B1|cell_type|ASC|EX_cerebellum_granule	ENSMUSG00000032011.6:B1	2	2	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000032216.16:B1|cell_type|INH_medium_spiny|INH_migrating_interneuron	ENSMUSG00000032216.16:B1	2	2	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000032637.16:B1|cell_type|INH_midbrain|INH_migrating_interneuron	ENSMUSG00000032637.16:B1	2	2	0.0	0.5	0.0
+mixed EC score cluster F	ENSMUSG00000035133.10:B1|cell_type|INH_medium_spiny|INH_migrating_interneuron	ENSMUSG00000035133.10:B1	2	0	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000037754.14:B1|cell_type|EX_cerebellum_granule|ODC	ENSMUSG00000037754.14:B1	2	1	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000051149.16:B1|cell_type|EX_cortical|INH_migrating_interneuron	ENSMUSG00000051149.16:B1	2	2	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000055421.9:B1|cell_type|EX_cerebellum_granule|INH_migrating_interneuron	ENSMUSG00000055421.9:B1	2	2	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000092341.5:B1|cell_type|ASC|EX_hippocampus_pyramidal	ENSMUSG00000092341.5:B1	2	2	0.0	0.0	0.0
+mixed EC score cluster F	ENSMUSG00000096054.4:B1|cell_type|EX_hippocampus_granule|INH_migrating_interneuron	ENSMUSG00000096054.4:B1	2	2	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000000826.17:B1|cell_type|EX_cerebellum_granule|EX_cortical	ENSMUSG00000000826.17:B1	2	1	0.0	0.5	0.0
+mixed EC score residual F	ENSMUSG00000004110.18:B1|cell_type|EX_cortical|EX_hippocampus_pyramidal	ENSMUSG00000004110.18:B1	2	2	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000006800.15:B1|cell_type|EX_cortical|INH_midbrain	ENSMUSG00000006800.15:B1	2	2	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000014592.22:B1|cell_type|EX_cerebellum_granule|EX_cortical	ENSMUSG00000014592.22:B1	2	2	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000014602.16:B4|cell_type|ASC|INH_midbrain	ENSMUSG00000014602.16:B4	2	2	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000015599.10:B1|cell_type|EX_cerebellum_granule|EX_cortical	ENSMUSG00000015599.10:B1	2	2	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000020315.19:B1|cell_type|EX_cortical|ODC	ENSMUSG00000020315.19:B1	2	2	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000021010.10:B1|cell_type|EX_cortical|ODC	ENSMUSG00000021010.10:B1	2	1	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000021244.16:B2|cell_type|EX_cerebellum_granule|INH_migrating_interneuron	ENSMUSG00000021244.16:B2	2	2	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000022194.16:B3|cell_type|ASC|INH_medium_spiny	ENSMUSG00000022194.16:B3	2	2	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000022456.19:B1|cell_type|EX_cortical|INH_migrating_interneuron	ENSMUSG00000022456.19:B1	2	2	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000022565.16:B4|cell_type|ASC|INH_medium_spiny	ENSMUSG00000022565.16:B4	2	1	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000024073.17:B1|cell_type|EX_cerebellum_granule|EX_cortical	ENSMUSG00000024073.17:B1	2	2	0.0	0.5	0.0
+mixed EC score residual F	ENSMUSG00000024163.18:B2|cell_type|ASC|INH_migrating_interneuron	ENSMUSG00000024163.18:B2	2	2	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000024163.18:B6|cell_type|ASC|INH_migrating_interneuron	ENSMUSG00000024163.18:B6	2	0	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000025372.17:B2|cell_type|EX_cerebellum_granule|INH_migrating_interneuron	ENSMUSG00000025372.17:B2	2	1	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000027692.17:B2|cell_type|ASC|INH_medium_spiny	ENSMUSG00000027692.17:B2	2	2	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000028649.23:B1|cell_type|EX_cortical|ODC	ENSMUSG00000028649.23:B1	2	2	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000029267.18:B1|cell_type|EX_cortical|INH_midbrain	ENSMUSG00000029267.18:B1	2	2	0.0	0.5	0.0
+mixed EC score residual F	ENSMUSG00000029420.15:B3|cell_type|INH_medium_spiny|INH_midbrain	ENSMUSG00000029420.15:B3	2	2	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000031229.17:B1|cell_type|EX_hippocampus_pyramidal|INH_midbrain	ENSMUSG00000031229.17:B1	2	1	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000031425.16:B1|cell_type|EX_cortical|ODC	ENSMUSG00000031425.16:B1	2	2	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000031865.17:B3|cell_type|INH_medium_spiny|INH_midbrain	ENSMUSG00000031865.17:B3	2	2	0.0	0.5	0.0
+mixed EC score residual F	ENSMUSG00000032011.6:B1|cell_type|ASC|EX_cerebellum_granule	ENSMUSG00000032011.6:B1	2	2	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000032216.16:B1|cell_type|INH_medium_spiny|INH_migrating_interneuron	ENSMUSG00000032216.16:B1	2	2	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000032637.16:B1|cell_type|INH_midbrain|INH_migrating_interneuron	ENSMUSG00000032637.16:B1	2	2	0.0	0.5	0.0
+mixed EC score residual F	ENSMUSG00000035133.10:B1|cell_type|INH_medium_spiny|INH_migrating_interneuron	ENSMUSG00000035133.10:B1	2	0	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000037754.14:B1|cell_type|EX_cerebellum_granule|ODC	ENSMUSG00000037754.14:B1	2	1	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000051149.16:B1|cell_type|EX_cortical|INH_migrating_interneuron	ENSMUSG00000051149.16:B1	2	2	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000055421.9:B1|cell_type|EX_cerebellum_granule|INH_migrating_interneuron	ENSMUSG00000055421.9:B1	2	2	0.0	0.0	0.0
+mixed EC score residual F	ENSMUSG00000092341.5:B1|cell_type|ASC|EX_hippocampus_pyramidal	ENSMUSG00000092341.5:B1	2	2	0.0	0.5	0.0
+mixed EC score residual F	ENSMUSG00000096054.4:B1|cell_type|EX_hippocampus_granule|INH_migrating_interneuron	ENSMUSG00000096054.4:B1	2	2	0.0	0.0	0.0

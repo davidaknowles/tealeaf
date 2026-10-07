@@ -1,0 +1,3 @@
+model	fold	n_requested	n_converged	native_BH	calibrated_BH	archived_calibrated_BH	minimum_native_p	minimum_calibrated_p	native_below_minimum_calibrated
+mixed	0	7671	6568	209	89	89	4.048149834877282e-69	2.4840400427254888e-05	125
+mixed	1	5140	4361	84	42	42	2.344700145038977e-72	4.8597949166545175e-05	54

@@ -18,6 +18,7 @@ def main():
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--models", nargs="+", default=["score", "score_free", "baseline", "subject"])
     parser.add_argument("--assessment-root", type=Path)
+    parser.add_argument("--native-p-column", choices=("raw_p_value", "chi_square_p_value"), default="raw_p_value", help="Diagnostic analytic reference; this does not promote its tails to production.")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
     rows = []
@@ -36,7 +37,7 @@ def main():
             table["fdr"] = benjamini_hochberg(table.p_value.to_numpy(float))
             good = table.converged.astype(str).str.lower().eq("true") & table.n_subjects.ge(4)
             native = table.copy()
-            native["p_value"] = np.where(good, native.raw_p_value, 1.)
+            native["p_value"] = np.where(good, native[args.native_p_column], 1.)
             native["fdr"] = benjamini_hochberg(native.p_value.to_numpy(float))
             folds.append(native)
             rows.append({"model": model, "fold": fold, "n_requested": len(table), "n_converged": int(good.sum()), "native_BH": int(native.fdr.le(.05).sum()), "calibrated_BH": int(table.fdr.le(.05).sum()), "archived_calibrated_BH": archived_calibrated_BH, "minimum_native_p": native.p_value.min(), "minimum_calibrated_p": table.p_value.min(), "native_below_minimum_calibrated": int(native.p_value.lt(table.p_value.min()).sum())})
@@ -50,7 +51,7 @@ def main():
         if len(paired_p) != len(mapped) or not np.allclose(paired_p.p_value_mapped, paired_p.p_value_fitted, rtol=1e-10, atol=1e-14):
             raise ValueError("LR mapping and fitted statistics are not the same cohort/model")
         good = full.converged.astype(str).str.lower().eq("true") & full.n_subjects.ge(4)
-        full["p_value"] = np.where(good, full.raw_p_value, 1.)
+        full["p_value"] = np.where(good, full[args.native_p_column], 1.)
         full["fdr"] = benjamini_hochberg(full.p_value.to_numpy(float))
         mapped = mapped.drop(columns=["p_value", "fdr"]).merge(full[["test_id", "p_value", "fdr"]], on="test_id", validate="one_to_one")
         summaries = []
@@ -63,7 +64,7 @@ def main():
     args.output_dir.mkdir(parents=True, exist_ok=True)
     summary = pd.DataFrame(rows)
     summary.to_csv(args.output_dir / "calibration_power_summary.tsv", sep="\t", index=False)
-    (args.output_dir / "manifest.json").write_text(json.dumps({"scope": "Native-tail diagnostic using unchanged fitted statistics and complete mapped LR families", "cohort_guard": "Every inference shard exactly matches its prior production-cohort assessment; mapped calibrated p-values match the same fitted table", "production_changes": False, "limitation": "Count-null nominal calibration does not validate extreme tails, biological overdispersion or family FDR", "selection": "Frozen comparator-matched gene/pair universes and existing all-tested LR mappings"}, indent=2) + "\n")
+    (args.output_dir / "manifest.json").write_text(json.dumps({"scope": "Native-tail diagnostic using unchanged fitted statistics and complete mapped LR families", "native_p_column": args.native_p_column, "cohort_guard": "Every inference shard exactly matches its prior production-cohort assessment; mapped calibrated p-values match the same fitted table", "production_changes": False, "limitation": "Count-null nominal calibration does not validate extreme tails, biological overdispersion or family FDR", "selection": "Frozen comparator-matched gene/pair universes and existing all-tested LR mappings"}, indent=2) + "\n")
     print(summary.to_string(index=False))
 
 

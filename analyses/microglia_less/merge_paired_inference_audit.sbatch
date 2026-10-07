@@ -16,6 +16,7 @@ for FOLDER in "${OUTPUT_ROOT}"/shard_*; do
 done
 ARGS=()
 if [[ "${RETAIN_FAILED_FAMILY:-0}" == 1 ]]; then ARGS+=(--retain-failed-family); fi
+if [[ "${MODERATE_VARIANCES:-1}" == 1 ]]; then ARGS+=(--moderate-variances); fi
 python "${REPO_ROOT}/extra_scripts/merge_paired_path_test.py" \
   --shards "${OUTPUT_ROOT}"/shard_* --output-dir "${OUTPUT_ROOT}/merged" \
-  --moderate-variances --max-null-replicates 32 "${ARGS[@]}"
+  --max-null-replicates 32 "${ARGS[@]}"

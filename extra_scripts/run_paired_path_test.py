@@ -24,6 +24,7 @@ from extra_scripts.run_ec_glmm import local_gene_data
 from tealeaf.sc import differential, ec_block_glmm
 from tealeaf.sc.path_score import paired_path_score_test, paired_subject_centered_test
 from tealeaf.sc.path_bias import paired_null_corrected_path_test
+from tealeaf.sc.path_score_mixed import mixed_path_score_test, mixed_score_test, MODEL_VERSION as MIXED_SCORE_VERSION
 
 
 def parse_args():
@@ -58,7 +59,7 @@ def parse_args():
     parser.add_argument("--max-candidates", type=int)
     parser.add_argument("--test-id-file", type=Path)
     parser.add_argument("--export-path-usage", action="store_true")
-    parser.add_argument("--paired-inference", choices=("local", "ec-score", "subject-centered", "null-corrected"), default="local", help="Experimental paired inference alternatives; local remains production.")
+    parser.add_argument("--paired-inference", choices=("local", "ec-score", "subject-centered", "null-corrected", "mixed-score"), default="local", help="Experimental paired inference alternatives; local remains production.")
     parser.add_argument("--score-null-concentration", type=float, default=1.)
     parser.add_argument("--score-free-null", action="store_true")
     return parser.parse_args()
@@ -208,6 +209,8 @@ def main():
     test_effect = settings.get("test_effect")
     if args.paired_inference == "null-corrected" and (test_effect != "cell_type_pairwise" or args.path_prior_center != "uniform" or args.path_pseudocount_scaling != "total" or args.smoothing_map is not None):
         raise ValueError("null-corrected sensitivity requires paired uniform total concentration, without a smoothing map")
+    if args.paired_inference == "mixed-score" and (test_effect != "cell_type_pairwise" or args.smoothing_map is not None or args.path_pseudocount != 0):
+        raise ValueError("mixed-score sensitivity requires paired contrasts, zero target concentration and no smoothing map")
     if test_effect not in {
         "cell_type",
         "cell_type_pairwise",
@@ -281,11 +284,17 @@ def main():
                     base
                 )
             baseline = pooled_cache[cache_key]
+            mixed_components = None
             if test_effect == "cell_type_pairwise":
                 if args.paired_inference != "local":
                     if args.retain_uncertainty or args.uncertainty_scale_grid or args.uncertainty_scale_map:
                         raise ValueError("experimental paired backends do not support measurement-error testing")
-                    if args.paired_inference == "null-corrected":
+                    if args.paired_inference == "mixed-score":
+                        result = mixed_path_score_test(base, path_index, labels, clusters, baseline=baseline, max_iter=args.max_iter, reporting_concentration=1.)
+                        mixed_components = result.pop("components")
+                        result["path_fits"] = [[SimpleNamespace(path_proportions=proportions) for _, proportions in report] for report in mixed_components.reporting_proportions]
+                        result["difference_covariances"] = np.zeros((len(result["differences"]), len(signatures) - 1, len(signatures) - 1))
+                    elif args.paired_inference == "null-corrected":
                         result = paired_null_corrected_path_test(base, path_index, labels, clusters, baseline=baseline, concentration=path_pseudocount, max_iter=args.max_iter, reporting_concentration=1.)
                         reported = result["reporting_proportions"].reshape(-1, 2, len(signatures))
                         result["path_fits"] = [[SimpleNamespace(path_proportions=proportion) for proportion in pair] for pair in reported]
@@ -396,6 +405,7 @@ def main():
                         })
             result.pop("mean", None)
             result.pop("mean_covariance", None)
+            fitted_mean = result.get("mean_difference", values.mean(axis=0) if len(values) else np.array([]))
             observed_rows.append({
                 "test_id": test_id,
                 "block_id": block_id,
@@ -429,10 +439,11 @@ def main():
                     "restricted_objective", np.nan
                 ),
                 "converged": result["converged"],
-                "mean_difference_norm": float(
-                    np.linalg.norm(values.mean(axis=0))
-                ) if len(values) else 0.0,
-                "mean_difference": json.dumps(values.mean(axis=0).tolist()) if len(values) else "[]",
+                "mean_difference_norm": float(np.linalg.norm(fitted_mean)),
+                "mean_difference": json.dumps(np.asarray(fitted_mean).tolist()),
+                "denominator_degrees_of_freedom": result.get("denominator_degrees_of_freedom", np.nan),
+                "residual_inflation": result.get("residual_inflation", np.nan),
+                "chi_square_p_value": result.get("chi_square_p_value", np.nan),
                 "path_signatures": json.dumps(signatures),
             })
             if result["converged"]:
@@ -480,7 +491,10 @@ def main():
                     rng = np.random.default_rng(
                         np.random.SeedSequence((args.seed, test_hash, replicate))
                     )
-                    if test_effect == "cell_type_pairwise":
+                    if mixed_components is not None:
+                        signs = rng.choice([-1., 1.], size=(len(mixed_components.scores), 1))
+                        null_p_value = mixed_score_test(mixed_components.scores * signs, mixed_components.information, mixed_components.biological_shapes)["p_value"]
+                    elif test_effect == "cell_type_pairwise":
                         null_p_value = signed_null_p_value(
                             values,
                             value_covariances,
@@ -515,7 +529,7 @@ def main():
                     })
         except Exception as error:
             failures.append({"test_id": test_id, "error": repr(error)})
-            if args.paired_inference == "null-corrected":
+            if args.paired_inference in ("null-corrected", "mixed-score"):
                 # Unlike historical runners, this prototype explicitly retains
                 # every failed candidate in the tested/BH/Simes family.
                 observed_rows = [row for row in observed_rows if row["test_id"] != test_id]
@@ -550,6 +564,8 @@ def main():
         "candidate_settings": settings,
         "score_report": "One-step ILR displacement mapped through subject-null softmax, not separately quantified cell-type usage" if args.paired_inference == "ec-score" else None,
         "null_corrected_report": "Independent free-transcript total-A1 arithmetic subject usage; statistics use strong smoothed-minus-expected-null proportion differences" if args.paired_inference == "null-corrected" else None,
+        "mixed_score_report": "Independent free-transcript total-A1 arithmetic subject usage; inference uses type-nuisance-profiled EC scores and REML uncertainty-weighted reference ILR contrasts, with experimental small-sample F tails" if args.paired_inference == "mixed-score" else None,
+        "mixed_score_version": MIXED_SCORE_VERSION if args.paired_inference == "mixed-score" else None,
     }, indent=2) + "\n")
 
 
