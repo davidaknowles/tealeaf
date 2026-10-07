@@ -33,11 +33,15 @@ def main():
     parser.add_argument("--shard-count", type=int, default=16)
     parser.add_argument("--events", type=int, default=32)
     parser.add_argument("--draws", type=int, default=2)
+    parser.add_argument("--subject-scale", type=float, default=.5)
+    parser.add_argument("--concentrations", type=float, nargs="+", default=[32, 64])
     parser.add_argument("--residual-concentration", type=float)
     parser.add_argument("--within-path-type-scale", type=float)
     args = parser.parse_args()
     if not 0 <= args.shard_index < args.shard_count:
         raise ValueError("invalid null shard")
+    if not np.isfinite(args.subject_scale) or args.subject_scale < 0 or not args.concentrations or len(set(args.concentrations)) != len(args.concentrations) or any(not np.isfinite(value) or value <= 0 for value in args.concentrations):
+        raise ValueError("nonnegative subject scale and unique positive concentrations required")
     source = args.cache / f"{args.source}_paired"
     with args.candidate_cache.open("rb") as handle:
         settings = pickle.load(handle)["settings"]
@@ -67,7 +71,7 @@ def main():
     requested = [family[index] for index in sorted(selection)]
     gene_lookup = {canonical(value): index for index, value in enumerate(genes)}
     screening_counts = tuple(value.tocsc() for value in counts)
-    expected_strategies = [f"hybrid profiled ILR A{value}" for value in (32, 64)]
+    expected_strategies = [f"hybrid profiled ILR A{value:g}" for value in args.concentrations]
     observed, null, failures, contexts = [], [], [], {}
     for record in requested[args.shard_index::args.shard_count]:
         test_id = record["test_id"]
@@ -93,10 +97,10 @@ def main():
             baseline = ec_block_glmm.pooled_isoform_weights(base)
             rng = np.random.default_rng(381924 + zlib.crc32(test_id.encode()))
             for draw in range(args.draws):
-                generated = simulate_counts(base, baseline, subjects, rng, .5, labels=labels, path_index=path_index, residual_concentration=args.residual_concentration, within_path_type_scale=args.within_path_type_scale)
+                generated = simulate_counts(base, baseline, subjects, rng, args.subject_scale, labels=labels, path_index=path_index, residual_concentration=args.residual_concentration, within_path_type_scale=args.within_path_type_scale)
                 fitted_baseline = ec_block_glmm.pooled_isoform_weights(generated)
                 collapsed, collapsed_paths, collapsed_baseline = collapse_event_nuisance(generated, path_index, fitted_baseline)
-                for concentration, strategy in zip((32, 64), expected_strategies):
+                for concentration, strategy in zip(args.concentrations, expected_strategies):
                     try:
                         result = ec_block_glmm.paired_path_test(collapsed, collapsed_paths, labels, subjects, baseline=collapsed_baseline, path_pseudocount=concentration, path_pseudocount_scaling="total", profile_event_mass=True)
                         complete = result["converged"] and result["n_subjects"] == n_expected and n_expected >= 4
@@ -116,7 +120,7 @@ def main():
     pd.DataFrame(observed).to_csv(args.output_dir / "observed.tsv", sep="\t", index=False)
     pd.DataFrame(null, columns=["test_id", "block_id", "gene_id", "n_paths", "draw", "strategy", "replicate", "n_subjects", "p_value"]).to_csv(args.output_dir / "null.tsv.gz", sep="\t", index=False)
     (args.output_dir / "failures.json").write_text(json.dumps(failures, indent=2) + "\n")
-    manifest = {"source": args.source, "candidate_settings": settings, "requested_ids": [row["test_id"] for row in requested], "expected_strategies": expected_strategies, "draws": args.draws, "null_replicates": 32, "residual_concentration": args.residual_concentration, "within_path_type_scale": args.within_path_type_scale, "seed": 381924, "selection": "fixed random sample of the whole screened event family, including fit failures; no significance or LR selection", "baseline": "full transcript pooled fit refitted on each generated count draw before actual event-class collapse", "null": "zero conditional-mean target-path contrast; observed primer totals, compatibility, coverage and subject missingness retained", "failure_policy": "all requested trials at p1 on exceptions or incomplete subject fits"}
+    manifest = {"source": args.source, "candidate_settings": settings, "requested_ids": [row["test_id"] for row in requested], "expected_strategies": expected_strategies, "draws": args.draws, "null_replicates": 32, "subject_scale": args.subject_scale, "concentrations": args.concentrations, "residual_concentration": args.residual_concentration, "within_path_type_scale": args.within_path_type_scale, "seed": 381924, "selection": "fixed random sample of the whole screened event family, including fit failures; no significance or LR selection", "baseline": "full transcript pooled fit refitted on each generated count draw before actual event-class collapse", "null": "zero conditional-mean target-path contrast; observed primer totals, compatibility, coverage and subject missingness retained", "failure_policy": "all requested trials at p1 on exceptions or incomplete subject fits"}
     (args.output_dir / "settings.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
 
