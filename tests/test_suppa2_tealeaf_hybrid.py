@@ -74,7 +74,8 @@ def test_mixed_event_record_profiles_transcripts_and_exports_complete_psi():
     base = ECGLMMData((counts,), (np.eye(4),), np.ones((12, 1)), subjects)
     event = SimpleNamespace(event_id="gene;SE:example", feature_id="SUPPA2:gene;SE:example", event_type="SE")
     args = SimpleNamespace(max_iter=300, null_multistart=False, report_pseudocount=1., null_replicates=2, seed=20260927, export_path_usage=True)
-    record, null, usage = mixed_event_record(base, np.array([0, 0, 1, -1]), labels, subjects, np.array([.4, .2, .3, .1]), event, "gene", ("A", "B"), counts.sum(axis=1), 4, args)
+    archive = ([], [])
+    record, null, usage = mixed_event_record(base, np.array([0, 0, 1, -1]), labels, subjects, np.array([.4, .2, .3, .1]), event, "gene", ("A", "B"), counts.sum(axis=1), 4, args, score_archive=archive)
     assert record["converged"] and record["complete_reporting_fits"]
     assert record["n_isoforms"] == record["n_source_isoforms"] == 4
     assert record["n_expected_subjects"] == record["n_fitted_subjects"] == 6
@@ -82,3 +83,10 @@ def test_mixed_event_record_profiles_transcripts_and_exports_complete_psi():
     assert record["effect_size"] > 0 and record["test_ilr_effect_size"] > 0
     assert len(null) == 2 and len(usage) == 12
     assert {row["replicate"] for row in null} == {0, 1}
+    assert len(archive[0]) == 1 and len(archive[1]) == 6
+    assert archive[0][0]["n_expected_subjects"] == 6
+    assert all(row["reference_information"] >= row["information"] for row in archive[1])
+    from tealeaf.sc.path_score_mixed import shared_path_score_components
+    components = shared_path_score_components(base, [0, 0, 1, -1], labels, subjects, baseline=np.array([.4, .2, .3, .1]), reporting_concentration=1.)
+    reused, reused_null, reused_usage = mixed_event_record(base, np.array([0, 0, 1, -1]), labels, subjects, np.array([.4, .2, .3, .1]), event, "gene", ("A", "B"), counts.sum(axis=1), 4, args, components=components)
+    assert reused == record and reused_null == null and reused_usage == usage

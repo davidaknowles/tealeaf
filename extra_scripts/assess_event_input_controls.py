@@ -19,7 +19,7 @@ from tealeaf.sc.path_score_mixed import MODEL_VERSION
 from extra_scripts.run_suppa2_tealeaf_hybrid import MIXED_SCORE_EMPTY_COLUMNS
 
 
-def guard_completed_shards(root, output, concentration, shard_count=32, inference="paired"):
+def guard_completed_shards(root, output, concentration, shard_count=32, inference="paired", information_metric=None):
     """Never mistake a partial array or partial subject fit for a full family."""
     summaries = []
     all_ids = []
@@ -42,6 +42,10 @@ def guard_completed_shards(root, output, concentration, shard_count=32, inferenc
             settings = json.loads((shard / "settings.json").read_text())
             settings["arguments"].pop("output_dir")
             settings["arguments"].pop("shard_index")
+            settings["arguments"].pop("export_score_components", None)
+            settings["arguments"].setdefault("information_metric", "absolute")
+            if information_metric is not None and settings["arguments"]["information_metric"] != information_metric:
+                raise ValueError("mixed-score information metric differs from requested assessment")
             if reference_settings is not None and settings != reference_settings:
                 raise ValueError("mixed-score settings differ across shards")
             reference_settings = settings
@@ -107,7 +111,10 @@ def main():
     parser.add_argument("--split-only", action="store_true", help="Assess both complete subject halves without waiting for full-data fits.")
     parser.add_argument("--inference", choices=("paired", "mixed-score"), default="paired")
     parser.add_argument("--shard-count", type=int, default=32)
+    parser.add_argument("--information-metric", choices=("absolute", "reference"), default="absolute")
     args = parser.parse_args()
+    if args.inference != "mixed-score" and args.information_metric != "absolute":
+        raise ValueError("information metric only applies to mixed-score inference")
     repo = Path(__file__).resolve().parents[1]
     control = args.cache / f"{args.source}_paired"
     with (control / "prepared.pkl").open("rb") as handle:
@@ -116,16 +123,21 @@ def main():
     if metadata.duplicated(["mouse", "cell_type"]).any():
         raise ValueError("n_samples/2 guard requires one pseudobulk per subject/type")
     method = f"Hybrid, {args.source} input control" if args.inference == "paired" else f"Hybrid full-transcript EC mixed score, {args.source}"
+    if args.information_metric == "reference":
+        method += ", target-normalized numerical rank"
     args.output_dir.mkdir(parents=True, exist_ok=True)
     cohorts = []
     for fold in ((0, 1) if args.split_only else (0, 1, "full")):
         if args.inference == "mixed-score":
-            root = args.cache / f"mixed_score/{args.source}/{'full' if fold == 'full' else f'fold{fold}'}"
-            staged = args.cache / f"assess_mixed_score/{args.source}/{fold}/guarded"
+            variant = "mixed_score_reference" if args.information_metric == "reference" else "mixed_score"
+            root = args.cache / f"{variant}/{args.source}/{'full' if fold == 'full' else f'fold{fold}'}"
+            staging_name = f"assess_{variant}_split_only" if args.split_only else f"assess_{variant}"
+            staged = args.cache / f"{staging_name}/{args.source}/{fold}/guarded"
         else:
             root = args.cache / (f"full/{args.source}" if fold == "full" else f"split/{args.source}/fold{fold}")
-            staged = args.cache / f"assess/{args.source}/{fold}/guarded"
-        checks = guard_completed_shards(root, staged, (0. if args.inference == "mixed-score" else (64 if fold == "full" else 32)), args.shard_count, args.inference)
+            staging_name = "assess_split_only" if args.split_only else "assess"
+            staged = args.cache / f"{staging_name}/{args.source}/{fold}/guarded"
+        checks = guard_completed_shards(root, staged, (0. if args.inference == "mixed-score" else (64 if fold == "full" else 32)), args.shard_count, args.inference, args.information_metric if args.inference == "mixed-score" else None)
         merged = staged.parent / "merged"
         command = [sys.executable, str(repo / "extra_scripts/merge_paired_path_test.py"), "--shards", *map(str, [staged / f"shard_{index}" for index in range(args.shard_count)]), "--output-dir", str(merged), "--calibration", "empirical", "--retain-failed-family"]
         if fold == "full" and args.inference == "paired":

@@ -15,7 +15,7 @@ from extra_scripts.run_paired_path_test import filtered_inputs, signed_null_p_va
 from extra_scripts.run_suppa2_tealeaf_hybrid import canonical, collapse_event_nuisance, event_path_index, supported_gene_transcripts
 from tealeaf.sc import ec_block_glmm
 from tealeaf.sc.path_simulation import simulate_counts
-from tealeaf.sc.path_score_mixed import shared_path_score_components, aggregate_path_scores, mixed_score_test, MODEL_VERSION as MIXED_SCORE_VERSION
+from tealeaf.sc.path_score_mixed import shared_path_score_components, aggregate_path_scores, signed_path_score_p_value, MODEL_VERSION as MIXED_SCORE_VERSION
 from tealeaf.sc.replication_audit import complete_cluster_fit
 
 
@@ -40,6 +40,8 @@ def main():
     parser.add_argument("--inference", choices=("profiled", "mixed-score"), default="profiled")
     parser.add_argument("--max-iter", type=int, default=300, help="Shared-null iteration limit for the mixed-score diagnostic.")
     parser.add_argument("--null-multistart", action="store_true", help="Compare pooled and interior initializations of the same mixed-score null.")
+    parser.add_argument("--score-coordinate", choices=("ilr", "proportion"), default="ilr")
+    parser.add_argument("--information-metric", choices=("absolute", "reference"), default="absolute")
     parser.add_argument("--residual-concentration", type=float)
     parser.add_argument("--within-path-type-scale", type=float)
     args = parser.parse_args()
@@ -47,6 +49,10 @@ def main():
         raise ValueError("invalid null shard")
     if args.null_multistart and args.inference != "mixed-score":
         raise ValueError("null multistart is only a mixed-score fitting diagnostic")
+    if args.score_coordinate != "ilr" and args.inference != "mixed-score":
+        raise ValueError("proportion coordinates require mixed-score inference")
+    if args.information_metric != "absolute" and args.inference != "mixed-score":
+        raise ValueError("reference rank metric requires mixed-score inference")
     if not np.isfinite(args.subject_scale) or args.subject_scale < 0 or not args.concentrations or len(set(args.concentrations)) != len(args.concentrations) or any(not np.isfinite(value) or value <= 0 for value in args.concentrations):
         raise ValueError("nonnegative subject scale and unique positive concentrations required")
     source = args.cache / f"{args.source}_paired"
@@ -78,7 +84,9 @@ def main():
     requested = [family[index] for index in sorted(selection)]
     gene_lookup = {canonical(value): index for index, value in enumerate(genes)}
     screening_counts = tuple(value.tocsc() for value in counts)
-    expected_strategies = ["hybrid free-transcript EC mixed score"] if args.inference == "mixed-score" else [f"hybrid profiled ILR A{value:g}" for value in args.concentrations]
+    expected_strategies = ["hybrid free-transcript EC mixed score" + (", proportion contrast" if args.score_coordinate == "proportion" else "")] if args.inference == "mixed-score" else [f"hybrid profiled ILR A{value:g}" for value in args.concentrations]
+    if args.information_metric == "reference":
+        expected_strategies = [value + ", target-normalized rank" for value in expected_strategies]
     observed, null, failures, contexts, diagnostics = [], [], [], {}, []
     for record in requested[args.shard_index::args.shard_count]:
         test_id = record["test_id"]
@@ -111,11 +119,11 @@ def main():
                 for concentration, strategy in zip(([0.] if args.inference == "mixed-score" else args.concentrations), expected_strategies):
                     try:
                         if args.inference == "mixed-score":
-                            components = shared_path_score_components(generated, path_index, labels, subjects, baseline=fitted_baseline, max_iter=args.max_iter, null_multistart=args.null_multistart)
+                            components = shared_path_score_components(generated, path_index, labels, subjects, baseline=fitted_baseline, max_iter=args.max_iter, null_multistart=args.null_multistart, score_coordinate=args.score_coordinate)
                             for index, subject in enumerate(components.subject_ids):
                                 fit = components.null_fits[index]
                                 diagnostics.append({**header, "draw": draw, "subject": subject, "null_inclusion": fit.path_proportions[0], "null_event_mass_min": fit.theta[:, path_index >= 0].sum(axis=1).min(), "null_event_mass_max": fit.theta[:, path_index >= 0].sum(axis=1).max(), "information": components.information[index, 0, 0], "score": components.scores[index, 0], "starts": fit.starts, "selected_start": fit.selected_start, "pooled_refit_inclusion": fitted_baseline[path_index == 0].sum() / fitted_baseline[path_index >= 0].sum(), "pooled_refit_event_mass": fitted_baseline[path_index >= 0].sum()})
-                            result = aggregate_path_scores(components)
+                            result = aggregate_path_scores(components, information_metric=args.information_metric)
                         else:
                             result = ec_block_glmm.paired_path_test(collapsed, collapsed_paths, labels, subjects, baseline=collapsed_baseline, path_pseudocount=concentration, path_pseudocount_scaling="total", profile_event_mass=True)
                         fitted_subjects = result.get("n_fitted_subjects", result["n_subjects"])
@@ -127,8 +135,7 @@ def main():
                             for replicate in range(32):
                                 if args.inference == "mixed-score":
                                     components = result["components"]
-                                    sign_vector = signs.choice([-1., 1.], size=(len(components.scores), 1))
-                                    null_p = mixed_score_test(components.scores * sign_vector, components.information, components.biological_shapes)["p_value"]
+                                    null_p = signed_path_score_p_value(components, signs, information_metric=args.information_metric)
                                 else:
                                     null_p = signed_null_p_value(result["differences"], result["difference_covariances"], signs, False, 0.)
                                 trial_null.append({**header, "draw": draw, "strategy": strategy, "replicate": replicate, "n_subjects": n_expected, "p_value": null_p})
@@ -150,6 +157,8 @@ def main():
     manifest = {"source": args.source, "candidate_settings": settings, "requested_ids": [row["test_id"] for row in requested], "expected_strategies": expected_strategies, "draws": args.draws, "null_replicates": 32, "subject_scale": args.subject_scale, "concentrations": [0.] if args.inference == "mixed-score" else args.concentrations, "inference": args.inference, "mixed_score_version": MIXED_SCORE_VERSION if args.inference == "mixed-score" else None, "residual_concentration": args.residual_concentration, "within_path_type_scale": args.within_path_type_scale, "seed": 381924, "selection": "fixed random sample of the whole screened event family, including fit failures; no significance or LR selection", "baseline": "full transcript pooled fit refitted on each generated count draw; profiled backend collapses event classes, mixed-score retains every supported transcript and frees type-specific nuisance", "null": "zero conditional-mean target-path contrast; observed primer totals, compatibility, coverage and subject missingness retained", "failure_policy": "all requested trials at p1 on exceptions or incomplete subject fits"}
     manifest["max_iter"] = args.max_iter if args.inference == "mixed-score" else None
     manifest["null_multistart"] = args.null_multistart
+    manifest["score_coordinate"] = args.score_coordinate if args.inference == "mixed-score" else None
+    manifest["information_metric"] = args.information_metric if args.inference == "mixed-score" else None
     manifest["completeness"] = "every eligible subject null must fit; mixed-score degrees of freedom count informative clusters separately from fitted clusters"
     (args.output_dir / "settings.json").write_text(json.dumps(manifest, indent=2) + "\n")
 

@@ -7,6 +7,123 @@ from tealeaf.sc.path_bias import SharedPathNullProblem
 from tealeaf.sc.path_score_mixed import efficient_shared_path_score, mixed_score_test, mixed_path_score_test, score_contrast_proportions
 
 
+@pytest.mark.parametrize("size", [2, 3, 4])
+def test_proportion_score_is_the_interior_likelihood_coordinate_transform(size):
+    from tealeaf.sc.differential import helmert_basis
+    from tealeaf.sc.path_score_mixed import path_proportion_covariance
+    rng = np.random.default_rng(1230 + size)
+    psi = rng.dirichlet(np.ones(size) * 3)
+    theta = np.tile(psi, (3, 1))
+    maps = tuple(rng.uniform(.1, 2, (size + 3, size)) for _ in range(2))
+    counts = tuple(np.array([rng.multinomial(400, mapping @ psi / (mapping @ psi).sum()) for _ in range(3)]) for mapping in maps)
+    ilr = efficient_shared_path_score(counts, maps, theta, np.arange(size), [0, 1, 2], 3)
+    prop = efficient_shared_path_score(counts, maps, theta, np.arange(size), [0, 1, 2], 3, score_coordinate="proportion")
+    basis = helmert_basis(size)
+    transform = np.kron(np.eye(2), basis.T @ path_proportion_covariance(psi) @ basis)
+    np.testing.assert_allclose(ilr[0], transform.T @ prop[0], atol=1e-9)
+    np.testing.assert_allclose(ilr[1], transform.T @ prop[1] @ transform, atol=1e-9)
+    np.testing.assert_allclose(prop[2], transform @ ilr[2] @ transform.T, atol=1e-12)
+
+
+def test_proportion_covariance_is_stable_at_a_nearly_absent_path():
+    from tealeaf.sc.path_score_mixed import path_proportion_covariance
+    psi = np.array([1., 1e-18])
+    covariance = path_proportion_covariance(psi)
+    np.testing.assert_allclose(covariance / 1e-18, [[1., -1.], [-1., 1.]], atol=1e-14)
+    assert np.linalg.eigvalsh(covariance).min() >= 0
+    with pytest.raises(ValueError, match="proportions"):
+        path_proportion_covariance([.2, -.1])
+
+
+def test_absolute_information_floor_can_depend_on_path_coordinate():
+    # Fractional expected counts demonstrate the numerical scale issue only,
+    # not finite-count validity or biological power at an actual boundary.
+    psi = np.array([1., 1e-18])
+    theta = np.tile(psi, (2, 1))
+    counts = (theta * 100000.,)
+    ilr = efficient_shared_path_score(counts, (np.eye(2),), theta, [0, 1], [0, 1], 2)
+    prop = efficient_shared_path_score(counts, (np.eye(2),), theta, [0, 1], [0, 1], 2, score_coordinate="proportion")
+    with pytest.raises(ValueError, match="four informative"):
+        mixed_score_test(np.tile(ilr[0], (5, 1)), np.tile(ilr[1], (5, 1, 1)), np.tile(ilr[2], (5, 1, 1)))
+    result = mixed_score_test(np.tile(prop[0], (5, 1)), np.tile(prop[1], (5, 1, 1)), np.tile(prop[2], (5, 1, 1)))
+    assert result["n_subjects"] == 5 and result["p_value"] == pytest.approx(1.)
+
+
+def test_constant_anchor_coordinate_transform_preserves_the_aggregate_test():
+    from tealeaf.sc.differential import helmert_basis
+    from tealeaf.sc.path_score_mixed import path_proportion_covariance
+    rng = np.random.default_rng(1241)
+    psi = np.array([.7, .2, .1])
+    basis = helmert_basis(3)
+    transform = basis.T @ path_proportion_covariance(psi) @ basis
+    scores = rng.normal(size=(7, 2))
+    information = np.tile(np.array([[2., .3], [.3, 1.]]), (7, 1, 1))
+    shape = basis.T @ np.diag(1 / psi) @ basis
+    original = mixed_score_test(scores, information, np.tile(shape, (7, 1, 1)))
+    inverse = np.linalg.inv(transform)
+    prop = mixed_score_test(scores @ inverse.T, np.einsum("ij,mjk,kl->mil", inverse.T, information, inverse), np.tile(transform @ shape @ transform.T, (7, 1, 1)))
+    assert prop["p_value"] == pytest.approx(original["p_value"], rel=1e-6)
+    np.testing.assert_allclose(prop["mean_difference"], transform @ original["mean_difference"], rtol=1e-6)
+
+
+def test_target_reference_rank_retains_the_same_model_and_is_unit_invariant():
+    rng = np.random.default_rng(1251)
+    scores = rng.normal(size=(6, 1))
+    information = np.arange(1., 7.)[:, None, None]
+    reference = information * 3
+    shapes = np.arange(2., 8.)[:, None, None]
+    original = mixed_score_test(scores, information, shapes, biological_variance=.2)
+    normalized = mixed_score_test(scores, information, shapes, biological_variance=.2, reference_information=reference)
+    assert normalized["p_value"] == pytest.approx(original["p_value"])
+    np.testing.assert_allclose(normalized["mean_difference"], original["mean_difference"])
+    scale = 1e8
+    reexpressed = mixed_score_test(scores / scale, information / scale**2, shapes * scale**2, biological_variance=.2, reference_information=reference / scale**2)
+    assert reexpressed["p_value"] == pytest.approx(original["p_value"])
+    np.testing.assert_allclose(reexpressed["mean_difference"], original["mean_difference"] * scale)
+
+
+def test_reference_rank_does_not_fabricate_information_for_aliasing():
+    for value in (0., 1e-25):
+        with pytest.raises(ValueError, match="four informative"):
+            mixed_score_test(np.zeros((5, 1)), np.full((5, 1, 1), value), reference_information=np.ones((5, 1, 1)))
+
+
+def test_target_reference_retains_multivariate_partial_information():
+    values = np.array([[.3, 0], [.4, 0], [0, -.2], [0, -.1], [.2, -.3]])
+    information = np.array([np.diag([5, 0]), np.diag([5, 0]), np.diag([0, 5]), np.diag([0, 5]), np.diag([5, 5])], dtype=float)
+    scores = np.einsum("mij,mj->mi", information, values)
+    original = mixed_score_test(scores, information, biological_variance=0.)
+    normalized = mixed_score_test(scores, information, biological_variance=0., reference_information=information * 2)
+    assert normalized["p_value"] == pytest.approx(original["p_value"])
+    np.testing.assert_allclose(normalized["mean_difference"], original["mean_difference"])
+    assert normalized["residual_degrees_of_freedom"] == 4
+
+
+def test_reference_information_cannot_be_smaller_than_profiled_information():
+    with pytest.raises(ValueError, match="exceeds"):
+        mixed_score_test(np.ones((5, 1)), np.ones((5, 1, 1)), reference_information=np.ones((5, 1, 1)) * .5)
+
+
+def test_reference_rank_recovers_a_rare_log_ratio_without_changing_coordinates():
+    psi = np.array([1., 1e-18])
+    theta = np.tile(psi, (2, 1))
+    result = efficient_shared_path_score((theta * 100000.,), (np.eye(2),), theta, [0, 1], [0, 1], 2, return_reference=True)
+    score, information, shape, reference = (np.tile(value, (5,) + (1,) * value.ndim) for value in result)
+    tested = mixed_score_test(score, information, shape, reference_information=reference)
+    assert tested["n_subjects"] == 5 and tested["p_value"] == pytest.approx(1.)
+
+
+def test_binary_score_records_keep_missing_reports_and_raw_information():
+    from tealeaf.sc.path_score_mixed import PathScoreComponents, binary_subject_score_records
+    reports = [[(0, [.2, .8]), (1, [np.nan, np.nan])], [(0, [.3, .7]), (1, [.6, .4])]]
+    information = np.ones((2, 1, 1))
+    components = PathScoreComponents(np.array([[.1], [.2]]), information, information * 3, np.array(["A", "B"]), (0, 1), [], reports, reference_information=information * 2)
+    rows = binary_subject_score_records(components, "test")
+    assert len(rows) == 2 and np.isnan(rows[0]["report_inclusion_b"])
+    assert rows[1]["report_inclusion_b"] == .6
+    assert rows[0]["reference_information"] == 2 and rows[0]["information"] == 1
+
+
 def test_paired_reporting_preserves_type_orientation_and_missing_subjects():
     from tealeaf.sc.path_score_mixed import PathScoreComponents, paired_score_reporting
     reports = [[(1, [.6, .4]), (0, [.2, .8])], [(0, [.3, .7]), (1, [.5, .5])]]

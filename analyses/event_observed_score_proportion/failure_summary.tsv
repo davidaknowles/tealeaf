@@ -1,0 +1,9 @@
+source	scope	error	n
+original_binary	fixed random real-data diagnostic	ValueError('four informative subject clusters and positive residual df required')	1
+original_binary	native top100 diagnostic, not an inference family	KeyError(('EX_cortical', 'ODC'))	1
+original_binary	native top100 diagnostic, not an inference family	ValueError('four informative subject clusters and positive residual df required')	1
+parsimony_binary	fixed random real-data diagnostic	ValueError('four informative subject clusters and positive residual df required')	2
+parsimony_binary	native top100 diagnostic, not an inference family	KeyError(('EX_cerebellum_granule', 'EX_cortical'))	2
+parsimony_binary	native top100 diagnostic, not an inference family	KeyError(('EX_cortical', 'EX_hippocampus_granule'))	1
+parsimony_binary	native top100 diagnostic, not an inference family	KeyError(('EX_cortical', 'ODC'))	2
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('four informative subject clusters and positive residual df required')	1

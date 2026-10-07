@@ -18,6 +18,21 @@ SCENARIO_INDEX=$((SLURM_ARRAY_TASK_ID / SHARD_COUNT))
 SHARD_INDEX=$((SLURM_ARRAY_TASK_ID % SHARD_COUNT))
 SCENARIOS=(strict biological nuisance)
 SCENARIO=${SCENARIOS[$SCENARIO_INDEX]}
+SCORE_COORDINATE=${SCORE_COORDINATE:-ilr}
+SCORE_SOURCE=${SCORE_SOURCE:-original_binary}
+SCORE_INFORMATION_METRIC=${SCORE_INFORMATION_METRIC:-absolute}
+SCORE_EVENTS=${SCORE_EVENTS:-32}
+SCORE_DRAWS=${SCORE_DRAWS:-2}
+if [[ "${SCORE_INFORMATION_METRIC}" != "absolute" ]]; then
+  SCORE_OUTPUT="${REPO_ROOT}/.cache/event_information_20261007/count_null_score_${SCORE_COORDINATE}_${SCORE_INFORMATION_METRIC}/${SCORE_SOURCE}"
+elif [[ "${SCORE_COORDINATE}" == "ilr" && "${SCORE_SOURCE}" == "original_binary" ]]; then
+  SCORE_OUTPUT="${REPO_ROOT}/.cache/event_information_20261007/count_null_mixed_original"
+else
+  SCORE_OUTPUT="${REPO_ROOT}/.cache/event_information_20261007/count_null_score_${SCORE_COORDINATE}/${SCORE_SOURCE}"
+fi
+if [[ "${SCORE_EVENTS}" != "32" || "${SCORE_DRAWS}" != "2" ]]; then
+  SCORE_OUTPUT="${SCORE_OUTPUT}_events${SCORE_EVENTS}_draws${SCORE_DRAWS}"
+fi
 EXTRA=()
 if [[ "${SCENARIO}" == "biological" ]]; then
   EXTRA+=(--residual-concentration 20)
@@ -25,9 +40,9 @@ elif [[ "${SCENARIO}" == "nuisance" ]]; then
   EXTRA+=(--within-path-type-scale 1)
 fi
 python "${REPO_ROOT}/extra_scripts/audit_hybrid_input_count_null.py" \
-  --cache "${REPO_ROOT}/.cache/event_information_20261007" --source original_binary \
+  --cache "${REPO_ROOT}/.cache/event_information_20261007" --source "${SCORE_SOURCE}" \
   --candidate-cache "${RUN_ROOT}/differential/ec_block_reproducibility_pairwise_fold0_candidates.pkl" \
   --event-catalog "${REPO_ROOT}/.cache/suppa2_statistics/all_event_catalog/event_catalog.tsv.gz" \
-  --output-dir "${REPO_ROOT}/.cache/event_information_20261007/count_null_mixed_original/${SCENARIO}/shard_${SHARD_INDEX}" \
-  --shard-index "${SHARD_INDEX}" --shard-count "${SHARD_COUNT}" --events 32 --draws 2 \
-  --inference mixed-score --max-iter 2000 --null-multistart "${EXTRA[@]}"
+  --output-dir "${SCORE_OUTPUT}/${SCENARIO}/shard_${SHARD_INDEX}" \
+  --shard-index "${SHARD_INDEX}" --shard-count "${SHARD_COUNT}" --events "${SCORE_EVENTS}" --draws "${SCORE_DRAWS}" \
+  --inference mixed-score --score-coordinate "${SCORE_COORDINATE}" --information-metric "${SCORE_INFORMATION_METRIC}" --max-iter 2000 --null-multistart "${EXTRA[@]}"

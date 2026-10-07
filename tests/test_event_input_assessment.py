@@ -98,3 +98,5 @@ def test_mixed_guard_retains_a_wholly_failed_declared_shard(tmp_path):
     guard_completed_shards(tmp_path / "raw", tmp_path / "out", 0, shard_count=1, inference="mixed-score")
     result = pd.read_csv(tmp_path / "out/shard_0/paired_path.tsv", sep="\t")
     assert len(result) == 1 and result.p_value.eq(1).all()
+    with pytest.raises(ValueError, match="information metric"):
+        guard_completed_shards(tmp_path / "raw", tmp_path / "wrong_metric", 0, shard_count=1, inference="mixed-score", information_metric="reference")

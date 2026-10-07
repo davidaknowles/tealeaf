@@ -1,0 +1,8 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	direction_selected	direction_evaluable	direction_agreement	common_events	failed_tests_fold0	failed_tests_fold1
+LeafCutter	Hybrid, original_binary input control	simes	simes	747	139	113	107	105	0.9643536514763047	0.8784487310368579	1422	1414	0.8684582743988685	2271	0	0
+MAJIQ Heterogen	Hybrid, original_binary input control	simes	simes	2499	479	299	312	268	0.9119983277591974	0.9177118594925513	3970	3955	0.8644753476611884	7688	0	0
+SUPPA2	Hybrid, original_binary input control	simes	simes	2342	457	309	326	278	0.8981128516687513	0.8731513256843639	4032	4017	0.8660692058750311	8026	0	0
+SUPPA2 primer-aware	Hybrid, original_binary input control	simes	simes	2191	431	293	309	266	0.9007919414162167	0.8719970250445392	3912	3897	0.8645111624326405	7763	0	0
+SUPPA2/Tealeaf hybrid	Hybrid, original_binary input control	simes	simes	1755	354	205	229	184	0.8940568750665673	0.8849615479009107	2468	2453	0.8830004076640848	5558	0	0
+rMATS (paired)	Hybrid, original_binary input control	simes	simes	3109	597	323	341	288	0.9088412336689576	0.9276698872203287	4203	4188	0.8662846227316141	8373	0	0
+scQuint	Hybrid, original_binary input control	simes	simes	2599	506	296	316	270	0.9159040369483407	0.9207806742407052	4029	4014	0.8659691081215745	7770	0	0

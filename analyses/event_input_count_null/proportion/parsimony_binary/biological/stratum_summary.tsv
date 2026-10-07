@@ -1,0 +1,13 @@
+strategy	degrees_of_freedom	n_subjects	n_tests	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01
+hybrid free-transcript EC mixed score, proportion contrast	1	0	10	0	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, proportion contrast	1	4	14	14	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, proportion contrast	1	5	7	7	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, proportion contrast	1	6	5	5	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, proportion contrast	1	7	13	13	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, proportion contrast	1	8	1	1	0.0	1.0	0.0
+hybrid free-transcript EC mixed score, proportion contrast	1	9	2	2	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, proportion contrast	1	11	1	1	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, proportion contrast	1	14	5	5	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, proportion contrast	1	17	4	4	0.0	0.5	0.25
+hybrid free-transcript EC mixed score, proportion contrast	1	19	1	1	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, proportion contrast	1	20	1	1	0.0	0.0	0.0
