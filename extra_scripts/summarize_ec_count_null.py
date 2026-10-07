@@ -47,6 +47,17 @@ def main():
     summary.to_csv(args.output_dir / "draw_summary.tsv", sep="\t", index=False, na_rep="NA")
     aggregate = tests.groupby("strategy", observed=True).agg(n_tests=("p_value", "size"), n_blocks=("block_id", "nunique"), n_converged=("converged", "sum"), raw_reject_0_05=("raw_p_value", lambda p: p.le(.05).mean()), calibrated_reject_0_05=("p_value", lambda p: p.le(.05).mean()), calibrated_reject_0_01=("p_value", lambda p: p.le(.01).mean())).reset_index()
     aggregate.to_csv(args.output_dir / "summary.tsv", sep="\t", index=False, na_rep="NA")
+    # Overall nominal calibration can hide failure in individual dimensions or
+    # repeated rejection of the same null hypothesis across count draws.
+    diagnostics = {
+        "n_tests": ("p_value", "size"),
+        "n_converged": ("converged", "sum"),
+        "raw_reject_0_05": ("raw_p_value", lambda p: p.le(.05).mean()),
+        "calibrated_reject_0_05": ("p_value", lambda p: p.le(.05).mean()),
+        "calibrated_reject_0_01": ("p_value", lambda p: p.le(.01).mean()),
+    }
+    tests.groupby(["strategy", "degrees_of_freedom", "n_subjects"]).agg(**diagnostics).reset_index().to_csv(args.output_dir / "stratum_summary.tsv", sep="\t", index=False, na_rep="NA")
+    tests.groupby(["strategy", "test_id", "block_id"]).agg(**diagnostics).reset_index().to_csv(args.output_dir / "hypothesis_summary.tsv", sep="\t", index=False, na_rep="NA")
     (args.output_dir / "manifest.json").write_text(json.dumps({"settings": settings[0], "null": "Exactly equal transcript mixtures across cell types within each subject; observed primer/depth totals retained", "assessment": "True EC count nulls, distinct from label-permutation nulls", "calibration": "32 within-subject permutations/sign flips per simulated test and draw; own test excluded from pooled empirical calibration", "variance_moderation": args.moderate_variances, "limitation": "Fixed compatibility, no biological cell-type heteroscedasticity, no EB reselection; block-wise simulations do not preserve a coherent joint-gene null", "interpretation": "Reject fractions diagnose conditional testing calibration; per-draw BH counts do not certify joint real-data FDR"}, indent=2) + "\n")
     print(aggregate.to_string(index=False), flush=True)
 

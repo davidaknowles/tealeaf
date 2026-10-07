@@ -28,7 +28,7 @@ def load_shards(root, name="observed.tsv", expected=None):
     if len(paths) != expected:
         raise ValueError(f"expected {expected} completed shards, found {len(paths)} in {root}")
     table = pd.concat([pd.read_csv(path, sep="\t", low_memory=False) for path in paths], ignore_index=True)
-    if root.name.startswith("pairwise") and name == "observed.tsv":
+    if root.name.startswith("pairwise") and name == "observed.tsv" and table.strategy.eq("subject-mean A1").any():
         table = add_dirichlet_fallback(table)
     return table
 

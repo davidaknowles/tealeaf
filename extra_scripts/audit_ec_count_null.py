@@ -14,7 +14,7 @@ from scipy.special import softmax
 from extra_scripts.run_paired_path_test import filtered_inputs
 from extra_scripts.run_ec_glmm import local_gene_data
 from extra_scripts.run_ec_block_glmm import local_test_design, partition_candidates
-from extra_scripts.audit_path_reporting_omnibus import omnibus_reports
+from extra_scripts.audit_path_reporting_omnibus import omnibus_reports, joint_dm_reports
 from tealeaf.sc import ec_block_glmm, ec_glmm, differential
 from tealeaf.sc.path_score import paired_path_score_test, paired_subject_centered_test
 
@@ -97,6 +97,7 @@ def main():
     parser.add_argument("--mode", choices=("omnibus", "pairwise"), default="omnibus")
     parser.add_argument("--prior-center", choices=("uniform", "baseline"), default="uniform")
     parser.add_argument("--include-score", action="store_true")
+    parser.add_argument("--joint-dm-only", action="store_true")
     args = parser.parse_args()
     if args.free_isoforms:
         differential.fit_path_perturbation = differential.fit_free_isoform_paths
@@ -127,7 +128,9 @@ def main():
                 try:
                     # A failed fit must not prevent later, independent count draws.
                     baseline = ec_block_glmm.pooled_isoform_weights(simulated)
-                    if args.mode == "omnibus":
+                    if args.joint_dm_only:
+                        statistics, null, details = joint_dm_reports(simulated, baseline, path_index, labels, subjects, args.null_replicates, zlib.crc32(test_id.encode()) + draw * 1721)
+                    elif args.mode == "omnibus":
                         statistics, null, details = omnibus_reports(simulated, baseline, path_index, labels, subjects, args.null_replicates, zlib.crc32(test_id.encode()) + draw * 1721, prior_center=args.prior_center, include_score=args.include_score)
                     else:
                         statistics, null = paired_statistics(simulated, baseline, path_index, labels, subjects, args.null_replicates, zlib.crc32(test_id.encode()) + draw * 1721, args.prior_center, args.include_score)
@@ -146,7 +149,7 @@ def main():
     pd.DataFrame(outputs).to_csv(args.output_dir / "observed.tsv", sep="\t", index=False, na_rep="NA")
     pd.DataFrame(nulls).to_csv(args.output_dir / "null.tsv.gz", sep="\t", index=False, na_rep="NA")
     (args.output_dir / "failures.json").write_text(json.dumps(failures, indent=2) + "\n")
-    (args.output_dir / "settings.json").write_text(json.dumps({"candidate_settings": cached["settings"], "selected_blocks": args.blocks, "draws": args.draws, "null_replicates": args.null_replicates, "subject_scale": args.subject_scale, "free_isoforms": args.free_isoforms, "mode": args.mode, "prior_center": args.prior_center, "include_score": args.include_score, "null": "common transcript mixture for all cell types within each subject, observed primer/depth totals preserved", "baseline": "refitted for each simulated count draw", "seed": 381924}, indent=2, default=str) + "\n")
+    (args.output_dir / "settings.json").write_text(json.dumps({"candidate_settings": cached["settings"], "selected_blocks": args.blocks, "draws": args.draws, "null_replicates": args.null_replicates, "subject_scale": args.subject_scale, "free_isoforms": args.free_isoforms, "mode": args.mode, "prior_center": args.prior_center, "include_score": args.include_score, "joint_dm_only": args.joint_dm_only, "null": "common transcript mixture for all cell types within each subject, observed primer/depth totals preserved", "baseline": "refitted for each simulated count draw", "seed": 381924}, indent=2, default=str) + "\n")
 
 
 if __name__ == "__main__":

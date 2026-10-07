@@ -24,7 +24,7 @@ def complete_failed_tests(frame, reference):
         missing["statistic"] = 0.
         missing["converged"] = False
         missing["adjusted_effects"] = missing.adjusted_effects.map(lambda value: json.dumps(np.full(np.asarray(json.loads(value)).shape, np.nan).tolist()))
-        retained["fit_available"] = True
+        retained["fit_available"] = retained.converged.astype(str).str.lower().eq("true") if "converged" in retained else True
         missing["fit_available"] = False
         completed = pd.concat([retained, missing], ignore_index=True)
         completed["fdr"] = benjamini_hochberg(completed.p_value.to_numpy(float))
@@ -50,7 +50,10 @@ def main():
     full, full_control = None, None
     for fold in (0, 1, "full"):
         folder = "omnibus_full" if fold == "full" else f"omnibus_fold{fold}"
-        roots = [args.cache / folder, args.control_cache / folder]
+        experimental = args.cache / folder
+        if fold == "full" and not experimental.exists():
+            experimental = args.cache / "full"
+        roots = [experimental, args.control_cache / folder]
         settings = []
         for index, root in enumerate(roots):
             files = sorted(root.glob("shard_*/settings.json"))
@@ -72,7 +75,8 @@ def main():
             # Older controls used the documented default 32; full-data controls
             # are rerun at 64 so both the prior center and score comparisons match.
             strengths = settings[len(frames)].get("test_concentration", 32.)
-            if strengths != (64. if fold == "full" else 32.):
+            joint_dm = settings[len(frames)].get("joint_dm_only", False)
+            if not joint_dm and strengths != (64. if fold == "full" else 32.):
                 raise ValueError("testing concentrations differ from the prespecified matched control")
             calibrated, _, audit = calibrate_omnibus(observed, null)
             frames.append(calibrated)
@@ -89,7 +93,7 @@ def main():
         control["strategy"] += ", uniform control"
         combined = pd.concat([new, control], ignore_index=True)
         combined.to_csv(args.output_dir / f"omnibus_{fold}_tests.tsv.gz", sep="\t", index=False, na_rep="NA")
-        provenance.append({"fold": fold, "candidate_settings": settings[0]["candidate_settings"], "test_concentration": 64 if fold == "full" else 32, "n_control_blocks": len(reference), "n_missing_by_strategy": new.groupby("strategy").fit_available.apply(lambda values: int((~values).sum())).to_dict()})
+        provenance.append({"fold": fold, "candidate_settings": settings[0]["candidate_settings"], "test_concentration": settings[0].get("test_concentration", 32), "quantification_concentrations": settings[0].get("quantification_concentrations"), "control_testing_concentration": 64 if fold == "full" else 32, "n_control_blocks": len(reference), "n_missing_by_strategy": new.groupby("strategy").fit_available.apply(lambda values: int((~values).sum())).to_dict()})
         if fold == "full":
             full, full_control = new, reference
         else:
@@ -97,8 +101,12 @@ def main():
     summary = split_omnibus_summary(folds, args.output_dir)
     pd.concat(audits, ignore_index=True).to_csv(args.output_dir / "held_null_summary.tsv", sep="\t", index=False, na_rep="NA")
     # No pooled reporting or old paired discovery list restricts the LR universe.
-    # The mapped contrast is the largest A1 source effect among supported types.
-    report = full.drop_duplicates("block_id")[["block_id", "levels", "path_signatures", "adjusted_effects"]].assign(strategy="experimental subject-blocked A1", converged=True)
+    # Select the largest source effect among supported types before LR checks.
+    if settings[0].get("joint_dm_only", False):
+        report = full[["block_id", "levels", "path_signatures", "adjusted_effects", "strategy", "converged"]].copy()
+        report["strategy"] = "standardized means, " + report.strategy
+    else:
+        report = full.drop_duplicates("block_id")[["block_id", "levels", "path_signatures", "adjusted_effects"]].assign(strategy="experimental subject-blocked A1", converged=True)
     # The reusable mapper historically labels its reference "archived
     # production". Here it is an explicitly refitted, matched uniform control.
     lr_omnibus_summary(full, report, full_control, args.run_root / "differential/gencode_vM32_splice_blocks.json.gz", args.matrix_dir, args.gtf, args.output_dir)
@@ -109,7 +117,8 @@ def main():
         if "method" in table:
             table["method"] = table.method.str.replace("archived production omnibus", "refitted uniform control omnibus", regex=False)
         table.to_csv(path, sep="\t", index=False, na_rep="NA")
-    (args.output_dir / "manifest.json").write_text(json.dumps({"variant": args.name, "cohorts": provenance, "selection": "fixed eligible control block universe; missing experimental fits have p=1 and unavailable direction", "LR": "all tested control-universe blocks, remapped without a paired-discovery screen; largest source A1 effect contrast", "interpretation": "exploratory conditional count-null, split and LR audits, not certification of FDR or an adopted production change"}, indent=2) + "\n")
+    reporting_description = "each variant's standardized model means" if settings[0].get("joint_dm_only", False) else "source A1 means"
+    (args.output_dir / "manifest.json").write_text(json.dumps({"variant": args.name, "cohorts": provenance, "selection": "fixed eligible control block universe; missing experimental fits have p=1 and unavailable direction", "LR": f"all tested control-universe blocks, remapped without a paired-discovery screen; largest effect contrast using {reporting_description}", "interpretation": "exploratory conditional count-null, split and LR audits, not certification of FDR or an adopted production change"}, indent=2) + "\n")
     print(summary.to_string(index=False), flush=True)
 
 

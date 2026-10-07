@@ -18,6 +18,7 @@ from tealeaf.sc import differential, ec_block_glmm, ec_glmm
 from tealeaf.sc.omnibus import regression_omnibus
 from tealeaf.sc.path_reporting import dirichlet_pooling, proportion_covariance
 from tealeaf.sc.path_score import omnibus_path_score_test
+from tealeaf.sc.path_pooling import quantify_effective_paths, joint_path_dm_test
 
 
 def paired_reports(base, baseline, path_index, labels, subjects):
@@ -84,6 +85,43 @@ def score_omnibus_reports(base, baseline, path_index, labels, subjects, replicat
     return statistics, null, {"n_subjects": next(iter(statistics.values()))["n_subjects"], "n_observations": len(labels), "levels": levels, "adjusted_effects": adjusted, "report_error": report_error, "quantified": quantified}
 
 
+def joint_dm_reports(base, baseline, path_index, labels, subjects, replicates, seed):
+    """Joint subject-blocked DM sensitivities, retaining failed variants at p=1."""
+    statistics, null, errors = {}, [], {}
+    levels = np.unique(labels)
+    size = int(np.max(path_index)) + 1
+    reference_means = np.full((len(levels), size), np.nan)
+    quantified_record = {"labels": [], "subjects": [], "proportions": [], "values": {}}
+    for concentration, covariance_source in ((.25, "likelihood"), (.25, "posterior"), (1., "likelihood")):
+        name = f"joint DM LRT A{concentration:g} {covariance_source}"
+        try:
+            quantified = quantify_effective_paths(base, path_index, labels, subjects, baseline=baseline, concentration=concentration, covariance_source=covariance_source)
+            result = joint_path_dm_test(quantified)
+            if not result["converged"]:
+                raise ValueError("joint null/alternative regression did not converge")
+            # Every statistical variant is exported with its own modeled means.
+            statistics[name] = result
+            if not np.isfinite(reference_means).all():
+                for level, mean in zip(result["levels"], result["standardized_means"]):
+                    reference_means[np.flatnonzero(levels == level)[0]] = mean
+                quantified_record = {"labels": quantified["labels"].tolist(), "subjects": quantified["subjects"].tolist(), "proportions": quantified["proportions"].tolist(), "values": {}}
+            rng = np.random.default_rng(seed)
+            positions = [np.flatnonzero(quantified["subjects"] == subject) for subject in np.unique(quantified["subjects"])]
+            for replicate in range(replicates):
+                permuted = quantified["labels"].copy()
+                for index in positions:
+                    permuted[index] = rng.permutation(permuted[index])
+                tested = joint_path_dm_test(quantified, labels=permuted, fitted_null=result)
+                null.append({"strategy": name, "replicate": replicate, **{key: tested[key] for key in ("p_value", "statistic", "degrees_of_freedom")}, "converged": tested["converged"]})
+        except (ValueError, np.linalg.LinAlgError) as exception:
+            errors[name] = str(exception)
+            failed = {"p_value": 1., "statistic": 0., "degrees_of_freedom": (len(levels) - 1) * (size - 1), "converged": False, "n_subjects": len(np.unique(subjects)), "n_observations": len(labels)}
+            statistics[name] = failed
+            null = [row for row in null if row["strategy"] != name]
+            null.extend({"strategy": name, "replicate": replicate, **failed} for replicate in range(replicates))
+    return statistics, null, {"n_subjects": len(np.unique(subjects)), "n_observations": len(labels), "levels": levels, "adjusted_effects": reference_means - reference_means[:1], "report_error": json.dumps(errors), "quantified": quantified_record}
+
+
 def omnibus_reports(base, baseline, path_index, labels, subjects, replicates, seed, test_concentration=32., prior_center="uniform", include_score=False):
     results = {concentration: ec_block_glmm.blocked_multilevel_path_test(base, path_index, labels, subjects, baseline=baseline, path_pseudocount=concentration, path_pseudocount_scaling="total", path_prior_center=prior_center) for concentration in (test_concentration, 1.)}
     # Quantification failures must not silently create a different design.
@@ -139,6 +177,7 @@ def main():
     parser.add_argument("--prior-center", choices=("uniform", "baseline"), default="uniform")
     parser.add_argument("--include-score", action="store_true")
     parser.add_argument("--score-only", action="store_true")
+    parser.add_argument("--joint-dm-only", action="store_true")
     args = parser.parse_args()
     if args.profile_mass:
         # Audit-process-only override, never the default production fitting path.
@@ -167,20 +206,31 @@ def main():
             if key not in baseline_cache:
                 baseline_cache[key] = ec_block_glmm.pooled_isoform_weights(base)
             baseline = baseline_cache[key]
-            if args.mode == "pairwise":
+            if args.mode == "pairwise" and not args.joint_dm_only:
                 for report in paired_reports(base, baseline, path_index, labels, subjects):
                     report["effect"] = json.dumps(report["effect"].tolist())
                     outputs.append({**header, "level_a": tested_levels[0], "level_b": tested_levels[1], **report})
             else:
-                if args.score_only:
+                if args.joint_dm_only:
+                    statistics, null, details = joint_dm_reports(base, baseline, path_index, labels, subjects, args.null_replicates, zlib.crc32(test_id.encode()))
+                elif args.score_only:
                     statistics, null, details = score_omnibus_reports(base, baseline, path_index, labels, subjects, args.null_replicates, zlib.crc32(test_id.encode()), args.test_concentration)
                 else:
                     statistics, null, details = omnibus_reports(base, baseline, path_index, labels, subjects, args.null_replicates, zlib.crc32(test_id.encode()), args.test_concentration, prior_center=args.prior_center, include_score=args.include_score)
                 quantified.append({**header, "quantified": json.dumps(details.pop("quantified"))})
                 adjusted = details.pop("adjusted_effects")
                 level_names = [tested_levels[int(level)] for level in details.pop("levels")]
+                coverage = float(np.median(sum(matrix.sum(axis=1) for matrix in base.counts)))
                 for name, result in statistics.items():
-                    outputs.append({**header, **details, "strategy": name, "p_value": result["p_value"], "statistic": result["statistic"], "degrees_of_freedom": result["degrees_of_freedom"], "converged": True, "levels": json.dumps(level_names), "adjusted_effects": json.dumps(adjusted.tolist())})
+                    own_adjusted = adjusted
+                    if "standardized_means" in result:
+                        own_adjusted = result["standardized_means"] - result["standardized_means"][:1]
+                    if not result.get("converged", True):
+                        own_adjusted = np.full_like(adjusted, np.nan)
+                    pair = {"level_a": tested_levels[0], "level_b": tested_levels[1]} if args.mode == "pairwise" else {}
+                    outputs.append({**header, **details, **pair, "median_gene_umis": coverage, "strategy": name, "p_value": result["p_value"], "statistic": result["statistic"], "degrees_of_freedom": result["degrees_of_freedom"], "converged": result.get("converged", True), "levels": json.dumps(level_names), "adjusted_effects": json.dumps(own_adjusted.tolist()), "null_concentration": result.get("null_concentration", np.nan), "alternative_concentration": result.get("alternative_concentration", np.nan), "effective_depth_median": result.get("effective_depth_median", np.nan)})
+                    if args.joint_dm_only:
+                        outputs[-1]["standardized_means"] = json.dumps(result.get("standardized_means", np.full_like(adjusted, np.nan)).tolist())
                 nulls.extend({**header, **details, **row} for row in null)
         except (ValueError, np.linalg.LinAlgError) as exception:
             failures.append({**header, "error": str(exception)})
@@ -193,7 +243,7 @@ def main():
     if quantified:
         pd.DataFrame(quantified).to_csv(args.output_dir / "quantified.tsv.gz", sep="\t", index=False, na_rep="NA")
     (args.output_dir / "failures.json").write_text(json.dumps(failures, indent=2) + "\n")
-    (args.output_dir / "settings.json").write_text(json.dumps({"mode": args.mode, "candidate_settings": cached["settings"], "baseline": "current analytic EC optimizer, refitted within this subject fold", "profile_mass": args.profile_mass, "prior_center": args.prior_center, "include_score": args.include_score, "score_only": args.score_only, "test_concentration": args.test_concentration, "null_replicates": args.null_replicates, "n_candidates": len(candidates), "n_failures": len(failures)}, default=str, indent=2) + "\n")
+    (args.output_dir / "settings.json").write_text(json.dumps({"mode": args.mode, "candidate_settings": cached["settings"], "baseline": "current analytic EC optimizer, refitted within this subject fold", "profile_mass": args.profile_mass, "prior_center": args.prior_center, "include_score": args.include_score, "score_only": args.score_only, "joint_dm_only": args.joint_dm_only, "quantification_concentrations": [.25, 1.] if args.joint_dm_only else None, "test_concentration": None if args.joint_dm_only else args.test_concentration, "null_replicates": args.null_replicates, "n_candidates": len(candidates), "n_failures": len(failures)}, default=str, indent=2) + "\n")
 
 
 if __name__ == "__main__":

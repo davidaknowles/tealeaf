@@ -58,13 +58,14 @@ def split_assessment(folds, repo, output, model):
     print(pd.DataFrame(metrics).to_string(index=False), flush=True)
 
 
-def long_read_assessment(tests, root, matrix_dir, gtf, block_path, output, model):
+def long_read_assessment(tests, root, matrix_dir, gtf, block_path, output, model, usage=None, effect_vectors=None):
     matrix, features, columns = read_tilgner_matrix(matrix_dir, gtf)
     blocks = load_blocks(block_path)
     groups = {(level, int(rep)): frame.column.to_numpy(int) for (level, rep), frame in columns.dropna(subset=["tealeaf_cell_type", "replicate"]).groupby(["tealeaf_cell_type", "replicate"])}
     represented = set(level for level, rep in groups)
     tests = tests.loc[tests.converged & tests.n_subjects.ge(4) & tests.level_a.isin(represented) & tests.level_b.isin(represented)].copy()
-    usage = load_path_usage(root, set(tests.test_id)).set_index(["test_id", "cell_type", "path_number"]).proportion
+    if usage is None and effect_vectors is None:
+        usage = load_path_usage(root, set(tests.test_id)).set_index(["test_id", "cell_type", "path_number"]).proportion
     # Retain original matrix row indices while avoiding a whole-annotation
     # string scan for every tested contrast of the same block.
     feature_groups = {gene: frame for gene, frame in features.groupby("stable_gene_id")}
@@ -85,9 +86,12 @@ def long_read_assessment(tests, root, matrix_dir, gtf, block_path, output, model
         complete = complete and all((level, rep) in groups for level in (row.level_a, row.level_b) for rep in (1, 2))
         a = np.asarray([counts.get((row.level_a, rep), np.zeros(len(signatures))) for rep in (1, 2)])
         b = np.asarray([counts.get((row.level_b, rep), np.zeros(len(signatures))) for rep in (1, 2)])
-        short_a = np.asarray([usage.get((row.test_id, row.level_a, path), np.nan) for path in range(1, len(signatures) + 1)])
-        short_b = np.asarray([usage.get((row.test_id, row.level_b, path), np.nan) for path in range(1, len(signatures) + 1)])
-        effect = short_b - short_a
+        if effect_vectors is None:
+            short_a = np.asarray([usage.get((row.test_id, row.level_a, path), np.nan) for path in range(1, len(signatures) + 1)])
+            short_b = np.asarray([usage.get((row.test_id, row.level_b, path), np.nan) for path in range(1, len(signatures) + 1)])
+            effect = short_b - short_a
+        else:
+            effect = np.asarray(effect_vectors.get(row.test_id, np.full(len(signatures), np.nan)), dtype=float)
         external = normalized_difference(a.sum(axis=0), b.sum(axis=0))
         dot, cosine = vector_agreement(effect, external)
         minimum = min(a.sum(), b.sum())
