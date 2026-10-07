@@ -1,0 +1,4 @@
+top	native_rank	n_missing	n_missing_prepared_EC_column_mass	n_missing_original_all_support	n_missing_original_EC5_support	n_missing_parsimony_all_support	n_missing_parsimony_EC5_support
+40	820	117	0	117	117	117	117
+100	5050	262	0	262	262	262	262
+200	20100	502	0	502	502	502	502

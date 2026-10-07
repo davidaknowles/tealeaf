@@ -1,0 +1,37 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking	direction	LR_zero_policy
+native_p, native_effect	40	51495	37	0.925	0.9707867326720498	native own universe	native_p	native_effect	legacy event endpoint, exact zero counts as nonagreement
+native_p, native_effect	100	51495	78	0.78	0.9069097444493801	native own universe	native_p	native_effect	legacy event endpoint, exact zero counts as nonagreement
+native_p, native_effect	200	51495	142	0.71	0.818630406903077	native own universe	native_p	native_effect	legacy event endpoint, exact zero counts as nonagreement
+hybrid_p, hybrid_effect	40	1194	24	0.6	0.736436686322595	hybrid own universe	hybrid_p	hybrid_effect	legacy event endpoint, exact zero counts as nonagreement
+hybrid_p, hybrid_effect	100	1194	55	0.55	0.6369169879211255	hybrid own universe	hybrid_p	hybrid_effect	legacy event endpoint, exact zero counts as nonagreement
+hybrid_p, hybrid_effect	200	1194	104	0.52	0.5801657924997068	hybrid own universe	hybrid_p	hybrid_effect	legacy event endpoint, exact zero counts as nonagreement
+native_p, native_effect	40	658	24	0.6	0.5671442359565118	shared event-contrast universe	native_p	native_effect	legacy event endpoint, exact zero counts as nonagreement
+native_p, native_effect	100	658	57	0.57	0.5685146837581808	shared event-contrast universe	native_p	native_effect	legacy event endpoint, exact zero counts as nonagreement
+native_p, native_effect	200	658	112	0.56	0.5630566063233251	shared event-contrast universe	native_p	native_effect	legacy event endpoint, exact zero counts as nonagreement
+native_p, hybrid_effect	40	658	24	0.6	0.6811315226962791	shared event-contrast universe	native_p	hybrid_effect	legacy event endpoint, exact zero counts as nonagreement
+native_p, hybrid_effect	100	658	56	0.56	0.6032155401856839	shared event-contrast universe	native_p	hybrid_effect	legacy event endpoint, exact zero counts as nonagreement
+native_p, hybrid_effect	200	658	103	0.515	0.5694234843379432	shared event-contrast universe	native_p	hybrid_effect	legacy event endpoint, exact zero counts as nonagreement
+hybrid_p, native_effect	40	658	24	0.6	0.5923866025049579	shared event-contrast universe	hybrid_p	native_effect	legacy event endpoint, exact zero counts as nonagreement
+hybrid_p, native_effect	100	658	51	0.51	0.5791358584180611	shared event-contrast universe	hybrid_p	native_effect	legacy event endpoint, exact zero counts as nonagreement
+hybrid_p, native_effect	200	658	103	0.515	0.5510151989063207	shared event-contrast universe	hybrid_p	native_effect	legacy event endpoint, exact zero counts as nonagreement
+hybrid_p, hybrid_effect	40	658	28	0.7	0.8044217593763101	shared event-contrast universe	hybrid_p	hybrid_effect	legacy event endpoint, exact zero counts as nonagreement
+hybrid_p, hybrid_effect	100	658	58	0.58	0.7056800129646378	shared event-contrast universe	hybrid_p	hybrid_effect	legacy event endpoint, exact zero counts as nonagreement
+hybrid_p, hybrid_effect	200	658	113	0.565	0.646328827021213	shared event-contrast universe	hybrid_p	hybrid_effect	legacy event endpoint, exact zero counts as nonagreement
+native_p, native_effect	40	43348	37	0.925	0.9707867326720498	native own universe	native_p	native_effect	diagnostic, exact zero LR effect excluded
+native_p, native_effect	100	43348	80	0.8	0.9135960942028142	native own universe	native_p	native_effect	diagnostic, exact zero LR effect excluded
+native_p, native_effect	200	43348	151	0.755	0.8455041550366519	native own universe	native_p	native_effect	diagnostic, exact zero LR effect excluded
+hybrid_p, hybrid_effect	40	986	29	0.725	0.7999208888765071	hybrid own universe	hybrid_p	hybrid_effect	diagnostic, exact zero LR effect excluded
+hybrid_p, hybrid_effect	100	986	60	0.6	0.7069803368115919	hybrid own universe	hybrid_p	hybrid_effect	diagnostic, exact zero LR effect excluded
+hybrid_p, hybrid_effect	200	986	120	0.6	0.6577395709940325	hybrid own universe	hybrid_p	hybrid_effect	diagnostic, exact zero LR effect excluded
+native_p, native_effect	40	586	25	0.625	0.5996273868121673	shared event-contrast universe	native_p	native_effect	diagnostic, exact zero LR effect excluded
+native_p, native_effect	100	586	64	0.64	0.6160815437166939	shared event-contrast universe	native_p	native_effect	diagnostic, exact zero LR effect excluded
+native_p, native_effect	200	586	120	0.6	0.6130852166680317	shared event-contrast universe	native_p	native_effect	diagnostic, exact zero LR effect excluded
+native_p, hybrid_effect	40	586	24	0.6	0.7087013772830766	shared event-contrast universe	native_p	hybrid_effect	diagnostic, exact zero LR effect excluded
+native_p, hybrid_effect	100	586	61	0.61	0.6474485986866851	shared event-contrast universe	native_p	hybrid_effect	diagnostic, exact zero LR effect excluded
+native_p, hybrid_effect	200	586	112	0.56	0.6147490860481338	shared event-contrast universe	native_p	hybrid_effect	diagnostic, exact zero LR effect excluded
+hybrid_p, native_effect	40	586	26	0.65	0.6387628401358163	shared event-contrast universe	hybrid_p	native_effect	diagnostic, exact zero LR effect excluded
+hybrid_p, native_effect	100	586	58	0.58	0.6172089995870361	shared event-contrast universe	hybrid_p	native_effect	diagnostic, exact zero LR effect excluded
+hybrid_p, native_effect	200	586	114	0.57	0.5937082193214397	shared event-contrast universe	hybrid_p	native_effect	diagnostic, exact zero LR effect excluded
+hybrid_p, hybrid_effect	40	586	30	0.75	0.8575940289637574	shared event-contrast universe	hybrid_p	hybrid_effect	diagnostic, exact zero LR effect excluded
+hybrid_p, hybrid_effect	100	586	66	0.66	0.7494299084803232	shared event-contrast universe	hybrid_p	hybrid_effect	diagnostic, exact zero LR effect excluded
+hybrid_p, hybrid_effect	200	586	123	0.615	0.6932839296110944	shared event-contrast universe	hybrid_p	hybrid_effect	diagnostic, exact zero LR effect excluded

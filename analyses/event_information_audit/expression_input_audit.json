@@ -1,0 +1,35 @@
+{
+  "prefix": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/cluster_dx_mouse_min20_umi1e5_em_",
+  "expression_shape": [
+    551,
+    51108
+  ],
+  "expression_nnz": 8572541,
+  "expression_sum": 82613646.06537127,
+  "EC_pseudobulk_groups": 278,
+  "EC_primers": [
+    {
+      "shape": [
+        278,
+        237828
+      ],
+      "nnz": 6136277,
+      "sum": 55483561.0
+    },
+    {
+      "shape": [
+        278,
+        237828
+      ],
+      "nnz": 6428121,
+      "sum": 52117020.0
+    }
+  ],
+  "count_shape": [
+    551,
+    51108
+  ],
+  "count_nnz": 52850,
+  "count_sum": 15076.465184421791,
+  "identical_arrays": false
+}

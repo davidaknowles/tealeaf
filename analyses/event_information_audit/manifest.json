@@ -1,0 +1,36 @@
+{
+  "mapping": ".cache/event_information_20261007/fresh_mapping.tsv.gz",
+  "input_fingerprints": {
+    "mapping": {
+      "path": ".cache/event_information_20261007/fresh_mapping.tsv.gz",
+      "sha256": "39984f191d094f8ea5d968f22dc06bc87c2cd6c0957c3cc7707c7a73d53edd0e"
+    },
+    "native_tests": {
+      "path": "analyses/comparator_suppa_rmats/suppa2/full_data_tests.tsv.gz",
+      "sha256": "edf50064646a4246df9ecad385203442d69b506a183b3bc99dcfd7061acbeabd"
+    },
+    "hybrid_tests": {
+      "path": "analyses/comparator_suppa_rmats/suppa2_tealeaf_hybrid/full_data/full_data_tests.tsv.gz",
+      "sha256": "3f0f458b889219b9282663d2eaba53a7716480213311ddacb712f8dfd2679ec3"
+    },
+    "catalog": {
+      "path": "analyses/comparator_suppa_rmats/suppa2_tealeaf_hybrid/full_data/event_catalog.tsv.gz",
+      "sha256": "ad134e1c23d6d1393e6ba7b61a76efec4005e3a455f24551f195a2d68916f5e7"
+    },
+    "features": {
+      "path": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/hierarchical/weighted_rank32_joint_glm_cols.txt",
+      "sha256": "7b8b134e3d930eb4d3bb5bbc5c7908c530cd0fcd38a6744ee2b009944c481113"
+    }
+  },
+  "methods": [
+    "SUPPA2 (full data)",
+    "Tealeaf EC; SUPPA2 event definitions"
+  ],
+  "selection": "complete finite mapped tests at source depth20, no method FDR cutoff; finite exact-zero LR effects count as nonagreement, exclusion is labeled sensitivity only",
+  "shared_eligible": 658,
+  "native_eligible": 51495,
+  "hybrid_eligible": 1194,
+  "event_support": "fixed prepared EC support; source expression mass diagnostic sums all pseudobulk rows, never selects a model",
+  "rank_area": "mean cumulative sign agreement at ranks1..K",
+  "production_changes": false
+}

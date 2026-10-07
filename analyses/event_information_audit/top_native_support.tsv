@@ -1,0 +1,9 @@
+top	reason	n	native_agreement	hybrid_eligible
+40	incomplete supported event transcript sets	39	0.9487179487179487	0
+40	tested	1	0.0	1
+100	coverage/context filter or failed event fit	5	0.4	0
+100	incomplete supported event transcript sets	91	0.8131868131868132	0
+100	tested	4	0.5	4
+200	coverage/context filter or failed event fit	22	0.5	0
+200	incomplete supported event transcript sets	168	0.7440476190476191	0
+200	tested	10	0.6	10

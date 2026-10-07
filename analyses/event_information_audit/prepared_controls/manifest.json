@@ -1,0 +1,62 @@
+{
+  "prepared_features": 95842,
+  "prepared_groups": 278,
+  "prepared_nonzero_columns": 66877,
+  "index_mismatch_count": 0,
+  "production_count_fingerprints": [
+    "bdefd1d6fb1aafba97741ca568998f7f9e8c311f9f134cc7c4a29b38628681f8",
+    "b9800a9417bc33ef6f84aaea8e3650dbf1c8d95b3fdaa3afbac982dfc96eb8b3"
+  ],
+  "support_interpretation": "binary compatibility duplicated across transcripts, not assigned counts or TPM",
+  "sources": [
+    {
+      "label": "parsimony",
+      "directory": "/gpfs/commons/groups/knowles_lab/data/sc/splitpool/microglia_less_mice/salmon_spliceu_weighted_rad/out_permit_known_weighted/quant_t2t_dedup_parsimony_em/alevin",
+      "features": 116918,
+      "cells": 547077,
+      "ECs": 948916,
+      "counts_sum": 895249175.0,
+      "membership_nnz": 14974929,
+      "positive_support_transcripts": 99679,
+      "positive_support_after_EC5": 85278
+    }
+  ],
+  "prepared_controls": [
+    {
+      "label": "parsimony_binary",
+      "directory": ".cache/event_information_20261007/parsimony_binary_paired",
+      "same_feature_order_as_production": true,
+      "pseudobulks": 278,
+      "same_groups_as_production": true,
+      "same_exact_count_arrays_as_production": true,
+      "count_fingerprints": [
+        "bdefd1d6fb1aafba97741ca568998f7f9e8c311f9f134cc7c4a29b38628681f8",
+        "b9800a9417bc33ef6f84aaea8e3650dbf1c8d95b3fdaa3afbac982dfc96eb8b3"
+      ],
+      "primer_UMIs": [
+        55483561.0,
+        52117020.0
+      ],
+      "globally_supported": 81504,
+      "gene_supported": 68170
+    },
+    {
+      "label": "original_binary",
+      "directory": ".cache/event_information_20261007/original_binary_paired",
+      "same_feature_order_as_production": false,
+      "pseudobulks": 388,
+      "same_groups_as_production": false,
+      "same_exact_count_arrays_as_production": false,
+      "count_fingerprints": [
+        "a1b92852c89fc7adb79e893fe2a929f3a70f427a26cb554195f07a0a089dab75",
+        "f70ccedcb5b7806fa1c46c12efacc5bc6e26bb3b7b8b6c799443517532cafe0a"
+      ],
+      "primer_UMIs": [
+        137889342.0,
+        121038253.0
+      ],
+      "globally_supported": 92992,
+      "gene_supported": 75503
+    }
+  ]
+}

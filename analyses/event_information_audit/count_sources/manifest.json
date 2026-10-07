@@ -1,0 +1,31 @@
+{
+  "prepared_features": 95842,
+  "prepared_groups": 278,
+  "prepared_nonzero_columns": 66877,
+  "index_mismatch_count": 0,
+  "support_interpretation": "binary compatibility duplicated across transcripts, not assigned counts or TPM",
+  "sources": [
+    {
+      "label": "original",
+      "directory": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/alevin_t2t_cache",
+      "features": 116918,
+      "cells": 744997,
+      "ECs": 13928489,
+      "counts_sum": 1736784416.0,
+      "membership_nnz": 261634007,
+      "positive_support_transcripts": 109381,
+      "positive_support_after_EC5": 96218
+    },
+    {
+      "label": "parsimony",
+      "directory": "/gpfs/commons/groups/knowles_lab/data/sc/splitpool/microglia_less_mice/salmon_spliceu_weighted_rad/out_permit_known_weighted/quant_t2t_dedup_parsimony_em/alevin",
+      "features": 116918,
+      "cells": 547077,
+      "ECs": 948916,
+      "counts_sum": 895249175.0,
+      "membership_nnz": 14974929,
+      "positive_support_transcripts": 99679,
+      "positive_support_after_EC5": 85278
+    }
+  ]
+}
