@@ -1,0 +1,9 @@
+{
+  "source": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1",
+  "diagnostic_source": "analyses/event_sequence_subject_influence/fold1",
+  "requested": 332,
+  "proof": "w_j(t)/w_i(t) lies between I_j/I_i and B_i/B_j; reciprocal sums of pairwise maxima/minima bound share_i for all t>=0 and infinity",
+  "count_proxy": "I*B, measurement-equivalent paired path count; equals per-type count for ideal balanced two-path counts, not observed junction/exon counts",
+  "scope": "same original selected panels and original rank mask; descriptive all-variance influence bound, not a new eligibility filter, direction estimator, statistical test or full-family replication result",
+  "production_changes": false
+}

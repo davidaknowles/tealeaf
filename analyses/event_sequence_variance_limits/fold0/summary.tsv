@@ -1,0 +1,3 @@
+panel	requested	original_share_gt_90	unavoidable_share_gt_90	original_dominant_unavoidable_share_gt_90	unavoidable_share_gt_half	at_least_four_equivalent_counts_ge_5
+small observed raw p-value	191	78	31	31	42	67
+subject-count-matched weak control	191	37	18	18	25	26

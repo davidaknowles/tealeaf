@@ -1,0 +1,25 @@
+{
+  "fitted_variance": {
+    "biological_variance": 0.0,
+    "mean_restricted_objective": 23.672562325057488,
+    "zero_variance_objective": 23.672562325057488,
+    "training_tests": 3070,
+    "informative_training_subjects": 26662,
+    "log_search_lower": -22.334856631747,
+    "log_search_upper": 17.665143368253,
+    "near_search_boundary": false,
+    "optimizer_evaluations": 45,
+    "interpretation": "one pooled variance, unrestricted common mean per frozen training test; estimated covariance and Gaussian EC-score approximation"
+  },
+  "declared_tests": 221090,
+  "requested_training_genes": 3247,
+  "available_training_genes": 3070,
+  "unavailable_selected_training_genes": 177,
+  "source": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1",
+  "observed_sha256": "66c6d191b64da0bb7466443dc445370e23fced513dc5bbdd387539a2c7fad56b",
+  "training": "one declared hypothesis per gene by fixed SHA256 key, including failures; never replace an unavailable selected case",
+  "diagnostic_selection": "same previous complete strong-tail and subject-count-matched weak-control panels, no LR selection",
+  "null": "original 32 per-test subject-sign seeds, with global variance re-estimated in each whole training null family",
+  "scope": "selected-panel variance/influence pilot, not empirical-tail calibration, complete split/LR power, bounded PSI reporting or joint count-null certification",
+  "production_changes": false
+}

@@ -1,0 +1,4 @@
+strategy	requested	usable	rejected_05	rejected_01	rejected_001
+source event-specific variance native F	256	227	3	0	0
+pooled variance native F	256	227	3	0	0
+pooled variance sign-calibrated	256	227	15	3	0

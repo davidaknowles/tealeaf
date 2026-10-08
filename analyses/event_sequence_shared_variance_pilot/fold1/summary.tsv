@@ -1,0 +1,3 @@
+panel	requested	original_native_le_05	pooled_native_le_05	pooled_native_le_1e5	original_dominant_gt_90	pooled_dominant_gt_90	original_all_32_sign_draws_le_1e5	pooled_all_32_sign_draws_le_1e5	pooled_mean_sign_changed	median_pooled_effective_subjects
+small observed raw p-value	166	166	163	161	77	77	77	74	0	1.8299446743573338
+subject-count-matched weak control	166	0	2	0	38	40	0	0	8	3.2266769488698244
