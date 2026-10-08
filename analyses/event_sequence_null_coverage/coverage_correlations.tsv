@@ -1,0 +1,61 @@
+scenario	strategy	draw	scope	p_scale	n	rho_p_coverage	partial_rho
+biological	hybrid free-transcript EC mixed score, target-normalized rank	all repeated draws	all requested trials	native	512	-0.08507349214947524	-0.014104794916230848
+biological	hybrid free-transcript EC mixed score, target-normalized rank	all repeated draws	all requested trials	calibrated	512	-0.08694732945701451	-0.016124146696731657
+biological	hybrid free-transcript EC mixed score, target-normalized rank	all repeated draws	successful-fit rho only, not calibration denominator	native	464	-0.06318645748687382	-0.011246508930512787
+biological	hybrid free-transcript EC mixed score, target-normalized rank	all repeated draws	successful-fit rho only, not calibration denominator	calibrated	464	-0.06545018598092046	-0.013603564853323513
+biological	hybrid free-transcript EC mixed score, target-normalized rank	0	all requested trials	native	128	-0.1178737359531663	-0.018774008180113242
+biological	hybrid free-transcript EC mixed score, target-normalized rank	0	all requested trials	calibrated	128	-0.11742158959355636	-0.01814253983581704
+biological	hybrid free-transcript EC mixed score, target-normalized rank	0	successful-fit rho only, not calibration denominator	native	118	-0.08451054008366654	0.004651819612256781
+biological	hybrid free-transcript EC mixed score, target-normalized rank	0	successful-fit rho only, not calibration denominator	calibrated	118	-0.08396287227146511	0.005309532095243849
+biological	hybrid free-transcript EC mixed score, target-normalized rank	1	all requested trials	native	128	-0.11980823568707914	-0.032031857470096556
+biological	hybrid free-transcript EC mixed score, target-normalized rank	1	all requested trials	calibrated	128	-0.11999597041560338	-0.03215170320600964
+biological	hybrid free-transcript EC mixed score, target-normalized rank	1	successful-fit rho only, not calibration denominator	native	116	-0.08611728343872689	-0.05777138712862145
+biological	hybrid free-transcript EC mixed score, target-normalized rank	1	successful-fit rho only, not calibration denominator	calibrated	116	-0.08635387694609384	-0.05792132274202172
+biological	hybrid free-transcript EC mixed score, target-normalized rank	2	all requested trials	native	128	-0.060024932904476296	-0.035413296710678964
+biological	hybrid free-transcript EC mixed score, target-normalized rank	2	all requested trials	calibrated	128	-0.06051200252336944	-0.036045338153318826
+biological	hybrid free-transcript EC mixed score, target-normalized rank	2	successful-fit rho only, not calibration denominator	native	114	-0.09799208174416903	-0.06613230734282957
+biological	hybrid free-transcript EC mixed score, target-normalized rank	2	successful-fit rho only, not calibration denominator	calibrated	114	-0.0985917204413053	-0.06689291374540594
+biological	hybrid free-transcript EC mixed score, target-normalized rank	3	all requested trials	native	128	-0.055749195724394913	0.018137840587966872
+biological	hybrid free-transcript EC mixed score, target-normalized rank	3	all requested trials	calibrated	128	-0.05679426218534113	0.017307812959866248
+biological	hybrid free-transcript EC mixed score, target-normalized rank	3	successful-fit rho only, not calibration denominator	native	116	-0.004297958471068716	0.05149684135407418
+biological	hybrid free-transcript EC mixed score, target-normalized rank	3	successful-fit rho only, not calibration denominator	calibrated	116	-0.005539697643695218	0.05059210651078655
+nuisance	hybrid free-transcript EC mixed score, target-normalized rank	all repeated draws	all requested trials	native	512	-0.027832591491127445	-0.019085187763497907
+nuisance	hybrid free-transcript EC mixed score, target-normalized rank	all repeated draws	all requested trials	calibrated	512	-0.028201726840638753	-0.019652782017246816
+nuisance	hybrid free-transcript EC mixed score, target-normalized rank	all repeated draws	successful-fit rho only, not calibration denominator	native	457	-0.012618831611232261	0.009055060440978974
+nuisance	hybrid free-transcript EC mixed score, target-normalized rank	all repeated draws	successful-fit rho only, not calibration denominator	calibrated	457	-0.013064819720550059	0.00862101311193371
+nuisance	hybrid free-transcript EC mixed score, target-normalized rank	0	all requested trials	native	128	-0.026278835031915804	0.05801395118694825
+nuisance	hybrid free-transcript EC mixed score, target-normalized rank	0	all requested trials	calibrated	128	-0.027275351822926668	0.057458500142610724
+nuisance	hybrid free-transcript EC mixed score, target-normalized rank	0	successful-fit rho only, not calibration denominator	native	115	-0.06598028444014914	0.03975386123152183
+nuisance	hybrid free-transcript EC mixed score, target-normalized rank	0	successful-fit rho only, not calibration denominator	calibrated	115	-0.06718760173003047	0.0392151857340624
+nuisance	hybrid free-transcript EC mixed score, target-normalized rank	1	all requested trials	native	128	-0.030458866538756953	-0.053599976544272177
+nuisance	hybrid free-transcript EC mixed score, target-normalized rank	1	all requested trials	calibrated	128	-0.03008933772622442	-0.053265553996554756
+nuisance	hybrid free-transcript EC mixed score, target-normalized rank	1	successful-fit rho only, not calibration denominator	native	111	-0.01910787503543404	-0.015833389459390806
+nuisance	hybrid free-transcript EC mixed score, target-normalized rank	1	successful-fit rho only, not calibration denominator	calibrated	111	-0.018614354882643895	-0.015319241205667071
+nuisance	hybrid free-transcript EC mixed score, target-normalized rank	2	all requested trials	native	128	-0.03699016669162807	-0.011767068724211604
+nuisance	hybrid free-transcript EC mixed score, target-normalized rank	2	all requested trials	calibrated	128	-0.036941457719222366	-0.012067388248709059
+nuisance	hybrid free-transcript EC mixed score, target-normalized rank	2	successful-fit rho only, not calibration denominator	native	116	0.024501408099955435	0.06294246003047245
+nuisance	hybrid free-transcript EC mixed score, target-normalized rank	2	successful-fit rho only, not calibration denominator	calibrated	116	0.024566765692564763	0.06258379751527104
+nuisance	hybrid free-transcript EC mixed score, target-normalized rank	3	all requested trials	native	128	-0.02137070348078758	-0.07808734881932296
+nuisance	hybrid free-transcript EC mixed score, target-normalized rank	3	all requested trials	calibrated	128	-0.021946309280988542	-0.07856694274801798
+nuisance	hybrid free-transcript EC mixed score, target-normalized rank	3	successful-fit rho only, not calibration denominator	native	115	0.005855059655734935	-0.06524753920290832
+nuisance	hybrid free-transcript EC mixed score, target-normalized rank	3	successful-fit rho only, not calibration denominator	calibrated	115	0.005117269106660119	-0.0658304099254652
+strict	hybrid free-transcript EC mixed score, target-normalized rank	all repeated draws	all requested trials	native	512	-0.0018724111161944447	0.05389547058693342
+strict	hybrid free-transcript EC mixed score, target-normalized rank	all repeated draws	all requested trials	calibrated	512	0.0004161212509731822	0.05662791408796273
+strict	hybrid free-transcript EC mixed score, target-normalized rank	all repeated draws	successful-fit rho only, not calibration denominator	native	461	0.02082136606617218	0.06480318404501727
+strict	hybrid free-transcript EC mixed score, target-normalized rank	all repeated draws	successful-fit rho only, not calibration denominator	calibrated	461	0.023655759032068544	0.06789843784403375
+strict	hybrid free-transcript EC mixed score, target-normalized rank	0	all requested trials	native	128	0.031585000588648944	0.07138559973460966
+strict	hybrid free-transcript EC mixed score, target-normalized rank	0	all requested trials	calibrated	128	0.03160795431152812	0.07150096487344783
+strict	hybrid free-transcript EC mixed score, target-normalized rank	0	successful-fit rho only, not calibration denominator	native	119	0.08502705510545736	0.09833823735118015
+strict	hybrid free-transcript EC mixed score, target-normalized rank	0	successful-fit rho only, not calibration denominator	calibrated	119	0.08502364545396163	0.0984616194024907
+strict	hybrid free-transcript EC mixed score, target-normalized rank	1	all requested trials	native	128	-0.0003737580688689324	0.07958543524819671
+strict	hybrid free-transcript EC mixed score, target-normalized rank	1	all requested trials	calibrated	128	-0.0011699629971874245	0.07941761155430102
+strict	hybrid free-transcript EC mixed score, target-normalized rank	1	successful-fit rho only, not calibration denominator	native	114	0.02011559429993973	0.07969929891594281
+strict	hybrid free-transcript EC mixed score, target-normalized rank	1	successful-fit rho only, not calibration denominator	calibrated	114	0.019127331940293042	0.07955697366880182
+strict	hybrid free-transcript EC mixed score, target-normalized rank	2	all requested trials	native	128	0.04451063255791977	0.05686843256330637
+strict	hybrid free-transcript EC mixed score, target-normalized rank	2	all requested trials	calibrated	128	0.04417381843511004	0.05644214405768542
+strict	hybrid free-transcript EC mixed score, target-normalized rank	2	successful-fit rho only, not calibration denominator	native	110	0.03228904147393092	0.048829382627578355
+strict	hybrid free-transcript EC mixed score, target-normalized rank	2	successful-fit rho only, not calibration denominator	calibrated	110	0.03183158407303503	0.0483189633343767
+strict	hybrid free-transcript EC mixed score, target-normalized rank	3	all requested trials	native	128	-0.07634088707980101	0.016214802282569767
+strict	hybrid free-transcript EC mixed score, target-normalized rank	3	all requested trials	calibrated	128	-0.07616513231127676	0.01644264034699086
+strict	hybrid free-transcript EC mixed score, target-normalized rank	3	successful-fit rho only, not calibration denominator	native	118	-0.04382990301623219	0.04172781575000973
+strict	hybrid free-transcript EC mixed score, target-normalized rank	3	successful-fit rho only, not calibration denominator	calibrated	118	-0.0436457066476741	0.04198079029218146

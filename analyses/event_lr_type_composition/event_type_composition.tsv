@@ -1,0 +1,51 @@
+method	cutoff	category	n_selected	complete_prefix	n_tests	n_agree	fraction_of_prefix	agreement
+Hybrid, original_binary input control	100	A3SS	100	True	12	3	0.12	0.25
+Hybrid, original_binary input control	100	A5SS	100	True	5	3	0.05	0.6
+Hybrid, original_binary input control	100	AF	100	True	13	5	0.13	0.38461538461538464
+Hybrid, original_binary input control	100	MXE	100	True	9	4	0.09	0.4444444444444444
+Hybrid, original_binary input control	100	RI	100	True	1	1	0.01	1.0
+Hybrid, original_binary input control	100	SE	100	True	60	16	0.6	0.26666666666666666
+Hybrid, original_binary input control	200	A3SS	200	True	38	11	0.19	0.2894736842105263
+Hybrid, original_binary input control	200	A5SS	200	True	18	8	0.09	0.4444444444444444
+Hybrid, original_binary input control	200	AF	200	True	25	8	0.125	0.32
+Hybrid, original_binary input control	200	AL	200	True	1	0	0.005	0.0
+Hybrid, original_binary input control	200	MXE	200	True	11	5	0.055	0.45454545454545453
+Hybrid, original_binary input control	200	RI	200	True	2	1	0.01	0.5
+Hybrid, original_binary input control	200	SE	200	True	105	29	0.525	0.2761904761904762
+SUPPA2 (full data)	100	A3SS	100	True	9	5	0.09	0.5555555555555556
+SUPPA2 (full data)	100	A5SS	100	True	2	1	0.02	0.5
+SUPPA2 (full data)	100	MXE	100	True	6	6	0.06	1.0
+SUPPA2 (full data)	100	RI	100	True	1	0	0.01	0.0
+SUPPA2 (full data)	100	SE	100	True	82	66	0.82	0.8048780487804879
+SUPPA2 (full data)	200	A3SS	200	True	22	8	0.11	0.36363636363636365
+SUPPA2 (full data)	200	A5SS	200	True	8	4	0.04	0.5
+SUPPA2 (full data)	200	MXE	200	True	9	9	0.045	1.0
+SUPPA2 (full data)	200	RI	200	True	4	3	0.02	0.75
+SUPPA2 (full data)	200	SE	200	True	157	118	0.785	0.7515923566878981
+SUPPA2 (primer aware)	100	A3SS	100	True	12	10	0.12	0.8333333333333334
+SUPPA2 (primer aware)	100	A5SS	100	True	6	2	0.06	0.3333333333333333
+SUPPA2 (primer aware)	100	MXE	100	True	9	6	0.09	0.6666666666666666
+SUPPA2 (primer aware)	100	RI	100	True	5	3	0.05	0.6
+SUPPA2 (primer aware)	100	SE	100	True	68	50	0.68	0.7352941176470589
+SUPPA2 (primer aware)	200	A3SS	200	True	26	16	0.13	0.6153846153846154
+SUPPA2 (primer aware)	200	A5SS	200	True	14	9	0.07	0.6428571428571429
+SUPPA2 (primer aware)	200	MXE	200	True	16	10	0.08	0.625
+SUPPA2 (primer aware)	200	RI	200	True	7	3	0.035	0.42857142857142855
+SUPPA2 (primer aware)	200	SE	200	True	137	90	0.685	0.656934306569343
+Tealeaf/SUPPA2 hybrid	100	A3SS	100	True	9	6	0.09	0.6666666666666666
+Tealeaf/SUPPA2 hybrid	100	AF	100	True	31	13	0.31	0.41935483870967744
+Tealeaf/SUPPA2 hybrid	100	AL	100	True	8	1	0.08	0.125
+Tealeaf/SUPPA2 hybrid	100	MXE	100	True	5	5	0.05	1.0
+Tealeaf/SUPPA2 hybrid	100	RI	100	True	4	4	0.04	1.0
+Tealeaf/SUPPA2 hybrid	100	SE	100	True	43	26	0.43	0.6046511627906976
+Tealeaf/SUPPA2 hybrid	200	A3SS	200	True	23	17	0.115	0.7391304347826086
+Tealeaf/SUPPA2 hybrid	200	A5SS	200	True	2	1	0.01	0.5
+Tealeaf/SUPPA2 hybrid	200	AF	200	True	57	24	0.285	0.42105263157894735
+Tealeaf/SUPPA2 hybrid	200	AL	200	True	14	3	0.07	0.21428571428571427
+Tealeaf/SUPPA2 hybrid	200	MXE	200	True	9	8	0.045	0.8888888888888888
+Tealeaf/SUPPA2 hybrid	200	RI	200	True	8	7	0.04	0.875
+Tealeaf/SUPPA2 hybrid	200	SE	200	True	87	44	0.435	0.5057471264367817
+rMATS paired JCEC	100	A3SS	100	True	99	50	0.99	0.5050505050505051
+rMATS paired JCEC	100	A5SS	100	True	1	1	0.01	1.0
+rMATS paired JCEC	200	A3SS	200	True	199	104	0.995	0.5226130653266332
+rMATS paired JCEC	200	A5SS	200	True	1	1	0.005	1.0

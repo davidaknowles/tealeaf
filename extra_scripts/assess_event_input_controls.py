@@ -14,7 +14,7 @@ from extra_scripts.assess_paired_inference_audit import split_assessment
 from extra_scripts.plot_tilgner_method_replication import _rank_table
 from extra_scripts.run_ec_block_glmm import group_metadata
 from extra_scripts.evaluate_suppa2_statistics import normalize_pairs
-from tealeaf.sc.replication_audit import complete_paired_fits, coverage_correlation, ranked_direction_summary, reexpress_event_directions
+from tealeaf.sc.replication_audit import complete_paired_fits, coverage_correlation, ranked_category_summary, ranked_direction_summary, reexpress_event_directions
 from tealeaf.sc.path_score_mixed import MODEL_VERSION
 from extra_scripts.run_suppa2_tealeaf_hybrid import MIXED_SCORE_EMPTY_COLUMNS
 
@@ -188,10 +188,12 @@ def main():
     eligible["pooled_replicated"] = eligible.pooled_replicated.astype(str).str.lower().eq("true")
     ranked = _rank_table(eligible, len(eligible))
     pd.DataFrame(ranked_direction_summary(ranked)).to_csv(args.output_dir / "lr_rank_summary.tsv", sep="\t", index=False)
+    pd.DataFrame(ranked_category_summary(ranked)).to_csv(args.output_dir / "lr_event_type_composition.tsv", sep="\t", index=False)
     ranked.head(200).to_csv(args.output_dir / "lr_rank.tsv.gz", sep="\t", index=False)
     if args.inference == "mixed-score":
         raw_ranked = _rank_table(eligible.assign(p_value=eligible.raw_p_value, method=method + ", native F reference"), len(eligible))
         pd.DataFrame(ranked_direction_summary(raw_ranked)).to_csv(args.output_dir / "raw_F/lr_rank_summary.tsv", sep="\t", index=False)
+        pd.DataFrame(ranked_category_summary(raw_ranked)).to_csv(args.output_dir / "raw_F/lr_event_type_composition.tsv", sep="\t", index=False)
         raw_ranked.head(200).to_csv(args.output_dir / "raw_F/lr_rank.tsv.gz", sep="\t", index=False)
         # Assess the measurement/biological-uncertainty-weighted score direction
         # on exactly the original mapped family, not a newly favorable overlap.
@@ -201,6 +203,7 @@ def main():
         for label, local in (("calibrated", score_map), ("native_F", score_map.assign(p_value=score_map.raw_p_value, method=method + ", native F reference, efficient-score ILR direction"))):
             score_ranked = _rank_table(local, len(local))
             pd.DataFrame(ranked_direction_summary(score_ranked)).to_csv(score_output / f"lr_rank_summary_{label}.tsv", sep="\t", index=False, na_rep="NA")
+            pd.DataFrame(ranked_category_summary(score_ranked)).to_csv(score_output / f"lr_event_type_composition_{label}.tsv", sep="\t", index=False, na_rep="NA")
             score_ranked.head(200).to_csv(score_output / f"lr_rank_{label}.tsv.gz", sep="\t", index=False, na_rep="NA")
         (score_output / "lr_direction_manifest.json").write_text(json.dumps(dict(family="exact same LR-evaluable association identities, depth thresholds, external effects, p-values and tie breaks as independent usage reporting", estimator="common ILR mean from efficient-score measurement information and biological REML covariance, not a PSI usage estimate", missing="nonfinite or zero replacement directions remain nonagreements in this fixed family", requested=len(score_map), available=int(score_map.direction_available.sum()), selection="no native-panel restriction, significance cutoff or direction-dependent re-selection"), indent=2) + "\n")
     (args.output_dir / "manifest.json").write_text(json.dumps({"control": json.loads((control / "manifest.json").read_text()), "cohorts": cohorts, "family": "all screened events, failed subject fits retained at p1; fixed published matched gene-pair split universes", "LR": "fresh all-complete-tested mapping with unchanged source depth and zero-effect policy; no FDR filter", "null_limitation": "independent event sign flips are training calibration, not an actual biological count-null validation", "production_changes": False}, indent=2) + "\n")

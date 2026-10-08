@@ -1,0 +1,16 @@
+{
+  "inputs": [
+    {
+      "path": "/gpfs/commons/home/daknowles/projects/tealeaf/analyses/tilgner_junction_replication/sign_agreement_by_rank.tsv",
+      "sha256": "f3c12d23a63abfacbbfd216c374007459ef8a4ac8f6394233e2287d059a1296e"
+    },
+    {
+      "path": "/gpfs/commons/home/daknowles/projects/tealeaf/analyses/event_input_controls/original_binary/lr_rank.tsv.gz",
+      "sha256": "9a6456a946ed9966cc1c661796f9df467ff2fdb658d5f265cf3e403ff8ee24c5"
+    }
+  ],
+  "selection": "existing method-own global top-100/top-200 LR-evaluable prefixes, no event-type reranking or significance cutoff",
+  "scope": "completed historical curves, not the pending sequence-map candidate",
+  "caveats": "event categories are descriptive, different quantification and tested families remain confounded; the original binary control failed count-null checks, its discoveries are not valid power",
+  "production_changes": false
+}

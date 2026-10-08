@@ -32,6 +32,27 @@ def ranked_direction_summary(table, cutoffs=(40, 100, 200)):
     return rows
 
 
+def ranked_category_summary(table, category="event_type", cutoffs=(100, 200)):
+    """Describe category composition of fixed global rank prefixes.
+
+    Categories are not reranked or selected for favorable agreement. Missing
+    labels remain an explicit category, and external-zero nonagreements stay
+    in every denominator. This is descriptive, not a standardized AUC.
+    """
+    if category not in table:
+        raise ValueError("rank category column is missing")
+    overall = ranked_direction_summary(table, cutoffs)
+    rows = []
+    for summary in overall:
+        method, cutoff = summary["method"], summary["cutoff"]
+        local = table.loc[table.method.astype(str).eq(method) & table["rank"].le(cutoff)].copy()
+        local[category] = local[category].fillna("unclassified").astype(str)
+        for label, group in local.groupby(category, observed=True):
+            n_agree = int(group.pooled_replicated.astype(str).str.lower().eq("true").sum())
+            rows.append(dict(method=method, cutoff=cutoff, category=label, n_selected=len(local), complete_prefix=len(local) == cutoff, n_tests=len(group), n_agree=n_agree, fraction_of_prefix=len(group) / len(local), agreement=n_agree / len(group)))
+    return rows
+
+
 def reexpress_event_directions(mapped, effects, effect_column, method):
     """Change direction estimates on an EXACT fixed LR-evaluable event family.
 
