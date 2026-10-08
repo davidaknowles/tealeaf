@@ -1,0 +1,9 @@
+{
+  "requested_trials": 256,
+  "generated_trials": 256,
+  "trials_with_outside_transcripts": 256,
+  "perturbed_trials": 256,
+  "maximum_conditional_path_change": 3.3306690738754696e-16,
+  "median_absolute_subject_mass_change": 0.21378165579348063,
+  "scope": "all requested trial identities retained in rejection denominators; no-outside cases cannot change mass; generating truth, not fitted effects"
+}

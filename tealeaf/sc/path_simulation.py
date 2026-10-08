@@ -38,7 +38,7 @@ def simulate_independent_binary_blocks(rng, *, n_subjects=12, gene_depth=100, a_
     return data, details
 
 
-def simulate_counts(base, baseline, subjects, rng, subject_scale=.5, *, labels=None, path_index=None, residual_concentration=None, return_details=False, within_path_type_scale=None, ec_opportunity_scale=0.):
+def simulate_counts(base, baseline, subjects, rng, subject_scale=.5, *, labels=None, path_index=None, residual_concentration=None, return_details=False, within_path_type_scale=None, ec_opportunity_scale=0., event_mass_type_scale=None):
     """Generate primer-conditioned EC counts under a conditional-mean null.
 
     Baseline is length T; subjects/labels are length N; path_index is length T.
@@ -61,6 +61,11 @@ def simulate_counts(base, baseline, subjects, rng, subject_scale=.5, *, labels=N
     Optional EC opportunity shifts multiply each primer map row by a shared
     log-normal factor during generation, while the returned design remains
     the original analysis design. They are shared by subjects and types.
+    Optional event_mass_type_scale changes the event-versus-outside log odds
+    by centered label-specific Gaussian tilts, shared across subjects. Every
+    observation's conditional path proportions and within-class transcript
+    ratios are preserved. None, zero, or no outside transcripts leaves the
+    original random stream unchanged. Details retain the label tilts.
     """
     baseline, subjects = np.asarray(baseline, float), np.asarray(subjects)
     if baseline.shape != (base.n_isoforms,) or np.any(~np.isfinite(baseline)) or np.any(baseline < 0) or baseline.sum() <= 0:
@@ -104,6 +109,30 @@ def simulate_counts(base, baseline, subjects, rng, subject_scale=.5, *, labels=N
             mass = observation_weights[:, positions].sum(axis=1, keepdims=True)
             shares = softmax(np.log(np.maximum(observation_weights[:, positions], 1e-300)) + tilts[encoded_types][:, positions], axis=1)
             observation_weights[:, positions] = mass * shares
+    event_mass_tilts = None
+    if event_mass_type_scale is not None:
+        if not np.isfinite(event_mass_type_scale) or event_mass_type_scale < 0:
+            raise ValueError("event-mass type changes require a finite nonnegative scale")
+        if event_mass_type_scale > 0:
+            if labels is None or path_index is None:
+                raise ValueError("event-mass type changes require aligned labels and paths")
+            labels, path_index = np.asarray(labels), np.asarray(path_index, int)
+            if labels.shape != subjects.shape or path_index.shape != baseline.shape or not np.any(path_index >= 0):
+                raise ValueError("event-mass type changes require aligned labels and paths")
+            event_positions, outside_positions = path_index >= 0, path_index < 0
+            if outside_positions.any():
+                type_levels, encoded_types = np.unique(labels, return_inverse=True)
+                event_mass = observation_weights[:, event_positions].sum(axis=1)
+                outside_mass = observation_weights[:, outside_positions].sum(axis=1)
+                if np.any(event_mass <= 0) or np.any(outside_mass <= 0):
+                    raise ValueError("event-mass tilts require positive event and outside masses")
+                event_mass_tilts = rng.normal(scale=event_mass_type_scale, size=len(type_levels))
+                event_mass_tilts -= event_mass_tilts.mean()
+                if not np.isfinite(event_mass_tilts).all():
+                    raise ValueError("event-mass tilts exceed finite range")
+                logits = np.log(event_mass) - np.log(outside_mass) + event_mass_tilts[encoded_types]
+                observation_weights[:, event_positions] *= (expit(logits) / event_mass)[:, None]
+                observation_weights[:, outside_positions] *= (expit(-logits) / outside_mass)[:, None]
     if not np.isfinite(ec_opportunity_scale) or ec_opportunity_scale < 0:
         raise ValueError("nonnegative finite EC opportunity scale required")
     opportunity_factors = None
@@ -119,6 +148,9 @@ def simulate_counts(base, baseline, subjects, rng, subject_scale=.5, *, labels=N
         generated = ECGLMMData(generated.counts, base.compatibility, base.design, base.clusters)
     if return_details:
         details = {"subject_levels": levels, "subject_weights": weights, "observation_weights": observation_weights}
+        if event_mass_tilts is not None:
+            details["event_mass_type_levels"] = type_levels
+            details["event_mass_type_tilts"] = event_mass_tilts
         if opportunity_factors is not None:
             details["ec_opportunity_factors"] = opportunity_factors
         return generated, details

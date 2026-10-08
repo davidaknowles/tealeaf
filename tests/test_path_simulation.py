@@ -97,3 +97,52 @@ def test_within_path_type_tilts_preserve_local_null_and_outside_mass():
     np.testing.assert_allclose(weights[::2, :2].sum(axis=1), weights[1::2, :2].sum(axis=1))
     np.testing.assert_allclose(weights[::2, 2:], weights[1::2, 2:])
     assert not np.allclose(weights[::2, 0] / weights[::2, :2].sum(axis=1), weights[1::2, 0] / weights[1::2, :2].sum(axis=1))
+
+
+@pytest.mark.parametrize("residual", [None, 20.])
+def test_event_mass_type_changes_preserve_conditional_path_truth(residual):
+    subjects = np.repeat(np.arange(6), 4)
+    labels = np.tile([0, 0, 1, 1], 6)
+    counts = np.tile([3., 5., 8., 4.], (24, 1))
+    base = ECGLMMData((counts, counts * 2), (np.eye(4), np.diag([2., 1., 3., 1.])), np.ones((24, 1)), subjects)
+    options = dict(labels=labels, path_index=[0, 0, 1, -1], residual_concentration=residual, within_path_type_scale=1., return_details=True)
+    _, original = simulate_counts(base, [.15, .25, .4, .2], subjects, np.random.default_rng(31), **options)
+    generated, shifted = simulate_counts(base, [.15, .25, .4, .2], subjects, np.random.default_rng(31), event_mass_type_scale=2., **options)
+    before, after = original["observation_weights"], shifted["observation_weights"]
+    np.testing.assert_allclose(after[:, :3] / after[:, :3].sum(axis=1, keepdims=True), before[:, :3] / before[:, :3].sum(axis=1, keepdims=True))
+    np.testing.assert_allclose(after.sum(axis=1), 1.)
+    assert not np.allclose(after[:, :3].sum(axis=1), before[:, :3].sum(axis=1))
+    np.testing.assert_array_equal(shifted["event_mass_type_levels"], [0, 1])
+    np.testing.assert_allclose(shifted["event_mass_type_tilts"].sum(), 0., atol=1e-15)
+    np.testing.assert_array_equal(after[::4], after[1::4])
+    np.testing.assert_array_equal(after[2::4], after[3::4])
+    for primer, matrix in enumerate(generated.counts):
+        np.testing.assert_array_equal(matrix.sum(axis=1), 20. * (primer + 1))
+
+
+@pytest.mark.parametrize("scale,paths", [(None, [0, 1, -1]), (0., [0, 1, -1]), (2., [0, 0, 1])])
+def test_disabled_or_inapplicable_event_mass_changes_preserve_random_stream(scale, paths):
+    subjects = np.repeat(np.arange(4), 2)
+    counts = np.tile([2., 3., 5.], (8, 1))
+    base = ECGLMMData((counts,), (np.eye(3),), np.ones((8, 1)), subjects)
+    options = dict(labels=np.tile([0, 1], 4), path_index=paths, return_details=True)
+    first_rng, second_rng = np.random.default_rng(813), np.random.default_rng(813)
+    first, original = simulate_counts(base, [.2, .3, .5], subjects, first_rng, **options)
+    second, shifted = simulate_counts(base, [.2, .3, .5], subjects, second_rng, event_mass_type_scale=scale, **options)
+    np.testing.assert_array_equal(first.counts[0], second.counts[0])
+    np.testing.assert_array_equal(original["observation_weights"], shifted["observation_weights"])
+    assert first_rng.bit_generator.state == second_rng.bit_generator.state
+
+
+@pytest.mark.parametrize("scale", [-1., np.inf, np.nan])
+def test_event_mass_scale_must_be_finite_and_nonnegative(scale):
+    base = ECGLMMData((np.ones((4, 3)),), (np.eye(3),), np.ones((4, 1)), np.arange(4))
+    with pytest.raises(ValueError, match="finite nonnegative"):
+        simulate_counts(base, [.2, .3, .5], np.arange(4), np.random.default_rng(3), event_mass_type_scale=scale)
+
+
+def test_event_mass_changes_require_aligned_labels_and_paths():
+    base = ECGLMMData((np.ones((4, 3)),), (np.eye(3),), np.ones((4, 1)), np.arange(4))
+    for options in ({}, dict(labels=[0, 1], path_index=[0, 1, -1]), dict(labels=[0, 1, 0, 1], path_index=[0, 1])):
+        with pytest.raises(ValueError, match="aligned labels and paths"):
+            simulate_counts(base, [.2, .3, .5], np.arange(4), np.random.default_rng(3), event_mass_type_scale=1., **options)

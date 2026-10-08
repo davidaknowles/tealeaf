@@ -49,6 +49,7 @@ def main():
     parser.add_argument("--scalar-fast", action="store_true", help="Numerically equivalent scalar REML specialization, unchanged statistical model.")
     parser.add_argument("--residual-concentration", type=float)
     parser.add_argument("--within-path-type-scale", type=float)
+    parser.add_argument("--event-mass-type-scale", type=float, help="Label-specific event-versus-outside mass shifts that preserve conditional path usage.")
     parser.add_argument("--count-likelihood", choices=("multinomial", "conditional"), default="multinomial")
     parser.add_argument("--ec-opportunity-scale", type=float, default=0.)
     parser.add_argument("--kernel-units", choices=("prepared", "fragment"), default="prepared")
@@ -66,6 +67,8 @@ def main():
         raise ValueError("scalar REML optimization requires mixed-score inference")
     if args.count_likelihood != "multinomial" and args.inference != "mixed-score":
         raise ValueError("conditional count likelihood requires mixed-score inference")
+    if args.event_mass_type_scale is not None and (not np.isfinite(args.event_mass_type_scale) or args.event_mass_type_scale < 0):
+        raise ValueError("event-mass scale must be finite and nonnegative")
     if not np.isfinite(args.subject_scale) or args.subject_scale < 0 or not args.concentrations or len(set(args.concentrations)) != len(args.concentrations) or any(not np.isfinite(value) or value <= 0 for value in args.concentrations):
         raise ValueError("nonnegative subject scale and unique positive concentrations required")
     source = args.cache / f"{args.source}_paired"
@@ -114,7 +117,7 @@ def main():
         expected_strategies = [value + ", fragment kernel" for value in expected_strategies]
     if args.simulation_kernel_units != "analysis":
         expected_strategies = [value + f", {args.simulation_kernel_units}-kernel null" for value in expected_strategies]
-    observed, null, failures, contexts, diagnostics = [], [], [], {}, []
+    observed, null, failures, contexts, diagnostics, mass_truth = [], [], [], {}, [], []
     for record in requested[args.shard_index::args.shard_count]:
         test_id = record["test_id"]
         levels = (record["level_a"], record["level_b"])
@@ -146,7 +149,25 @@ def main():
                 simulation_baseline = ec_block_glmm.pooled_isoform_weights(simulation_base)
             rng = np.random.default_rng(381924 + zlib.crc32(test_id.encode()))
             for draw in range(args.draws):
-                generated = simulate_counts(simulation_base, simulation_baseline, subjects, rng, args.subject_scale, labels=labels, path_index=path_index, residual_concentration=args.residual_concentration, within_path_type_scale=args.within_path_type_scale, ec_opportunity_scale=args.ec_opportunity_scale)
+                export_mass_truth = args.event_mass_type_scale is not None and args.event_mass_type_scale > 0
+                simulation = simulate_counts(simulation_base, simulation_baseline, subjects, rng, args.subject_scale, labels=labels, path_index=path_index, residual_concentration=args.residual_concentration, within_path_type_scale=args.within_path_type_scale, ec_opportunity_scale=args.ec_opportunity_scale, event_mass_type_scale=args.event_mass_type_scale, return_details=export_mass_truth)
+                if export_mass_truth:
+                    generated, truth = simulation
+                    weights = truth["observation_weights"]
+                    masses = weights[:, path_index >= 0].sum(axis=1)
+                    inclusions = weights[:, path_index == 0].sum(axis=1) / masses
+                    differences, mass_differences = [], []
+                    for subject in np.unique(subjects):
+                        first, second = (subjects == subject) & (labels == 0), (subjects == subject) & (labels == 1)
+                        if first.any() and second.any():
+                            differences.append(float(inclusions[second].mean() - inclusions[first].mean()))
+                            mass_differences.append(float(masses[second].mean() - masses[first].mean()))
+                    maximum_difference = max(map(abs, differences), default=np.nan)
+                    if args.residual_concentration is None and (not np.isfinite(maximum_difference) or maximum_difference > 1e-10):
+                        raise ValueError("event-mass simulation changed the conditional target-path null")
+                    mass_truth.append({**header, "draw": draw, "has_outside_transcripts": bool(np.any(path_index < 0)), "tilt_applied": "event_mass_type_tilts" in truth, "generated_subject_pairs": len(differences), "event_mass_type0_mean": float(masses[labels == 0].mean()), "event_mass_type1_mean": float(masses[labels == 1].mean()), "event_mass_min": float(masses.min()), "event_mass_max": float(masses.max()), "maximum_absolute_subject_mass_change": max(map(abs, mass_differences), default=np.nan), "maximum_absolute_subject_conditional_path_change": maximum_difference})
+                else:
+                    generated = simulation
                 generated = ECGLMMData(generated.counts, base.compatibility, base.design, base.clusters)
                 fitted_baseline = ec_block_glmm.pooled_isoform_weights(generated)
                 if args.inference == "profiled":
@@ -185,11 +206,16 @@ def main():
         print(f"{test_id}, completed trials={len(observed)}", flush=True)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(observed).to_csv(args.output_dir / "observed.tsv", sep="\t", index=False)
+    if args.event_mass_type_scale is not None and args.event_mass_type_scale > 0:
+        pd.DataFrame(mass_truth).to_csv(args.output_dir / "simulation_event_mass_truth.tsv.gz", sep="\t", index=False, na_rep="NA")
     pd.DataFrame(null, columns=["test_id", "block_id", "gene_id", "n_paths", "draw", "strategy", "replicate", "n_subjects", "p_value"]).to_csv(args.output_dir / "null.tsv.gz", sep="\t", index=False)
     (args.output_dir / "failures.json").write_text(json.dumps(failures, indent=2) + "\n")
     if args.inference == "mixed-score":
         pd.DataFrame(diagnostics).to_csv(args.output_dir / "subject_null_diagnostics.tsv.gz", sep="\t", index=False)
     manifest = {"source": args.source, "candidate_settings": settings, "requested_ids": [row["test_id"] for row in requested], "expected_strategies": expected_strategies, "draws": args.draws, "null_replicates": 32, "subject_scale": args.subject_scale, "concentrations": [0.] if args.inference == "mixed-score" else args.concentrations, "inference": args.inference, "mixed_score_version": MIXED_SCORE_VERSION if args.inference == "mixed-score" else None, "residual_concentration": args.residual_concentration, "within_path_type_scale": args.within_path_type_scale, "seed": 381924, "selection": "fixed random sample of the whole screened event family, including fit failures; no significance or LR selection", "baseline": "full transcript pooled fit refitted on each generated count draw; profiled backend collapses event classes, mixed-score retains every supported transcript and frees type-specific nuisance", "null": "zero conditional-mean target-path contrast; observed primer totals, compatibility, coverage and subject missingness retained", "failure_policy": "all requested trials at p1 on exceptions or incomplete subject fits"}
+    if args.event_mass_type_scale is not None:
+        manifest["event_mass_type_scale"] = args.event_mass_type_scale
+        manifest["event_mass_null"] = "centered label-specific Gaussian log-odds shifts of event-versus-outside mass, common across subjects; conditional path proportions and within-class shares preserved; no effect if no outside transcripts"
     manifest["max_iter"] = args.max_iter if args.inference == "mixed-score" else None
     manifest["null_multistart"] = args.null_multistart
     manifest["score_coordinate"] = args.score_coordinate if args.inference == "mixed-score" else None

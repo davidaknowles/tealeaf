@@ -28,6 +28,27 @@ def validate_requested_trials(table, settings):
     return table
 
 
+def validate_event_mass_truth(truth, observed, settings):
+    """Verify the optional nuisance perturbation did not change its target null."""
+    keys = ["test_id", "draw"]
+    expected = {(test_id, draw) for test_id in settings["requested_ids"] for draw in range(settings["draws"])}
+    recorded = set(map(tuple, truth[keys].values))
+    fitted = observed.loc[observed.converged.astype(str).str.lower().eq("true")]
+    if truth.duplicated(keys).any() or not recorded <= expected or not set(map(tuple, fitted[keys].values)) <= recorded:
+        raise ValueError("event-mass truth must cover every fitted trial without duplicate or foreign identities")
+    for name in ("has_outside_transcripts", "tilt_applied"):
+        values = truth[name].astype(str).str.lower()
+        if not values.isin(("true", "false")).all():
+            raise ValueError("invalid event-mass truth flags")
+        truth = truth.assign(**{name: values.eq("true")})
+    if not truth.has_outside_transcripts.eq(truth.tilt_applied).all():
+        raise ValueError("positive mass tilts apply exactly when outside transcripts exist")
+    change = truth.maximum_absolute_subject_conditional_path_change
+    if not np.isfinite(change).all() or (change < 0).any() or (settings.get("residual_concentration") is None and change.gt(1e-10).any()):
+        raise ValueError("mass perturbation changed the conditional target-path null")
+    return truth
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cache", type=Path, required=True)
@@ -52,6 +73,20 @@ def main():
         raise ValueError("no successful null-training fits available")
     null = pd.concat(null_tables, ignore_index=True)
     observed = validate_requested_trials(observed, settings[0])
+    if (settings[0].get("event_mass_type_scale") or 0) > 0:
+        traces = []
+        for path in paths:
+            try:
+                traces.append(pd.read_csv(path.parent / "simulation_event_mass_truth.tsv.gz", sep="\t"))
+            except pd.errors.EmptyDataError:
+                continue
+        if not traces:
+            raise ValueError("positive event-mass null has no generating truth")
+        truth = validate_event_mass_truth(pd.concat(traces, ignore_index=True), observed, settings[0])
+        args.output_dir.mkdir(parents=True, exist_ok=True)
+        truth.to_csv(args.output_dir / "simulation_event_mass_truth.tsv.gz", sep="\t", index=False, na_rep="NA")
+        receipt = dict(requested_trials=len(settings[0]["requested_ids"]) * settings[0]["draws"], generated_trials=len(truth), trials_with_outside_transcripts=int(truth.has_outside_transcripts.sum()), perturbed_trials=int(truth.tilt_applied.sum()), maximum_conditional_path_change=float(truth.maximum_absolute_subject_conditional_path_change.max()), median_absolute_subject_mass_change=float(truth.maximum_absolute_subject_mass_change.median()), scope="all requested trial identities retained in rejection denominators; no-outside cases cannot change mass; generating truth, not fitted effects")
+        (args.output_dir / "event_mass_truth_summary.json").write_text(json.dumps(receipt, indent=2) + "\n")
     observed = observed.loc[np.isfinite(observed.p_value)].copy()
     null = null.loc[np.isfinite(null.p_value)].copy()
     results, summaries = [], []
