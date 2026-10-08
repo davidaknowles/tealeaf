@@ -14,7 +14,7 @@ from extra_scripts.assess_paired_inference_audit import split_assessment
 from extra_scripts.plot_tilgner_method_replication import _rank_table
 from extra_scripts.run_ec_block_glmm import group_metadata
 from extra_scripts.evaluate_suppa2_statistics import normalize_pairs
-from tealeaf.sc.replication_audit import complete_paired_fits, coverage_correlation, ranked_direction_summary
+from tealeaf.sc.replication_audit import complete_paired_fits, coverage_correlation, ranked_direction_summary, reexpress_event_directions
 from tealeaf.sc.path_score_mixed import MODEL_VERSION
 from extra_scripts.run_suppa2_tealeaf_hybrid import MIXED_SCORE_EMPTY_COLUMNS
 
@@ -131,6 +131,9 @@ def main():
     if metadata.duplicated(["mouse", "cell_type"]).any():
         raise ValueError("n_samples/2 guard requires one pseudobulk per subject/type")
     method = f"Hybrid, {args.source} input control" if args.inference == "paired" else f"Hybrid full-transcript EC mixed score, {args.source}"
+    control_manifest = json.loads((control / "manifest.json").read_text())
+    if "kernel_recipe" in control_manifest:
+        method += ", reference-sequence EC opportunities"
     if args.information_metric == "reference":
         method += ", target-normalized numerical rank"
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -161,7 +164,12 @@ def main():
         split_assessment(raw_folds, repo, raw_output, method + ", native F reference")
     test_output = args.output_dir / "testing_directions"
     test_output.mkdir(exist_ok=True)
-    split_assessment([fold_table(Path(cohorts[fold]["merged"]) / "paired_path.tsv", method, True) for fold in (0, 1)], repo, test_output, method + ", testing ILR directions")
+    testing_folds = [fold_table(Path(cohorts[fold]["merged"]) / "paired_path.tsv", method, True) for fold in (0, 1)]
+    split_assessment(testing_folds, repo, test_output, method + ", testing ILR directions")
+    if args.inference == "mixed-score":
+        raw_testing = raw_output / "testing_directions"
+        raw_testing.mkdir(exist_ok=True)
+        split_assessment([table.assign(p_value=table.raw_p_value) for table in testing_folds], repo, raw_testing, method + ", native F reference, testing ILR directions")
     correlations = [{"fold": fold, "p_scale": column, **coverage_correlation(table[column], table.coverage, table[["n_subjects"]])} for fold, table in enumerate(folds) for column in ("p_value", "raw_p_value")]
     pd.DataFrame(correlations).to_csv(args.output_dir / "coverage_correlations.tsv", sep="\t", index=False)
     if args.split_only:
@@ -185,6 +193,16 @@ def main():
         raw_ranked = _rank_table(eligible.assign(p_value=eligible.raw_p_value, method=method + ", native F reference"), len(eligible))
         pd.DataFrame(ranked_direction_summary(raw_ranked)).to_csv(args.output_dir / "raw_F/lr_rank_summary.tsv", sep="\t", index=False)
         raw_ranked.head(200).to_csv(args.output_dir / "raw_F/lr_rank.tsv.gz", sep="\t", index=False)
+        # Assess the measurement/biological-uncertainty-weighted score direction
+        # on exactly the original mapped family, not a newly favorable overlap.
+        score_output = args.output_dir / "testing_directions"
+        score_map = reexpress_event_directions(eligible, full, "test_ilr_effect_size", method + ", efficient-score ILR direction")
+        score_map.to_csv(score_output / "lr_mapping.tsv.gz", sep="\t", index=False, na_rep="NA")
+        for label, local in (("calibrated", score_map), ("native_F", score_map.assign(p_value=score_map.raw_p_value, method=method + ", native F reference, efficient-score ILR direction"))):
+            score_ranked = _rank_table(local, len(local))
+            pd.DataFrame(ranked_direction_summary(score_ranked)).to_csv(score_output / f"lr_rank_summary_{label}.tsv", sep="\t", index=False, na_rep="NA")
+            score_ranked.head(200).to_csv(score_output / f"lr_rank_{label}.tsv.gz", sep="\t", index=False, na_rep="NA")
+        (score_output / "lr_direction_manifest.json").write_text(json.dumps(dict(family="exact same LR-evaluable association identities, depth thresholds, external effects, p-values and tie breaks as independent usage reporting", estimator="common ILR mean from efficient-score measurement information and biological REML covariance, not a PSI usage estimate", missing="nonfinite or zero replacement directions remain nonagreements in this fixed family", requested=len(score_map), available=int(score_map.direction_available.sum()), selection="no native-panel restriction, significance cutoff or direction-dependent re-selection"), indent=2) + "\n")
     (args.output_dir / "manifest.json").write_text(json.dumps({"control": json.loads((control / "manifest.json").read_text()), "cohorts": cohorts, "family": "all screened events, failed subject fits retained at p1; fixed published matched gene-pair split universes", "LR": "fresh all-complete-tested mapping with unchanged source depth and zero-effect policy; no FDR filter", "null_limitation": "independent event sign flips are training calibration, not an actual biological count-null validation", "production_changes": False}, indent=2) + "\n")
 
 

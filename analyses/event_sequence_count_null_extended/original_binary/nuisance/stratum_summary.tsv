@@ -1,0 +1,23 @@
+strategy	degrees_of_freedom	n_subjects	n_tests	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01
+hybrid free-transcript EC mixed score, target-normalized rank	1	0	55	0	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	4	76	76	0.0	0.02631578947368421	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	5	81	81	0.0	0.024691358024691357	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	6	51	51	0.0196078431372549	0.0392156862745098	0.0196078431372549
+hybrid free-transcript EC mixed score, target-normalized rank	1	7	68	68	0.029411764705882353	0.07352941176470588	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	8	25	25	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	9	16	16	0.0625	0.125	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	10	19	19	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	11	12	12	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	12	7	7	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	13	13	13	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	14	6	6	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	15	9	9	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	16	9	9	0.1111111111111111	0.2222222222222222	0.1111111111111111
+hybrid free-transcript EC mixed score, target-normalized rank	1	17	11	11	0.18181818181818182	0.2727272727272727	0.2727272727272727
+hybrid free-transcript EC mixed score, target-normalized rank	1	18	7	7	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	19	10	10	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	20	17	17	0.058823529411764705	0.058823529411764705	0.058823529411764705
+hybrid free-transcript EC mixed score, target-normalized rank	1	21	10	10	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	22	4	4	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	23	4	4	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	24	2	2	0.0	0.0	0.0

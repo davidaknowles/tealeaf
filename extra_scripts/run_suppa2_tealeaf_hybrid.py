@@ -24,6 +24,7 @@ It never applies the default backend's target smoothing or variance moderation.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import pickle
 import time
@@ -179,6 +180,12 @@ def main():
         args.data_cache, settings
     )
     features = args.features.read_text().splitlines()
+    source_manifest_path = args.data_cache.parent / "manifest.json"
+    source_manifest = json.loads(source_manifest_path.read_text()) if source_manifest_path.exists() else {}
+    kernel_genes = source_manifest.get("kernel_recipe", {}).get("requested_genes")
+    if kernel_genes is not None and hashlib.sha256(args.features.read_bytes()).hexdigest() != source_manifest["features_sha256"]:
+        raise ValueError("experimental kernel feature order differs from declared input")
+    kernel_genes = None if kernel_genes is None else set(kernel_genes)
     if len(features) != max(int(indices.max()) for indices in gene_transcripts if len(indices)) + 1:
         raise ValueError("feature list does not align with prepared transcript indices")
     catalog = pd.read_csv(
@@ -274,6 +281,8 @@ def main():
         event_id = str(event.event_id)
         event_test_id = f"SUPPA2:{event_id}|cell_type|{'|'.join(tested_levels)}"
         try:
+            if kernel_genes is not None and canonical(gene_id) not in kernel_genes:
+                raise ValueError("requested gene lacks the declared experimental sequence kernel")
             local_metadata, _, labels = local_test_design(
                 metadata, rows, tested_levels, "cell_type_pairwise"
             )
@@ -409,7 +418,11 @@ def main():
         "elapsed_seconds": time.perf_counter() - started,
     }, indent=2) + "\n")
     if args.inference == "mixed-score":
-        (args.output_dir / "settings.json").write_text(json.dumps({"arguments": {key: str(value) if isinstance(value, Path) else value for key, value in vars(args).items()}, "candidate_settings": settings, "model_version": MODEL_VERSION, "target_prior": "none", "nuisance_pseudocount": 1e-4, "production_changes": False}, indent=2) + "\n")
+        output_settings = {"arguments": {key: str(value) if isinstance(value, Path) else value for key, value in vars(args).items()}, "candidate_settings": settings, "model_version": MODEL_VERSION, "target_prior": "none", "nuisance_pseudocount": 1e-4, "production_changes": False}
+        if kernel_genes is not None:
+            output_settings["input_manifest_sha256"] = hashlib.sha256(source_manifest_path.read_bytes()).hexdigest()
+            output_settings["measurement_model"] = "reference-only exact single-read opportunities, full starts, fixed .01 background"
+        (args.output_dir / "settings.json").write_text(json.dumps(output_settings, indent=2) + "\n")
     print(f"wrote {len(observed):,} tests and {len(null):,} nulls; skipped {skipped_events:,} unsupported catalogue events")
 
 

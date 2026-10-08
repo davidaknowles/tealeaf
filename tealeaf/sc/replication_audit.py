@@ -32,6 +32,46 @@ def ranked_direction_summary(table, cutoffs=(40, 100, 200)):
     return rows
 
 
+def reexpress_event_directions(mapped, effects, effect_column, method):
+    """Change direction estimates on an EXACT fixed LR-evaluable event family.
+
+    Mapping, depths, p-values, ranks and external zeros are not reselected.
+    Missing, nonfinite or zero replacement directions count as nonagreements.
+    Input rows require finite nonzero old short-read effects so replicate
+    effects can be recovered from the stored dot products. This is a paired
+    direction ablation, not remapping or a PSI estimator from ILR scores.
+    """
+    keys = ["feature_id", "contrast_id"]
+    required = keys + ["short_read_effect", "long_read_effect", "replicate_1_dot_product", "replicate_2_dot_product"]
+    if any(column not in mapped for column in required) or effect_column not in effects or any(column not in effects for column in keys):
+        raise ValueError("event direction replacement requires aligned effects and mapped endpoints")
+    old = mapped.short_read_effect.to_numpy(float)
+    if not np.isfinite(old).all() or (old == 0).any() or mapped.duplicated(keys).any() or effects.duplicated(keys).any():
+        raise ValueError("fixed mapped event family requires unique identities and finite nonzero original directions")
+    lookup = effects[keys + [effect_column]].rename(columns={effect_column: "replacement_direction"})
+    result = mapped.merge(lookup, on=keys, how="left", validate="one_to_one", indicator=True, sort=False)
+    if not result._merge.eq("both").all() or len(result) != len(mapped):
+        raise ValueError("every fixed mapped event needs its requested replacement estimate")
+    replacement = result.replacement_direction.to_numpy(float)
+    valid = np.isfinite(replacement) & (replacement != 0)
+    replacement = np.where(valid, replacement, np.nan)
+    result["short_read_effect"] = replacement
+    result["direction_available"] = valid
+    result["method"] = method
+    # Compare signs rather than multiplying possibly large Gaussian units.
+    pooled = result.long_read_effect.to_numpy(float)
+    result["pooled_replicated"] = valid & np.isfinite(pooled) & (np.sign(replacement) == np.sign(pooled))
+    replicate_agreement = []
+    for replicate in (1, 2):
+        column = f"replicate_{replicate}_dot_product"
+        external = result[column].to_numpy(float) / old
+        result[f"replicate_{replicate}_long_read_effect"] = external
+        result[column] = external * replacement
+        replicate_agreement.append(valid & np.isfinite(external) & (np.sign(replacement) == np.sign(external)))
+    result["both_replicates_replicated"] = replicate_agreement[0] & replicate_agreement[1]
+    return result.drop(columns=["replacement_direction", "_merge"])
+
+
 def complete_paired_fits(table):
     """Require every eligible pair to fit, for one row per subject/type.
 

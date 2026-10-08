@@ -1,0 +1,10 @@
+source	scope	error	n
+original_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject E_5, iterations=2000, gradient=0.000280693, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+original_binary	native top100 diagnostic, not an inference family	KeyError(('EX_cortical', 'ODC'))	1
+original_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_4, iterations=2000, gradient=0.00111234, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	fixed random real-data diagnostic	ValueError('shared-path null failed for subject E_4, iterations=2000, gradient=0.00018741, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	KeyError(('EX_cerebellum_granule', 'EX_cortical'))	2
+parsimony_binary	native top100 diagnostic, not an inference family	KeyError(('EX_cortical', 'EX_hippocampus_granule'))	1
+parsimony_binary	native top100 diagnostic, not an inference family	KeyError(('EX_cortical', 'ODC'))	2
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject A_7, iterations=2000, gradient=0.00418735, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1
+parsimony_binary	native top100 diagnostic, not an inference family	ValueError('shared-path null failed for subject B_2, iterations=2000, gradient=0.00363252, termination=STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT')	1

@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from tealeaf.sc.replication_audit import aligned_direction, coverage_correlation
+from tealeaf.sc.replication_audit import aligned_direction, coverage_correlation, reexpress_event_directions
 
 
 def test_coverage_uses_p_not_negative_log_p_and_filters_missing():
@@ -95,3 +95,23 @@ def test_pair_completeness_never_averages_away_failed_subject_fits():
     tested, reported = complete_paired_fits(table)
     assert tested.tolist() == [True, False, True, False, False]
     assert reported.tolist() == [True, False, False, False, False]
+
+
+def test_effect_direction_ablation_preserves_family_ranking_and_external_zeros():
+    import pandas as pd
+
+    mapped = pd.DataFrame(dict(feature_id=list("abcde"), contrast_id=["A__B"] * 5, short_read_effect=[.2, -.3, .1, .2, .4], long_read_effect=[.3, .4, 0, .5, .6], replicate_1_dot_product=[.04, -.06, 0, .1, .2], replicate_2_dot_product=[.06, .09, 0, .1, .2], p_value=[.01, .02, .03, .04, .05], minimum_pooled_depth=[50] * 5))
+    effects = pd.DataFrame(dict(feature_id=list("edcba"), contrast_id=["A__B"] * 5, score=[np.nan, 0, 1., 2., -3.]))
+    result = reexpress_event_directions(mapped, effects, "score", "score direction")
+    assert result.feature_id.tolist() == mapped.feature_id.tolist()
+    np.testing.assert_array_equal(result.p_value, mapped.p_value)
+    np.testing.assert_array_equal(result.minimum_pooled_depth, mapped.minimum_pooled_depth)
+    assert result.pooled_replicated.tolist() == [False, True, False, False, False]
+    assert result.both_replicates_replicated.tolist() == [False, False, False, False, False]
+    assert result.direction_available.tolist() == [True, True, True, False, False]
+    assert len(result) == len(mapped)
+    assert mapped.short_read_effect.iloc[0] == .2
+    with pytest.raises(ValueError, match="every fixed mapped"):
+        reexpress_event_directions(mapped, effects.iloc[:-1], "score", "test")
+    with pytest.raises(ValueError, match="unique identities"):
+        reexpress_event_directions(mapped, pd.concat([effects, effects.iloc[:1]]), "score", "test")

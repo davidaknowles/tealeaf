@@ -24,12 +24,22 @@ if [[ "${COHORT}" == "full" ]]; then
 else
   CANDIDATES="${RUN_ROOT}/differential/ec_block_reproducibility_pairwise_${COHORT}_candidates.pkl"
 fi
-CONTROL="${REPO_ROOT}/.cache/event_information_20261007/original_binary_paired"
+INPUT_ROOT=${EVENT_SCORE_INPUT_ROOT:-${REPO_ROOT}/.cache/event_information_20261007}
+INFORMATION_METRIC=${EVENT_SCORE_INFORMATION_METRIC:-absolute}
+VARIANT=mixed_score
+if [[ "${INFORMATION_METRIC}" == reference ]]; then
+  VARIANT=mixed_score_reference
+elif [[ "${INFORMATION_METRIC}" != absolute ]]; then
+  printf 'Invalid information metric\n' >&2
+  exit 1
+fi
+CONTROL="${INPUT_ROOT}/original_binary_paired"
 python "${REPO_ROOT}/extra_scripts/run_suppa2_tealeaf_hybrid.py" \
   --data-cache "${CONTROL}/prepared.pkl" --features "${CONTROL}/features.txt" \
   --candidate-cache "${CANDIDATES}" \
   --event-catalog "${REPO_ROOT}/.cache/suppa2_statistics/all_event_catalog/event_catalog.tsv.gz" \
-  --output-dir "${REPO_ROOT}/.cache/event_information_20261007/mixed_score/original_binary/${COHORT}/shard_${SHARD_INDEX}" \
+  --output-dir "${INPUT_ROOT}/${VARIANT}/original_binary/${COHORT}/shard_${SHARD_INDEX}" \
   --scan-all-events --shard-index "${SHARD_INDEX}" --shard-count "${SHARD_COUNT}" \
   --inference mixed-score --path-pseudocount 0 --max-iter 2000 --null-multistart \
-  --profile-event-mass --report-pseudocount 1 --null-replicates 32
+  --profile-event-mass --report-pseudocount 1 --null-replicates 32 \
+  --information-metric "${INFORMATION_METRIC}"
