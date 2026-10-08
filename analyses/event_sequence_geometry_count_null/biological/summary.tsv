@@ -1,0 +1,4 @@
+calibration	requested	usable	failures	rejected_05	rejected_01	rejected_001
+native	512	464	48	12	2	0
+baseline real-pool calibration	512	464	48	23	1	0
+geometry real-pool calibration	512	464	48	26	4	0

@@ -1,0 +1,8 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	direction_selected	direction_evaluable	direction_agreement	common_events	failed_tests_fold0	failed_tests_fold1
+LeafCutter	Reference-sequence EC score, geometry-stratified sign calibration	simes	simes	747	139	6	3	0	0.9166666666666667	0.739083722054597	67	66	0.8787878787878788	2271	14	30
+MAJIQ Heterogen	Reference-sequence EC score, geometry-stratified sign calibration	simes	simes	2499	479	0	0	0	NA	0.6421501960496422	23	23	1.0	7688	89	115
+SUPPA2	Reference-sequence EC score, geometry-stratified sign calibration	simes	simes	2342	457	3	0	0	1.0	0.4755861467392221	22	22	1.0	8026	88	114
+SUPPA2 primer-aware	Reference-sequence EC score, geometry-stratified sign calibration	simes	simes	2191	431	3	0	0	1.0	0.4841108243118793	22	22	1.0	7763	88	114
+SUPPA2/Tealeaf hybrid	Reference-sequence EC score, geometry-stratified sign calibration	simes	simes	1755	354	5	0	0	1.0	0.4939384081617471	3	3	1.0	5558	67	81
+rMATS (paired)	Reference-sequence EC score, geometry-stratified sign calibration	simes	simes	3109	597	4	0	0	1.0	0.6922521445092705	38	38	0.9473684210526315	8373	89	111
+scQuint	Reference-sequence EC score, geometry-stratified sign calibration	simes	simes	2599	506	0	0	0	NA	0.6705814700227747	36	36	0.9444444444444444	7770	88	112

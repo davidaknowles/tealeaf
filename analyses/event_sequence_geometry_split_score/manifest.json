@@ -1,0 +1,60 @@
+{
+  "cohorts": [
+    {
+      "source": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold0",
+      "merged_source": ".cache/event_sequence_controls_L150_E001/assess_mixed_score_reference_split_only/original_binary/0/merged",
+      "declared_tests": 268010,
+      "complete_tests": 239956,
+      "source_shards": 64,
+      "observed_sha256": "7bbc944f4b1b2cf19ec5f9938d885c9cc9e297e2e6561f2133349abf893950ee",
+      "null_sha256": "bd603ac6cf3f77059037c1c96c696a31526f1da4e1e7c7caabd9267430508214",
+      "grid": {
+        "points": 81,
+        "relative_log_variance_min": -24.0,
+        "relative_log_variance_max": 16.0,
+        "endpoints": [
+          0.0,
+          "infinity"
+        ],
+        "scale": "median log(1/(I*B))"
+      },
+      "classes": "balanced max share <=.5; intermediate <=.9; dominated >.9",
+      "training": "original 32 sign draws, original dimension/subject strata crossed with frozen geometry; exact leave-own-test-out plus-one CDF",
+      "small_pools": "no fallback across geometry classes; limited empirical tail resolution remains",
+      "family": "complete original family; every original failed test remains p1",
+      "changes": "calibration strata only; count fits, scores, analytic tails, reporting, original strata, null signs and family unchanged",
+      "selection": "no p-value, fitted heterogeneity, effect direction or LR outcomes used for geometry assignment",
+      "scope": "experimental, requires actual-count-null and both replication endpoints before adoption",
+      "production_changes": false
+    },
+    {
+      "source": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1",
+      "merged_source": ".cache/event_sequence_controls_L150_E001/assess_mixed_score_reference_split_only/original_binary/1/merged",
+      "declared_tests": 221090,
+      "complete_tests": 202951,
+      "source_shards": 64,
+      "observed_sha256": "66c6d191b64da0bb7466443dc445370e23fced513dc5bbdd387539a2c7fad56b",
+      "null_sha256": "9aaa931153c346b369f37bb0feaf314f3ea8c2fa0b6d83820550d1cf22230c11",
+      "grid": {
+        "points": 81,
+        "relative_log_variance_min": -24.0,
+        "relative_log_variance_max": 16.0,
+        "endpoints": [
+          0.0,
+          "infinity"
+        ],
+        "scale": "median log(1/(I*B))"
+      },
+      "classes": "balanced max share <=.5; intermediate <=.9; dominated >.9",
+      "training": "original 32 sign draws, original dimension/subject strata crossed with frozen geometry; exact leave-own-test-out plus-one CDF",
+      "small_pools": "no fallback across geometry classes; limited empirical tail resolution remains",
+      "family": "complete original family; every original failed test remains p1",
+      "changes": "calibration strata only; count fits, scores, analytic tails, reporting, original strata, null signs and family unchanged",
+      "selection": "no p-value, fitted heterogeneity, effect direction or LR outcomes used for geometry assignment",
+      "scope": "experimental, requires actual-count-null and both replication endpoints before adoption",
+      "production_changes": false
+    }
+  ],
+  "scope": "complete split assessment, frozen published gene/pair families; no LR claim",
+  "production_changes": false
+}
