@@ -1,0 +1,14 @@
+strategy	degrees_of_freedom	n_subjects	n_tests	n_converged	raw_reject_0_05	calibrated_reject_0_05	calibrated_reject_0_01
+hybrid free-transcript EC mixed score, target-normalized rank	1	0	2	0	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	4	11	11	0.0	0.09090909090909091	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	5	14	14	0.0	0.07142857142857142	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	6	9	9	0.0	0.1111111111111111	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	7	5	5	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	8	6	6	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	9	5	5	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	10	4	4	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	12	1	1	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	14	3	3	0.0	0.3333333333333333	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	15	1	1	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	16	2	2	0.0	0.0	0.0
+hybrid free-transcript EC mixed score, target-normalized rank	1	17	1	1	0.0	0.0	0.0

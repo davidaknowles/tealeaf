@@ -1,6 +1,7 @@
 """Actual-count null checks for the complete binary-input event controls."""
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import pickle
@@ -29,6 +30,7 @@ def trial_header(record):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cache", type=Path, required=True)
+    parser.add_argument("--family-cache", type=Path, help="Completed original family used for frozen hypothesis selection; defaults to --cache.")
     parser.add_argument("--source", choices=("parsimony_binary", "original_binary"), required=True)
     parser.add_argument("--candidate-cache", type=Path, required=True)
     parser.add_argument("--event-catalog", type=Path, required=True)
@@ -67,6 +69,9 @@ def main():
     if not np.isfinite(args.subject_scale) or args.subject_scale < 0 or not args.concentrations or len(set(args.concentrations)) != len(args.concentrations) or any(not np.isfinite(value) or value <= 0 for value in args.concentrations):
         raise ValueError("nonnegative subject scale and unique positive concentrations required")
     source = args.cache / f"{args.source}_paired"
+    source_manifest = source / "manifest.json"
+    input_manifest = json.loads(source_manifest.read_text()) if source_manifest.exists() else {}
+    kernel_genes = input_manifest.get("kernel_recipe", {}).get("requested_genes")
     with args.candidate_cache.open("rb") as handle:
         settings = pickle.load(handle)["settings"]
     if settings["subject_fold"] != 0 or settings["min_gene_umis"] != 25:
@@ -83,7 +88,7 @@ def main():
     catalog = pd.read_csv(args.event_catalog, sep="\t").set_index("feature_id", verify_integrity=True)
     family = []
     for index in range(32):
-        shard = args.cache / f"split/{args.source}/fold0/shard_{index}"
+        shard = (args.family_cache or args.cache) / f"split/{args.source}/fold0/shard_{index}"
         summary = json.loads((shard / "summary.json").read_text())
         table = pd.read_csv(shard / "paired_path.tsv", sep="\t")
         failures = json.loads((shard / "failures.json").read_text())
@@ -115,6 +120,8 @@ def main():
         levels = (record["level_a"], record["level_b"])
         header = trial_header(record)
         try:
+            if kernel_genes is not None and canonical(record["gene_id"]) not in kernel_genes:
+                raise ValueError("requested gene lacks the declared experimental sequence kernel")
             gene = gene_lookup[canonical(record["gene_id"])]
             if gene not in contexts:
                 transcripts = supported_gene_transcripts(gene, gene_tx, gene_ecs, designs)
@@ -190,6 +197,9 @@ def main():
     manifest["scalar_fast"] = args.scalar_fast
     manifest["completeness"] = "every eligible subject null must fit; mixed-score degrees of freedom count informative clusters separately from fitted clusters"
     manifest.update(count_likelihood=args.count_likelihood, ec_opportunity_scale=args.ec_opportunity_scale, kernel_units=args.kernel_units, simulation_kernel_units=args.simulation_kernel_units)
+    if args.family_cache is not None:
+        manifest["family_cache"] = str(args.family_cache.resolve())
+        manifest["input_manifest_sha256"] = hashlib.sha256(source_manifest.read_bytes()).hexdigest() if source_manifest.exists() else None
     (args.output_dir / "settings.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
 

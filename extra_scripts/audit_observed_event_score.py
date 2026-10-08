@@ -1,6 +1,7 @@
 """Observed-count score diagnostics, not a selected-family benchmark."""
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import pickle
@@ -41,6 +42,9 @@ def main():
     if settings["subject_fold"] is not None or settings["min_gene_umis"] != 25:
         raise ValueError("observed diagnostic requires the full-data production coverage recipe")
     source = args.cache / f"{args.source}_paired"
+    source_manifest = source / "manifest.json"
+    input_manifest = json.loads(source_manifest.read_text()) if source_manifest.exists() else {}
+    kernel_genes = input_manifest.get("kernel_recipe", {}).get("requested_genes")
     metadata, counts, genes, gene_tx, gene_ecs, designs = filtered_inputs(source / "prepared.pkl", settings)
     if args.kernel_units == "fragment":
         designs = binary_fragment_opportunity_kernels(designs)
@@ -58,6 +62,8 @@ def main():
         result_row = {**record, "source": args.source, "p_value": 1., "converged": False}
         try:
             event = catalog.loc[record["feature_id"]]
+            if kernel_genes is not None and canonical(event.gene_id) not in kernel_genes:
+                raise ValueError("requested gene lacks the declared experimental sequence kernel")
             gene = lookup[canonical(event.gene_id)]
             if gene not in contexts:
                 if len(gene_ecs[gene]) > settings["max_ecs"]:
@@ -91,7 +97,11 @@ def main():
     args.output_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(output).to_csv(args.output_dir / "tests.tsv", sep="\t", index=False, na_rep="NA")
     (args.output_dir / "failures.json").write_text(json.dumps(failures, indent=2) + "\n")
-    (args.output_dir / "settings.json").write_text(json.dumps({"source": args.source, "candidate_settings": settings, "model_version": MODEL_VERSION, "score_coordinate": args.score_coordinate, "information_metric": args.information_metric, "count_likelihood": args.count_likelihood, "kernel_units": args.kernel_units, "max_iter": 2000, "null_multistart": True, "reporting_concentration": 1, "n_requested": len(records), "shard_count": args.shard_count, "selection": "fixed random null-family identifiers and labeled native top100 diagnosis; no selected-family BH or full-universe LR claim", "production_changes": False}, indent=2) + "\n")
+    output_settings = {"source": args.source, "candidate_settings": settings, "model_version": MODEL_VERSION, "score_coordinate": args.score_coordinate, "information_metric": args.information_metric, "count_likelihood": args.count_likelihood, "kernel_units": args.kernel_units, "max_iter": 2000, "null_multistart": True, "reporting_concentration": 1, "n_requested": len(records), "shard_count": args.shard_count, "selection": "fixed random null-family identifiers and labeled native top100 diagnosis; no selected-family BH or full-universe LR claim", "production_changes": False}
+    if kernel_genes is not None:
+        output_settings["input_manifest_sha256"] = hashlib.sha256(source_manifest.read_bytes()).hexdigest()
+        output_settings["measurement_model"] = "reference-only exact single-read opportunities, full starts, fixed .01 background"
+    (args.output_dir / "settings.json").write_text(json.dumps(output_settings, indent=2) + "\n")
 
 
 if __name__ == "__main__":
