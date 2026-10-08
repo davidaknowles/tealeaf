@@ -62,7 +62,7 @@ def main():
     args.output_dir.mkdir(parents=True, exist_ok=True)
     pd.concat(frames, ignore_index=True).to_csv(args.output_dir / "genes.tsv.gz", sep="\t", index=False)
     result = pd.DataFrame(summaries)
-    result.to_csv(args.output_dir / "summary.tsv", sep="\t", index=False)
+    result.to_csv(args.output_dir / "summary.tsv", sep="\t", index=False, na_rep="NA")
     (args.output_dir / "manifest.json").write_text(json.dumps(dict(source_settings=metadata, scope="complete screened gene family, per-primer unrestricted transcript mixtures", bound="conservative finite categorical model-compatibility reference bound using a certified KL lower bound, not a differential-splicing p-value", assumptions="fixed maps/categories and integral independent categorical molecules conditional on their observation-specific transcript mixtures; arbitrary mixtures and unequal observation totals allowed", limitations="maps may be estimated and EC retention is data-dependent, so this fixed-map reference bound is not a formal unconditional test on the selected real-data inputs; does not identify a unique cause, and molecule dependence, missing transcripts, read opportunities or primer/mapping bias can violate the working model; not proof of a different method's calibration or power", interpretation="diagnostic only, no gene exclusions, no revised discovery counts, no own-ranked LR or split superiority claim", production_changes=False), indent=2) + "\n")
     print(result.to_string(index=False), flush=True)
 
