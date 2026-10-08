@@ -3,7 +3,7 @@
 #SBATCH --array=0-191%16
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=16G
-#SBATCH --time=16:00:00
+#SBATCH --time=2-00:00:00
 #SBATCH --job-name=event_mixed_score
 #SBATCH --output=.cache/event_information_20261007/mixed_%A_%a.out
 #SBATCH --error=.cache/event_information_20261007/mixed_%A_%a.err

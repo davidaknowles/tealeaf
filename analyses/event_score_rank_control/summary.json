@@ -1,0 +1,92 @@
+{
+  "scope": "one complete historical shard, not the complete split or LR benchmark",
+  "inputs": [
+    "/gpfs/commons/home/daknowles/projects/tealeaf/.cache/event_information_20261007/mixed_score/original_binary/full/shard_17",
+    "/gpfs/commons/home/daknowles/projects/tealeaf/.cache/event_information_20261007/rank_metric_ablation/shard_17_absolute_scalar",
+    "/gpfs/commons/home/daknowles/projects/tealeaf/.cache/event_information_20261007/mixed_score_reference/original_binary/full/shard_17"
+  ],
+  "archive_sha256": {
+    "score_contexts.tsv.gz": [
+      "7fc96e04040c1afd61c31f2a5185ecfe935c7a3d097627cb980fd7cfb22042f0",
+      "7fc96e04040c1afd61c31f2a5185ecfe935c7a3d097627cb980fd7cfb22042f0",
+      "7fc96e04040c1afd61c31f2a5185ecfe935c7a3d097627cb980fd7cfb22042f0"
+    ],
+    "subject_scores.tsv.gz": [
+      "e6f099cda4cebc6d5c4f8e76e4d955822f2cf9e1c57a56b22b83d232d166676f",
+      "e6f099cda4cebc6d5c4f8e76e4d955822f2cf9e1c57a56b22b83d232d166676f",
+      "e6f099cda4cebc6d5c4f8e76e4d955822f2cf9e1c57a56b22b83d232d166676f"
+    ]
+  },
+  "declared_hypotheses": 6268,
+  "source_absolute_generic": {
+    "records": 2659,
+    "failures": 3609
+  },
+  "absolute_scalar": {
+    "records": 2659,
+    "failures": 3609
+  },
+  "reference_scalar": {
+    "records": 5983,
+    "failures": 285
+  },
+  "recovered_reference_records": 3324,
+  "numerical_tolerance": {
+    "rtol": 3e-06,
+    "atol": 1e-08
+  },
+  "absolute_generic_vs_scalar": {
+    "p_value": {
+      "n_comparisons": 2659,
+      "n_outside_tolerance": 0,
+      "max_absolute_difference": 1.5224763449950274e-07
+    },
+    "statistic": {
+      "n_comparisons": 2659,
+      "n_outside_tolerance": 0,
+      "max_absolute_difference": 9.610738757714898e-06
+    },
+    "test_ilr_effect_size": {
+      "n_comparisons": 2659,
+      "n_outside_tolerance": 0,
+      "max_absolute_difference": 3.9025783404866843e-07
+    },
+    "effect_size": {
+      "n_comparisons": 2659,
+      "n_outside_tolerance": 0,
+      "max_absolute_difference": 1.1102230246251565e-16
+    },
+    "biological_variance": {
+      "n_comparisons": 2659,
+      "n_outside_tolerance": 3,
+      "max_absolute_difference": 0.000992191955447197
+    },
+    "restricted_objective": {
+      "n_comparisons": 2659,
+      "n_outside_tolerance": 0,
+      "max_absolute_difference": 1.7394086171407253e-11
+    },
+    "residual_inflation": {
+      "n_comparisons": 2659,
+      "n_outside_tolerance": 0,
+      "max_absolute_difference": 2.477951854817917e-07
+    },
+    "n_subjects": {
+      "n_comparisons": 2659,
+      "n_outside_tolerance": 0,
+      "max_absolute_difference": 0.0
+    },
+    "n_fitted_subjects": {
+      "n_comparisons": 2659,
+      "n_outside_tolerance": 0,
+      "max_absolute_difference": 0.0
+    },
+    "sign_null_p_value": {
+      "n_comparisons": 85088,
+      "n_outside_tolerance": 0,
+      "max_absolute_difference": 1.5217873261530457e-07
+    }
+  },
+  "identity_and_failure_checks_pass": true,
+  "scientific_scope": "rank criterion availability ablation on byte-identical fitted inputs, no count fitting or event selection; no power or replication claim"
+}
