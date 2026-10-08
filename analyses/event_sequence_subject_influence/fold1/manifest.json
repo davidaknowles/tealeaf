@@ -1,0 +1,12 @@
+{
+  "seed": 47852,
+  "threshold": 1e-05,
+  "declared_cohort_tests": 221090,
+  "requested": 332,
+  "observed_sha256": "66c6d191b64da0bb7466443dc445370e23fced513dc5bbdd387539a2c7fad56b",
+  "source": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1",
+  "selection": "all complete observed raw-tail tests; distinct weak controls matched on informative subject count, not LR outcomes",
+  "scope": "conditional precision and dominant-subject omission diagnostic; omission refits Gaussian score aggregation, not EC counts; not alternate production inference, calibrated FDR or complete-method LR comparison",
+  "failure_policy": "every selected case retained, with errors or replay mismatches explicit",
+  "changes": "none to source counts, fitted scores, null draws, calibration or testing families"
+}

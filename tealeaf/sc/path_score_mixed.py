@@ -431,6 +431,78 @@ def signed_path_score_p_value(components, rng, *, information_metric="absolute",
     return mixed_score_test(components.scores * signs[:, None], components.information, components.biological_shapes, reference_information=components.reference_information if information_metric == "reference" else None, scalar_fast=scalar_fast)["p_value"]
 
 
+def binary_score_subject_influence(components, *, information_metric="reference"):
+    """Describe conditional subject precision, without changing inference.
+
+    For M binary scores, d_u=S_u/I_u and w_u=1/(1/I_u+tau^2 B_u).
+    Normalized w_u are precision shares of the common mean, not EC depth
+    weights or an alternative degrees-of-freedom rule. Effective weighted
+    subjects is 1/sum(share_u**2). Stable residuals are evaluated at the
+    SAME fitted biological variance, not an independently optimized model.
+    Returns M diagnostic records and a scalar summary; excludes no subjects
+    beyond the existing numerical information-rank rule.
+    """
+    size = len(components.subject_ids)
+    if len(components.levels) != 2 or components.scores.shape != (size, 1) or len(set(map(str, components.subject_ids))) != size:
+        raise ValueError("unique aligned binary subject components required")
+    fitted = aggregate_path_scores(components, information_metric=information_metric, scalar_fast=True)
+    score, info, shape = (value[:, 0] if value.ndim == 2 else value[:, 0, 0] for value in (components.scores, components.information, components.biological_shapes))
+    reference = None if components.reference_information is None else components.reference_information[:, 0, 0]
+    if information_metric == "reference":
+        supported = reference > np.maximum(reference, np.finfo(float).tiny) * 1e-10
+        keep = supported.copy()
+        relative = info[supported] / reference[supported]
+        keep[supported] = relative > np.maximum(relative, 1.) * 1e-10
+    else:
+        keep = info > np.maximum(info, 1.) * 1e-10
+    if int(keep.sum()) != fitted["n_subjects"]:
+        raise ValueError("diagnostic information rank differs from fitted test")
+    precision, effect = np.zeros(size), np.full(size, np.nan)
+    effect[keep] = score[keep] / info[keep]
+    precision[keep] = 1 / (1 / info[keep] + fitted["biological_variance"] * shape[keep])
+    if not np.isfinite(precision).all() or not np.isfinite(effect[keep]).all() or (precision[keep] <= 0).any():
+        raise ValueError("finite positive conditional subject precision required")
+    shares = precision / precision.sum()
+    mean = float(fitted["mean_difference"][0])
+    reconstructed = float(shares[keep] @ effect[keep])
+    if abs(reconstructed - mean) > 1e-7 * max(abs(mean), float(shares[keep] @ np.abs(effect[keep])), 1.):
+        raise ValueError("conditional precision does not reconstruct the fitted mean")
+    residual = float(np.sum(precision[keep] * (effect[keep] - mean)**2))
+    inflation = max(1., residual / (int(keep.sum()) - 1))
+    stable_statistic = mean**2 * precision.sum() / inflation
+    dominant = int(np.argmax(shares))
+    records = [dict(subject=str(subject), retained=bool(keep[index]), pseudo_effect=float(effect[index]), precision_share=float(shares[index]), weighted_mean_contribution=float(shares[index] * effect[index])) for index, subject in enumerate(components.subject_ids)]
+    summary = dict(n_subjects=size, n_informative_subjects=int(keep.sum()), fitted_p_value=float(fitted["p_value"]), fitted_mean=mean, biological_variance=float(fitted["biological_variance"]), maximum_precision_share=float(shares[dominant]), effective_weighted_subjects=float(1 / np.sum(shares**2)), dominant_subject=str(components.subject_ids[dominant]), informative_subject_sign_agreement=float((np.sign(effect[keep]) == np.sign(mean)).mean()) if mean != 0 else np.nan, stable_residual_sum=residual, stable_residual_inflation=inflation, fitted_residual_inflation=float(fitted["residual_inflation"]), stable_fixed_variance_p_value=float(stats.f.sf(stable_statistic, 1, int(keep.sum()) - 1)))
+    return records, summary
+
+
+def binary_score_components_to_proportions(components):
+    """Reexpress binary EC scores in the existing proportion coordinate.
+
+    For null inclusion p_u, the archived ILR biological shape is
+    B_u=1/(p_u*(1-p_u)). Local coordinate derivative a_u=2/B_u gives
+    S'_u=S_u/a_u, I'_u=I_u/a_u**2, B'_u=4/B_u; reference information
+    transforms like I_u. Subject-dependent a_u changes the common mean
+    estimand from ILR to simplex-tangent difference, not numerical units.
+    This cannot restore count fits, support multivariate events or supply
+    bounded usages. Original component arrays and reports are unchanged.
+    """
+    size = len(components.subject_ids)
+    if components.score_coordinate != "ilr" or len(components.levels) != 2 or components.scores.shape != (size, 1) or any(value.shape != (size, 1, 1) for value in (components.information, components.biological_shapes)):
+        raise ValueError("aligned binary ILR EC components required")
+    shape = components.biological_shapes[:, 0, 0]
+    if not np.isfinite(shape).all() or (shape < 4 * (1 - 1e-8)).any():
+        raise ValueError("binary EC Dirichlet geometry must have shape at least four")
+    scale = (2 / shape)[:, None]
+    scores = components.scores / scale
+    information = (components.information / scale[:, :, None]) / scale[:, :, None]
+    reference = None if components.reference_information is None else (components.reference_information / scale[:, :, None]) / scale[:, :, None]
+    biological = (4 / shape)[:, None, None]
+    if any(not np.isfinite(value).all() for value in (scores, information, biological)) or (reference is not None and not np.isfinite(reference).all()):
+        raise ValueError("proportion-coordinate components exceed finite range")
+    return PathScoreComponents(scores, information, biological, components.subject_ids.copy(), tuple(components.levels), list(components.null_fits), list(components.reporting_proportions), "proportion", reference)
+
+
 def paired_score_reporting(components):
     """Complete-subject arithmetic PSI reporting, separate from score testing.
 

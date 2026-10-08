@@ -1,0 +1,3 @@
+panel	requested	valid	failures	median_maximum_precision_share	median_effective_weighted_subjects	precision_share_gt_half	precision_share_gt_90_percent	all_32_sign_draws_below_threshold	identical_sign_p_values	proportion_valid	proportion_failures	median_proportion_precision_share	median_proportion_effective_subjects	proportion_precision_share_gt_90_percent	proportion_diagnostic_F_le_05	proportion_diagnostic_F_le_threshold	changed_mean_sign	proportion_mean_outside_simplex_difference
+small observed raw p-value	191	191	0	0.4063050764111477	3.73457784678755	92	78	77	8	191	0	0.5375755975017705	2.0516803313800107	71	48	37	15	15
+subject-count-matched weak control	191	191	0	0.44779733336294714	3.0277153751567387	83	37	0	1	191	0	0.6927779220224723	1.8175827457164822	80	1	0	31	16
