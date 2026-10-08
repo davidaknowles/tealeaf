@@ -17,6 +17,21 @@ from .path_bias import SharedPathNullProblem
 MODEL_VERSION = "v3_scaled_shared_null"
 
 
+def binary_null_minor_usage(biological_shape):
+    """Recover min(p,1-p) from binary ILR shape B=1/[p(1-p)].
+
+    B is a positive scalar or array in the original Helmert ILR units, not
+    an arbitrary rescaled covariance. No orientation, transcript abundance,
+    measurement-information rank or new estimation is inferred from B.
+    The rationalized small root avoids cancellation for nearly absent paths.
+    """
+    shape = np.asarray(biological_shape, dtype=float)
+    if not np.isfinite(shape).all() or (shape < 4 * (1 - 1e-12)).any():
+        raise ValueError("finite binary ILR Dirichlet shape at least four required")
+    shape = np.maximum(shape, 4.)
+    return (2 / shape) / (1 + np.sqrt(1 - 4 / shape))
+
+
 def score_contrast_proportions(anchor, contrast):
     """Approximate A/B usages from a shared S-path anchor and fitted ILR delta.
 

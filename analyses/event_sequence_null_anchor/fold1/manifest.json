@@ -1,0 +1,267 @@
+{
+  "source": [
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_0/subject_scores.tsv.gz",
+      "sha256": "a627280ca8651db352333c7aadd6c981530c4c336f8dd826f51b8bcfb055bb70"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_1/subject_scores.tsv.gz",
+      "sha256": "dba786ecdbb07ebb8ad6f9ba471e5eb0dd66c53d89db0ebb2c7561952667fc2c"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_2/subject_scores.tsv.gz",
+      "sha256": "6b198ba33874a7975a3f8b489bc5a54271e50ff4e339fc2188ffabf8d624f964"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_3/subject_scores.tsv.gz",
+      "sha256": "46cae64c1c18e67067a2b0bdbab9ee013781d58f9e4f5a18ba9a91e745b0cd0e"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_4/subject_scores.tsv.gz",
+      "sha256": "d321f746dcdab77aef4a2d09b907ce1989a968e4fb36af8311df9aa1114b63c3"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_5/subject_scores.tsv.gz",
+      "sha256": "802253eb018591b9c8f5a918b3ea0c9c95a182880ab309fc3f8326a739acd4ac"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_6/subject_scores.tsv.gz",
+      "sha256": "bdee9b575466295c229df3a9f03936d64fc2d0b6212e326de83ae31110bbf558"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_7/subject_scores.tsv.gz",
+      "sha256": "bdcbf6a154675ffd3be2b3c08b12a22782146b73e165091e0155562ae27faa2c"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_8/subject_scores.tsv.gz",
+      "sha256": "73b3a08e19595f76ae5c32a173997cb142599b1a6001eb145a3e26da54547187"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_9/subject_scores.tsv.gz",
+      "sha256": "8d889659e6dfe0089c29a711e63d8fdbb64df2511be84d62dc488d954bdfddf5"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_10/subject_scores.tsv.gz",
+      "sha256": "f1b21032ee8ec1955b4fff0fb8a22c1bd4adb9e514baaf863f3adaa4fb127ed5"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_11/subject_scores.tsv.gz",
+      "sha256": "7d3087c5b4fef7bb6861483e02620158b69f6480027e680a0516b9445499cc6d"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_12/subject_scores.tsv.gz",
+      "sha256": "f5f1f135ffff36e692f86a888da8cd9d337c8e60a12bb342eddb40b53099a394"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_13/subject_scores.tsv.gz",
+      "sha256": "8de3ff8182ca693d0481ef4bb4570bd04567c260c7a1ded72dd186a31c4e8234"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_14/subject_scores.tsv.gz",
+      "sha256": "18bb5d30c5382b3905470153ae97fc8b55df36d057312432556bbe26866b7dc5"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_15/subject_scores.tsv.gz",
+      "sha256": "69e2362826c8ed17092bf8bf228c82ed4f5dfd859049c48339c3140d33f6cfa5"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_16/subject_scores.tsv.gz",
+      "sha256": "2347cbe4c4440970cdf6d6e86752dc0696704f40528c56376c7efbde25714c14"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_17/subject_scores.tsv.gz",
+      "sha256": "bb7581e91d2c29f2d15a0f1f8ca24a360dcac3ac40832d10d7f589e9f191fa47"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_18/subject_scores.tsv.gz",
+      "sha256": "784c3440729b61e5c7671c6b6c78f0aadd49a156e7265050362d56c86bb192b3"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_19/subject_scores.tsv.gz",
+      "sha256": "4007654462c3be12f631cefcb0e0cc3e1bbbe8c847788e5860afb41ab7463a88"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_20/subject_scores.tsv.gz",
+      "sha256": "6af1ec49ac64c7588933588b878fadbf72022fa026a3d3ac15b71b61d885eb1e"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_21/subject_scores.tsv.gz",
+      "sha256": "af7af78251ff6adc37795f2cabf4f3135a734f2caadcb5cae55c7f55b3036e28"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_22/subject_scores.tsv.gz",
+      "sha256": "2379f94fe4fff310cfb17d12b824a7105a7450ceeec8b05019dfbf510c0fe8b7"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_23/subject_scores.tsv.gz",
+      "sha256": "392d5cf20989d9614975535f9db86ec9f46a5790e8b5c85d663ccfa298541063"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_24/subject_scores.tsv.gz",
+      "sha256": "e987ff1fec3ad9f1fdbf8130ee01846b1da9e9eb0c28aed05fbeb5f8c7edf677"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_25/subject_scores.tsv.gz",
+      "sha256": "dfa72428188c70d84dc3871c5d0d859f6d1710c4d83828794c3193950a41ea06"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_26/subject_scores.tsv.gz",
+      "sha256": "3d753dddece072ec26457b611e0e8b3e0b9f0bd50d769c1d9f2f152bb47a47ec"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_27/subject_scores.tsv.gz",
+      "sha256": "5c044304b18b38e2b126f79e15f3728ba44598a7b282c7c3aaff23ae305acb65"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_28/subject_scores.tsv.gz",
+      "sha256": "6cb9a8371ce58840e86346b1f5161b5be7ff0013bbe538a89866a9d9eef1db00"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_29/subject_scores.tsv.gz",
+      "sha256": "9cd07ec23bfff2ef517b09bd4295210435025aab7478c36581f9606cc986bb69"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_30/subject_scores.tsv.gz",
+      "sha256": "cf642a97bd97411aa521df31694985385b8797f988e4f8799e9d8046578cac93"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_31/subject_scores.tsv.gz",
+      "sha256": "212ad6233663457e812226862c8a216ed3fa5790ab255a045520919a1808a272"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_32/subject_scores.tsv.gz",
+      "sha256": "06581f74d7f377482c52209fc493cbd89a3baeb314e2d8213ddd0e77603bc6d6"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_33/subject_scores.tsv.gz",
+      "sha256": "ce13130ce2a8300ea05b0cd21ccbcbbfc62b139f2575e323aa9327c391d5e79a"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_34/subject_scores.tsv.gz",
+      "sha256": "1e477ab085556b34298057507a7d52bd852f71ab202303890a0320c59452ba52"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_35/subject_scores.tsv.gz",
+      "sha256": "8fcc917e73682d34e87aa5936bc8df12db5c87e9cc293e938a3a00720bcdb038"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_36/subject_scores.tsv.gz",
+      "sha256": "63fe0518d95446dc6711fa7b764160aa54bab5dd47d76fe735a1b9791f2124c0"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_37/subject_scores.tsv.gz",
+      "sha256": "36a667b0145eb587d65af63b6f73e88c9145ed977a357dfcebf8d4bc78846b8a"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_38/subject_scores.tsv.gz",
+      "sha256": "4c5bfac8f55609e58605fe2bb1d50ecfdf7dd0db116b3453a42ed249ca3192e0"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_39/subject_scores.tsv.gz",
+      "sha256": "ae0aff5dbad8e37c5b3b0e4310614d10ce2707376c00a3aa8a207052aa974fa2"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_40/subject_scores.tsv.gz",
+      "sha256": "3a8b08a849ae1a189392dcf369924cc71fdf87ab0bbeaf6a8eadfb61dfba85ac"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_41/subject_scores.tsv.gz",
+      "sha256": "d83a24dc0510e61a93b948f90df1f4b3c7e4201c3778756c9e496052d8d0c04f"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_42/subject_scores.tsv.gz",
+      "sha256": "c804ae45bd3adae2d7b38b15581e2204f5a3298fcf6476092c59c5bf7c95076e"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_43/subject_scores.tsv.gz",
+      "sha256": "82b69bef74916978dfc687420ba200239858baaa44a615686a0d4bbaffd56bef"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_44/subject_scores.tsv.gz",
+      "sha256": "120642d5323a336f5a78cbe71bfbd7086052b409c2292dfaf4cea3dad9cf82f6"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_45/subject_scores.tsv.gz",
+      "sha256": "c6c7f85bf46bca9e6ecf6b8c043e7c7d7c13448d0153bdd96cd2b903a7961084"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_46/subject_scores.tsv.gz",
+      "sha256": "bfdc7dce9b3c80e2d615d6920d279b7be36f28175519451b4e4c79e7db24755e"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_47/subject_scores.tsv.gz",
+      "sha256": "2fece2a17970ea433f224a8c1d065025b5468a8cf6654aa7edce3b68fed8aa87"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_48/subject_scores.tsv.gz",
+      "sha256": "601f0ea269bb47a9b6fbc1f84b6697662ee658fcfa16924bdb2037d97e3796b2"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_49/subject_scores.tsv.gz",
+      "sha256": "8ed043a9a4e701490fd21bcd1c9b40e02ba3477975dd6eb5dbd3578133a44912"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_50/subject_scores.tsv.gz",
+      "sha256": "5050dd6a65b3a2d67d097651ebdbd8f89dd27f9882b7067a3ae33f031f3a6e36"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_51/subject_scores.tsv.gz",
+      "sha256": "37ae801d17e1d2c942926394c04d35c00f7d32b4774ddd84e56a8704c08f8fae"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_52/subject_scores.tsv.gz",
+      "sha256": "2267fd6f64c1ef799f9ab5f330df551faba9aeaf73ae50e8c5ed2a2a70fbb4dc"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_53/subject_scores.tsv.gz",
+      "sha256": "bf1e95e7105e9dd3883e6ae539943323a7781261fe36b767036686fc7262fe3f"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_54/subject_scores.tsv.gz",
+      "sha256": "69c173fe6e9c69c73acb79364ed0611c2a931526e9dbbd1e105d0e2fc970b176"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_55/subject_scores.tsv.gz",
+      "sha256": "f8f2b3d83294ea40496a1606d2ee966aeb22979225fc2fcdd91b78bb07bbb916"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_56/subject_scores.tsv.gz",
+      "sha256": "3381d68bd3b383ed6cf62b282359374cb5ad5d45985da369b01221dfc7e7f88d"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_57/subject_scores.tsv.gz",
+      "sha256": "6b9f1eb5bd3a40047c3ea24125706dcb7947ba7383c9a4c06f96a7cf3f7a1b0e"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_58/subject_scores.tsv.gz",
+      "sha256": "54a8e2983ef43fc314f80cfa871b29ca96d56a687c4930f9994a4373089b26ef"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_59/subject_scores.tsv.gz",
+      "sha256": "c459f2b7ee7ccd711ff20f86fdb64626c4a33f60cdbff51bd86ce731d04bd30f"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_60/subject_scores.tsv.gz",
+      "sha256": "70678682a83db055612f55e4a4b1772ac18c0fbe4c8d56f20bde5e2c293df446"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_61/subject_scores.tsv.gz",
+      "sha256": "9574095a45c2c8154f1e7cd17301a084fc90e5794b5be898f33f8e61c44d9220"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_62/subject_scores.tsv.gz",
+      "sha256": "cda0b16629551b510010dbaa424d08c3e044cd248a99ac8ecd643d4c671eb972"
+    },
+    {
+      "path": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/fold1/shard_63/subject_scores.tsv.gz",
+      "sha256": "9798834448a0c55751a014dbb8991d5b8ce8480312ecd898ed17b02a9664e064"
+    }
+  ],
+  "selected_diagnostics_sha256": "af412f57ccca1019be68b67d51403bca3c2fd44855a91255255293b1d0dbad48",
+  "bound_sha256": "242478f183fecbf7ac8e5ae153ca90b6fb3b1b3f11faf2638bee0130432d04cb",
+  "requested": 332,
+  "definition": "minor null usage is the small root of p*(1-p)=1/B in original binary Helmert ILR units; information fraction is profiled J over unprofiled R",
+  "selection": "same prior strong-tail and informative-subject-count-matched weak-control panels, no LR selection",
+  "scope": "diagnostic fitted geometry, not observed read support, fitted heterogeneity, an eligibility rule or new inference; independent A1 reports may differ from constrained null compositions",
+  "production_changes": false
+}

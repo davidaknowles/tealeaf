@@ -1,0 +1,5 @@
+panel	unavoidable_share_gt_90	requested	at_least_four_nonrare_null_subjects	at_least_four_profiled_fractions_ge_10pct	at_least_four_equivalent_counts_ge_5	median_null_minor_usage	median_profiled_information_fraction	median_dominant_null_minor_usage	median_dominant_equivalent_count
+small observed raw p-value	False	131	84	108	37	6.1751191465923955e-06	0.2595599057723765	0.2451820633812967	0.7576944394731225
+small observed raw p-value	True	35	0	28	0	1.876758714246159e-09	0.4008073006427135	0.06958414103020903	0.3194896229238722
+subject-count-matched weak control	False	149	112	129	27	3.337646588538627e-05	0.408067602406887	0.2956753151954463	2.18489395503843
+subject-count-matched weak control	True	17	0	13	1	1.4326869362882218e-08	0.281881119328361	0.17936286109084043	1.0830851848757415
