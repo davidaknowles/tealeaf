@@ -1,0 +1,8 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	direction_selected	direction_evaluable	direction_agreement	common_events	failed_tests_fold0	failed_tests_fold1
+LeafCutter	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank	simes	simes	747	139	3	1	0	0.16666666666666666	0.7175511008048991	7	7	0.5714285714285714	2271	14	30
+MAJIQ Heterogen	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank	simes	simes	2499	479	0	0	0	NA	0.6205814909509173	4	4	1.0	7688	89	115
+SUPPA2	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank	simes	simes	2342	457	0	0	0	NA	0.450895755780393	4	4	1.0	8026	88	114
+SUPPA2 primer-aware	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank	simes	simes	2191	431	0	0	0	NA	0.4616600562585712	4	4	1.0	7763	88	114
+SUPPA2/Tealeaf hybrid	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank	simes	simes	1755	354	0	0	0	NA	0.49102596315154695	4	4	0.5	5558	67	81
+rMATS (paired)	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank	simes	simes	3109	597	0	0	0	NA	0.6785788095403968	8	8	0.75	8373	89	111
+scQuint	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank	simes	simes	2599	506	0	1	0	1.0	0.6573819156050006	8	8	0.75	7770	88	112

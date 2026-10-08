@@ -1,0 +1,11 @@
+{
+  "observed_tests": 221090,
+  "training_draws": 6494432,
+  "input_sha256": {
+    ".cache/event_sequence_controls_L150_E001/assess_mixed_score_reference_split_only/original_binary/1/merged/paired_path.tsv": "66c6d191b64da0bb7466443dc445370e23fced513dc5bbdd387539a2c7fad56b",
+    ".cache/event_sequence_controls_L150_E001/assess_mixed_score_reference_split_only/original_binary/1/merged/paired_path_null.tsv.gz": "9aaa931153c346b369f37bb0feaf314f3ea8c2fa0b6d83820550d1cf22230c11"
+  },
+  "scope": "supplied pooled sign-null training distribution; cohort completeness is established by the upstream split assessor, not this diagnostic; not independent count-null assessment or split/LR replication",
+  "interpretation": "small observed raw p-values are descriptive parent labels, not proof of biological alternatives; own draws remain excluded by the unchanged calibration implementation",
+  "changes": "no changed testing family, fitted model, calibration, ranking or production default"
+}
