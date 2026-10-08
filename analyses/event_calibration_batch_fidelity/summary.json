@@ -1,0 +1,25 @@
+{
+  "reference_revision": "81a5288",
+  "observed_records": 5688,
+  "null_records": 182016,
+  "repetitions": 2,
+  "exact_observed_frame": true,
+  "exact_null_frame": true,
+  "exact_p_value_bits": true,
+  "source_sha256": {
+    "paired_path.tsv": "150e633287c7d538a7fac6c7e2e4b8d0a81837cdc4fde6163aaf21aaf418f9ba",
+    "paired_path_null.tsv.gz": "c2c4ff18ccd5ce9e4c47730552ef5065ff07f9c2463096dde84dd1f9cfedc71d"
+  },
+  "timings": {
+    "legacy_seconds": [
+      13.484305100515485,
+      13.554518174380064
+    ],
+    "batched_seconds": [
+      3.4841904621571302,
+      3.314957419410348
+    ]
+  },
+  "median_kernel_speed_ratio": 3.9767958788185687,
+  "scope": "same completed shard and calibration strata; numerical kernel fidelity and timing, not complete-family calibration, replication or end-to-end runtime"
+}

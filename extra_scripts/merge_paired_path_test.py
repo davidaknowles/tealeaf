@@ -175,18 +175,14 @@ def empirical_null_calibration(table, null):
             table.at[position, "p_value"] = (
                 1 + count
             ) / (1 + len(all_values) - len(own))
-        for test_id, local_positions in pool.groupby("test_id").groups.items():
-            values = null.loc[local_positions, "raw_p_value"].to_numpy(
-                dtype=float
-            )
-            own = own_values[test_id]
-            counts = (
-                np.searchsorted(all_values, values, side="right")
-                - np.searchsorted(own, values, side="right")
-            )
-            null.loc[local_positions, "p_value"] = (
-                1 + counts
-            ) / (1 + len(all_values) - len(own))
+        # Maximum tied rank equals right-searchsorted in each event's own
+        # sorted nulls. Batch assignments preserve the same plus-one CDF and
+        # leave-out denominator, without one pandas update per event.
+        own_groups = pool.groupby("test_id")["raw_p_value"]
+        own_ranks = own_groups.rank(method="max", na_option="bottom").to_numpy()
+        own_sizes = own_groups.transform("size").to_numpy()
+        counts = np.searchsorted(all_values, pool.raw_p_value.to_numpy(dtype=float), side="right") - own_ranks
+        null.loc[positions, "p_value"] = (1 + counts) / (1 + len(all_values) - own_sizes)
     return table, null
 
 
