@@ -503,6 +503,37 @@ def binary_score_components_to_proportions(components):
     return PathScoreComponents(scores, information, biological, components.subject_ids.copy(), tuple(components.levels), list(components.null_fits), list(components.reporting_proportions), "proportion", reference)
 
 
+def binary_information_geometry(information, biological_shape, reference_information):
+    """Sign-invariant binary precision geometry, not fitted-score leverage.
+
+    Inputs are aligned M-vectors of profiled information, positive biological
+    shape and unprofiled reference information. Apply the existing relative
+    information-rank rule, then evaluate precision shares at variance zero,
+    infinity and an 81-point fixed log-variance grid around median 1/(I*B).
+    The grid maximum is descriptive, not a certified continuous supremum.
+    No score, fitted heterogeneity, p-value, effect or LR result is inspected.
+    Global coordinate-unit transformations leave the geometry unchanged.
+    """
+    information, shape, reference = (np.asarray(value, dtype=float) for value in (information, biological_shape, reference_information))
+    if information.ndim != 1 or shape.shape != information.shape or reference.shape != information.shape or any(not np.isfinite(value).all() for value in (information, shape, reference)) or (information < 0).any() or (reference < 0).any() or (shape <= 0).any():
+        raise ValueError("aligned finite nonnegative information/reference and positive biological shape required")
+    supported = reference > np.maximum(reference, np.finfo(float).tiny) * 1e-10
+    keep = supported.copy()
+    relative = information[supported] / reference[supported]
+    if (relative > 1 + 1e-8).any():
+        raise ValueError("profiled information exceeds its reference")
+    keep[supported] = relative > np.maximum(relative, 1.) * 1e-10
+    if keep.sum() < 4:
+        raise ValueError("four informative subjects required for binary geometry")
+    log_info, log_shape = np.log(information[keep]), np.log(shape[keep])
+    log_scale = np.median(-log_info - log_shape)
+    log_variance = log_scale + np.linspace(-24., 16., 81)
+    log_precision = log_info[None, :] - np.logaddexp(0., log_variance[:, None] + log_info[None, :] + log_shape[None, :])
+    shares = special.softmax(np.vstack([log_info, log_precision, -log_shape]), axis=1)
+    maximum = float(shares.max())
+    return dict(n_informative_subjects=int(keep.sum()), measurement_maximum_share=float(shares[0].max()), biological_limit_maximum_share=float(shares[-1].max()), grid_maximum_precision_share=maximum, grid_minimum_effective_subjects=float(np.min(1 / np.sum(shares**2, axis=1))), geometry_class="balanced" if maximum <= .5 else "intermediate" if maximum <= .9 else "dominated")
+
+
 def paired_score_reporting(components):
     """Complete-subject arithmetic PSI reporting, separate from score testing.
 
