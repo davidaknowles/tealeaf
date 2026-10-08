@@ -84,6 +84,15 @@ def test_mixed_guard_keeps_uninformative_fitted_subjects_and_rejects_smokes(tmp_
     assert checks[0]["scalar_fast"]
     scalar = pd.read_csv(tmp_path / "scalar/shard_0/paired_path.tsv", sep="\t")
     assert scalar.scalar_fast.all()
+    trace = dict(source="archived/source", archive_float_parser="pandas C round_trip")
+    (shard / "reassessment.json").write_text(json.dumps(trace))
+    checks = guard_completed_shards(tmp_path / "raw", tmp_path / "parser_trace", 0, shard_count=1, inference="mixed-score")
+    assert checks[0]["archive_float_parser"] == trace["archive_float_parser"]
+    assert checks[0]["archive_source"] == trace["source"]
+    trace.pop("archive_float_parser")
+    (shard / "reassessment.json").write_text(json.dumps(trace))
+    checks = guard_completed_shards(tmp_path / "raw", tmp_path / "older_parser_trace", 0, shard_count=1, inference="mixed-score")
+    assert checks[0]["archive_float_parser"] == "pandas default"
     table["scalar_fast"] = False
     table.to_csv(shard / "paired_path.tsv", sep="\t", index=False)
     with pytest.raises(ValueError, match="implementation trace"):

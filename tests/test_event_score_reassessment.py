@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from extra_scripts.reassess_event_score_archive import reassess
+from extra_scripts.reassess_event_score_archive import read_table, reassess
 from extra_scripts.run_suppa2_tealeaf_hybrid import mixed_event_record
 from tealeaf.sc.ec_glmm import ECGLMMData
 from tealeaf.sc.path_score_mixed import shared_path_score_components, binary_subject_score_records, binary_score_components_from_records, aggregate_path_scores, paired_score_reporting, MODEL_VERSION
@@ -21,6 +21,22 @@ def fixture():
     args = SimpleNamespace(inference="mixed-score", max_iter=300, null_multistart=False, report_pseudocount=1., null_replicates=2, seed=20260927, export_path_usage=True, information_metric="absolute")
     event = SimpleNamespace(event_id="gene;SE:example", feature_id="SUPPA2:gene;SE:example", event_type="SE")
     return base, paths, labels, subjects, baseline, components, args, event
+
+
+@pytest.mark.parametrize("suffix", [".tsv", ".tsv.gz"])
+def test_archive_csv_reader_preserves_float64_bits_and_missing_reports(tmp_path, suffix):
+    values = np.array([.00001067340804249877, .23456789012345678, np.nextafter(.1, 1.), 1.2374512649234528e-100, np.nan])
+    path = tmp_path / ("scores" + suffix)
+    pd.DataFrame(dict(score=values, subject=["s1", "s2", "s3", "s4", "s5"])).to_csv(path, sep="\t", index=False)
+    restored = read_table(path)
+    np.testing.assert_array_equal(restored.score.to_numpy(), values)
+    assert restored.subject.tolist() == ["s1", "s2", "s3", "s4", "s5"]
+
+
+def test_archive_reader_retains_empty_table_handling(tmp_path):
+    path = tmp_path / "empty.tsv"
+    path.write_text("\n")
+    assert read_table(path).empty
 
 
 def test_binary_archive_roundtrip_preserves_model_and_missing_reports():
@@ -66,6 +82,7 @@ def test_complete_shard_replay_keeps_unfitted_failures_and_matches_reference(tmp
     np.testing.assert_allclose(table.iloc[0].effect_size, original["effect_size"], rtol=1e-12)
     assert json.loads((output / "failures.json").read_text()) == [failure]
     assert json.loads((output / "summary.json").read_text())["tests_in_shard"] == 2
+    assert json.loads((output / "reassessment.json").read_text())["archive_float_parser"] == "pandas C round_trip"
     assert len(pd.read_csv(output / "paired_path_null.tsv.gz", sep="\t")) == args.null_replicates
     for name in ("score_contexts.tsv.gz", "subject_scores.tsv.gz"):
         assert (output / name).read_bytes() == (source / name).read_bytes()

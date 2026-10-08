@@ -1,0 +1,77 @@
+{
+  "inputs": [
+    {
+      "path": "/gpfs/commons/home/daknowles/projects/tealeaf/.cache/event_information_20261007/mixed_score/original_binary/full/shard_17",
+      "role": "live computation",
+      "scalar_fast": true
+    },
+    {
+      "path": "/gpfs/commons/home/daknowles/projects/tealeaf/.cache/event_information_20261007/rank_metric_ablation/shard_17_absolute_scalar",
+      "role": "default_precision_replay",
+      "scalar_fast": true,
+      "archive_float_parser": "pandas default"
+    },
+    {
+      "path": "/gpfs/commons/home/daknowles/projects/tealeaf/.cache/event_information_20261007/rank_metric_ablation/shard_17_absolute_roundtrip",
+      "role": "round_trip_replay",
+      "scalar_fast": true,
+      "archive_float_parser": "pandas C round_trip"
+    }
+  ],
+  "archive_sha256": {
+    "score_contexts.tsv.gz": [
+      "7fc96e04040c1afd61c31f2a5185ecfe935c7a3d097627cb980fd7cfb22042f0",
+      "7fc96e04040c1afd61c31f2a5185ecfe935c7a3d097627cb980fd7cfb22042f0",
+      "7fc96e04040c1afd61c31f2a5185ecfe935c7a3d097627cb980fd7cfb22042f0"
+    ],
+    "subject_scores.tsv.gz": [
+      "e6f099cda4cebc6d5c4f8e76e4d955822f2cf9e1c57a56b22b83d232d166676f",
+      "e6f099cda4cebc6d5c4f8e76e4d955822f2cf9e1c57a56b22b83d232d166676f",
+      "e6f099cda4cebc6d5c4f8e76e4d955822f2cf9e1c57a56b22b83d232d166676f"
+    ]
+  },
+  "summaries": [
+    {
+      "candidate_contexts": 107944,
+      "catalog_events": 23141,
+      "represented_events": 10935,
+      "skipped_events": 12206,
+      "tests_in_shard": 6268,
+      "completed": 2659,
+      "failures": 3609,
+      "elapsed_seconds": 19566.525975817814
+    },
+    {
+      "candidate_contexts": 107944,
+      "catalog_events": 23141,
+      "represented_events": 10935,
+      "skipped_events": 12206,
+      "tests_in_shard": 6268,
+      "completed": 2659,
+      "failures": 3609,
+      "elapsed_seconds": 204.88911054097116,
+      "source_elapsed_seconds": 19566.525975817814,
+      "timing_scope": "archive replay, not original count fitting"
+    },
+    {
+      "candidate_contexts": 107944,
+      "catalog_events": 23141,
+      "represented_events": 10935,
+      "skipped_events": 12206,
+      "tests_in_shard": 6268,
+      "completed": 2659,
+      "failures": 3609,
+      "elapsed_seconds": 184.81006760895252,
+      "source_elapsed_seconds": 19566.525975817814,
+      "timing_scope": "archive replay, not original count fitting"
+    }
+  ],
+  "requested_hypotheses": 6268,
+  "identity_and_failure_checks_pass": true,
+  "comparison_reader": "pandas C round_trip for every output variant, so evaluation does not introduce new parsing error",
+  "tolerance": {
+    "relative": 3e-06,
+    "absolute": 1e-08
+  },
+  "scope": "one complete historical shard, same model/rank/scalar kernel and identical archived scores; no count refit, no split or LR performance claim"
+}

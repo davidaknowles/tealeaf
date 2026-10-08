@@ -18,15 +18,18 @@
     ]
   },
   "declared_hypotheses": 6268,
-  "source_absolute_generic": {
+  "source_absolute_live": {
+    "scalar_fast": true,
     "records": 2659,
     "failures": 3609
   },
-  "absolute_scalar": {
+  "absolute_archive_replay": {
+    "scalar_fast": true,
     "records": 2659,
     "failures": 3609
   },
-  "reference_scalar": {
+  "reference_archive_replay": {
+    "scalar_fast": true,
     "records": 5983,
     "failures": 285
   },
@@ -35,7 +38,7 @@
     "rtol": 3e-06,
     "atol": 1e-08
   },
-  "absolute_generic_vs_scalar": {
+  "absolute_live_vs_archive_replay": {
     "p_value": {
       "n_comparisons": 2659,
       "n_outside_tolerance": 0,
@@ -88,5 +91,5 @@
     }
   },
   "identity_and_failure_checks_pass": true,
-  "scientific_scope": "rank criterion availability ablation on byte-identical fitted inputs, no count fitting or event selection; no power or replication claim"
+  "scientific_scope": "rank criterion availability ablation on byte-identical archives, all three variants use scalar_fast=true; absolute comparison is live computation versus default-precision CSV archive replay, not generic versus scalar kernels; no count fitting or event selection, no power or replication claim"
 }

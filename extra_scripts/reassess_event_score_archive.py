@@ -21,8 +21,9 @@ from tealeaf.sc.path_score_mixed import binary_score_components_from_records
 
 
 def read_table(path):
+    """Decode archived float64 decimals without changing their binary values."""
     try:
-        return pd.read_csv(path, sep="\t")
+        return pd.read_csv(path, sep="\t", float_precision="round_trip")
     except pd.errors.EmptyDataError:
         return pd.DataFrame()
 
@@ -103,7 +104,7 @@ def reassess(source, output, *, information_metric, refit_missing=False, scalar_
     (output / "settings.json").write_text(json.dumps(settings, indent=2) + "\n")
     (output / "summary.json").write_text(json.dumps({**summary, "completed": len(observed), "failures": len(retained_failures), "source_elapsed_seconds": summary.get("elapsed_seconds"), "elapsed_seconds": time.perf_counter() - started, "timing_scope": "archive replay, not original count fitting"}, indent=2) + "\n")
     (output / "failures.json").write_text(json.dumps(retained_failures, indent=2) + "\n")
-    (output / "reassessment.json").write_text(json.dumps({"source": str(source), "method": "saved complete-subject scores, no count or reporting refit", "information_metric": information_metric, "scalar_fast": scalar_fast, "production_changes": False}, indent=2) + "\n")
+    (output / "reassessment.json").write_text(json.dumps({"source": str(source), "method": "saved complete-subject scores, no count or reporting refit", "information_metric": information_metric, "scalar_fast": scalar_fast, "archive_float_parser": "pandas C round_trip", "production_changes": False}, indent=2) + "\n")
     return "reused score archive"
 
 

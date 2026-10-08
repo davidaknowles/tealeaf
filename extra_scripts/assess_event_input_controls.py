@@ -90,7 +90,13 @@ def guard_completed_shards(root, output, concentration, shard_count=32, inferenc
         table.to_csv(target / "paired_path.tsv", sep="\t", index=False)
         null.to_csv(target / "paired_path_null.tsv.gz", sep="\t", index=False)
         (target / "failures.json").write_text(json.dumps(failures) + "\n")
-        summaries.append({**summary, "shard_index": index, "complete_subject_fits": int(complete.sum()), "complete_reporting_fits": int(reporting.sum()), **({"scalar_fast": scalar_fast} if inference == "mixed-score" else {})})
+        receipt = {**summary, "shard_index": index, "complete_subject_fits": int(complete.sum()), "complete_reporting_fits": int(reporting.sum()), **({"scalar_fast": scalar_fast} if inference == "mixed-score" else {})}
+        replay_trace = shard / "reassessment.json"
+        if inference == "mixed-score" and replay_trace.exists():
+            trace = json.loads(replay_trace.read_text())
+            receipt["archive_float_parser"] = trace.get("archive_float_parser", "pandas default")
+            receipt["archive_source"] = trace["source"]
+        summaries.append(receipt)
     if len(set(all_ids)) != len(all_ids):
         raise ValueError("duplicate requested tests across shards")
     return summaries
