@@ -5,7 +5,7 @@ import pysam
 import pytest
 
 from extra_scripts.audit_event_local_read_support import decode_event, event_envelope, summarize_signature_counts
-from tealeaf.sc.local_read_support import event_local_read_contrast, alignment_local_signature, collect_indexed_local_read_support
+from tealeaf.sc.local_read_support import event_local_read_contrast, alignment_local_signature, collect_indexed_local_read_support, collect_indexed_library_read_support
 
 
 def cassette(strand="+"):
@@ -118,3 +118,34 @@ def test_signature_summary_does_not_turn_conflict_into_support():
     original = table.copy(deep=True)
     summarize_signature_counts(table)
     pd.testing.assert_frame_equal(table, original)
+
+
+def test_library_union_deduplicates_and_preserves_cross_run_conflict(tmp_path):
+    first, second = tmp_path / "first.bam", tmp_path / "second.bam"
+    write_bam(first, [(30, ((0, 5),), "shared", {}, 0), (31, ((0, 5),), "same", {}, 0)])
+    write_bam(second, [(10, ((0, 10), (3, 30), (0, 10)), "shared", {}, 0), (32, ((0, 5),), "same", {}, 0), (30, ((0, 5),), "new", {}, 0), (30, ((0, 5),), "other_library", {"CB": "TTTT"}, 0)])
+    groups = {"AAAA": ("s", "ct", "poly(dT)")}
+    counts, filters = collect_indexed_library_read_support((first, second), (str(first) + ".bai", str(second) + ".bai"), groups, (cassette(),))
+    assert sum(counts.values()) == 3
+    assert counts[("event", "s", "ct", "poly(dT)", 25)] == 1
+    assert counts[("event", "s", "ct", "poly(dT)", 17)] == 2
+    assert filters["sum_per_run_barcode_umi_event_keys"] == 5
+    assert filters["barcode_umi_event_keys"] == 3
+    assert filters["cross_run_duplicate_event_keys"] == 2
+    assert filters["unrequested_barcode"] == 1
+    reverse, _ = collect_indexed_library_read_support((second, first), (str(second) + ".bai", str(first) + ".bai"), groups, (cassette(),))
+    assert reverse == counts
+
+
+def test_library_keys_are_not_merged_across_independent_calls(tmp_path):
+    path = tmp_path / "reads.bam"
+    write_bam(path, [(30, ((0, 5),), "same", {}, 0)])
+    first, _ = collect_indexed_library_read_support((path,), (str(path) + ".bai",), {"AAAA": ("s", "ct", "RH")}, (cassette(),))
+    second, _ = collect_indexed_library_read_support((path,), (str(path) + ".bai",), {"AAAA": ("s", "ct", "RH")}, (cassette(),))
+    assert sum((first + second).values()) == 2
+
+
+@pytest.mark.parametrize("paths,indices", [((), ()), (("one",), ()), (("one", "one"), ("a", "b"))])
+def test_library_union_rejects_ambiguous_input_geometry(paths, indices):
+    with pytest.raises(ValueError):
+        collect_indexed_library_read_support(paths, indices, {}, ())

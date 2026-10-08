@@ -1,6 +1,7 @@
 """Diagnostic local evidence, not a path likelihood or a new eligibility rule."""
 
 from collections import Counter
+from contextlib import ExitStack
 from dataclasses import dataclass
 
 from .junction_benchmark import normalize_starsolo_barcode
@@ -90,7 +91,23 @@ def collect_indexed_local_read_support(bam_path, index_path, barcode_groups, eve
     algorithm. Conflicting inclusion/exclusion reads remain a separate class.
     Returned counts are by event, subject, cell type, primer and signature.
     """
+    return collect_indexed_library_read_support((bam_path,), (index_path,), barcode_groups, events)
+
+
+def collect_indexed_library_read_support(bam_paths, index_paths, barcode_groups, events):
+    """Union exact CB/UB/gene keys across runs of ONE physical library.
+
+    The caller must supply only that library's barcodes and alignment runs.
+    Never union keys across physical libraries. Read support is OR-combined
+    across runs as well as positions, so a cross-run conflict stays a conflict.
+    Counters expose the per-run key sum and the number removed by union.
+    Exact STAR UB union does not reproduce joint upstream UMI error correction.
+    """
     import pysam
+
+    bam_paths, index_paths = tuple(bam_paths), tuple(index_paths)
+    if not bam_paths or len(bam_paths) != len(index_paths) or len(set(map(str, bam_paths))) != len(bam_paths):
+        raise ValueError("distinct runs and one index per run required")
 
     by_gene = {}
     for event in events:
@@ -98,45 +115,51 @@ def collect_indexed_local_read_support(bam_path, index_path, barcode_groups, eve
     if len({event.event_id for event in events}) != len(events):
         raise ValueError("unique event identities required")
     counts, filters = Counter(), Counter()
-    with pysam.AlignmentFile(str(bam_path), "rb", index_filename=str(index_path)) as source:
+    with ExitStack() as stack:
+        sources = [stack.enter_context(pysam.AlignmentFile(str(bam), "rb", index_filename=str(index))) for bam, index in zip(bam_paths, index_paths)]
         for gene, local_events in sorted(by_gene.items()):
             chromosomes = {event.chromosome for event in local_events}
             if len(chromosomes) != 1:
                 raise ValueError("one chromosome per gene required")
             chromosome = chromosomes.pop()
-            if chromosome not in source.references:
-                filters["unavailable_chromosome_events"] += len(local_events)
-                continue
             left = min(event.gene_start for event in local_events)
             right = max(event.gene_end for event in local_events)
             signatures = {}
-            for alignment in source.fetch(chromosome, left, right):
-                filters["fetched_alignments"] += 1
-                if alignment.is_unmapped or alignment.is_secondary or alignment.is_supplementary:
-                    filters["nonprimary"] += 1
+            for source in sources:
+                if chromosome not in source.references:
+                    filters["unavailable_chromosome_events"] += len(local_events)
                     continue
-                if not all(alignment.has_tag(tag) for tag in ("NH", "CB", "UB", "GX")):
-                    filters["missing_tags"] += 1
-                    continue
-                if alignment.get_tag("NH") != 1:
-                    filters["multimapped"] += 1
-                    continue
-                genes = str(alignment.get_tag("GX")).split(";")
-                if len(genes) != 1 or genes[0].split(".", 1)[0] != gene.split(".", 1)[0]:
-                    filters["nonunique_or_other_gene"] += 1
-                    continue
-                barcode = normalize_starsolo_barcode(alignment.get_tag("CB"))
-                if barcode not in barcode_groups:
-                    filters["unrequested_barcode"] += 1
-                    continue
-                blocks = tuple(alignment.get_blocks())
-                junctions = tuple(_alignment_junctions(alignment))
-                for event in local_events:
-                    if not _overlaps(blocks, event.gene_exons):
+                run_keys = set()
+                for alignment in source.fetch(chromosome, left, right):
+                    filters["fetched_alignments"] += 1
+                    if alignment.is_unmapped or alignment.is_secondary or alignment.is_supplementary:
+                        filters["nonprimary"] += 1
                         continue
-                    key = (event.event_id, barcode, str(alignment.get_tag("UB")))
-                    signatures[key] = signatures.get(key, 0) | alignment_local_signature(blocks, junctions, event)
+                    if not all(alignment.has_tag(tag) for tag in ("NH", "CB", "UB", "GX")):
+                        filters["missing_tags"] += 1
+                        continue
+                    if alignment.get_tag("NH") != 1:
+                        filters["multimapped"] += 1
+                        continue
+                    genes = str(alignment.get_tag("GX")).split(";")
+                    if len(genes) != 1 or genes[0].split(".", 1)[0] != gene.split(".", 1)[0]:
+                        filters["nonunique_or_other_gene"] += 1
+                        continue
+                    barcode = normalize_starsolo_barcode(alignment.get_tag("CB"))
+                    if barcode not in barcode_groups:
+                        filters["unrequested_barcode"] += 1
+                        continue
+                    blocks = tuple(alignment.get_blocks())
+                    junctions = tuple(_alignment_junctions(alignment))
+                    for event in local_events:
+                        if not _overlaps(blocks, event.gene_exons):
+                            continue
+                        key = (event.event_id, barcode, str(alignment.get_tag("UB")))
+                        run_keys.add(key)
+                        signatures[key] = signatures.get(key, 0) | alignment_local_signature(blocks, junctions, event)
+                filters["sum_per_run_barcode_umi_event_keys"] += len(run_keys)
             for (event_id, barcode, _), signature in signatures.items():
                 counts[(event_id, *barcode_groups[barcode], signature)] += 1
             filters["barcode_umi_event_keys"] += len(signatures)
+    filters["cross_run_duplicate_event_keys"] = filters["sum_per_run_barcode_umi_event_keys"] - filters["barcode_umi_event_keys"]
     return counts, filters

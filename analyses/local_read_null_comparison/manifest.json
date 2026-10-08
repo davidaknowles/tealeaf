@@ -1,0 +1,31 @@
+{
+  "input_hashes": {
+    "analyses/conditional_local_read_null/scenario0/tests.tsv.gz": "9357787a66110bcf166bf0abd044b177c90dc687b776128f2edd8f67f0ae52da",
+    "analyses/conditional_local_read_null/scenario0/manifest.json": "781a755dff8d824fd4e30d4af1c3d1fcefd73b61deeb3f35078cdc9ae3455c4d",
+    "analyses/conditional_local_read_null/scenario1/tests.tsv.gz": "65281d1c891c6597b2aaf68b799bc123a866e447ed8f0567fc86bfbec00a7418",
+    "analyses/conditional_local_read_null/scenario1/manifest.json": "c21293ea32f38b3d65d581d78f5a89d13d7dea3267214ec7e6b97e572cbe51a0",
+    "analyses/conditional_local_read_null/scenario2/tests.tsv.gz": "fd452260431339d45150d468cc55dfdc71a2aa36e505d965ac99a0acdabbeef2",
+    "analyses/conditional_local_read_null/scenario2/manifest.json": "883a0f5eb4c778743ac94dcda3eb9f31ec23b00b8bbd29dc4382395ebaba677e",
+    "analyses/conditional_local_read_null/scenario3/tests.tsv.gz": "c1318af9a0e19527dee9ed94dff8741aded8569acf68b0a5b475e5e83b6aed79",
+    "analyses/conditional_local_read_null/scenario3/manifest.json": "c307f35611635bb12bc3df50793650d352af0fcd0cce74861883bdb0e12bbea0",
+    "analyses/unconditional_local_read_null/scenario0/tests.tsv.gz": "7396bbbcd2d35ca584068c62d7a50279e4f274277dc89e63a596a24de0587591",
+    "analyses/unconditional_local_read_null/scenario0/manifest.json": "7fb8ac7bd7f7c2cd33804897274bc3646415deb42c0a5c0992c2f595ed55aeb7",
+    "analyses/unconditional_local_read_null/scenario1/tests.tsv.gz": "64684c9f5c36a45059145f678ffbbd997faf6b72290b3419ac1d314d7a070f2a",
+    "analyses/unconditional_local_read_null/scenario1/manifest.json": "ea7dd50950bc4872e9fff5f7b5dfe1b69b14d8e4dd7ce2e223529097d56cd809",
+    "analyses/unconditional_local_read_null/scenario2/tests.tsv.gz": "72513b589f4da42e1f090c76c621b6ce22f9b78582dd154941f442129d130322",
+    "analyses/unconditional_local_read_null/scenario2/manifest.json": "67c63c693dd01bb93f1d9720ca220afcb732b2a75256f8c63b3ddfaca6d75e3c",
+    "analyses/unconditional_local_read_null/scenario3/tests.tsv.gz": "c690633c4c258ead3478f18fe428d160a5dc708186567f3926e90a0aa2a0ebaa",
+    "analyses/unconditional_local_read_null/scenario3/manifest.json": "ea297dc07c7ad67b0d4319ab70b231d833886b75523e628e67cb039a931831bf"
+  },
+  "requested_models": 2,
+  "requested_scenarios": 4,
+  "laws": [
+    "unconditional binomial",
+    "conditional working model"
+  ],
+  "draws_per_law": 64,
+  "complete_trials": 1024,
+  "scope": "toy local-marker null diagnostics only, no original EC nulls, real power, complete-gene FDR or either replication endpoint",
+  "caveats": "The two laws differ in whether margins precede independent random effects. Matched unconditional draws share declared seeds/generator; no raw-count draw hashes were archived by the original drivers. Count-model assumptions, rare-path fitting failures and limited sample sizes prevent certification. F tails are sensitivities, not independently calibrated alternatives.",
+  "production_changes": false
+}

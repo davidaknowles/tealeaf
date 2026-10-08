@@ -1,0 +1,33 @@
+model	scenario	prevalence	true_slope_sd	law	primary_generating_law	tail	requested	usable	nominal_05	nominal_01	median_runtime_seconds
+conditional	0	0.3	0.0	conditional working model	True	p_value	64	64	2	1	6.767116295173764
+conditional	0	0.3	0.0	conditional working model	True	F_reference_p_value	64	64	1	1	6.767116295173764
+conditional	0	0.3	0.0	unconditional binomial	False	p_value	64	64	4	0	6.9129050532355905
+conditional	0	0.3	0.0	unconditional binomial	False	F_reference_p_value	64	64	3	0	6.9129050532355905
+conditional	1	0.3	0.8	conditional working model	True	p_value	64	64	5	1	6.5243086237460375
+conditional	1	0.3	0.8	conditional working model	True	F_reference_p_value	64	64	4	1	6.5243086237460375
+conditional	1	0.3	0.8	unconditional binomial	False	p_value	64	64	5	0	6.532492698170245
+conditional	1	0.3	0.8	unconditional binomial	False	F_reference_p_value	64	64	5	0	6.532492698170245
+conditional	2	0.002	0.0	conditional working model	True	p_value	64	64	2	1	8.014986578840762
+conditional	2	0.002	0.0	conditional working model	True	F_reference_p_value	64	64	1	0	8.014986578840762
+conditional	2	0.002	0.0	unconditional binomial	False	p_value	64	64	2	0	8.317462273407727
+conditional	2	0.002	0.0	unconditional binomial	False	F_reference_p_value	64	64	1	0	8.317462273407727
+conditional	3	0.002	0.8	conditional working model	True	p_value	64	62	3	0	3.1526874834671617
+conditional	3	0.002	0.8	conditional working model	True	F_reference_p_value	64	62	1	0	3.1526874834671617
+conditional	3	0.002	0.8	unconditional binomial	False	p_value	64	60	2	1	3.1968515077605844
+conditional	3	0.002	0.8	unconditional binomial	False	F_reference_p_value	64	60	2	1	3.1968515077605844
+unconditional	0	0.3	0.0	conditional working model	False	p_value	64	64	2	1	0.46615730971097946
+unconditional	0	0.3	0.0	conditional working model	False	F_reference_p_value	64	64	1	1	0.46615730971097946
+unconditional	0	0.3	0.0	unconditional binomial	True	p_value	64	64	4	0	0.45766846835613245
+unconditional	0	0.3	0.0	unconditional binomial	True	F_reference_p_value	64	64	3	0	0.45766846835613245
+unconditional	1	0.3	0.8	conditional working model	False	p_value	64	64	6	5	0.3403857331722975
+unconditional	1	0.3	0.8	conditional working model	False	F_reference_p_value	64	64	6	2	0.3403857331722975
+unconditional	1	0.3	0.8	unconditional binomial	True	p_value	64	64	5	1	0.33585602790117264
+unconditional	1	0.3	0.8	unconditional binomial	True	F_reference_p_value	64	64	4	0	0.33585602790117264
+unconditional	2	0.002	0.0	conditional working model	False	p_value	64	49	2	0	0.6197502072900534
+unconditional	2	0.002	0.0	conditional working model	False	F_reference_p_value	64	49	1	0	0.6197502072900534
+unconditional	2	0.002	0.0	unconditional binomial	True	p_value	64	49	1	0	0.6087485319003463
+unconditional	2	0.002	0.0	unconditional binomial	True	F_reference_p_value	64	49	1	0	0.6087485319003463
+unconditional	3	0.002	0.8	conditional working model	False	p_value	64	45	3	0	0.5579635966569185
+unconditional	3	0.002	0.8	conditional working model	False	F_reference_p_value	64	45	2	0	0.5579635966569185
+unconditional	3	0.002	0.8	unconditional binomial	True	p_value	64	44	1	1	0.571454606950283
+unconditional	3	0.002	0.8	unconditional binomial	True	F_reference_p_value	64	44	1	1	0.571454606950283

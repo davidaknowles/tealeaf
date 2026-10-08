@@ -1,0 +1,5 @@
+law	p_value_column	requested	converged	nominal_05	nominal_01	median_runtime_seconds
+conditional working model	p_value	64	45	3	0	0.5579635966569185
+conditional working model	F_reference_p_value	64	45	2	0	0.5579635966569185
+unconditional binomial	p_value	64	44	1	1	0.571454606950283
+unconditional binomial	F_reference_p_value	64	44	1	1	0.571454606950283

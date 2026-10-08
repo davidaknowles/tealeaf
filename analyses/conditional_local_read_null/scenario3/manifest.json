@@ -1,0 +1,21 @@
+{
+  "model_version": "conditional_local_read_random_slope_v1",
+  "scenario": 3,
+  "prevalence": 0.002,
+  "subject_sd": 0.8,
+  "draws": 64,
+  "subjects": 20,
+  "primers": 2,
+  "quadrature_nodes": 21,
+  "seed": [
+    20261008,
+    92317,
+    3
+  ],
+  "failure_policy": "requested trials remain p=1, never infer calibration from successful cases alone",
+  "target": "mean local inclusion log-odds contrast zero, Gaussian subject effects shared across primers",
+  "laws": "conditional draws assign a fresh independent effect to frozen margins; binomial draws condition only on type totals, not class margins",
+  "score": "constant-log-odds-shape Gaussian conditional-count score sensitivity, NOT the existing global EC Tealeaf model",
+  "scope": "finite unconditional/conditional local-marker toy count nulls, not real EC nulls, observed power, complete-gene FDR or either real replication endpoint",
+  "production_changes": false
+}

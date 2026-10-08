@@ -82,3 +82,25 @@ def test_collation_rejects_incomplete_or_changed_sources(tmp_path, problem):
     with pytest.raises(ValueError):
         collate(args)
     assert not args.public_dir.exists()
+
+
+def test_complete_library_union_collation_preserves_physical_labels_and_caveats(tmp_path):
+    args = argparse.Namespace(output_dir=tmp_path / "source", public_dir=tmp_path / "public", bound_root=tmp_path / "bounds")
+    fixture(args)
+    path = args.output_dir / "recipe.json"
+    recipe = json.loads(path.read_text())
+    recipe["library_union"] = True
+    for index in range(2):
+        recipe["bams"][index] = dict(library=f"lib{index}", runs=[], barcode_groups={})
+    path.write_text(json.dumps(recipe))
+    for index, packet in enumerate(recipe["bams"]):
+        receipt_path = args.output_dir / f"shard_{index}/manifest.json"
+        receipt = json.loads(receipt_path.read_text())
+        receipt.update(input=packet, recipe_sha256=file_hash(path))
+        receipt_path.write_text(json.dumps(receipt))
+    collate(args)
+    signatures = pd.read_csv(args.public_dir / "run_support_signatures.tsv.gz", sep="\t")
+    assert set(signatures.run) == {"lib0", "lib1"}
+    manifest = json.loads((args.public_dir / "manifest.json").read_text())
+    assert "never across libraries" in manifest["caveats"]
+    assert "may duplicate across alignment files" not in manifest["caveats"]

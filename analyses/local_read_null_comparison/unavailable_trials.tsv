@@ -1,0 +1,76 @@
+model	scenario	law	draw	exception	parameter_boundary	quadrature_error	n_subjects
+conditional	3	conditional working model	14		False	0.0011543439955978	11
+conditional	3	conditional working model	39		False	0.0001357512951614	12
+conditional	3	unconditional binomial	0		True	0.3366412342982041	11
+conditional	3	unconditional binomial	5		False	0.000108685856853	11
+conditional	3	unconditional binomial	26		False	0.0166781542042393	14
+conditional	3	unconditional binomial	49		False	0.0006300983392861	15
+unconditional	2	conditional working model	7		True	1.6161888538590574e-07	20
+unconditional	2	conditional working model	11		True	0.0003389803624145	20
+unconditional	2	conditional working model	14		True	1.2618653499885113e-07	20
+unconditional	2	conditional working model	24		True	7.273160917975474e-08	20
+unconditional	2	conditional working model	26		True	5.8209427379551926e-05	20
+unconditional	2	conditional working model	29		False	0.0023998366471005	20
+unconditional	2	conditional working model	32		True	0.0009031711795728	20
+unconditional	2	conditional working model	43		False	0.0012076908070355	20
+unconditional	2	conditional working model	45		True	0.0	20
+unconditional	2	conditional working model	46		True	6.093249822924918e-06	20
+unconditional	2	conditional working model	48		True	4.768440078350977e-07	20
+unconditional	2	conditional working model	50		True	3.119558243724896e-06	20
+unconditional	2	conditional working model	52		True	9.132008926826531e-09	20
+unconditional	2	conditional working model	56		True	1.3693579603568648e-10	20
+unconditional	2	conditional working model	61		True	3.953459781769197e-11	20
+unconditional	2	unconditional binomial	11		True	0.0002016269696696	20
+unconditional	2	unconditional binomial	14		True	8.904155805566916e-06	20
+unconditional	2	unconditional binomial	24		True	7.273160917975474e-08	20
+unconditional	2	unconditional binomial	26		True	5.470286913578093e-05	20
+unconditional	2	unconditional binomial	29		True	0.0028807478065431	20
+unconditional	2	unconditional binomial	30		False	0.0010221601160651	20
+unconditional	2	unconditional binomial	32		True	0.000912796475518	20
+unconditional	2	unconditional binomial	43		False	0.0012077934651131	20
+unconditional	2	unconditional binomial	45		True	1.1368683772161605e-13	20
+unconditional	2	unconditional binomial	46		True	1.5927906787283064e-05	20
+unconditional	2	unconditional binomial	48		True	9.94727514580518e-07	20
+unconditional	2	unconditional binomial	50		True	3.1205449033677723e-06	20
+unconditional	2	unconditional binomial	52		True	8.063892664722516e-09	20
+unconditional	2	unconditional binomial	56		True	1.3699263945454732e-10	20
+unconditional	2	unconditional binomial	61		True	6.201616997714153e-11	20
+unconditional	3	conditional working model	0		True	0.0011721862965146	20
+unconditional	3	conditional working model	1		True	0.0004642579716573	20
+unconditional	3	conditional working model	2		True	3.128718617517734e-09	20
+unconditional	3	conditional working model	4		True	0.0002427699657232	20
+unconditional	3	conditional working model	5		True	2.699531273719913e-05	20
+unconditional	3	conditional working model	6		True	4.475448889706968e-05	20
+unconditional	3	conditional working model	10		True	0.0003452513017805	20
+unconditional	3	conditional working model	13		True	5.1412712309684145e-08	20
+unconditional	3	conditional working model	14		True	7.399306215916113e-05	20
+unconditional	3	conditional working model	19		True	5.2063306270611065e-06	20
+unconditional	3	conditional working model	26		True	5.463817842610297e-09	20
+unconditional	3	conditional working model	30		True	1.6910917111090384e-11	20
+unconditional	3	conditional working model	31		True	8.441695325700493e-05	20
+unconditional	3	conditional working model	32		True	4.587944403056099e-05	20
+unconditional	3	conditional working model	43		True	1.2880162927331185e-06	20
+unconditional	3	conditional working model	49		True	5.424658809261018e-05	20
+unconditional	3	conditional working model	50		True	1.8081829296079377e-06	20
+unconditional	3	conditional working model	51		True	1.243023424990497e-05	20
+unconditional	3	conditional working model	61		False	0.0010540077326766	20
+unconditional	3	unconditional binomial	0		True	0.0029829963979466	20
+unconditional	3	unconditional binomial	1		True	0.0005825990901087	20
+unconditional	3	unconditional binomial	2		True	9.07020023532823e-08	20
+unconditional	3	unconditional binomial	4		True	4.484392798076442e-05	20
+unconditional	3	unconditional binomial	5		True	0.0001663290859141	20
+unconditional	3	unconditional binomial	6		True	4.475448889706968e-05	20
+unconditional	3	unconditional binomial	10		True	0.0002052238882299	20
+unconditional	3	unconditional binomial	13		True	1.9063469380853348e-06	20
+unconditional	3	unconditional binomial	19		True	1.4603914223698666e-05	20
+unconditional	3	unconditional binomial	25		True	3.76773527932528e-08	20
+unconditional	3	unconditional binomial	26		True	7.517992344219238e-07	20
+unconditional	3	unconditional binomial	30		True	3.268496584496461e-11	20
+unconditional	3	unconditional binomial	31		True	7.885238011340334e-05	20
+unconditional	3	unconditional binomial	32		True	6.802266878480623e-05	20
+unconditional	3	unconditional binomial	37		True	1.3190846743782458e-06	20
+unconditional	3	unconditional binomial	43		True	2.33198522892053e-06	20
+unconditional	3	unconditional binomial	44		False	0.0015195347576195	20
+unconditional	3	unconditional binomial	49		True	7.017290127464548e-05	20
+unconditional	3	unconditional binomial	50		True	3.503021855522093e-05	20
+unconditional	3	unconditional binomial	51		True	2.20038174347792e-07	20

@@ -141,7 +141,7 @@ def collate(args):
         table = pd.read_csv(shard / "support.tsv.gz", sep="\t")
         if table.duplicated(["feature_id", "subject", "cell_type", "primer", "signature"]).any() or not table.feature_id.isin([row["event_id"] for row in recipe["events"]]).all() or not table.signature.between(0, 31).all() or (table["count"] < 0).any():
             raise ValueError("unique nonnegative declared support signatures required")
-        table["run"] = Path(packet["path"]).parent.name
+        table["run"] = packet["library"] if "library" in packet else Path(packet["path"]).parent.name
         tables.append(table)
         receipts.append(receipt)
     signatures = pd.concat(tables, ignore_index=True)
@@ -193,7 +193,8 @@ def collate(args):
     signatures.to_csv(args.public_dir / "run_support_signatures.tsv.gz", sep="\t", index=False)
     features.to_csv(args.public_dir / "feature_definitions.tsv", sep="\t")
     pd.DataFrame(summaries).to_csv(args.public_dir / "summary.tsv", sep="\t", index=False)
-    manifest = dict(recipe_sha256=file_hash(recipe_path), shards=receipts, requested_tests=len(selected), diagnostics=len(diagnostics), selection=recipe["selection"], scope=recipe["scope"], caveats="Published coordinate envelopes and class-unanimous annotation markers do not define an exact read-path likelihood. One-base exon overlaps count. Unmodeled isoforms may contain markers. Keys may duplicate across alignment files and differ from original EC UMI deduplication. Pooled descriptive fractions combine primer-specific opportunities and are NOT RNA PSI or independent validation. Threshold five summarizes read support only, no events or subjects are removed from testing.", production_changes=False)
+    deduplication = "Exact UB keys are unioned within each physical library, never across libraries; this does not reproduce joint upstream UMI error correction." if recipe.get("library_union") else "Keys may duplicate across alignment files and differ from original EC UMI deduplication."
+    manifest = dict(recipe_sha256=file_hash(recipe_path), shards=receipts, requested_tests=len(selected), diagnostics=len(diagnostics), selection=recipe["selection"], scope=recipe["scope"], caveats="Published coordinate envelopes and class-unanimous annotation markers do not define an exact read-path likelihood. One-base exon overlaps count. Unmodeled isoforms may contain markers. " + deduplication + " Pooled descriptive fractions combine primer-specific opportunities and are NOT RNA PSI or independent validation. Threshold five summarizes read support only, no events or subjects are removed from testing.", production_changes=False)
     (args.public_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(pd.DataFrame(summaries).to_string(index=False), flush=True)
 
