@@ -1,0 +1,4 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc
+Hybrid, original_binary input control	40	31521	9	0.225	0.17345293416729907
+Hybrid, original_binary input control	100	31521	32	0.32	0.24665721211773856
+Hybrid, original_binary input control	200	31521	62	0.31	0.284472882331293

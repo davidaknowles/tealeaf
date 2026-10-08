@@ -28,6 +28,24 @@ def collapse_event_nuisance(data, path_index, baseline):
     return collapsed, np.asarray([0, 1] + ([-1] if len(groups) == 3 else [])), np.asarray([baseline[group].sum() for group in groups])
 
 
+def binary_event_mixture(path_index, *, inclusion=.5, event_mass=.7):
+    """Positive class-uniform T-mixture for an interior information diagnostic.
+
+    This is not an expression estimate or an inferential prior. Event mass
+    equals one when no outside transcripts exist, preserving the old audit.
+    """
+    paths = np.asarray(path_index, dtype=int)
+    if paths.ndim != 1 or not 0 < inclusion < 1 or not 0 < event_mass < 1 or not np.any(paths == 0) or not np.any(paths == 1) or np.any((paths < -1) | (paths > 1)):
+        raise ValueError("interior binary event proportions and both paths required")
+    mixture = np.zeros(len(paths))
+    mass = event_mass if np.any(paths < 0) else 1.
+    for group, value in ((0, mass * inclusion), (1, mass * (1 - inclusion)), (-1, 1 - mass)):
+        mask = paths == group
+        if mask.any():
+            mixture[mask] = value / mask.sum()
+    return mixture
+
+
 def binary_event_information(compatibility, path_index, *, inclusion=.5, event_mass=.7, total_per_type_primer=10000.):
     """Compare interior likelihood information with free versus fixed shares.
 
@@ -36,16 +54,10 @@ def binary_event_information(compatibility, path_index, *, inclusion=.5, event_m
     their scalar inclusion/exclusion ILR contrast after profiling nuisance.
     This diagnoses local identifiability, not calibration or biological power.
     """
-    paths = np.asarray(path_index, dtype=int)
-    if not 0 < inclusion < 1 or not 0 < event_mass < 1 or not np.isfinite(total_per_type_primer) or total_per_type_primer <= 0 or not np.any(paths == 0) or not np.any(paths == 1) or np.any((paths < -1) | (paths > 1)):
-        raise ValueError("interior binary event proportions, positive totals and both paths required")
-    mixture = np.zeros(len(paths))
-    mass = event_mass if np.any(paths < 0) else 1.
-    for group, value in ((0, mass * inclusion), (1, mass * (1 - inclusion)), (-1, 1 - mass)):
-        mask = paths == group
-        if mask.any():
-            mixture[mask] = value / mask.sum()
-    return mixture_event_information(compatibility, paths, mixture, np.full((len(compatibility), 2), total_per_type_primer))
+    if not np.isfinite(total_per_type_primer) or total_per_type_primer <= 0:
+        raise ValueError("positive finite primer totals required")
+    mixture = binary_event_mixture(path_index, inclusion=inclusion, event_mass=event_mass)
+    return mixture_event_information(compatibility, path_index, mixture, np.full((len(compatibility), 2), total_per_type_primer))
 
 
 def mixture_event_information(compatibility, path_index, mixture, primer_totals):

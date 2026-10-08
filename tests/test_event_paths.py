@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from tealeaf.sc.event_paths import binary_event_information, mixture_event_information
+from tealeaf.sc.event_paths import binary_event_information, binary_event_mixture, mixture_event_information
 
 
 def test_explicit_mixture_information_handles_unequal_depth_and_empty_primer():
@@ -34,3 +34,12 @@ def test_information_audit_requires_positive_primer_support_and_interior_paths()
         binary_event_information((np.zeros((2, 2)),), [0, 1])
     with pytest.raises(ValueError, match="interior"):
         binary_event_information((np.eye(2),), [0, 1], inclusion=0)
+
+
+def test_class_uniform_anchor_preserves_outside_and_no_outside_semantics():
+    np.testing.assert_allclose(binary_event_mixture([0, 0, 1, -1], inclusion=.2), [.07, .07, .56, .3])
+    np.testing.assert_allclose(binary_event_mixture([0, 0, 1], inclusion=.2), [.1, .1, .8])
+    with pytest.raises(ValueError, match="both paths"):
+        binary_event_mixture([0, 0, -1])
+    with pytest.raises(ValueError, match="both paths"):
+        binary_event_mixture([[0, 1]])

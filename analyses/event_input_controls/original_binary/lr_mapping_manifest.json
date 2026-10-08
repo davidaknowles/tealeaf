@@ -1,0 +1,13 @@
+{
+  "input_tests": 401047,
+  "mapped_tests": 123866,
+  "top_per_contrast": 0,
+  "minimum_pooled_depth": 20.0,
+  "minimum_replicate_depth": 10.0,
+  "tests": [
+    "analyses/event_input_controls/original_binary/full_data_tests.tsv.gz"
+  ],
+  "events": ".cache/suppa2_statistics/all_event_catalog/event_catalog.tsv.gz",
+  "selection": "all converged tests",
+  "source_mapping": "at least one source annotated transcript in each event class"
+}
