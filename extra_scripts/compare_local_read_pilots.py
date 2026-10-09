@@ -10,6 +10,7 @@ import pandas as pd
 
 from extra_scripts.assess_library_read_model_pilot import validate_family
 from extra_scripts.audit_event_local_read_support import file_hash
+from tealeaf.sc.local_read_diagnostics import local_read_failure_reason as failure_reason
 
 
 KEYS = ['fold', 'test_id', 'model', 'variant']
@@ -28,19 +29,6 @@ def matched_pilots(old, new, cases, versions=('v1', 'v2')):
         if set(observed) != {f'local_read_binomial_random_intercept_slope_{version}'}:
             raise ValueError('explicit original and updated unconditional model versions required')
     return table
-
-
-def failure_reason(row):
-    if row.converged:
-        return 'usable'
-    if pd.notna(row.error) and str(row.error):
-        return str(row.error)
-    tolerance = 1e-4 if row.model == 'conditional' else 1e-3
-    if getattr(row, 'quadrature_error', 0.) > tolerance:
-        return 'doubled-order quadrature mismatch'
-    if getattr(row, 'parameter_boundary', False) is True or str(getattr(row, 'parameter_boundary', '')).lower() == 'true':
-        return 'nonvalidated parameter boundary'
-    return 'other numerical unavailability'
 
 
 def main():

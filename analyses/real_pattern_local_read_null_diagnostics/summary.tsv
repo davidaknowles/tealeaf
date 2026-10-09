@@ -1,0 +1,84 @@
+cohort	law	original_design_status	scope	requested	parents	usable	native_05	native_01	F_05	F_01	design_status	failure_reason
+fold0	biological	local read evidence with both marker classes required	original design	196	49	0	0	0	0	0	NA	NA
+fold0	biological	primer and cell-type means are confounded	original design	4	1	0	0	0	0	0	NA	NA
+fold0	biological	ready	original design	204	51	186	10	1	1	0	NA	NA
+fold0	biological	too few paired marker subjects	original design	108	27	0	0	0	0	0	NA	NA
+fold0	strict	local read evidence with both marker classes required	original design	196	49	0	0	0	0	0	NA	NA
+fold0	strict	primer and cell-type means are confounded	original design	4	1	0	0	0	0	0	NA	NA
+fold0	strict	ready	original design	204	51	189	7	0	0	0	NA	NA
+fold0	strict	too few paired marker subjects	original design	108	27	0	0	0	0	0	NA	NA
+fold1	biological	local read evidence with both marker classes required	original design	192	48	0	0	0	0	0	NA	NA
+fold1	biological	primer and cell-type means are confounded	original design	12	3	0	0	0	0	0	NA	NA
+fold1	biological	ready	original design	184	46	170	13	1	2	0	NA	NA
+fold1	biological	too few paired marker subjects	original design	124	31	0	0	0	0	0	NA	NA
+fold1	strict	local read evidence with both marker classes required	original design	192	48	0	0	0	0	0	NA	NA
+fold1	strict	primer and cell-type means are confounded	original design	12	3	0	0	0	0	0	NA	NA
+fold1	strict	ready	original design	184	46	175	8	0	2	0	NA	NA
+fold1	strict	too few paired marker subjects	original design	124	31	0	0	0	0	0	NA	NA
+full	biological	local read evidence with both marker classes required	original design	192	48	0	0	0	0	0	NA	NA
+full	biological	primer and cell-type means are confounded	original design	8	2	0	0	0	0	0	NA	NA
+full	biological	ready	original design	204	51	174	8	2	3	1	NA	NA
+full	biological	too few paired marker subjects	original design	108	27	0	0	0	0	0	NA	NA
+full	strict	local read evidence with both marker classes required	original design	192	48	0	0	0	0	0	NA	NA
+full	strict	primer and cell-type means are confounded	original design	8	2	0	0	0	0	0	NA	NA
+full	strict	ready	original design	204	51	184	7	3	3	1	NA	NA
+full	strict	too few paired marker subjects	original design	108	27	0	0	0	0	0	NA	NA
+fold0	biological	NA	drawn design	204	57	0	0	0	0	0	local read evidence with both marker classes required	NA
+fold0	biological	NA	drawn design	5	2	0	0	0	0	0	primer and cell-type means are confounded	NA
+fold0	biological	NA	drawn design	193	51	186	10	1	1	0	ready	NA
+fold0	biological	NA	drawn design	110	32	0	0	0	0	0	too few paired marker subjects	NA
+fold0	strict	NA	drawn design	201	53	0	0	0	0	0	local read evidence with both marker classes required	NA
+fold0	strict	NA	drawn design	4	1	0	0	0	0	0	primer and cell-type means are confounded	NA
+fold0	strict	NA	drawn design	198	51	189	7	0	0	0	ready	NA
+fold0	strict	NA	drawn design	109	30	0	0	0	0	0	too few paired marker subjects	NA
+fold1	biological	NA	drawn design	204	58	0	0	0	0	0	local read evidence with both marker classes required	NA
+fold1	biological	NA	drawn design	12	3	0	0	0	0	0	primer and cell-type means are confounded	NA
+fold1	biological	NA	drawn design	177	46	170	13	1	2	0	ready	NA
+fold1	biological	NA	drawn design	119	33	0	0	0	0	0	too few paired marker subjects	NA
+fold1	strict	NA	drawn design	207	59	0	0	0	0	0	local read evidence with both marker classes required	NA
+fold1	strict	NA	drawn design	12	3	0	0	0	0	0	primer and cell-type means are confounded	NA
+fold1	strict	NA	drawn design	181	46	175	8	0	2	0	ready	NA
+fold1	strict	NA	drawn design	112	31	0	0	0	0	0	too few paired marker subjects	NA
+full	biological	NA	drawn design	211	60	0	0	0	0	0	local read evidence with both marker classes required	NA
+full	biological	NA	drawn design	7	2	0	0	0	0	0	primer and cell-type means are confounded	NA
+full	biological	NA	drawn design	191	51	174	8	2	3	1	ready	NA
+full	biological	NA	drawn design	103	29	0	0	0	0	0	too few paired marker subjects	NA
+full	strict	NA	drawn design	206	58	0	0	0	0	0	local read evidence with both marker classes required	NA
+full	strict	NA	drawn design	7	2	0	0	0	0	0	primer and cell-type means are confounded	NA
+full	strict	NA	drawn design	195	51	184	7	3	3	1	ready	NA
+full	strict	NA	drawn design	104	28	0	0	0	0	0	too few paired marker subjects	NA
+fold0	biological	NA	availability cause	6	5	0	0	0	0	0	NA	doubled-order quadrature mismatch
+fold0	biological	NA	availability cause	110	32	0	0	0	0	0	NA	four subjects with local reads in both types required
+fold0	biological	NA	availability cause	204	57	0	0	0	0	0	NA	local read evidence with both marker classes required
+fold0	biological	NA	availability cause	1	1	0	0	0	0	0	NA	nonvalidated parameter boundary
+fold0	biological	NA	availability cause	5	2	0	0	0	0	0	NA	primer and cell-type means are confounded
+fold0	biological	NA	availability cause	186	51	186	10	1	1	0	NA	usable
+fold0	strict	NA	availability cause	9	6	0	0	0	0	0	NA	doubled-order quadrature mismatch
+fold0	strict	NA	availability cause	109	30	0	0	0	0	0	NA	four subjects with local reads in both types required
+fold0	strict	NA	availability cause	201	53	0	0	0	0	0	NA	local read evidence with both marker classes required
+fold0	strict	NA	availability cause	4	1	0	0	0	0	0	NA	primer and cell-type means are confounded
+fold0	strict	NA	availability cause	189	51	189	7	0	0	0	NA	usable
+fold1	biological	NA	availability cause	6	5	0	0	0	0	0	NA	doubled-order quadrature mismatch
+fold1	biological	NA	availability cause	119	33	0	0	0	0	0	NA	four subjects with local reads in both types required
+fold1	biological	NA	availability cause	204	58	0	0	0	0	0	NA	local read evidence with both marker classes required
+fold1	biological	NA	availability cause	1	1	0	0	0	0	0	NA	nonvalidated parameter boundary
+fold1	biological	NA	availability cause	12	3	0	0	0	0	0	NA	primer and cell-type means are confounded
+fold1	biological	NA	availability cause	170	45	170	13	1	2	0	NA	usable
+fold1	strict	NA	availability cause	4	3	0	0	0	0	0	NA	doubled-order quadrature mismatch
+fold1	strict	NA	availability cause	112	31	0	0	0	0	0	NA	four subjects with local reads in both types required
+fold1	strict	NA	availability cause	207	59	0	0	0	0	0	NA	local read evidence with both marker classes required
+fold1	strict	NA	availability cause	2	2	0	0	0	0	0	NA	nonvalidated parameter boundary
+fold1	strict	NA	availability cause	12	3	0	0	0	0	0	NA	primer and cell-type means are confounded
+fold1	strict	NA	availability cause	175	46	175	8	0	2	0	NA	usable
+full	biological	NA	availability cause	14	7	0	0	0	0	0	NA	doubled-order quadrature mismatch
+full	biological	NA	availability cause	103	29	0	0	0	0	0	NA	four subjects with local reads in both types required
+full	biological	NA	availability cause	211	60	0	0	0	0	0	NA	local read evidence with both marker classes required
+full	biological	NA	availability cause	3	3	0	0	0	0	0	NA	nonvalidated parameter boundary
+full	biological	NA	availability cause	7	2	0	0	0	0	0	NA	primer and cell-type means are confounded
+full	biological	NA	availability cause	174	49	174	8	2	3	1	NA	usable
+full	strict	NA	availability cause	10	4	0	0	0	0	0	NA	doubled-order quadrature mismatch
+full	strict	NA	availability cause	104	28	0	0	0	0	0	NA	four subjects with local reads in both types required
+full	strict	NA	availability cause	206	58	0	0	0	0	0	NA	local read evidence with both marker classes required
+full	strict	NA	availability cause	1	1	0	0	0	0	0	NA	nonvalidated parameter boundary
+full	strict	NA	availability cause	7	2	0	0	0	0	0	NA	primer and cell-type means are confounded
+full	strict	NA	availability cause	184	49	184	7	3	3	1	NA	usable

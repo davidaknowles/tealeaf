@@ -1,0 +1,217 @@
+cohort	law	scope	tail	threshold	requested	usable	n_parents	rejected	rejection_rate	ci_low	ci_high	subject_stratum	coverage_quartile
+fold0	biological	all requested	p_value	0.05	512	186	128	10	0.01953125	0.009404755122447013	0.03562463618167694		
+fold0	biological	all requested	p_value	0.01	512	186	128	1	0.001953125	4.944762114539532e-05	0.010833656944754522		
+fold0	biological	all requested	F_reference_p_value	0.05	512	186	128	1	0.001953125	4.944762114539532e-05	0.010833656944754522		
+fold0	biological	all requested	F_reference_p_value	0.01	512	186	128	0	0.0	0.0	0.007178950026259453		
+fold0	strict	all requested	p_value	0.05	512	189	128	7	0.013671875	0.005513999981316541	0.027965446339922765		
+fold0	strict	all requested	p_value	0.01	512	189	128	0	0.0	0.0	0.007178950026259453		
+fold0	strict	all requested	F_reference_p_value	0.05	512	189	128	0	0.0	0.0	0.007178950026259453		
+fold0	strict	all requested	F_reference_p_value	0.01	512	189	128	0	0.0	0.0	0.007178950026259453		
+fold1	biological	all requested	p_value	0.05	512	170	128	13	0.025390625	0.013587156828088613	0.043027396551576017		
+fold1	biological	all requested	p_value	0.01	512	170	128	1	0.001953125	4.944762114539532e-05	0.010833656944754522		
+fold1	biological	all requested	F_reference_p_value	0.05	512	170	128	2	0.00390625	0.00047341557425310056	0.014038905114244599		
+fold1	biological	all requested	F_reference_p_value	0.01	512	170	128	0	0.0	0.0	0.007178950026259453		
+fold1	strict	all requested	p_value	0.05	512	175	128	8	0.015625	0.006769276942972375	0.030554414950524522		
+fold1	strict	all requested	p_value	0.01	512	175	128	0	0.0	0.0	0.007178950026259453		
+fold1	strict	all requested	F_reference_p_value	0.05	512	175	128	2	0.00390625	0.00047341557425310056	0.014038905114244599		
+fold1	strict	all requested	F_reference_p_value	0.01	512	175	128	0	0.0	0.0	0.007178950026259453		
+full	biological	all requested	p_value	0.05	512	174	128	8	0.015625	0.006769276942972375	0.030554414950524522		
+full	biological	all requested	p_value	0.01	512	174	128	2	0.00390625	0.00047341557425310056	0.014038905114244599		
+full	biological	all requested	F_reference_p_value	0.05	512	174	128	3	0.005859375	0.0012099778257548667	0.01702737511683889		
+full	biological	all requested	F_reference_p_value	0.01	512	174	128	1	0.001953125	4.944762114539532e-05	0.010833656944754522		
+full	strict	all requested	p_value	0.05	512	184	128	7	0.013671875	0.005513999981316541	0.027965446339922765		
+full	strict	all requested	p_value	0.01	512	184	128	3	0.005859375	0.0012099778257548667	0.01702737511683889		
+full	strict	all requested	F_reference_p_value	0.05	512	184	128	3	0.005859375	0.0012099778257548667	0.01702737511683889		
+full	strict	all requested	F_reference_p_value	0.01	512	184	128	1	0.001953125	4.944762114539532e-05	0.010833656944754522		
+fold0	biological	subject/coverage strata	p_value	0.05	64	0	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+fold0	biological	subject/coverage strata	p_value	0.01	64	0	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+fold0	biological	subject/coverage strata	F_reference_p_value	0.05	64	0	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+fold0	biological	subject/coverage strata	F_reference_p_value	0.01	64	0	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+fold0	biological	subject/coverage strata	p_value	0.05	64	18	16	0	0.0	0.0	0.05600908938663657	4-7	1.0
+fold0	biological	subject/coverage strata	p_value	0.01	64	18	16	0	0.0	0.0	0.05600908938663657	4-7	1.0
+fold0	biological	subject/coverage strata	F_reference_p_value	0.05	64	18	16	0	0.0	0.0	0.05600908938663657	4-7	1.0
+fold0	biological	subject/coverage strata	F_reference_p_value	0.01	64	18	16	0	0.0	0.0	0.05600908938663657	4-7	1.0
+fold0	biological	subject/coverage strata	p_value	0.05	64	8	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+fold0	biological	subject/coverage strata	p_value	0.01	64	8	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+fold0	biological	subject/coverage strata	F_reference_p_value	0.05	64	8	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+fold0	biological	subject/coverage strata	F_reference_p_value	0.01	64	8	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+fold0	biological	subject/coverage strata	p_value	0.05	64	34	16	3	0.046875	0.009773074954456546	0.13093573724140584	4-7	3.0
+fold0	biological	subject/coverage strata	p_value	0.01	64	34	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+fold0	biological	subject/coverage strata	F_reference_p_value	0.05	64	34	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+fold0	biological	subject/coverage strata	F_reference_p_value	0.01	64	34	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+fold0	biological	subject/coverage strata	p_value	0.05	64	28	16	2	0.03125	0.003807181381872369	0.10837052222451712	8+	0.0
+fold0	biological	subject/coverage strata	p_value	0.01	64	28	16	0	0.0	0.0	0.05600908938663657	8+	0.0
+fold0	biological	subject/coverage strata	F_reference_p_value	0.05	64	28	16	1	0.015625	0.0003955125140506643	0.08401032643435365	8+	0.0
+fold0	biological	subject/coverage strata	F_reference_p_value	0.01	64	28	16	0	0.0	0.0	0.05600908938663657	8+	0.0
+fold0	biological	subject/coverage strata	p_value	0.05	64	15	16	0	0.0	0.0	0.05600908938663657	8+	1.0
+fold0	biological	subject/coverage strata	p_value	0.01	64	15	16	0	0.0	0.0	0.05600908938663657	8+	1.0
+fold0	biological	subject/coverage strata	F_reference_p_value	0.05	64	15	16	0	0.0	0.0	0.05600908938663657	8+	1.0
+fold0	biological	subject/coverage strata	F_reference_p_value	0.01	64	15	16	0	0.0	0.0	0.05600908938663657	8+	1.0
+fold0	biological	subject/coverage strata	p_value	0.05	64	40	16	2	0.03125	0.003807181381872369	0.10837052222451712	8+	2.0
+fold0	biological	subject/coverage strata	p_value	0.01	64	40	16	0	0.0	0.0	0.05600908938663657	8+	2.0
+fold0	biological	subject/coverage strata	F_reference_p_value	0.05	64	40	16	0	0.0	0.0	0.05600908938663657	8+	2.0
+fold0	biological	subject/coverage strata	F_reference_p_value	0.01	64	40	16	0	0.0	0.0	0.05600908938663657	8+	2.0
+fold0	biological	subject/coverage strata	p_value	0.05	64	43	16	3	0.046875	0.009773074954456546	0.13093573724140584	8+	3.0
+fold0	biological	subject/coverage strata	p_value	0.01	64	43	16	1	0.015625	0.0003955125140506643	0.08401032643435365	8+	3.0
+fold0	biological	subject/coverage strata	F_reference_p_value	0.05	64	43	16	0	0.0	0.0	0.05600908938663657	8+	3.0
+fold0	biological	subject/coverage strata	F_reference_p_value	0.01	64	43	16	0	0.0	0.0	0.05600908938663657	8+	3.0
+fold0	strict	subject/coverage strata	p_value	0.05	64	0	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+fold0	strict	subject/coverage strata	p_value	0.01	64	0	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+fold0	strict	subject/coverage strata	F_reference_p_value	0.05	64	0	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+fold0	strict	subject/coverage strata	F_reference_p_value	0.01	64	0	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+fold0	strict	subject/coverage strata	p_value	0.05	64	20	16	2	0.03125	0.003807181381872369	0.10837052222451712	4-7	1.0
+fold0	strict	subject/coverage strata	p_value	0.01	64	20	16	0	0.0	0.0	0.05600908938663657	4-7	1.0
+fold0	strict	subject/coverage strata	F_reference_p_value	0.05	64	20	16	0	0.0	0.0	0.05600908938663657	4-7	1.0
+fold0	strict	subject/coverage strata	F_reference_p_value	0.01	64	20	16	0	0.0	0.0	0.05600908938663657	4-7	1.0
+fold0	strict	subject/coverage strata	p_value	0.05	64	8	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+fold0	strict	subject/coverage strata	p_value	0.01	64	8	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+fold0	strict	subject/coverage strata	F_reference_p_value	0.05	64	8	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+fold0	strict	subject/coverage strata	F_reference_p_value	0.01	64	8	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+fold0	strict	subject/coverage strata	p_value	0.05	64	35	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+fold0	strict	subject/coverage strata	p_value	0.01	64	35	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+fold0	strict	subject/coverage strata	F_reference_p_value	0.05	64	35	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+fold0	strict	subject/coverage strata	F_reference_p_value	0.01	64	35	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+fold0	strict	subject/coverage strata	p_value	0.05	64	26	16	1	0.015625	0.0003955125140506643	0.08401032643435365	8+	0.0
+fold0	strict	subject/coverage strata	p_value	0.01	64	26	16	0	0.0	0.0	0.05600908938663657	8+	0.0
+fold0	strict	subject/coverage strata	F_reference_p_value	0.05	64	26	16	0	0.0	0.0	0.05600908938663657	8+	0.0
+fold0	strict	subject/coverage strata	F_reference_p_value	0.01	64	26	16	0	0.0	0.0	0.05600908938663657	8+	0.0
+fold0	strict	subject/coverage strata	p_value	0.05	64	15	16	0	0.0	0.0	0.05600908938663657	8+	1.0
+fold0	strict	subject/coverage strata	p_value	0.01	64	15	16	0	0.0	0.0	0.05600908938663657	8+	1.0
+fold0	strict	subject/coverage strata	F_reference_p_value	0.05	64	15	16	0	0.0	0.0	0.05600908938663657	8+	1.0
+fold0	strict	subject/coverage strata	F_reference_p_value	0.01	64	15	16	0	0.0	0.0	0.05600908938663657	8+	1.0
+fold0	strict	subject/coverage strata	p_value	0.05	64	40	16	2	0.03125	0.003807181381872369	0.10837052222451712	8+	2.0
+fold0	strict	subject/coverage strata	p_value	0.01	64	40	16	0	0.0	0.0	0.05600908938663657	8+	2.0
+fold0	strict	subject/coverage strata	F_reference_p_value	0.05	64	40	16	0	0.0	0.0	0.05600908938663657	8+	2.0
+fold0	strict	subject/coverage strata	F_reference_p_value	0.01	64	40	16	0	0.0	0.0	0.05600908938663657	8+	2.0
+fold0	strict	subject/coverage strata	p_value	0.05	64	45	16	2	0.03125	0.003807181381872369	0.10837052222451712	8+	3.0
+fold0	strict	subject/coverage strata	p_value	0.01	64	45	16	0	0.0	0.0	0.05600908938663657	8+	3.0
+fold0	strict	subject/coverage strata	F_reference_p_value	0.05	64	45	16	0	0.0	0.0	0.05600908938663657	8+	3.0
+fold0	strict	subject/coverage strata	F_reference_p_value	0.01	64	45	16	0	0.0	0.0	0.05600908938663657	8+	3.0
+fold1	biological	subject/coverage strata	p_value	0.05	64	10	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+fold1	biological	subject/coverage strata	p_value	0.01	64	10	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+fold1	biological	subject/coverage strata	F_reference_p_value	0.05	64	10	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+fold1	biological	subject/coverage strata	F_reference_p_value	0.01	64	10	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+fold1	biological	subject/coverage strata	p_value	0.05	64	4	16	1	0.015625	0.0003955125140506643	0.08401032643435365	4-7	1.0
+fold1	biological	subject/coverage strata	p_value	0.01	64	4	16	1	0.015625	0.0003955125140506643	0.08401032643435365	4-7	1.0
+fold1	biological	subject/coverage strata	F_reference_p_value	0.05	64	4	16	1	0.015625	0.0003955125140506643	0.08401032643435365	4-7	1.0
+fold1	biological	subject/coverage strata	F_reference_p_value	0.01	64	4	16	0	0.0	0.0	0.05600908938663657	4-7	1.0
+fold1	biological	subject/coverage strata	p_value	0.05	64	12	16	2	0.03125	0.003807181381872369	0.10837052222451712	4-7	2.0
+fold1	biological	subject/coverage strata	p_value	0.01	64	12	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+fold1	biological	subject/coverage strata	F_reference_p_value	0.05	64	12	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+fold1	biological	subject/coverage strata	F_reference_p_value	0.01	64	12	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+fold1	biological	subject/coverage strata	p_value	0.05	64	28	16	2	0.03125	0.003807181381872369	0.10837052222451712	4-7	3.0
+fold1	biological	subject/coverage strata	p_value	0.01	64	28	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+fold1	biological	subject/coverage strata	F_reference_p_value	0.05	64	28	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+fold1	biological	subject/coverage strata	F_reference_p_value	0.01	64	28	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+fold1	biological	subject/coverage strata	p_value	0.05	64	23	16	1	0.015625	0.0003955125140506643	0.08401032643435365	8+	0.0
+fold1	biological	subject/coverage strata	p_value	0.01	64	23	16	0	0.0	0.0	0.05600908938663657	8+	0.0
+fold1	biological	subject/coverage strata	F_reference_p_value	0.05	64	23	16	0	0.0	0.0	0.05600908938663657	8+	0.0
+fold1	biological	subject/coverage strata	F_reference_p_value	0.01	64	23	16	0	0.0	0.0	0.05600908938663657	8+	0.0
+fold1	biological	subject/coverage strata	p_value	0.05	64	23	16	1	0.015625	0.0003955125140506643	0.08401032643435365	8+	1.0
+fold1	biological	subject/coverage strata	p_value	0.01	64	23	16	0	0.0	0.0	0.05600908938663657	8+	1.0
+fold1	biological	subject/coverage strata	F_reference_p_value	0.05	64	23	16	0	0.0	0.0	0.05600908938663657	8+	1.0
+fold1	biological	subject/coverage strata	F_reference_p_value	0.01	64	23	16	0	0.0	0.0	0.05600908938663657	8+	1.0
+fold1	biological	subject/coverage strata	p_value	0.05	64	36	16	2	0.03125	0.003807181381872369	0.10837052222451712	8+	2.0
+fold1	biological	subject/coverage strata	p_value	0.01	64	36	16	0	0.0	0.0	0.05600908938663657	8+	2.0
+fold1	biological	subject/coverage strata	F_reference_p_value	0.05	64	36	16	0	0.0	0.0	0.05600908938663657	8+	2.0
+fold1	biological	subject/coverage strata	F_reference_p_value	0.01	64	36	16	0	0.0	0.0	0.05600908938663657	8+	2.0
+fold1	biological	subject/coverage strata	p_value	0.05	64	34	16	4	0.0625	0.01729002738105528	0.15236347342269677	8+	3.0
+fold1	biological	subject/coverage strata	p_value	0.01	64	34	16	0	0.0	0.0	0.05600908938663657	8+	3.0
+fold1	biological	subject/coverage strata	F_reference_p_value	0.05	64	34	16	1	0.015625	0.0003955125140506643	0.08401032643435365	8+	3.0
+fold1	biological	subject/coverage strata	F_reference_p_value	0.01	64	34	16	0	0.0	0.0	0.05600908938663657	8+	3.0
+fold1	strict	subject/coverage strata	p_value	0.05	64	10	16	1	0.015625	0.0003955125140506643	0.08401032643435365	4-7	0.0
+fold1	strict	subject/coverage strata	p_value	0.01	64	10	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+fold1	strict	subject/coverage strata	F_reference_p_value	0.05	64	10	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+fold1	strict	subject/coverage strata	F_reference_p_value	0.01	64	10	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+fold1	strict	subject/coverage strata	p_value	0.05	64	4	16	1	0.015625	0.0003955125140506643	0.08401032643435365	4-7	1.0
+fold1	strict	subject/coverage strata	p_value	0.01	64	4	16	0	0.0	0.0	0.05600908938663657	4-7	1.0
+fold1	strict	subject/coverage strata	F_reference_p_value	0.05	64	4	16	0	0.0	0.0	0.05600908938663657	4-7	1.0
+fold1	strict	subject/coverage strata	F_reference_p_value	0.01	64	4	16	0	0.0	0.0	0.05600908938663657	4-7	1.0
+fold1	strict	subject/coverage strata	p_value	0.05	64	11	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+fold1	strict	subject/coverage strata	p_value	0.01	64	11	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+fold1	strict	subject/coverage strata	F_reference_p_value	0.05	64	11	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+fold1	strict	subject/coverage strata	F_reference_p_value	0.01	64	11	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+fold1	strict	subject/coverage strata	p_value	0.05	64	28	16	3	0.046875	0.009773074954456546	0.13093573724140584	4-7	3.0
+fold1	strict	subject/coverage strata	p_value	0.01	64	28	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+fold1	strict	subject/coverage strata	F_reference_p_value	0.05	64	28	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+fold1	strict	subject/coverage strata	F_reference_p_value	0.01	64	28	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+fold1	strict	subject/coverage strata	p_value	0.05	64	24	16	0	0.0	0.0	0.05600908938663657	8+	0.0
+fold1	strict	subject/coverage strata	p_value	0.01	64	24	16	0	0.0	0.0	0.05600908938663657	8+	0.0
+fold1	strict	subject/coverage strata	F_reference_p_value	0.05	64	24	16	0	0.0	0.0	0.05600908938663657	8+	0.0
+fold1	strict	subject/coverage strata	F_reference_p_value	0.01	64	24	16	0	0.0	0.0	0.05600908938663657	8+	0.0
+fold1	strict	subject/coverage strata	p_value	0.05	64	24	16	2	0.03125	0.003807181381872369	0.10837052222451712	8+	1.0
+fold1	strict	subject/coverage strata	p_value	0.01	64	24	16	0	0.0	0.0	0.05600908938663657	8+	1.0
+fold1	strict	subject/coverage strata	F_reference_p_value	0.05	64	24	16	1	0.015625	0.0003955125140506643	0.08401032643435365	8+	1.0
+fold1	strict	subject/coverage strata	F_reference_p_value	0.01	64	24	16	0	0.0	0.0	0.05600908938663657	8+	1.0
+fold1	strict	subject/coverage strata	p_value	0.05	64	40	16	1	0.015625	0.0003955125140506643	0.08401032643435365	8+	2.0
+fold1	strict	subject/coverage strata	p_value	0.01	64	40	16	0	0.0	0.0	0.05600908938663657	8+	2.0
+fold1	strict	subject/coverage strata	F_reference_p_value	0.05	64	40	16	1	0.015625	0.0003955125140506643	0.08401032643435365	8+	2.0
+fold1	strict	subject/coverage strata	F_reference_p_value	0.01	64	40	16	0	0.0	0.0	0.05600908938663657	8+	2.0
+fold1	strict	subject/coverage strata	p_value	0.05	64	34	16	0	0.0	0.0	0.05600908938663657	8+	3.0
+fold1	strict	subject/coverage strata	p_value	0.01	64	34	16	0	0.0	0.0	0.05600908938663657	8+	3.0
+fold1	strict	subject/coverage strata	F_reference_p_value	0.05	64	34	16	0	0.0	0.0	0.05600908938663657	8+	3.0
+fold1	strict	subject/coverage strata	F_reference_p_value	0.01	64	34	16	0	0.0	0.0	0.05600908938663657	8+	3.0
+full	biological	subject/coverage strata	p_value	0.05	64	19	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+full	biological	subject/coverage strata	p_value	0.01	64	19	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+full	biological	subject/coverage strata	F_reference_p_value	0.05	64	19	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+full	biological	subject/coverage strata	F_reference_p_value	0.01	64	19	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+full	biological	subject/coverage strata	p_value	0.05	64	11	16	0	0.0	0.0	0.05600908938663657	4-7	1.0
+full	biological	subject/coverage strata	p_value	0.01	64	11	16	0	0.0	0.0	0.05600908938663657	4-7	1.0
+full	biological	subject/coverage strata	F_reference_p_value	0.05	64	11	16	0	0.0	0.0	0.05600908938663657	4-7	1.0
+full	biological	subject/coverage strata	F_reference_p_value	0.01	64	11	16	0	0.0	0.0	0.05600908938663657	4-7	1.0
+full	biological	subject/coverage strata	p_value	0.05	64	12	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+full	biological	subject/coverage strata	p_value	0.01	64	12	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+full	biological	subject/coverage strata	F_reference_p_value	0.05	64	12	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+full	biological	subject/coverage strata	F_reference_p_value	0.01	64	12	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+full	biological	subject/coverage strata	p_value	0.05	64	17	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+full	biological	subject/coverage strata	p_value	0.01	64	17	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+full	biological	subject/coverage strata	F_reference_p_value	0.05	64	17	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+full	biological	subject/coverage strata	F_reference_p_value	0.01	64	17	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+full	biological	subject/coverage strata	p_value	0.05	64	34	16	1	0.015625	0.0003955125140506643	0.08401032643435365	8+	0.0
+full	biological	subject/coverage strata	p_value	0.01	64	34	16	0	0.0	0.0	0.05600908938663657	8+	0.0
+full	biological	subject/coverage strata	F_reference_p_value	0.05	64	34	16	0	0.0	0.0	0.05600908938663657	8+	0.0
+full	biological	subject/coverage strata	F_reference_p_value	0.01	64	34	16	0	0.0	0.0	0.05600908938663657	8+	0.0
+full	biological	subject/coverage strata	p_value	0.05	64	21	16	2	0.03125	0.003807181381872369	0.10837052222451712	8+	1.0
+full	biological	subject/coverage strata	p_value	0.01	64	21	16	1	0.015625	0.0003955125140506643	0.08401032643435365	8+	1.0
+full	biological	subject/coverage strata	F_reference_p_value	0.05	64	21	16	1	0.015625	0.0003955125140506643	0.08401032643435365	8+	1.0
+full	biological	subject/coverage strata	F_reference_p_value	0.01	64	21	16	1	0.015625	0.0003955125140506643	0.08401032643435365	8+	1.0
+full	biological	subject/coverage strata	p_value	0.05	64	19	16	0	0.0	0.0	0.05600908938663657	8+	2.0
+full	biological	subject/coverage strata	p_value	0.01	64	19	16	0	0.0	0.0	0.05600908938663657	8+	2.0
+full	biological	subject/coverage strata	F_reference_p_value	0.05	64	19	16	0	0.0	0.0	0.05600908938663657	8+	2.0
+full	biological	subject/coverage strata	F_reference_p_value	0.01	64	19	16	0	0.0	0.0	0.05600908938663657	8+	2.0
+full	biological	subject/coverage strata	p_value	0.05	64	41	16	5	0.078125	0.02585384016796814	0.1729783290042076	8+	3.0
+full	biological	subject/coverage strata	p_value	0.01	64	41	16	1	0.015625	0.0003955125140506643	0.08401032643435365	8+	3.0
+full	biological	subject/coverage strata	F_reference_p_value	0.05	64	41	16	2	0.03125	0.003807181381872369	0.10837052222451712	8+	3.0
+full	biological	subject/coverage strata	F_reference_p_value	0.01	64	41	16	0	0.0	0.0	0.05600908938663657	8+	3.0
+full	strict	subject/coverage strata	p_value	0.05	64	18	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+full	strict	subject/coverage strata	p_value	0.01	64	18	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+full	strict	subject/coverage strata	F_reference_p_value	0.05	64	18	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+full	strict	subject/coverage strata	F_reference_p_value	0.01	64	18	16	0	0.0	0.0	0.05600908938663657	4-7	0.0
+full	strict	subject/coverage strata	p_value	0.05	64	12	16	0	0.0	0.0	0.05600908938663657	4-7	1.0
+full	strict	subject/coverage strata	p_value	0.01	64	12	16	0	0.0	0.0	0.05600908938663657	4-7	1.0
+full	strict	subject/coverage strata	F_reference_p_value	0.05	64	12	16	0	0.0	0.0	0.05600908938663657	4-7	1.0
+full	strict	subject/coverage strata	F_reference_p_value	0.01	64	12	16	0	0.0	0.0	0.05600908938663657	4-7	1.0
+full	strict	subject/coverage strata	p_value	0.05	64	12	16	1	0.015625	0.0003955125140506643	0.08401032643435365	4-7	2.0
+full	strict	subject/coverage strata	p_value	0.01	64	12	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+full	strict	subject/coverage strata	F_reference_p_value	0.05	64	12	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+full	strict	subject/coverage strata	F_reference_p_value	0.01	64	12	16	0	0.0	0.0	0.05600908938663657	4-7	2.0
+full	strict	subject/coverage strata	p_value	0.05	64	24	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+full	strict	subject/coverage strata	p_value	0.01	64	24	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+full	strict	subject/coverage strata	F_reference_p_value	0.05	64	24	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+full	strict	subject/coverage strata	F_reference_p_value	0.01	64	24	16	0	0.0	0.0	0.05600908938663657	4-7	3.0
+full	strict	subject/coverage strata	p_value	0.05	64	36	16	0	0.0	0.0	0.05600908938663657	8+	0.0
+full	strict	subject/coverage strata	p_value	0.01	64	36	16	0	0.0	0.0	0.05600908938663657	8+	0.0
+full	strict	subject/coverage strata	F_reference_p_value	0.05	64	36	16	0	0.0	0.0	0.05600908938663657	8+	0.0
+full	strict	subject/coverage strata	F_reference_p_value	0.01	64	36	16	0	0.0	0.0	0.05600908938663657	8+	0.0
+full	strict	subject/coverage strata	p_value	0.05	64	19	16	2	0.03125	0.003807181381872369	0.10837052222451712	8+	1.0
+full	strict	subject/coverage strata	p_value	0.01	64	19	16	1	0.015625	0.0003955125140506643	0.08401032643435365	8+	1.0
+full	strict	subject/coverage strata	F_reference_p_value	0.05	64	19	16	1	0.015625	0.0003955125140506643	0.08401032643435365	8+	1.0
+full	strict	subject/coverage strata	F_reference_p_value	0.01	64	19	16	0	0.0	0.0	0.05600908938663657	8+	1.0
+full	strict	subject/coverage strata	p_value	0.05	64	21	16	1	0.015625	0.0003955125140506643	0.08401032643435365	8+	2.0
+full	strict	subject/coverage strata	p_value	0.01	64	21	16	0	0.0	0.0	0.05600908938663657	8+	2.0
+full	strict	subject/coverage strata	F_reference_p_value	0.05	64	21	16	0	0.0	0.0	0.05600908938663657	8+	2.0
+full	strict	subject/coverage strata	F_reference_p_value	0.01	64	21	16	0	0.0	0.0	0.05600908938663657	8+	2.0
+full	strict	subject/coverage strata	p_value	0.05	64	42	16	3	0.046875	0.009773074954456546	0.13093573724140584	8+	3.0
+full	strict	subject/coverage strata	p_value	0.01	64	42	16	2	0.03125	0.003807181381872369	0.10837052222451712	8+	3.0
+full	strict	subject/coverage strata	F_reference_p_value	0.05	64	42	16	2	0.03125	0.003807181381872369	0.10837052222451712	8+	3.0
+full	strict	subject/coverage strata	F_reference_p_value	0.01	64	42	16	1	0.015625	0.0003955125140506643	0.08401032643435365	8+	3.0
