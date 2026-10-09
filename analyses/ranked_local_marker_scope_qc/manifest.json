@@ -1,0 +1,31 @@
+{
+  "scope_sha256": "f9a2139fd75e4921a4175cb93dea8ad79ef9ab09195e6674439c38693a0b021a",
+  "inputs": {
+    "published": {
+      "path": "analyses/tilgner_junction_replication/sign_agreement_by_rank.tsv",
+      "sha256": "f3c12d23a63abfacbbfd216c374007459ef8a4ac8f6394233e2287d059a1296e",
+      "original_ranked_associations": 1941
+    },
+    "sequence_calibrated": {
+      "path": "analyses/event_sequence_full_score/lr_rank.tsv.gz",
+      "sha256": "e93dc7aff29bf4a0ccc889ea174361d62c070ff02d081b9f7023cad106b34bcc",
+      "original_ranked_associations": 200
+    },
+    "sequence_native_F": {
+      "path": "analyses/event_sequence_full_score/raw_F/lr_rank.tsv.gz",
+      "sha256": "447c56d9286ff9fb2d552e6f86e7a029fd5ec02d1671502e519a2d199c42442f",
+      "original_ranked_associations": 200
+    },
+    "geometry_calibrated": {
+      "path": "analyses/event_sequence_geometry_full_score/usage/lr_rank.tsv.gz",
+      "sha256": "ca3727771f9cbff636d8d439b94f089175cc3f69093d1006e80a21e34efd9ece",
+      "original_ranked_associations": 200
+    }
+  },
+  "code_hashes": {
+    "/gpfs/commons/home/daknowles/projects/tealeaf/extra_scripts/audit_ranked_local_marker_scope.py": "b799065e2a9adc0f0e83dc8079b8fa498319897e8baf2f0f615ffefeaeace819",
+    "/gpfs/commons/home/daknowles/projects/tealeaf/tealeaf/sc/replication_scope.py": "7e770881d6c12c3768919ad707f5354d872ee4eb2d9e6070d1a7c1076a3e6b39"
+  },
+  "interpretation": "descriptive annotation/RNA source diagnostic on unchanged complete/short method-own rank prefixes; no reranking, event exclusion, replacement LR endpoint, contamination estimation, causal attribution or production change",
+  "production_changes": false
+}

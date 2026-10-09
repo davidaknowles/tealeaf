@@ -1,0 +1,169 @@
+source_label	method	marker_variant	cutoff	complete_prefix	selection	n_original_prefix	n_selected	n_scope_available	n_scope_missing	events_with_outside_marker_source	events_with_expressed_outside_marker_source	median_outside_source_fraction_of_gene	median_outside_source_fraction_of_marker_source_RNA	median_event_class_fraction_of_gene	event_types
+published	Isoform usage ratio	all	100	False	all original prefix	10	10	0	10	0	0				{}
+published	Isoform usage ratio	all	100	False	agreeing original prefix	10	4	0	4	0	0				{}
+published	Isoform usage ratio	all	100	False	disagreeing original prefix	10	6	0	6	0	0				{}
+published	Isoform usage ratio	all	200	False	all original prefix	10	10	0	10	0	0				{}
+published	Isoform usage ratio	all	200	False	agreeing original prefix	10	4	0	4	0	0				{}
+published	Isoform usage ratio	all	200	False	disagreeing original prefix	10	6	0	6	0	0				{}
+published	LeafCutter	all	100	True	all original prefix	100	100	0	100	0	0				{}
+published	LeafCutter	all	100	True	agreeing original prefix	100	76	0	76	0	0				{}
+published	LeafCutter	all	100	True	disagreeing original prefix	100	24	0	24	0	0				{}
+published	LeafCutter	all	200	True	all original prefix	200	200	0	200	0	0				{}
+published	LeafCutter	all	200	True	agreeing original prefix	200	139	0	139	0	0				{}
+published	LeafCutter	all	200	True	disagreeing original prefix	200	61	0	61	0	0				{}
+published	MAJIQ Heterogen	all	100	True	all original prefix	100	100	0	100	0	0				{}
+published	MAJIQ Heterogen	all	100	True	agreeing original prefix	100	67	0	67	0	0				{}
+published	MAJIQ Heterogen	all	100	True	disagreeing original prefix	100	33	0	33	0	0				{}
+published	MAJIQ Heterogen	all	200	True	all original prefix	200	200	0	200	0	0				{}
+published	MAJIQ Heterogen	all	200	True	agreeing original prefix	200	120	0	120	0	0				{}
+published	MAJIQ Heterogen	all	200	True	disagreeing original prefix	200	80	0	80	0	0				{}
+published	Paired junction CLR	all	100	True	all original prefix	100	100	0	100	0	0				{}
+published	Paired junction CLR	all	100	True	agreeing original prefix	100	59	0	59	0	0				{}
+published	Paired junction CLR	all	100	True	disagreeing original prefix	100	41	0	41	0	0				{}
+published	Paired junction CLR	all	200	False	all original prefix	131	131	0	131	0	0				{}
+published	Paired junction CLR	all	200	False	agreeing original prefix	131	78	0	78	0	0				{}
+published	Paired junction CLR	all	200	False	disagreeing original prefix	131	53	0	53	0	0				{}
+published	SUPPA2 (full data)	all	100	True	all original prefix	100	100	100	0	21	18	0.0	0.0	0.9950052723841329	"{""A3SS"": 9, ""A5SS"": 2, ""MXE"": 6, ""RI"": 1, ""SE"": 82}"
+published	SUPPA2 (full data)	all	100	True	agreeing original prefix	100	78	78	0	16	13	0.0	0.0	0.9950052723841329	"{""A3SS"": 5, ""A5SS"": 1, ""MXE"": 6, ""SE"": 66}"
+published	SUPPA2 (full data)	all	100	True	disagreeing original prefix	100	22	22	0	5	5	0.0	0.0	0.9883707728061134	"{""A3SS"": 4, ""A5SS"": 1, ""RI"": 1, ""SE"": 16}"
+published	SUPPA2 (full data)	all	200	True	all original prefix	200	200	200	0	40	36	0.0	0.0	0.9988978462862148	"{""A3SS"": 22, ""A5SS"": 8, ""MXE"": 9, ""RI"": 4, ""SE"": 157}"
+published	SUPPA2 (full data)	all	200	True	agreeing original prefix	200	142	142	0	26	22	0.0	0.0	0.9994489231431074	"{""A3SS"": 8, ""A5SS"": 4, ""MXE"": 9, ""RI"": 3, ""SE"": 118}"
+published	SUPPA2 (full data)	all	200	True	disagreeing original prefix	200	58	58	0	14	14	0.0	0.0	0.9783479730899044	"{""A3SS"": 14, ""A5SS"": 4, ""RI"": 1, ""SE"": 39}"
+published	SUPPA2 (primer aware)	all	100	True	all original prefix	100	100	100	0	23	21	0.0	0.0	0.8957549117225635	"{""A3SS"": 12, ""A5SS"": 6, ""MXE"": 9, ""RI"": 5, ""SE"": 68}"
+published	SUPPA2 (primer aware)	all	100	True	agreeing original prefix	100	71	71	0	14	14	0.0	0.0	0.8957549117225635	"{""A3SS"": 10, ""A5SS"": 2, ""MXE"": 6, ""RI"": 3, ""SE"": 50}"
+published	SUPPA2 (primer aware)	all	100	True	disagreeing original prefix	100	29	29	0	9	7	0.0	0.0	0.8957549117225635	"{""A3SS"": 2, ""A5SS"": 4, ""MXE"": 3, ""RI"": 2, ""SE"": 18}"
+published	SUPPA2 (primer aware)	all	200	True	all original prefix	200	200	200	0	42	40	0.0	0.0	0.9028408250110984	"{""A3SS"": 26, ""A5SS"": 14, ""MXE"": 16, ""RI"": 7, ""SE"": 137}"
+published	SUPPA2 (primer aware)	all	200	True	agreeing original prefix	200	128	128	0	26	26	0.0	0.0	0.9028408250110984	"{""A3SS"": 16, ""A5SS"": 9, ""MXE"": 10, ""RI"": 3, ""SE"": 90}"
+published	SUPPA2 (primer aware)	all	200	True	disagreeing original prefix	200	72	72	0	16	14	0.0	0.0	0.9568363075464192	"{""A3SS"": 10, ""A5SS"": 5, ""MXE"": 6, ""RI"": 4, ""SE"": 47}"
+published	Tealeaf omnibus	all	100	True	all original prefix	100	100	0	100	0	0				{}
+published	Tealeaf omnibus	all	100	True	agreeing original prefix	100	62	0	62	0	0				{}
+published	Tealeaf omnibus	all	100	True	disagreeing original prefix	100	38	0	38	0	0				{}
+published	Tealeaf omnibus	all	200	True	all original prefix	200	200	0	200	0	0				{}
+published	Tealeaf omnibus	all	200	True	agreeing original prefix	200	114	0	114	0	0				{}
+published	Tealeaf omnibus	all	200	True	disagreeing original prefix	200	86	0	86	0	0				{}
+published	Tealeaf pairwise	all	100	True	all original prefix	100	100	0	100	0	0				{}
+published	Tealeaf pairwise	all	100	True	agreeing original prefix	100	58	0	58	0	0				{}
+published	Tealeaf pairwise	all	100	True	disagreeing original prefix	100	42	0	42	0	0				{}
+published	Tealeaf pairwise	all	200	True	all original prefix	200	200	0	200	0	0				{}
+published	Tealeaf pairwise	all	200	True	agreeing original prefix	200	121	0	121	0	0				{}
+published	Tealeaf pairwise	all	200	True	disagreeing original prefix	200	79	0	79	0	0				{}
+published	Tealeaf/SUPPA2 hybrid	all	100	True	all original prefix	100	100	100	0	30	30	0.0	0.0	1.0	"{""A3SS"": 9, ""AF"": 31, ""AL"": 8, ""MXE"": 5, ""RI"": 4, ""SE"": 43}"
+published	Tealeaf/SUPPA2 hybrid	all	100	True	agreeing original prefix	100	55	55	0	14	14	0.0	0.0	1.0	"{""A3SS"": 6, ""AF"": 13, ""AL"": 1, ""MXE"": 5, ""RI"": 4, ""SE"": 26}"
+published	Tealeaf/SUPPA2 hybrid	all	100	True	disagreeing original prefix	100	45	45	0	16	16	0.0	0.0	1.0	"{""A3SS"": 3, ""AF"": 18, ""AL"": 7, ""SE"": 17}"
+published	Tealeaf/SUPPA2 hybrid	all	200	True	all original prefix	200	200	200	0	63	63	0.0	0.0	1.0	"{""A3SS"": 23, ""A5SS"": 2, ""AF"": 57, ""AL"": 14, ""MXE"": 9, ""RI"": 8, ""SE"": 87}"
+published	Tealeaf/SUPPA2 hybrid	all	200	True	agreeing original prefix	200	104	104	0	33	33	0.0	0.0	1.0	"{""A3SS"": 17, ""A5SS"": 1, ""AF"": 24, ""AL"": 3, ""MXE"": 8, ""RI"": 7, ""SE"": 44}"
+published	Tealeaf/SUPPA2 hybrid	all	200	True	disagreeing original prefix	200	96	96	0	30	30	0.0	0.0	1.0	"{""A3SS"": 6, ""A5SS"": 1, ""AF"": 33, ""AL"": 11, ""MXE"": 1, ""RI"": 1, ""SE"": 43}"
+published	rMATS paired JCEC	all	100	True	all original prefix	100	100	0	100	0	0				{}
+published	rMATS paired JCEC	all	100	True	agreeing original prefix	100	51	0	51	0	0				{}
+published	rMATS paired JCEC	all	100	True	disagreeing original prefix	100	49	0	49	0	0				{}
+published	rMATS paired JCEC	all	200	True	all original prefix	200	200	0	200	0	0				{}
+published	rMATS paired JCEC	all	200	True	agreeing original prefix	200	105	0	105	0	0				{}
+published	rMATS paired JCEC	all	200	True	disagreeing original prefix	200	95	0	95	0	0				{}
+published	scQuint	all	100	True	all original prefix	100	100	0	100	0	0				{}
+published	scQuint	all	100	True	agreeing original prefix	100	77	0	77	0	0				{}
+published	scQuint	all	100	True	disagreeing original prefix	100	23	0	23	0	0				{}
+published	scQuint	all	200	True	all original prefix	200	200	0	200	0	0				{}
+published	scQuint	all	200	True	agreeing original prefix	200	141	0	141	0	0				{}
+published	scQuint	all	200	True	disagreeing original prefix	200	59	0	59	0	0				{}
+published	Isoform usage ratio	junction	100	False	all original prefix	10	10	0	10	0	0				{}
+published	Isoform usage ratio	junction	100	False	agreeing original prefix	10	4	0	4	0	0				{}
+published	Isoform usage ratio	junction	100	False	disagreeing original prefix	10	6	0	6	0	0				{}
+published	Isoform usage ratio	junction	200	False	all original prefix	10	10	0	10	0	0				{}
+published	Isoform usage ratio	junction	200	False	agreeing original prefix	10	4	0	4	0	0				{}
+published	Isoform usage ratio	junction	200	False	disagreeing original prefix	10	6	0	6	0	0				{}
+published	LeafCutter	junction	100	True	all original prefix	100	100	0	100	0	0				{}
+published	LeafCutter	junction	100	True	agreeing original prefix	100	76	0	76	0	0				{}
+published	LeafCutter	junction	100	True	disagreeing original prefix	100	24	0	24	0	0				{}
+published	LeafCutter	junction	200	True	all original prefix	200	200	0	200	0	0				{}
+published	LeafCutter	junction	200	True	agreeing original prefix	200	139	0	139	0	0				{}
+published	LeafCutter	junction	200	True	disagreeing original prefix	200	61	0	61	0	0				{}
+published	MAJIQ Heterogen	junction	100	True	all original prefix	100	100	0	100	0	0				{}
+published	MAJIQ Heterogen	junction	100	True	agreeing original prefix	100	67	0	67	0	0				{}
+published	MAJIQ Heterogen	junction	100	True	disagreeing original prefix	100	33	0	33	0	0				{}
+published	MAJIQ Heterogen	junction	200	True	all original prefix	200	200	0	200	0	0				{}
+published	MAJIQ Heterogen	junction	200	True	agreeing original prefix	200	120	0	120	0	0				{}
+published	MAJIQ Heterogen	junction	200	True	disagreeing original prefix	200	80	0	80	0	0				{}
+published	Paired junction CLR	junction	100	True	all original prefix	100	100	0	100	0	0				{}
+published	Paired junction CLR	junction	100	True	agreeing original prefix	100	59	0	59	0	0				{}
+published	Paired junction CLR	junction	100	True	disagreeing original prefix	100	41	0	41	0	0				{}
+published	Paired junction CLR	junction	200	False	all original prefix	131	131	0	131	0	0				{}
+published	Paired junction CLR	junction	200	False	agreeing original prefix	131	78	0	78	0	0				{}
+published	Paired junction CLR	junction	200	False	disagreeing original prefix	131	53	0	53	0	0				{}
+published	SUPPA2 (full data)	junction	100	True	all original prefix	100	100	100	0	21	18	0.0	0.0	0.9950052723841329	"{""A3SS"": 9, ""A5SS"": 2, ""MXE"": 6, ""RI"": 1, ""SE"": 82}"
+published	SUPPA2 (full data)	junction	100	True	agreeing original prefix	100	78	78	0	16	13	0.0	0.0	0.9950052723841329	"{""A3SS"": 5, ""A5SS"": 1, ""MXE"": 6, ""SE"": 66}"
+published	SUPPA2 (full data)	junction	100	True	disagreeing original prefix	100	22	22	0	5	5	0.0	0.0	0.9883707728061134	"{""A3SS"": 4, ""A5SS"": 1, ""RI"": 1, ""SE"": 16}"
+published	SUPPA2 (full data)	junction	200	True	all original prefix	200	200	200	0	35	31	0.0	0.0	0.9988978462862148	"{""A3SS"": 22, ""A5SS"": 8, ""MXE"": 9, ""RI"": 4, ""SE"": 157}"
+published	SUPPA2 (full data)	junction	200	True	agreeing original prefix	200	142	142	0	24	20	0.0	0.0	0.9994489231431074	"{""A3SS"": 8, ""A5SS"": 4, ""MXE"": 9, ""RI"": 3, ""SE"": 118}"
+published	SUPPA2 (full data)	junction	200	True	disagreeing original prefix	200	58	58	0	11	11	0.0	0.0	0.9783479730899044	"{""A3SS"": 14, ""A5SS"": 4, ""RI"": 1, ""SE"": 39}"
+published	SUPPA2 (primer aware)	junction	100	True	all original prefix	100	100	100	0	17	17	0.0	0.0	0.8957549117225635	"{""A3SS"": 12, ""A5SS"": 6, ""MXE"": 9, ""RI"": 5, ""SE"": 68}"
+published	SUPPA2 (primer aware)	junction	100	True	agreeing original prefix	100	71	71	0	11	11	0.0	0.0	0.8957549117225635	"{""A3SS"": 10, ""A5SS"": 2, ""MXE"": 6, ""RI"": 3, ""SE"": 50}"
+published	SUPPA2 (primer aware)	junction	100	True	disagreeing original prefix	100	29	29	0	6	6	0.0	0.0	0.8957549117225635	"{""A3SS"": 2, ""A5SS"": 4, ""MXE"": 3, ""RI"": 2, ""SE"": 18}"
+published	SUPPA2 (primer aware)	junction	200	True	all original prefix	200	200	200	0	33	33	0.0	0.0	0.9028408250110984	"{""A3SS"": 26, ""A5SS"": 14, ""MXE"": 16, ""RI"": 7, ""SE"": 137}"
+published	SUPPA2 (primer aware)	junction	200	True	agreeing original prefix	200	128	128	0	22	22	0.0	0.0	0.9028408250110984	"{""A3SS"": 16, ""A5SS"": 9, ""MXE"": 10, ""RI"": 3, ""SE"": 90}"
+published	SUPPA2 (primer aware)	junction	200	True	disagreeing original prefix	200	72	72	0	11	11	0.0	0.0	0.9568363075464192	"{""A3SS"": 10, ""A5SS"": 5, ""MXE"": 6, ""RI"": 4, ""SE"": 47}"
+published	Tealeaf omnibus	junction	100	True	all original prefix	100	100	0	100	0	0				{}
+published	Tealeaf omnibus	junction	100	True	agreeing original prefix	100	62	0	62	0	0				{}
+published	Tealeaf omnibus	junction	100	True	disagreeing original prefix	100	38	0	38	0	0				{}
+published	Tealeaf omnibus	junction	200	True	all original prefix	200	200	0	200	0	0				{}
+published	Tealeaf omnibus	junction	200	True	agreeing original prefix	200	114	0	114	0	0				{}
+published	Tealeaf omnibus	junction	200	True	disagreeing original prefix	200	86	0	86	0	0				{}
+published	Tealeaf pairwise	junction	100	True	all original prefix	100	100	0	100	0	0				{}
+published	Tealeaf pairwise	junction	100	True	agreeing original prefix	100	58	0	58	0	0				{}
+published	Tealeaf pairwise	junction	100	True	disagreeing original prefix	100	42	0	42	0	0				{}
+published	Tealeaf pairwise	junction	200	True	all original prefix	200	200	0	200	0	0				{}
+published	Tealeaf pairwise	junction	200	True	agreeing original prefix	200	121	0	121	0	0				{}
+published	Tealeaf pairwise	junction	200	True	disagreeing original prefix	200	79	0	79	0	0				{}
+published	Tealeaf/SUPPA2 hybrid	junction	100	True	all original prefix	100	100	100	0	27	27	0.0	0.0	1.0	"{""A3SS"": 9, ""AF"": 31, ""AL"": 8, ""MXE"": 5, ""RI"": 4, ""SE"": 43}"
+published	Tealeaf/SUPPA2 hybrid	junction	100	True	agreeing original prefix	100	55	55	0	13	13	0.0	0.0	1.0	"{""A3SS"": 6, ""AF"": 13, ""AL"": 1, ""MXE"": 5, ""RI"": 4, ""SE"": 26}"
+published	Tealeaf/SUPPA2 hybrid	junction	100	True	disagreeing original prefix	100	45	45	0	14	14	0.0	0.0	1.0	"{""A3SS"": 3, ""AF"": 18, ""AL"": 7, ""SE"": 17}"
+published	Tealeaf/SUPPA2 hybrid	junction	200	True	all original prefix	200	200	200	0	54	54	0.0	0.0	1.0	"{""A3SS"": 23, ""A5SS"": 2, ""AF"": 57, ""AL"": 14, ""MXE"": 9, ""RI"": 8, ""SE"": 87}"
+published	Tealeaf/SUPPA2 hybrid	junction	200	True	agreeing original prefix	200	104	104	0	26	26	0.0	0.0	1.0	"{""A3SS"": 17, ""A5SS"": 1, ""AF"": 24, ""AL"": 3, ""MXE"": 8, ""RI"": 7, ""SE"": 44}"
+published	Tealeaf/SUPPA2 hybrid	junction	200	True	disagreeing original prefix	200	96	96	0	28	28	0.0	0.0	1.0	"{""A3SS"": 6, ""A5SS"": 1, ""AF"": 33, ""AL"": 11, ""MXE"": 1, ""RI"": 1, ""SE"": 43}"
+published	rMATS paired JCEC	junction	100	True	all original prefix	100	100	0	100	0	0				{}
+published	rMATS paired JCEC	junction	100	True	agreeing original prefix	100	51	0	51	0	0				{}
+published	rMATS paired JCEC	junction	100	True	disagreeing original prefix	100	49	0	49	0	0				{}
+published	rMATS paired JCEC	junction	200	True	all original prefix	200	200	0	200	0	0				{}
+published	rMATS paired JCEC	junction	200	True	agreeing original prefix	200	105	0	105	0	0				{}
+published	rMATS paired JCEC	junction	200	True	disagreeing original prefix	200	95	0	95	0	0				{}
+published	scQuint	junction	100	True	all original prefix	100	100	0	100	0	0				{}
+published	scQuint	junction	100	True	agreeing original prefix	100	77	0	77	0	0				{}
+published	scQuint	junction	100	True	disagreeing original prefix	100	23	0	23	0	0				{}
+published	scQuint	junction	200	True	all original prefix	200	200	0	200	0	0				{}
+published	scQuint	junction	200	True	agreeing original prefix	200	141	0	141	0	0				{}
+published	scQuint	junction	200	True	disagreeing original prefix	200	59	0	59	0	0				{}
+sequence_calibrated	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank	all	100	True	all original prefix	100	100	100	0	35	30	0.0	0.0	0.9526922794387715	"{""A3SS"": 6, ""A5SS"": 4, ""AF"": 22, ""AL"": 4, ""RI"": 1, ""SE"": 63}"
+sequence_calibrated	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank	all	100	True	agreeing original prefix	100	76	76	0	24	20	0.0	0.0	0.9526922794387715	"{""A3SS"": 4, ""A5SS"": 1, ""AF"": 16, ""AL"": 3, ""SE"": 52}"
+sequence_calibrated	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank	all	100	True	disagreeing original prefix	100	24	24	0	11	10	0.0	0.0	0.949810704462149	"{""A3SS"": 2, ""A5SS"": 3, ""AF"": 6, ""AL"": 1, ""RI"": 1, ""SE"": 11}"
+sequence_calibrated	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank	all	200	True	all original prefix	200	200	200	0	64	59	0.0	0.0	0.9442129016917824	"{""A3SS"": 24, ""A5SS"": 6, ""AF"": 45, ""AL"": 6, ""MXE"": 3, ""RI"": 3, ""SE"": 113}"
+sequence_calibrated	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank	all	200	True	agreeing original prefix	200	136	136	0	34	30	0.0	0.0	0.9442129016917824	"{""A3SS"": 11, ""A5SS"": 2, ""AF"": 27, ""AL"": 4, ""SE"": 92}"
+sequence_calibrated	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank	all	200	True	disagreeing original prefix	200	64	64	0	30	29	0.0	0.0	0.9407060587123282	"{""A3SS"": 13, ""A5SS"": 4, ""AF"": 18, ""AL"": 2, ""MXE"": 3, ""RI"": 3, ""SE"": 21}"
+sequence_calibrated	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank	junction	100	True	all original prefix	100	100	100	0	30	25	0.0	0.0	0.9526922794387715	"{""A3SS"": 6, ""A5SS"": 4, ""AF"": 22, ""AL"": 4, ""RI"": 1, ""SE"": 63}"
+sequence_calibrated	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank	junction	100	True	agreeing original prefix	100	76	76	0	22	18	0.0	0.0	0.9526922794387715	"{""A3SS"": 4, ""A5SS"": 1, ""AF"": 16, ""AL"": 3, ""SE"": 52}"
+sequence_calibrated	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank	junction	100	True	disagreeing original prefix	100	24	24	0	8	7	0.0	0.0	0.949810704462149	"{""A3SS"": 2, ""A5SS"": 3, ""AF"": 6, ""AL"": 1, ""RI"": 1, ""SE"": 11}"
+sequence_calibrated	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank	junction	200	True	all original prefix	200	200	200	0	54	49	0.0	0.0	0.9442129016917824	"{""A3SS"": 24, ""A5SS"": 6, ""AF"": 45, ""AL"": 6, ""MXE"": 3, ""RI"": 3, ""SE"": 113}"
+sequence_calibrated	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank	junction	200	True	agreeing original prefix	200	136	136	0	32	28	0.0	0.0	0.9442129016917824	"{""A3SS"": 11, ""A5SS"": 2, ""AF"": 27, ""AL"": 4, ""SE"": 92}"
+sequence_calibrated	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank	junction	200	True	disagreeing original prefix	200	64	64	0	22	21	0.0	0.0	0.9407060587123282	"{""A3SS"": 13, ""A5SS"": 4, ""AF"": 18, ""AL"": 2, ""MXE"": 3, ""RI"": 3, ""SE"": 21}"
+sequence_native_F	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	all	100	True	all original prefix	100	100	100	0	26	22	0.0	0.0	0.9526922794387715	"{""A3SS"": 6, ""A5SS"": 4, ""AF"": 16, ""AL"": 3, ""SE"": 71}"
+sequence_native_F	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	all	100	True	agreeing original prefix	100	82	82	0	18	15	0.0	0.0	0.9518355687434135	"{""A3SS"": 3, ""A5SS"": 1, ""AF"": 13, ""AL"": 2, ""SE"": 63}"
+sequence_native_F	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	all	100	True	disagreeing original prefix	100	18	18	0	8	7	0.0	0.0	0.9740990527058104	"{""A3SS"": 3, ""A5SS"": 3, ""AF"": 3, ""AL"": 1, ""SE"": 8}"
+sequence_native_F	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	all	200	True	all original prefix	200	200	200	0	52	46	0.0	0.0	0.9411104467985159	"{""A3SS"": 18, ""A5SS"": 5, ""AF"": 39, ""AL"": 5, ""MXE"": 4, ""RI"": 1, ""SE"": 128}"
+sequence_native_F	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	all	200	True	agreeing original prefix	200	149	149	0	34	29	0.0	0.0	0.9442129016917824	"{""A3SS"": 8, ""A5SS"": 1, ""AF"": 30, ""AL"": 3, ""MXE"": 2, ""SE"": 105}"
+sequence_native_F	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	all	200	True	disagreeing original prefix	200	51	51	0	18	17	0.0	0.0	0.8957549117225635	"{""A3SS"": 10, ""A5SS"": 4, ""AF"": 9, ""AL"": 2, ""MXE"": 2, ""RI"": 1, ""SE"": 23}"
+sequence_native_F	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	junction	100	True	all original prefix	100	100	100	0	24	20	0.0	0.0	0.9526922794387715	"{""A3SS"": 6, ""A5SS"": 4, ""AF"": 16, ""AL"": 3, ""SE"": 71}"
+sequence_native_F	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	junction	100	True	agreeing original prefix	100	82	82	0	16	13	0.0	0.0	0.9518355687434135	"{""A3SS"": 3, ""A5SS"": 1, ""AF"": 13, ""AL"": 2, ""SE"": 63}"
+sequence_native_F	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	junction	100	True	disagreeing original prefix	100	18	18	0	8	7	0.0	0.0	0.9740990527058104	"{""A3SS"": 3, ""A5SS"": 3, ""AF"": 3, ""AL"": 1, ""SE"": 8}"
+sequence_native_F	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	junction	200	True	all original prefix	200	200	200	0	45	39	0.0	0.0	0.9411104467985159	"{""A3SS"": 18, ""A5SS"": 5, ""AF"": 39, ""AL"": 5, ""MXE"": 4, ""RI"": 1, ""SE"": 128}"
+sequence_native_F	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	junction	200	True	agreeing original prefix	200	149	149	0	30	25	0.0	0.0	0.9442129016917824	"{""A3SS"": 8, ""A5SS"": 1, ""AF"": 30, ""AL"": 3, ""MXE"": 2, ""SE"": 105}"
+sequence_native_F	Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	junction	200	True	disagreeing original prefix	200	51	51	0	15	14	0.0	0.0	0.8957549117225635	"{""A3SS"": 10, ""A5SS"": 4, ""AF"": 9, ""AL"": 2, ""MXE"": 2, ""RI"": 1, ""SE"": 23}"
+geometry_calibrated	Reference-sequence EC score, geometry-stratified sign calibration	all	100	True	all original prefix	100	100	100	0	27	23	0.0	0.0	0.9518355687434135	"{""A3SS"": 8, ""A5SS"": 4, ""AF"": 15, ""AL"": 3, ""MXE"": 1, ""RI"": 1, ""SE"": 68}"
+geometry_calibrated	Reference-sequence EC score, geometry-stratified sign calibration	all	100	True	agreeing original prefix	100	82	82	0	20	17	0.0	0.0	0.959377810479234	"{""A3SS"": 4, ""A5SS"": 1, ""AF"": 12, ""AL"": 3, ""MXE"": 1, ""SE"": 61}"
+geometry_calibrated	Reference-sequence EC score, geometry-stratified sign calibration	all	100	True	disagreeing original prefix	100	18	18	0	7	6	0.0	0.0	0.8886189499811195	"{""A3SS"": 4, ""A5SS"": 3, ""AF"": 3, ""RI"": 1, ""SE"": 7}"
+geometry_calibrated	Reference-sequence EC score, geometry-stratified sign calibration	all	200	True	all original prefix	200	200	200	0	57	51	0.0	0.0	0.9526922794387715	"{""A3SS"": 19, ""A5SS"": 7, ""AF"": 33, ""AL"": 8, ""MXE"": 5, ""RI"": 2, ""SE"": 126}"
+geometry_calibrated	Reference-sequence EC score, geometry-stratified sign calibration	all	200	True	agreeing original prefix	200	144	144	0	32	27	0.0	0.0	0.959377810479234	"{""A3SS"": 8, ""A5SS"": 2, ""AF"": 24, ""AL"": 4, ""MXE"": 2, ""SE"": 104}"
+geometry_calibrated	Reference-sequence EC score, geometry-stratified sign calibration	all	200	True	disagreeing original prefix	200	56	56	0	25	24	0.0	0.0	0.9164770637277188	"{""A3SS"": 11, ""A5SS"": 5, ""AF"": 9, ""AL"": 4, ""MXE"": 3, ""RI"": 2, ""SE"": 22}"
+geometry_calibrated	Reference-sequence EC score, geometry-stratified sign calibration	junction	100	True	all original prefix	100	100	100	0	26	22	0.0	0.0	0.9518355687434135	"{""A3SS"": 8, ""A5SS"": 4, ""AF"": 15, ""AL"": 3, ""MXE"": 1, ""RI"": 1, ""SE"": 68}"
+geometry_calibrated	Reference-sequence EC score, geometry-stratified sign calibration	junction	100	True	agreeing original prefix	100	82	82	0	19	16	0.0	0.0	0.959377810479234	"{""A3SS"": 4, ""A5SS"": 1, ""AF"": 12, ""AL"": 3, ""MXE"": 1, ""SE"": 61}"
+geometry_calibrated	Reference-sequence EC score, geometry-stratified sign calibration	junction	100	True	disagreeing original prefix	100	18	18	0	7	6	0.0	0.0	0.8886189499811195	"{""A3SS"": 4, ""A5SS"": 3, ""AF"": 3, ""RI"": 1, ""SE"": 7}"
+geometry_calibrated	Reference-sequence EC score, geometry-stratified sign calibration	junction	200	True	all original prefix	200	200	200	0	48	42	0.0	0.0	0.9526922794387715	"{""A3SS"": 19, ""A5SS"": 7, ""AF"": 33, ""AL"": 8, ""MXE"": 5, ""RI"": 2, ""SE"": 126}"
+geometry_calibrated	Reference-sequence EC score, geometry-stratified sign calibration	junction	200	True	agreeing original prefix	200	144	144	0	31	26	0.0	0.0	0.959377810479234	"{""A3SS"": 8, ""A5SS"": 2, ""AF"": 24, ""AL"": 4, ""MXE"": 2, ""SE"": 104}"
+geometry_calibrated	Reference-sequence EC score, geometry-stratified sign calibration	junction	200	True	disagreeing original prefix	200	56	56	0	17	16	0.0	0.0	0.9164770637277188	"{""A3SS"": 11, ""A5SS"": 5, ""AF"": 9, ""AL"": 4, ""MXE"": 3, ""RI"": 2, ""SE"": 22}"

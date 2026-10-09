@@ -18,14 +18,17 @@ from extra_scripts.audit_event_local_read_support import file_hash
 from extra_scripts.run_ec_block_glmm import covered_celltype_pairwise_designs
 from extra_scripts.collate_full_local_read_counts import KEYS
 from tealeaf.sc.local_read_support import local_read_count_tensor
+from tealeaf.sc.local_read_fit_cache import ExactLocalReadFitCache
+from tealeaf.sc.local_read_reporting import pooled_local_marker_effect
 from tealeaf.sc import local_read_mixed
 
 
 PRIMERS = ('poly(dT)', 'random hexamer')
 COHORTS = ('fold0', 'fold1', 'full')
 VARIANTS = ('all', 'junction')
-FIT_SETTINGS = dict(model_version=local_read_mixed.MODEL_VERSION, min_gene_keys=25, min_subjects=4, max_iter=150, quadrature_tolerance=1e-3, node_schedule=[11, 21, 41], primary_tail='native chi-square 1, exploratory until real-count null and full-family checks', alternative_tail='F(1,measured subjects-1), diagnostic only', mean_prior='none')
-FIELDS = ('test_id', 'feature_id', 'block_id', 'gene_id', 'event_type', 'effect', 'level_a', 'level_b', 'contrast_id', 'cohort', 'method', 'marker_variant', 'model_version', 'p_value', 'raw_p_value', 'F_reference_p_value', 'statistic', 'converged', 'n_subjects', 'n_requested_subjects', 'median_gene_umis', 'n_local_included_keys', 'n_local_excluded_keys', 'effect_size', 'effect_coordinate', 'counts_sha256', 'runtime_seconds', 'error', 'n_profiled_constant_primers', 'profiled_constant_primers', 'log_odds_effect', 'effect_estimate_censored', 'nuisance_parameter_boundary', 'null_baseline_sd', 'null_subject_sd', 'alternative_baseline_sd', 'alternative_subject_sd', 'null_objective', 'alternative_objective', 'quadrature_error', 'parameter_boundary', 'quadrature_orders_tried', 'final_quadrature_order', 'integration_policy')
+FIT_SETTINGS = dict(model_version=local_read_mixed.MODEL_VERSION, min_gene_keys=25, min_subjects=4, max_iter=150, quadrature_tolerance=1e-3, node_schedule=[11, 21, 41], primary_tail='native chi-square 1, exploratory until real-count null and full-family checks', alternative_tail='F(1,measured subjects-1), diagnostic only', mean_prior='none', fit_reuse='worker-local exact int64 tensor/shape LRU512, no approximation or hypothesis removal', reporting_ablation='equal-primer pooled marker inclusion difference, same original count/subject set, no pseudocount; fixed tests/ranks/LR family and split direction checks')
+FIELDS = ('test_id', 'feature_id', 'block_id', 'gene_id', 'event_type', 'effect', 'level_a', 'level_b', 'contrast_id', 'cohort', 'method', 'marker_variant', 'model_version', 'p_value', 'raw_p_value', 'F_reference_p_value', 'statistic', 'converged', 'n_subjects', 'n_requested_subjects', 'median_gene_umis', 'n_local_included_keys', 'n_local_excluded_keys', 'effect_size', 'effect_coordinate', 'counts_sha256', 'runtime_seconds', 'error', 'n_profiled_constant_primers', 'profiled_constant_primers', 'log_odds_effect', 'effect_estimate_censored', 'nuisance_parameter_boundary', 'null_baseline_sd', 'null_subject_sd', 'alternative_baseline_sd', 'alternative_subject_sd', 'null_objective', 'alternative_objective', 'quadrature_error', 'parameter_boundary', 'quadrature_orders_tried', 'final_quadrature_order', 'integration_policy', 'fit_cache_hit')
+FIELDS += ('pooled_marker_effect', 'pooled_marker_n_primers', 'pooled_marker_primer_effects')
 
 
 def cohort_metadata(groups, folds, cohort):
@@ -54,7 +57,7 @@ def gene_contexts(metadata, gene_counts):
 
 def scientific_code_hashes():
     # Capture code before work, not after a potentially long worker has run.
-    paths = (Path(__file__), Path(local_read_mixed.__file__), Path(local_read_count_tensor.__code__.co_filename), Path(covered_celltype_pairwise_designs.__code__.co_filename))
+    paths = (Path(__file__), Path(local_read_mixed.__file__), Path(local_read_count_tensor.__code__.co_filename), Path(ExactLocalReadFitCache.evaluate.__code__.co_filename), Path(pooled_local_marker_effect.__code__.co_filename), Path(covered_celltype_pairwise_designs.__code__.co_filename))
     return {str(path.resolve()): file_hash(path) for path in paths}
 
 
@@ -97,13 +100,25 @@ def requested_id(feature, first, second):
     return f'{feature}|cell_type|{first}|{second}'
 
 
-def fit_record(event, context, lookup, cohort, variant):
+def marginal_fit(values):
+    return local_read_mixed.local_read_mixed_adaptive_test(local_read_mixed.LocalReadMixed(values), node_schedule=tuple(FIT_SETTINGS['node_schedule']), max_iter=FIT_SETTINGS['max_iter'], quadrature_tolerance=FIT_SETTINGS['quadrature_tolerance'])
+
+
+def fit_record(event, context, lookup, cohort, variant, cache=None):
     subjects = json.loads(context.subjects)
     values = local_read_count_tensor(event.feature_id, subjects, (context.level_a, context.level_b), PRIMERS, lookup)
     record = dict(test_id=requested_id(event.feature_id, context.level_a, context.level_b), feature_id=event.feature_id, block_id=event.feature_id.removeprefix('SUPPA2:'), gene_id=event.gene_id, event_type=event.event_type, effect='cell_type', level_a=context.level_a, level_b=context.level_b, contrast_id=f'cell_type__{context.level_a}__{context.level_b}', cohort=cohort, method=f'Local read mixed binomial, {variant} markers', marker_variant=variant, model_version=local_read_mixed.MODEL_VERSION, p_value=1., raw_p_value=1., F_reference_p_value=1., statistic=0., converged=False, n_subjects=0, n_requested_subjects=len(subjects), median_gene_umis=context.median_gene_umis, n_local_included_keys=int(values[..., 0].sum()), n_local_excluded_keys=int(values[..., 1].sum()), effect_size=np.nan, effect_coordinate='local marker inclusion log-odds, not RNA PSI', counts_sha256=hashlib.sha256(values.tobytes()).hexdigest(), error='')
+    record.update(pooled_local_marker_effect(values))
+    record['pooled_marker_primer_effects'] = json.dumps(record['pooled_marker_primer_effects'])
     start = time.monotonic()
+    record['fit_cache_hit'] = False
     try:
-        result = local_read_mixed.local_read_mixed_adaptive_test(local_read_mixed.LocalReadMixed(values), node_schedule=tuple(FIT_SETTINGS['node_schedule']), max_iter=FIT_SETTINGS['max_iter'], quadrature_tolerance=FIT_SETTINGS['quadrature_tolerance'])
+        if cache is None:
+            result = marginal_fit(values)
+        else:
+            result, error, record['fit_cache_hit'] = cache.evaluate(values)
+            if result is None:
+                raise ValueError(error)
         record.update({key: value for key, value in result.items() if key in FIELDS})
         record['raw_p_value'] = record['p_value']
         if result['converged']:
@@ -147,6 +162,7 @@ def fit(args):
     requested = int(contexts.n_events.sum())
     folder.mkdir(parents=True)
     completed, usable, start = 0, 0, time.monotonic()
+    cache = ExactLocalReadFitCache(marginal_fit)
     # Stream rows for inspection, but only a terminal receipt permits collation.
     with gzip.open(folder / 'tests.tsv.gz', 'wt') as handle:
         writer = csv.DictWriter(handle, fieldnames=FIELDS, delimiter='\t', extrasaction='raise')
@@ -156,7 +172,7 @@ def fit(args):
             if len(local) != context.n_events:
                 raise ValueError('declared event family differs from its context')
             for event in local.itertuples(index=False):
-                record = fit_record(event, context, lookup, args.cohort, args.marker_variant)
+                record = fit_record(event, context, lookup, args.cohort, args.marker_variant, cache)
                 writer.writerow(record)
                 completed += 1
                 usable += int(record['converged'])
@@ -165,7 +181,7 @@ def fit(args):
                     print(f'{completed}/{requested} requests, {usable} usable, {time.monotonic() - start:.1f} seconds', flush=True)
     if completed != requested:
         raise ValueError('every declared event/contrast request must be retained')
-    receipt = dict(recipe_sha256=file_hash(recipe_path), code_hashes=recipe['code_hashes'], settings=FIT_SETTINGS, cohort=args.cohort, marker_variant=args.marker_variant, shard_index=args.shard_index, shard_count=recipe['shard_count'], declared_events=len(family), requested_tests=requested, completed_tests=completed, usable=usable, elapsed_seconds=time.monotonic() - start, tests_sha256=file_hash(folder / 'tests.tsv.gz'), complete=True, production_changes=False)
+    receipt = dict(recipe_sha256=file_hash(recipe_path), code_hashes=recipe['code_hashes'], settings=FIT_SETTINGS, cohort=args.cohort, marker_variant=args.marker_variant, shard_index=args.shard_index, shard_count=recipe['shard_count'], declared_events=len(family), requested_tests=requested, completed_tests=completed, usable=usable, distinct_cache_evaluations=cache.evaluations, exact_fit_reuse=cache.hits, elapsed_seconds=time.monotonic() - start, tests_sha256=file_hash(folder / 'tests.tsv.gz'), complete=True, production_changes=False)
     (folder / 'manifest.json').write_text(json.dumps(receipt, indent=2) + '\n')
     print(json.dumps(receipt, indent=2), flush=True)
 

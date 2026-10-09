@@ -1,0 +1,18 @@
+{
+  "input_hashes": {
+    ".cache/full_local_read_catalog_qc/recipe.json": "318b118f4c6fc4d72b6d81f1de5b43a08713e96890c35dee88a028fe0b527725",
+    ".cache/suppa2_statistics/all_event_catalog/event_catalog.tsv.gz": "ad134e1c23d6d1393e6ba7b61a76efec4005e3a455f24551f195a2d68916f5e7",
+    "/gpfs/commons/home/daknowles/knowles_lab/index/kallisto/mus_musculus/with_precursor/gencode.vM32.basic.annotation.gtf": "a5335996c2300493f01c2d8e16c8ddaa3fff3adaa9fd10a1fbbf3b721ed37ace",
+    ".cache/tilgner_scisorseq/LR_annotTranscripts_byCT/matrix.mtx.gz": "4049b8aa1c55fbce4cde785765d6b7c8bc00fabb6ad65aeb55f98c7b2261d98a",
+    ".cache/tilgner_scisorseq/LR_annotTranscripts_byCT/features.tsv.gz": "062ac773a38ad39cda7b952c9bbf54120416f8a70dd41e69f3c1db0523d46bae",
+    ".cache/tilgner_scisorseq/LR_annotTranscripts_byCT/barcodes.tsv.gz": "e9755c409e5a48aca2911850a7805707ce7e39eb70edbebed294bc1a7b8a59c8"
+  },
+  "code_hashes": {
+    "/gpfs/commons/home/daknowles/projects/tealeaf/extra_scripts/audit_full_local_marker_scope.py": "3b2fd25e73f45ecf5667e29ba9b9ac6401c4e34045657daa61e85f19a331b776",
+    "/gpfs/commons/home/daknowles/projects/tealeaf/tealeaf/sc/local_marker_identifiability.py": "25b965e9de64f90b8ce83d36c6bc96ee3261c721881c2adb6da89f894c2a9444"
+  },
+  "declared_events": 23141,
+  "scope": "whole catalogue geometry/expression diagnostic, no p-value, LR-sign, discovery or rank selection",
+  "interpretation": "outside-class annotated RNAs with potential marker sources, not estimated short-read contamination or protocol-specific capture probabilities; whole-chain marker flags do not mean one read spans every feature",
+  "production_changes": false
+}

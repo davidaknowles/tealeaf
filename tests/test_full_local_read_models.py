@@ -85,8 +85,10 @@ def test_full_worker_streams_all_requests_with_markerless_failures_at_one(tmp_pa
     assert not unavailable.converged and unavailable.p_value == 1. and unavailable.n_requested_subjects == 8
     assert unavailable.n_local_included_keys == unavailable.n_local_excluded_keys == 0
     assert table.loc[table.converged, 'effect_size'].eq(.4).all()
+    assert table.fit_cache_hit.tolist() == [False, True, False]
     receipt = json.loads((folder / 'manifest.json').read_text())
     assert receipt['complete'] and receipt['requested_tests'] == receipt['completed_tests'] == 3
+    assert receipt['distinct_cache_evaluations'] == 2 and receipt['exact_fit_reuse'] == 1
     with pytest.raises(ValueError, match='overwrite'):
         driver.fit(args)
 

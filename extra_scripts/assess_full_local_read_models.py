@@ -14,7 +14,7 @@ from extra_scripts.audit_event_local_read_support import file_hash
 from extra_scripts.full_local_read_models import COHORTS, FIT_SETTINGS, requested_id
 from extra_scripts.assess_paired_inference_audit import split_assessment
 from extra_scripts.evaluate_suppa2_statistics import normalize_pairs
-from tealeaf.sc.replication_audit import coverage_correlation, ranked_direction_summary, ranked_category_summary, rank_direction_table
+from tealeaf.sc.replication_audit import coverage_correlation, ranked_direction_summary, ranked_category_summary, rank_direction_table, reexpress_event_directions
 
 
 def expected_requests(family, contexts):
@@ -37,6 +37,9 @@ def validate_shard(table, expected, recipe, receipt, cohort, variant, index):
         raise ValueError('explicit numerical availability required')
     table = table.copy()
     table['converged'] = boolean.eq('true')
+    cache_hits = table.fit_cache_hit.astype(str).str.lower()
+    if not cache_hits.isin(['true', 'false']).all() or int(cache_hits.eq('true').sum()) != receipt['exact_fit_reuse'] or receipt['exact_fit_reuse'] + receipt['distinct_cache_evaluations'] != len(table):
+        raise ValueError('exact reuse accounting must preserve every requested record')
     values = table[['p_value', 'raw_p_value', 'F_reference_p_value']].to_numpy(float)
     if not np.isfinite(values).all() or ((values < 0) | (values > 1)).any() or not table.loc[~table.converged, ['p_value', 'raw_p_value', 'F_reference_p_value']].eq(1.).all().all() or not table.loc[~table.converged, 'statistic'].eq(0.).all():
         raise ValueError('failed requests must retain p1 and statistic zero')
@@ -77,12 +80,13 @@ def load_cohort(root, recipe, cohort, variant):
     return table, receipts
 
 
-def split_table(table, method, tail):
+def split_table(table, method, tail, effect_column='effect_size'):
     local = normalize_pairs(table)
     local['method'] = method
     local['p_value'] = local[tail]
     local['raw_p_value'] = local[tail]
     local['coverage'] = local.median_gene_umis
+    local['effect_size'] = local[effect_column]
     local['effect_vector'] = local.effect_size.map(lambda value: [float(value)])
     local['effect_features'] = [['inclusion'] for _ in range(len(local))]
     return local
@@ -121,7 +125,8 @@ def main():
     for cohort, table in cohorts.items():
         table.to_csv(args.output_dir / f'{cohort}_tests.tsv.gz', sep='\t', index=False)
         censoring = table.effect_estimate_censored.astype(str).str.lower().eq('true')
-        summaries.append(dict(cohort=cohort, requested=len(table), usable=int(table.converged.sum()), nominal_05=int(table.p_value.le(.05).sum()), summed_fit_runtime_seconds=float(table.runtime_seconds.sum()), censoring=int(censoring.sum())))
+        cache_hits = table.fit_cache_hit.astype(str).str.lower().eq('true')
+        summaries.append(dict(cohort=cohort, requested=len(table), usable=int(table.converged.sum()), nominal_05=int(table.p_value.le(.05).sum()), summed_fit_runtime_seconds=float(table.runtime_seconds.sum()), exact_fit_reuse=int(cache_hits.sum()), distinct_cache_evaluations=len(table) - int(cache_hits.sum()), censoring=int(censoring.sum())))
     pd.DataFrame(summaries).to_csv(args.output_dir / 'fit_summary.tsv', sep='\t', index=False)
     correlations = []
     for label, tail in (('native_chi1', 'p_value'), ('F_reference', 'F_reference_p_value')):
@@ -130,6 +135,11 @@ def main():
         name = method + (', F-reference sensitivity' if label == 'F_reference' else ', native chi1 reference')
         folds = [split_table(cohorts[cohort], name, tail) for cohort in ('fold0', 'fold1')]
         split_assessment(folds, repo, output, name)
+        reporting_output = output / 'pooled_marker_reporting'
+        reporting_output.mkdir()
+        reporting_name = name + ', pooled marker reporting, unchanged tests'
+        reporting_folds = [split_table(cohorts[cohort], reporting_name, tail, 'pooled_marker_effect') for cohort in ('fold0', 'fold1')]
+        split_assessment(reporting_folds, repo, reporting_output, reporting_name)
         for fold, table in enumerate(folds):
             correlations.append(dict(tail=label, fold=fold, **coverage_correlation(table.p_value, table.coverage, table[['n_subjects']])))
     pd.DataFrame(correlations).to_csv(args.output_dir / 'coverage_correlations.tsv', sep='\t', index=False)
@@ -156,8 +166,16 @@ def main():
         pd.DataFrame(ranked_direction_summary(ranked)).to_csv(output / 'lr_rank_summary.tsv', sep='\t', index=False)
         pd.DataFrame(ranked_category_summary(ranked)).to_csv(output / 'lr_event_type_composition.tsv', sep='\t', index=False)
         ranked.head(200).to_csv(output / 'lr_rank.tsv.gz', sep='\t', index=False)
+        reported = reexpress_event_directions(local, full, 'pooled_marker_effect', local.method.iloc[0] + ', pooled marker reporting, unchanged tests' if len(local) else method + ', pooled marker reporting, unchanged tests')
+        reporting_rank = rank_direction_table(reported, len(reported))
+        if ranked[['feature_id', 'contrast_id', 'rank']].to_records(index=False).tolist() != reporting_rank[['feature_id', 'contrast_id', 'rank']].to_records(index=False).tolist():
+            raise ValueError('reporting cannot change the LR-evaluable family or test ranks')
+        reporting_output = output / 'pooled_marker_reporting'
+        pd.DataFrame(ranked_direction_summary(reporting_rank)).to_csv(reporting_output / 'lr_rank_summary.tsv', sep='\t', index=False)
+        pd.DataFrame(ranked_category_summary(reporting_rank)).to_csv(reporting_output / 'lr_event_type_composition.tsv', sep='\t', index=False)
+        reporting_rank.head(200).to_csv(reporting_output / 'lr_rank.tsv.gz', sep='\t', index=False)
     code_paths = [Path(__file__), repo / 'extra_scripts/assess_event_tilgner_replication.py', Path(split_assessment.__code__.co_filename), Path(normalize_pairs.__code__.co_filename), Path(rank_direction_table.__code__.co_filename)]
-    manifest = dict(recipe_sha256=file_hash(recipe_path), recipe=recipe, cohorts=receipts, LR_input_hashes=input_hashes, assessment_code_hashes={str(path.resolve()): file_hash(path) for path in code_paths}, LR='all complete tested associations freshly mapped, unchanged depth20 and nonzero finite direction requirement; no native-prefix restriction or significance filter', split='fixed published matched gene/pair universes, Simes event/pair aggregation and conjunction gene BH; all original unavailable fits retained atp1', estimand='common local-marker log-odds contrast; direction is not absolute RNA PSI or a pooled RNA-usage effect', calibration_limitation='native chi1 and F sensitivity are working-model diagnostics, not certified extreme-tail/joint-gene-FDR inference; numerical and toy checks do not establish biological validity', production_changes=False)
+    manifest = dict(recipe_sha256=file_hash(recipe_path), recipe=recipe, cohorts=receipts, LR_input_hashes=input_hashes, assessment_code_hashes={str(path.resolve()): file_hash(path) for path in code_paths}, LR='all complete tested associations freshly mapped, unchanged depth20 and nonzero finite direction requirement; no native-prefix restriction or significance filter', split='fixed published matched gene/pair universes, Simes event/pair aggregation and conjunction gene BH; all original unavailable fits retained atp1', estimand='common local-marker log-odds contrast; direction is not absolute RNA PSI or a pooled RNA-usage effect', reporting='separate equal-primer pooled-marker reporting, unchanged tests/gene-pair universes/LR association identities and ranks, missing or zero alternative effects count as LR nonagreement; split direction agreement assessed separately', calibration_limitation='native chi1 and F sensitivity are working-model diagnostics, not certified extreme-tail/joint-gene-FDR inference; numerical and toy checks do not establish biological validity', production_changes=False)
     (args.output_dir / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print(pd.DataFrame(summaries).to_string(index=False), flush=True)
 
