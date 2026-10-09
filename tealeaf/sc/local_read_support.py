@@ -8,6 +8,30 @@ from .junction_benchmark import normalize_starsolo_barcode
 from .sashimi import _alignment_junctions
 
 
+def local_read_count_tensor(feature, subjects, levels, primers, lookup):
+    """Sparse marker counts to M by P by two types by two classes.
+
+    The lookup keys are (feature, subject, type, primer) and values have
+    included/excluded fields. Missing strata remain zero, not absent subjects.
+    Subjects and primers retain the caller's declared order.
+    """
+    import numpy as np
+
+    subjects, levels, primers = tuple(subjects), tuple(levels), tuple(primers)
+    if len(set(subjects)) != len(subjects) or len(levels) != 2 or levels[0] == levels[1] or not primers or len(set(primers)) != len(primers):
+        raise ValueError("unique subjects/primers and two different cell-type levels required")
+    values = np.zeros((len(subjects), len(primers), 2, 2), dtype=np.int64)
+    for u, subject in enumerate(subjects):
+        for p, primer in enumerate(primers):
+            for c, level in enumerate(levels):
+                record = lookup.get((feature, subject, level, primer), {})
+                pair = np.asarray([record.get(key, 0) for key in ('included', 'excluded')], dtype=float)
+                if not np.isfinite(pair).all() or (pair < 0).any() or (pair != np.floor(pair)).any() or (pair > 2**50).any():
+                    raise ValueError('nonnegative exact finite marker counts required')
+                values[u, p, c] = pair.astype(np.int64)
+    return values
+
+
 @dataclass(frozen=True)
 class LocalReadContrast:
     """One event's zero-based intervals and class-unanimous local features.

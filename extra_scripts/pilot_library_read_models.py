@@ -13,6 +13,7 @@ import pandas as pd
 from extra_scripts.audit_event_local_read_support import file_hash
 from tealeaf.sc.conditional_read_odds import ConditionalReadOdds, conditional_read_odds_test
 from tealeaf.sc.local_read_mixed import LocalReadMixed, local_read_mixed_test, local_read_mixed_adaptive_test
+from tealeaf.sc.local_read_support import local_read_count_tensor
 
 
 PRIMERS = ("poly(dT)", "random hexamer")
@@ -33,15 +34,7 @@ def marker_lookup(signatures, *, junction_only):
 
 def count_tensor(feature, subjects, levels, lookup):
     """Keep every declared subject/primer/type, including all-zero strata."""
-    if len(set(subjects)) != len(subjects) or len(levels) != 2 or levels[0] == levels[1]:
-        raise ValueError("unique subjects and two different cell-type levels required")
-    values = np.zeros((len(subjects), len(PRIMERS), 2, 2), dtype=np.int64)
-    for u, subject in enumerate(subjects):
-        for p, primer in enumerate(PRIMERS):
-            for c, level in enumerate(levels):
-                record = lookup.get((feature, subject, level, primer), {})
-                values[u, p, c] = [record.get(key, 0) for key in ("included", "excluded")]
-    return values
+    return local_read_count_tensor(feature, subjects, levels, PRIMERS, lookup)
 
 
 def main():

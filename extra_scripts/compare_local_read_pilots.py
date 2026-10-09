@@ -15,15 +15,17 @@ from extra_scripts.audit_event_local_read_support import file_hash
 KEYS = ['fold', 'test_id', 'model', 'variant']
 
 
-def matched_pilots(old, new, cases):
+def matched_pilots(old, new, cases, versions=('v1', 'v2')):
     validate_family(old, cases)
     validate_family(new, cases)
     table = old.merge(new, on=KEYS, suffixes=('_old', '_new'), validate='one_to_one')
     if not table.counts_sha256_old.eq(table.counts_sha256_new).all() or not table.requested_subjects_old.eq(table.requested_subjects_new).all():
         raise ValueError('original counts and requested subjects must remain identical')
-    for frame, version in ((old, 'v1'), (new, 'v2')):
-        versions = frame.loc[frame.model.eq('unconditional'), 'model_version'].dropna().unique()
-        if set(versions) != {f'local_read_binomial_random_intercept_slope_{version}'}:
+    if len(versions) != 2 or any(version not in ('v1', 'v2') for version in versions):
+        raise ValueError('two explicit supported model versions required')
+    for frame, version in zip((old, new), versions):
+        observed = frame.loc[frame.model.eq('unconditional'), 'model_version'].dropna().unique()
+        if set(observed) != {f'local_read_binomial_random_intercept_slope_{version}'}:
             raise ValueError('explicit original and updated unconditional model versions required')
     return table
 
@@ -47,6 +49,8 @@ def main():
     parser.add_argument('--new', type=Path, required=True)
     parser.add_argument('--cases', type=Path, required=True)
     parser.add_argument('--output-dir', type=Path, required=True)
+    parser.add_argument('--old-version', choices=('v1', 'v2'), default='v1')
+    parser.add_argument('--new-version', choices=('v1', 'v2'), default='v2')
     args = parser.parse_args()
     if args.output_dir.exists():
         raise ValueError('new paired audit output required')
@@ -55,7 +59,7 @@ def main():
     if receipts[0]['source_hashes'] != receipts[1]['source_hashes'] or len(receipts[0]['shards']) != 16 or len(receipts[1]['shards']) != 16:
         raise ValueError('two complete pilots on identical source counts required')
     cases = pd.read_csv(args.cases, sep='\t')
-    table = matched_pilots(old, new, cases)
+    table = matched_pilots(old, new, cases, (args.old_version, args.new_version))
     summaries = []
     groups = ['fold', 'panel_new', 'model', 'variant']
     for keys, local in table.groupby(groups):
@@ -74,7 +78,7 @@ def main():
     pd.DataFrame(summaries).to_csv(args.output_dir / 'summary.tsv', sep='\t', index=False)
     pd.concat(failures).to_csv(args.output_dir / 'failure_reasons.tsv', sep='\t', index=False)
     paths = [args.cases, *(folder / name for folder in (args.old, args.new) for name in ('tests.tsv.gz', 'manifest.json'))]
-    manifest = dict(input_hashes={str(path): file_hash(path) for path in paths}, requested_fits=len(table), scope='matched v1/v2 numerical availability and direction audit of the unchanged selected panel; nominal calls are descriptive, not discoveries, calibrated power, unbiased split replication or own-ranked LR agreement', production_changes=False)
+    manifest = dict(input_hashes={str(path): file_hash(path) for path in paths}, requested_fits=len(table), declared_model_versions=[args.old_version, args.new_version], scope='matched numerical availability and direction audit of the unchanged selected panel; nominal calls are descriptive, not discoveries, calibrated power, unbiased split replication or own-ranked LR agreement', production_changes=False)
     (args.output_dir / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print(pd.DataFrame(summaries).to_string(index=False), flush=True)
 

@@ -18,6 +18,14 @@ def test_matched_pilots_keep_every_failed_identity_and_original_counts():
     assert len(table) == 4 and not table.converged_new.any()
 
 
+def test_same_model_adaptive_comparison_requires_explicit_versions():
+    old, new, cases = fixture()
+    old.loc[old.model.eq('unconditional'), 'model_version'] = 'local_read_binomial_random_intercept_slope_v2'
+    with pytest.raises(ValueError):
+        matched_pilots(old, new, cases)
+    assert len(matched_pilots(old, new, cases, ('v2', 'v2'))) == 4
+
+
 @pytest.mark.parametrize('problem', ['changed_counts', 'changed_subjects', 'changed_version'])
 def test_pilot_comparison_refuses_nonmatched_model_recipes(problem):
     old, new, cases = fixture()

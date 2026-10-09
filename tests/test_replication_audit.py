@@ -3,6 +3,26 @@ import pytest
 from tealeaf.sc.replication_audit import aligned_direction, coverage_correlation, reexpress_event_directions
 
 
+def test_rank_order_uses_significance_and_original_ties_not_agreement():
+    import pandas as pd
+    from tealeaf.sc.replication_audit import rank_direction_table
+    table = pd.DataFrame(dict(method=['m'] * 5, feature_id=list('edcba'), p_value=[.1] * 4 + [.01], raw_p_value=[.1, .1, .05, .1, .01], statistic=[2., 3., 0., 3., 0.], pooled_replicated=[True, False, False, True, True]))
+    ranked = rank_direction_table(table, 5)
+    assert ranked.feature_id.tolist() == list('acbde')
+    np.testing.assert_allclose(ranked.cumulative_agreement, [1., .5, 2 / 3, .5, .6])
+    changed = rank_direction_table(table.assign(pooled_replicated=~table.pooled_replicated), 5)
+    assert changed.feature_id.tolist() == ranked.feature_id.tolist()
+    assert ranked.p_tie_size.tolist() == [1, 4, 4, 4, 4]
+
+
+def test_rank_order_can_keep_a_short_empty_endpoint_without_extrapolation():
+    import pandas as pd
+    from tealeaf.sc.replication_audit import rank_direction_table, ranked_direction_summary
+    table = pd.DataFrame(columns=['method', 'feature_id', 'p_value', 'pooled_replicated'])
+    ranked = rank_direction_table(table, 200)
+    assert len(ranked) == 0 and ranked_direction_summary(ranked) == []
+
+
 def test_coverage_uses_p_not_negative_log_p_and_filters_missing():
     result = coverage_correlation([.8, .4, .1, np.nan], [1, 2, 3, 4])
     assert np.isclose(result["rho_p_coverage"], -1)

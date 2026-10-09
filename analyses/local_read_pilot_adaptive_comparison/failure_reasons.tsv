@@ -1,0 +1,142 @@
+fold	panel	model	variant	failure_reason	requested	version
+0	small observed raw p-value	conditional	all local markers	doubled-order quadrature mismatch	53	old
+0	small observed raw p-value	conditional	all local markers	f(a) and f(b) must have different signs	1	old
+0	small observed raw p-value	conditional	all local markers	four actually informative subject tables required	103	old
+0	small observed raw p-value	conditional	all local markers	usable	34	old
+0	small observed raw p-value	conditional	junction markers	doubled-order quadrature mismatch	53	old
+0	small observed raw p-value	conditional	junction markers	f(a) and f(b) must have different signs	1	old
+0	small observed raw p-value	conditional	junction markers	four actually informative subject tables required	116	old
+0	small observed raw p-value	conditional	junction markers	nonvalidated parameter boundary	1	old
+0	small observed raw p-value	conditional	junction markers	usable	20	old
+0	small observed raw p-value	unconditional	all local markers	doubled-order quadrature mismatch	42	old
+0	small observed raw p-value	unconditional	all local markers	four subjects with local reads in both types required	37	old
+0	small observed raw p-value	unconditional	all local markers	local read evidence with both marker classes required	31	old
+0	small observed raw p-value	unconditional	all local markers	primer and cell-type means are confounded	2	old
+0	small observed raw p-value	unconditional	all local markers	usable	79	old
+0	small observed raw p-value	unconditional	junction markers	doubled-order quadrature mismatch	44	old
+0	small observed raw p-value	unconditional	junction markers	four subjects with local reads in both types required	45	old
+0	small observed raw p-value	unconditional	junction markers	local read evidence with both marker classes required	44	old
+0	small observed raw p-value	unconditional	junction markers	primer and cell-type means are confounded	2	old
+0	small observed raw p-value	unconditional	junction markers	usable	56	old
+0	subject-count-matched weak control	conditional	all local markers	doubled-order quadrature mismatch	10	old
+0	subject-count-matched weak control	conditional	all local markers	four actually informative subject tables required	150	old
+0	subject-count-matched weak control	conditional	all local markers	usable	31	old
+0	subject-count-matched weak control	conditional	junction markers	doubled-order quadrature mismatch	6	old
+0	subject-count-matched weak control	conditional	junction markers	four actually informative subject tables required	169	old
+0	subject-count-matched weak control	conditional	junction markers	usable	16	old
+0	subject-count-matched weak control	unconditional	all local markers	doubled-order quadrature mismatch	8	old
+0	subject-count-matched weak control	unconditional	all local markers	four subjects with local reads in both types required	54	old
+0	subject-count-matched weak control	unconditional	all local markers	local read evidence with both marker classes required	63	old
+0	subject-count-matched weak control	unconditional	all local markers	primer and cell-type means are confounded	6	old
+0	subject-count-matched weak control	unconditional	all local markers	usable	60	old
+0	subject-count-matched weak control	unconditional	junction markers	doubled-order quadrature mismatch	8	old
+0	subject-count-matched weak control	unconditional	junction markers	four subjects with local reads in both types required	57	old
+0	subject-count-matched weak control	unconditional	junction markers	local read evidence with both marker classes required	84	old
+0	subject-count-matched weak control	unconditional	junction markers	primer and cell-type means are confounded	8	old
+0	subject-count-matched weak control	unconditional	junction markers	usable	34	old
+1	small observed raw p-value	conditional	all local markers	doubled-order quadrature mismatch	28	old
+1	small observed raw p-value	conditional	all local markers	four actually informative subject tables required	108	old
+1	small observed raw p-value	conditional	all local markers	usable	30	old
+1	small observed raw p-value	conditional	junction markers	doubled-order quadrature mismatch	28	old
+1	small observed raw p-value	conditional	junction markers	four actually informative subject tables required	123	old
+1	small observed raw p-value	conditional	junction markers	usable	15	old
+1	small observed raw p-value	unconditional	all local markers	doubled-order quadrature mismatch	31	old
+1	small observed raw p-value	unconditional	all local markers	four subjects with local reads in both types required	39	old
+1	small observed raw p-value	unconditional	all local markers	local read evidence with both marker classes required	25	old
+1	small observed raw p-value	unconditional	all local markers	primer and cell-type means are confounded	5	old
+1	small observed raw p-value	unconditional	all local markers	usable	66	old
+1	small observed raw p-value	unconditional	junction markers	doubled-order quadrature mismatch	32	old
+1	small observed raw p-value	unconditional	junction markers	four subjects with local reads in both types required	46	old
+1	small observed raw p-value	unconditional	junction markers	local read evidence with both marker classes required	35	old
+1	small observed raw p-value	unconditional	junction markers	primer and cell-type means are confounded	6	old
+1	small observed raw p-value	unconditional	junction markers	usable	47	old
+1	subject-count-matched weak control	conditional	all local markers	doubled-order quadrature mismatch	5	old
+1	subject-count-matched weak control	conditional	all local markers	four actually informative subject tables required	123	old
+1	subject-count-matched weak control	conditional	all local markers	usable	38	old
+1	subject-count-matched weak control	conditional	junction markers	doubled-order quadrature mismatch	3	old
+1	subject-count-matched weak control	conditional	junction markers	four actually informative subject tables required	145	old
+1	subject-count-matched weak control	conditional	junction markers	usable	18	old
+1	subject-count-matched weak control	unconditional	all local markers	doubled-order quadrature mismatch	5	old
+1	subject-count-matched weak control	unconditional	all local markers	four subjects with local reads in both types required	31	old
+1	subject-count-matched weak control	unconditional	all local markers	local read evidence with both marker classes required	58	old
+1	subject-count-matched weak control	unconditional	all local markers	primer and cell-type means are confounded	5	old
+1	subject-count-matched weak control	unconditional	all local markers	usable	67	old
+1	subject-count-matched weak control	unconditional	junction markers	doubled-order quadrature mismatch	5	old
+1	subject-count-matched weak control	unconditional	junction markers	four subjects with local reads in both types required	42	old
+1	subject-count-matched weak control	unconditional	junction markers	local read evidence with both marker classes required	77	old
+1	subject-count-matched weak control	unconditional	junction markers	primer and cell-type means are confounded	4	old
+1	subject-count-matched weak control	unconditional	junction markers	usable	38	old
+0	small observed raw p-value	conditional	all local markers	doubled-order quadrature mismatch	53	new
+0	small observed raw p-value	conditional	all local markers	f(a) and f(b) must have different signs	1	new
+0	small observed raw p-value	conditional	all local markers	four actually informative subject tables required	103	new
+0	small observed raw p-value	conditional	all local markers	usable	34	new
+0	small observed raw p-value	conditional	junction markers	doubled-order quadrature mismatch	53	new
+0	small observed raw p-value	conditional	junction markers	f(a) and f(b) must have different signs	1	new
+0	small observed raw p-value	conditional	junction markers	four actually informative subject tables required	116	new
+0	small observed raw p-value	conditional	junction markers	nonvalidated parameter boundary	1	new
+0	small observed raw p-value	conditional	junction markers	usable	20	new
+0	small observed raw p-value	unconditional	all local markers	doubled-order quadrature mismatch	9	new
+0	small observed raw p-value	unconditional	all local markers	four subjects with local reads in both types required	37	new
+0	small observed raw p-value	unconditional	all local markers	local read evidence with both marker classes required	31	new
+0	small observed raw p-value	unconditional	all local markers	nonvalidated parameter boundary	18	new
+0	small observed raw p-value	unconditional	all local markers	primer and cell-type means are confounded	2	new
+0	small observed raw p-value	unconditional	all local markers	usable	94	new
+0	small observed raw p-value	unconditional	junction markers	doubled-order quadrature mismatch	7	new
+0	small observed raw p-value	unconditional	junction markers	four subjects with local reads in both types required	45	new
+0	small observed raw p-value	unconditional	junction markers	local read evidence with both marker classes required	44	new
+0	small observed raw p-value	unconditional	junction markers	nonvalidated parameter boundary	20	new
+0	small observed raw p-value	unconditional	junction markers	primer and cell-type means are confounded	2	new
+0	small observed raw p-value	unconditional	junction markers	usable	73	new
+0	subject-count-matched weak control	conditional	all local markers	doubled-order quadrature mismatch	10	new
+0	subject-count-matched weak control	conditional	all local markers	four actually informative subject tables required	150	new
+0	subject-count-matched weak control	conditional	all local markers	usable	31	new
+0	subject-count-matched weak control	conditional	junction markers	doubled-order quadrature mismatch	6	new
+0	subject-count-matched weak control	conditional	junction markers	four actually informative subject tables required	169	new
+0	subject-count-matched weak control	conditional	junction markers	usable	16	new
+0	subject-count-matched weak control	unconditional	all local markers	doubled-order quadrature mismatch	4	new
+0	subject-count-matched weak control	unconditional	all local markers	four subjects with local reads in both types required	54	new
+0	subject-count-matched weak control	unconditional	all local markers	local read evidence with both marker classes required	63	new
+0	subject-count-matched weak control	unconditional	all local markers	nonvalidated parameter boundary	1	new
+0	subject-count-matched weak control	unconditional	all local markers	primer and cell-type means are confounded	6	new
+0	subject-count-matched weak control	unconditional	all local markers	usable	63	new
+0	subject-count-matched weak control	unconditional	junction markers	doubled-order quadrature mismatch	3	new
+0	subject-count-matched weak control	unconditional	junction markers	four subjects with local reads in both types required	57	new
+0	subject-count-matched weak control	unconditional	junction markers	local read evidence with both marker classes required	84	new
+0	subject-count-matched weak control	unconditional	junction markers	nonvalidated parameter boundary	2	new
+0	subject-count-matched weak control	unconditional	junction markers	primer and cell-type means are confounded	8	new
+0	subject-count-matched weak control	unconditional	junction markers	usable	37	new
+1	small observed raw p-value	conditional	all local markers	doubled-order quadrature mismatch	28	new
+1	small observed raw p-value	conditional	all local markers	four actually informative subject tables required	108	new
+1	small observed raw p-value	conditional	all local markers	usable	30	new
+1	small observed raw p-value	conditional	junction markers	doubled-order quadrature mismatch	28	new
+1	small observed raw p-value	conditional	junction markers	four actually informative subject tables required	123	new
+1	small observed raw p-value	conditional	junction markers	usable	15	new
+1	small observed raw p-value	unconditional	all local markers	doubled-order quadrature mismatch	6	new
+1	small observed raw p-value	unconditional	all local markers	four subjects with local reads in both types required	39	new
+1	small observed raw p-value	unconditional	all local markers	local read evidence with both marker classes required	25	new
+1	small observed raw p-value	unconditional	all local markers	nonvalidated parameter boundary	9	new
+1	small observed raw p-value	unconditional	all local markers	primer and cell-type means are confounded	5	new
+1	small observed raw p-value	unconditional	all local markers	usable	82	new
+1	small observed raw p-value	unconditional	junction markers	doubled-order quadrature mismatch	9	new
+1	small observed raw p-value	unconditional	junction markers	four subjects with local reads in both types required	46	new
+1	small observed raw p-value	unconditional	junction markers	local read evidence with both marker classes required	35	new
+1	small observed raw p-value	unconditional	junction markers	nonvalidated parameter boundary	10	new
+1	small observed raw p-value	unconditional	junction markers	primer and cell-type means are confounded	6	new
+1	small observed raw p-value	unconditional	junction markers	usable	60	new
+1	subject-count-matched weak control	conditional	all local markers	doubled-order quadrature mismatch	5	new
+1	subject-count-matched weak control	conditional	all local markers	four actually informative subject tables required	123	new
+1	subject-count-matched weak control	conditional	all local markers	usable	38	new
+1	subject-count-matched weak control	conditional	junction markers	doubled-order quadrature mismatch	3	new
+1	subject-count-matched weak control	conditional	junction markers	four actually informative subject tables required	145	new
+1	subject-count-matched weak control	conditional	junction markers	usable	18	new
+1	subject-count-matched weak control	unconditional	all local markers	doubled-order quadrature mismatch	4	new
+1	subject-count-matched weak control	unconditional	all local markers	four subjects with local reads in both types required	31	new
+1	subject-count-matched weak control	unconditional	all local markers	local read evidence with both marker classes required	58	new
+1	subject-count-matched weak control	unconditional	all local markers	primer and cell-type means are confounded	5	new
+1	subject-count-matched weak control	unconditional	all local markers	usable	68	new
+1	subject-count-matched weak control	unconditional	junction markers	doubled-order quadrature mismatch	3	new
+1	subject-count-matched weak control	unconditional	junction markers	four subjects with local reads in both types required	42	new
+1	subject-count-matched weak control	unconditional	junction markers	local read evidence with both marker classes required	77	new
+1	subject-count-matched weak control	unconditional	junction markers	nonvalidated parameter boundary	2	new
+1	subject-count-matched weak control	unconditional	junction markers	primer and cell-type means are confounded	4	new
+1	subject-count-matched weak control	unconditional	junction markers	usable	38	new

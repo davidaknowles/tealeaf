@@ -1,0 +1,17 @@
+fold	panel	model	variant	requested	usable	median_runtime_seconds	median_requested_subjects	exception_trials
+0	small observed raw p-value	conditional	all local markers	191	34	0.0021871645003557	18.0	104
+0	small observed raw p-value	conditional	junction markers	191	20	0.0009140353649854	18.0	117
+0	small observed raw p-value	unconditional	all local markers	191	94	0.2208270486444234	18.0	70
+0	small observed raw p-value	unconditional	junction markers	191	73	0.1916378205642104	18.0	91
+0	subject-count-matched weak control	conditional	all local markers	191	31	0.0004519578069448	19.0	150
+0	subject-count-matched weak control	conditional	junction markers	191	16	0.0003140941262245	19.0	169
+0	subject-count-matched weak control	unconditional	all local markers	191	63	0.0001832749694585	19.0	123
+0	subject-count-matched weak control	unconditional	junction markers	191	37	0.0001021604984998	19.0	149
+1	small observed raw p-value	conditional	all local markers	166	30	0.0009129429236054	18.0	108
+1	small observed raw p-value	conditional	junction markers	166	15	0.0006399191915988499	18.0	123
+1	small observed raw p-value	unconditional	all local markers	166	82	0.22616510372608895	18.0	69
+1	small observed raw p-value	unconditional	junction markers	166	60	0.0005494533106684	18.0	87
+1	subject-count-matched weak control	conditional	all local markers	166	38	0.0006439853459596001	19.0	123
+1	subject-count-matched weak control	conditional	junction markers	166	18	0.0003780825063586	19.0	145
+1	subject-count-matched weak control	unconditional	all local markers	166	68	0.0002736104652285	19.0	94
+1	subject-count-matched weak control	unconditional	junction markers	166	38	0.00012543145567175	19.0	123

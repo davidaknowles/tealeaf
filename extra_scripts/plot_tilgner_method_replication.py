@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from tealeaf.sc.replication_audit import ranked_direction_summary
+from tealeaf.sc.replication_audit import ranked_direction_summary, rank_direction_table
 from plotnine import aes, coord_cartesian, element_blank, element_text, facet_wrap, geom_col, geom_errorbar, geom_hline, geom_line, geom_point, geom_text, ggplot, labs, scale_color_manual, scale_fill_manual, scale_x_continuous, scale_x_discrete, theme, theme_bw
 
 
@@ -19,21 +19,7 @@ COLORS = {"Tealeaf": "#0B6666", "Tealeaf pairwise": "#0B6666", "Tealeaf omnibus"
 
 def _rank_table(table, max_rank, method_column="method"):
     """Add tie-aware significance ranks and cumulative agreement."""
-    table = table.copy()
-    table["p_value"] = pd.to_numeric(table["p_value"], errors="coerce")
-    table["raw_p_value"] = pd.to_numeric(table["raw_p_value"], errors="coerce") if "raw_p_value" in table else table["p_value"]
-    table["statistic"] = pd.to_numeric(table["statistic"], errors="coerce") if "statistic" in table else pd.Series(np.nan, index=table.index)
-    table["_sort_raw_p"] = table["raw_p_value"].fillna(table["p_value"])
-    table["_sort_statistic"] = -table["statistic"].fillna(-float("inf"))
-    table = table.sort_values([method_column, "p_value", "_sort_raw_p", "_sort_statistic", "feature_id"], kind="stable")
-    table["rank"] = table.groupby(method_column).cumcount() + 1
-    table["p_tie_size"] = table.groupby([method_column, "p_value"])["feature_id"].transform("size")
-    table = table[table["rank"] <= max_rank].copy()
-    table["n_evaluable"] = table.groupby(method_column)["rank"].transform("size")
-    table["n_agreement"] = table.groupby(method_column)["pooled_replicated"].cumsum()
-    table["n_observed"] = table.groupby(method_column).cumcount() + 1
-    table["cumulative_agreement"] = table["n_agreement"] / table["n_observed"]
-    return table.drop(columns=["_sort_raw_p", "_sort_statistic"])
+    return rank_direction_table(table, max_rank, method_column)
 
 
 def replace_rank_methods(ranked, replacement, max_rank=200):

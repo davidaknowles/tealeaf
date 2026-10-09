@@ -5,6 +5,29 @@ import pandas as pd
 from scipy.stats import rankdata, spearmanr
 
 
+def rank_direction_table(table, max_rank, method_column='method'):
+    """Existing significance/tie ordering and discrete cumulative agreement.
+
+    Keep the ranking independent of plotting libraries and of agreement
+    outcomes. The caller supplies the unchanged LR-evaluable association set.
+    """
+    table = table.copy()
+    table['p_value'] = pd.to_numeric(table['p_value'], errors='coerce')
+    table['raw_p_value'] = pd.to_numeric(table['raw_p_value'], errors='coerce') if 'raw_p_value' in table else table['p_value']
+    table['statistic'] = pd.to_numeric(table['statistic'], errors='coerce') if 'statistic' in table else pd.Series(np.nan, index=table.index)
+    table['_sort_raw_p'] = table['raw_p_value'].fillna(table['p_value'])
+    table['_sort_statistic'] = -table['statistic'].fillna(-float('inf'))
+    table = table.sort_values([method_column, 'p_value', '_sort_raw_p', '_sort_statistic', 'feature_id'], kind='stable')
+    table['rank'] = table.groupby(method_column).cumcount() + 1
+    table['p_tie_size'] = table.groupby([method_column, 'p_value'])['feature_id'].transform('size')
+    table = table[table['rank'] <= max_rank].copy()
+    table['n_evaluable'] = table.groupby(method_column)['rank'].transform('size')
+    table['n_agreement'] = table.groupby(method_column)['pooled_replicated'].cumsum() if len(table) else pd.Series(index=table.index, dtype=float)
+    table['n_observed'] = table.groupby(method_column).cumcount() + 1
+    table['cumulative_agreement'] = table['n_agreement'] / table['n_observed']
+    return table.drop(columns=['_sort_raw_p', '_sort_statistic'])
+
+
 def ranked_direction_summary(table, cutoffs=(40, 100, 200)):
     """Summarize discrete cumulative agreement without extrapolating short curves.
 
