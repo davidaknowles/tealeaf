@@ -1,0 +1,8 @@
+{
+  "family": "exact same LR-evaluable association identities, depth thresholds, external effects, p-values and tie breaks as independent usage reporting",
+  "estimator": "common ILR mean from efficient-score measurement information and biological REML covariance, not a PSI usage estimate",
+  "missing": "nonfinite or zero replacement directions remain nonagreements in this fixed family",
+  "requested": 30391,
+  "available": 30046,
+  "selection": "no native-panel restriction, significance cutoff or direction-dependent re-selection"
+}

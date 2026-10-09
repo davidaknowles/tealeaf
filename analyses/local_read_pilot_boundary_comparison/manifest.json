@@ -1,0 +1,12 @@
+{
+  "input_hashes": {
+    "analyses/event_sequence_local_read_support_library_qc/diagnostics.tsv.gz": "5c275c96a4350e704efb8a600f129262cd268d47661414feeae41403b913d7c7",
+    "analyses/event_sequence_local_read_model_pilot_qc/tests.tsv.gz": "f356ae27d46abda4cde7f3af8255077ee8120b4f867ffc8e00dfcb5a2c43b7fc",
+    "analyses/event_sequence_local_read_model_pilot_qc/manifest.json": "54ca3bac89d83965fb90b5d752332ef113ed69aaa0b928cbb501d6cc373b743d",
+    "analyses/event_sequence_local_read_model_pilot_qc_v2/tests.tsv.gz": "614d965bcc46f943cd891ee89c66e36777547160a52b6874a335d33ea87a4c7a",
+    "analyses/event_sequence_local_read_model_pilot_qc_v2/manifest.json": "54ca3bac89d83965fb90b5d752332ef113ed69aaa0b928cbb501d6cc373b743d"
+  },
+  "requested_fits": 2856,
+  "scope": "matched v1/v2 numerical availability and direction audit of the unchanged selected panel; nominal calls are descriptive, not discoveries, calibrated power, unbiased split replication or own-ranked LR agreement",
+  "production_changes": false
+}

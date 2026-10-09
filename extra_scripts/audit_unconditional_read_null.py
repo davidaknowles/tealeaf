@@ -11,7 +11,7 @@ import pandas as pd
 from scipy import stats
 
 from extra_scripts.audit_conditional_read_null import null_read_panels
-from tealeaf.sc.local_read_mixed import LocalReadMixed, local_read_mixed_test, MODEL_VERSION
+from tealeaf.sc.local_read_mixed import LocalReadMixed, local_read_mixed_test, local_read_mixed_adaptive_test, MODEL_VERSION
 
 
 def main():
@@ -20,6 +20,7 @@ def main():
     parser.add_argument("--draws", type=int, default=64)
     parser.add_argument("--nodes", type=int, default=11)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--adaptive-integration", action='store_true')
     args = parser.parse_args()
     if args.output_dir.exists() or args.draws < 1 or not 0 <= args.scenario < 4:
         raise ValueError("new output and declared finite null panel required")
@@ -31,7 +32,7 @@ def main():
             record = dict(scenario=args.scenario, draw=draw, law=law, p_value=1., F_reference_p_value=1., converged=False, error="")
             try:
                 likelihood = LocalReadMixed(observed)
-                result = local_read_mixed_test(likelihood, nodes=args.nodes)
+                result = local_read_mixed_adaptive_test(likelihood, node_schedule=(args.nodes, 2 * args.nodes - 1, 4 * args.nodes - 3)) if args.adaptive_integration else local_read_mixed_test(likelihood, nodes=args.nodes)
                 record.update(result)
                 record["F_reference_p_value"] = float(stats.f.sf(result["statistic"], 1, result["n_subjects"] - 1)) if result["converged"] else 1.
             except (ValueError, np.linalg.LinAlgError) as exc:
@@ -48,7 +49,7 @@ def main():
     args.output_dir.mkdir(parents=True)
     table.to_csv(args.output_dir / "tests.tsv.gz", sep="\t", index=False)
     pd.DataFrame(summaries).to_csv(args.output_dir / "summary.tsv", sep="\t", index=False)
-    manifest = dict(model_version=MODEL_VERSION, scenario=args.scenario, draws=args.draws, nodes=args.nodes, seed=[20261008, 92317, args.scenario], frozen_draw_source="same null_read_panels generator as the conditional candidate", model="primer fixed means, independent normal shared-subject baseline and subject effect, beta null zero; both variance regimes refitted including exact zero", primary_calibration_law="unconditional binomial draws match this latent model, baseline SD1 and slope SD0/.8", cross_model_law="conditional draws are a sensitivity, not this model's generating law; their fixed class margins can change intercept/slope dependence", failure_policy="all requested trials retained at p=1", scope="toy count-null and numerical/runtime pilot, not real EC validation or a complete split/LR endpoint result", production_changes=False)
+    manifest = dict(model_version=MODEL_VERSION, scenario=args.scenario, draws=args.draws, nodes=args.nodes, adaptive_integration=args.adaptive_integration, seed=[20261008, 92317, args.scenario], frozen_draw_source="same null_read_panels generator as the conditional candidate", model="primer fixed means, independent normal shared-subject baseline and subject effect, beta null zero; both variance regimes refitted including exact zero", primary_calibration_law="unconditional binomial draws match this latent model, baseline SD1 and slope SD0/.8", cross_model_law="conditional draws are a sensitivity, not this model's generating law; their fixed class margins can change intercept/slope dependence", failure_policy="all requested trials retained at p=1", scope="toy count-null and numerical/runtime pilot, not real EC validation or a complete split/LR endpoint result", production_changes=False)
     (args.output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(pd.DataFrame(summaries).to_string(index=False), flush=True)
 

@@ -1,0 +1,10 @@
+{
+  "input_hashes": {
+    "analyses/local_read_lr_contrast_eligibility/rank_prefix.tsv.gz": "7ab0aeaaaa8570adc5a3a80a6f88405c673c23b7af7da2d0969c5c0d47ea3f4a",
+    ".cache/event_sequence_controls_L150_E001/assess_mixed_score_reference/original_binary/full/merged/paired_path.tsv": "6f21c734c40d29d1c7f1706fb58425c7dfe1cc016369fd22b0d0d79413d64014",
+    "analyses/event_sequence_full_score/manifest.json": "7fa84500e05eb7dd7035004d16a72bac58dfbce2e6515ba2e49a7bcacc64bd1a"
+  },
+  "requested_full_fits": 401128,
+  "scope": "completed-fit availability at frozen SUPPA2 LR prefix, not candidate own-ranked LR agreement, power or calibration",
+  "production_changes": false
+}

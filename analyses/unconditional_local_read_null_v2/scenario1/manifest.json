@@ -1,0 +1,18 @@
+{
+  "model_version": "local_read_binomial_random_intercept_slope_v2",
+  "scenario": 1,
+  "draws": 64,
+  "nodes": 11,
+  "seed": [
+    20261008,
+    92317,
+    1
+  ],
+  "frozen_draw_source": "same null_read_panels generator as the conditional candidate",
+  "model": "primer fixed means, independent normal shared-subject baseline and subject effect, beta null zero; both variance regimes refitted including exact zero",
+  "primary_calibration_law": "unconditional binomial draws match this latent model, baseline SD1 and slope SD0/.8",
+  "cross_model_law": "conditional draws are a sensitivity, not this model's generating law; their fixed class margins can change intercept/slope dependence",
+  "failure_policy": "all requested trials retained at p=1",
+  "scope": "toy count-null and numerical/runtime pilot, not real EC validation or a complete split/LR endpoint result",
+  "production_changes": false
+}

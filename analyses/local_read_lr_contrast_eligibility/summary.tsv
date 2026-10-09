@@ -1,0 +1,5 @@
+cutoff	eligibility	requested	unique_genes	median_requested_subjects
+100	contrast gene-coverage or subject-count screen	1	1	0.0
+100	requested before fitting	99	37	35.0
+200	contrast gene-coverage or subject-count screen	12	9	0.0
+200	requested before fitting	188	80	32.5

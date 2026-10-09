@@ -16,6 +16,15 @@ from tealeaf.sc.local_read_mixed import MODEL_VERSION as UNCONDITIONAL_VERSION
 LAWS = ("unconditional binomial", "conditional working model")
 
 
+def integration_recipe(manifest, model):
+    """Normalize explicitly declared node fields from the two model drivers."""
+    key = 'quadrature_nodes' if model == 'conditional' else 'nodes'
+    nodes, adaptive = manifest[key], manifest.get('adaptive_integration', False)
+    if not isinstance(nodes, int) or isinstance(nodes, bool) or nodes < 3 or not isinstance(adaptive, bool):
+        raise ValueError('declared integer quadrature order and boolean integration policy required')
+    return dict(nodes=nodes, adaptive_integration=adaptive)
+
+
 def validate_trials(table, scenario, draws):
     """Failures retain p=1; require every original law/draw identity."""
     if table.duplicated(["law", "draw"]).any() or set(zip(table.law, table.draw)) != {(law, draw) for law in LAWS for draw in range(draws)} or not table.scenario.eq(scenario).all():
@@ -37,12 +46,16 @@ def main():
     args = parser.parse_args()
     if args.output_dir.exists() or args.draws < 1:
         raise ValueError("new output and positive declared draw count required")
-    summaries, failures, hashes = [], [], {}
+    summaries, failures, hashes, integration_recipes = [], [], {}, {}
     for model, root, version in (("conditional", args.conditional_root, CONDITIONAL_VERSION), ("unconditional", args.unconditional_root, UNCONDITIONAL_VERSION)):
         for scenario in range(4):
             folder = root / f"scenario{scenario}"
             paths = [folder / name for name in ("tests.tsv.gz", "manifest.json")]
             manifest = json.loads(paths[1].read_text())
+            integration = integration_recipe(manifest, model)
+            if not isinstance(integration['adaptive_integration'], bool) or model in integration_recipes and integration_recipes[model] != integration:
+                raise ValueError('quadrature integration recipe must agree across all scenarios within a model')
+            integration_recipes[model] = integration
             if manifest["model_version"] != version or manifest["scenario"] != scenario or manifest["draws"] != args.draws or manifest["seed"] != [20261008, 92317, scenario] or manifest["production_changes"] is not False:
                 raise ValueError("matching frozen toy null recipe required")
             hashes.update({str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths})
@@ -58,7 +71,7 @@ def main():
     args.output_dir.mkdir(parents=True)
     pd.DataFrame(summaries).to_csv(args.output_dir / "summary.tsv", sep="\t", index=False)
     pd.DataFrame(failures).to_csv(args.output_dir / "unavailable_trials.tsv", sep="\t", index=False)
-    manifest = dict(input_hashes=hashes, requested_models=2, requested_scenarios=4, laws=LAWS, draws_per_law=args.draws, complete_trials=2 * 4 * 2 * args.draws, scope="toy local-marker null diagnostics only, no original EC nulls, real power, complete-gene FDR or either replication endpoint", caveats="The two laws differ in whether margins precede independent random effects. Matched unconditional draws share declared seeds/generator; no raw-count draw hashes were archived by the original drivers. Count-model assumptions, rare-path fitting failures and limited sample sizes prevent certification. F tails are sensitivities, not independently calibrated alternatives.", production_changes=False)
+    manifest = dict(input_hashes=hashes, integration_recipes=integration_recipes, requested_models=2, requested_scenarios=4, laws=LAWS, draws_per_law=args.draws, complete_trials=2 * 4 * 2 * args.draws, scope="toy local-marker null diagnostics only, no original EC nulls, real power, complete-gene FDR or either replication endpoint", caveats="The two laws differ in whether margins precede independent random effects. Matched unconditional draws share declared seeds/generator; no raw-count draw hashes were archived by the original drivers. Count-model assumptions, rare-path fitting failures and limited sample sizes prevent certification. F tails are sensitivities, not independently calibrated alternatives.", production_changes=False)
     (args.output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     summary = pd.DataFrame(summaries)
     print(summary.loc[summary.primary_generating_law & summary['tail'].eq('p_value')].to_string(index=False), flush=True)

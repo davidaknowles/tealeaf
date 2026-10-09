@@ -1,0 +1,4 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc
+Reference-sequence EC score, geometry-stratified sign calibration	40	30391	36	0.9	0.8870471564451293
+Reference-sequence EC score, geometry-stratified sign calibration	100	30391	82	0.82	0.8715190743655156
+Reference-sequence EC score, geometry-stratified sign calibration	200	30391	144	0.72	0.8226441637763332

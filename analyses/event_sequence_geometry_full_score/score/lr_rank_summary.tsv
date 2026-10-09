@@ -1,0 +1,4 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc
+Reference-sequence EC score, geometry-stratified sign calibration, efficient-score ILR direction	40	30391	35	0.875	0.7800835804717199
+Reference-sequence EC score, geometry-stratified sign calibration, efficient-score ILR direction	100	30391	79	0.79	0.8144065702444117
+Reference-sequence EC score, geometry-stratified sign calibration, efficient-score ILR direction	200	30391	142	0.71	0.787421229351051

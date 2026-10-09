@@ -35,9 +35,14 @@ def main():
     hashes = {str(path): file_hash(path) for path in source_files}
     cases = pd.read_csv(source_files[1], sep="\t").sort_values(["fold", "test_id"]).reset_index(drop=True)
     tables, receipts = [], []
+    integration_policy = None
     for index in range(args.shard_count):
         folder = args.pilot_root / f"shard_{index}"
         receipt = json.loads((folder / "manifest.json").read_text())
+        adaptive = receipt.get('adaptive_integration', False)
+        if not isinstance(adaptive, bool) or integration_policy is not None and integration_policy != adaptive:
+            raise ValueError('quadrature integration recipe must agree across all shards')
+        integration_policy = adaptive
         requested = len(cases.iloc[index::args.shard_count]) * len(MODELS) * len(VARIANTS)
         if receipt["shard_index"] != index or receipt["shard_count"] != args.shard_count or receipt["source_hashes"] != hashes or receipt["whole_selected_cases"] != len(cases) or receipt["requested_fits"] != requested or receipt["completed_fits"] != requested or receipt["production_changes"] is not False:
             raise ValueError("complete compatible selected-panel shards required")
@@ -55,7 +60,7 @@ def main():
     table.to_csv(args.output_dir / "tests.tsv.gz", sep="\t", index=False)
     summary = pd.DataFrame(summaries)
     summary.to_csv(args.output_dir / "summary.tsv", sep="\t", index=False)
-    manifest = dict(source_hashes=hashes, shards=receipts, requested_cases=len(cases), requested_fits=len(table), scope="numerical/local-marker diagnostic on an ascertained strong/weak panel, not full-family FDR, unbiased replication or own-ranked LR performance", production_changes=False)
+    manifest = dict(source_hashes=hashes, shards=receipts, requested_cases=len(cases), requested_fits=len(table), adaptive_integration=integration_policy, scope="numerical/local-marker diagnostic on an ascertained strong/weak panel, not full-family FDR, unbiased replication or own-ranked LR performance", production_changes=False)
     (args.output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(summary.to_string(index=False), flush=True)
 

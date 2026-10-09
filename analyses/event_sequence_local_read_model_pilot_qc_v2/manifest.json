@@ -1,0 +1,414 @@
+{
+  "source_hashes": {
+    "analyses/event_sequence_local_read_support_library_qc/manifest.json": "4d982e069245bfecffbd290d79ac274640aca57110840ab73db3148dabc51308",
+    "analyses/event_sequence_local_read_support_library_qc/diagnostics.tsv.gz": "5c275c96a4350e704efb8a600f129262cd268d47661414feeae41403b913d7c7",
+    "analyses/event_sequence_local_read_support_library_qc/subject_support.tsv.gz": "1a1efdb01090b827724996685d030669084da4eb51a9d7df1d2e5afb9d5ea287",
+    "analyses/event_sequence_local_read_support_library_qc/run_support_signatures.tsv.gz": "89c2a2d58308b7ae9702ab4af82b01e32a3c9436c9d2d12aade4b73995ad0871"
+  },
+  "shards": [
+    {
+      "source_hashes": {
+        "analyses/event_sequence_local_read_support_library_qc/manifest.json": "4d982e069245bfecffbd290d79ac274640aca57110840ab73db3148dabc51308",
+        "analyses/event_sequence_local_read_support_library_qc/diagnostics.tsv.gz": "5c275c96a4350e704efb8a600f129262cd268d47661414feeae41403b913d7c7",
+        "analyses/event_sequence_local_read_support_library_qc/subject_support.tsv.gz": "1a1efdb01090b827724996685d030669084da4eb51a9d7df1d2e5afb9d5ea287",
+        "analyses/event_sequence_local_read_support_library_qc/run_support_signatures.tsv.gz": "89c2a2d58308b7ae9702ab4af82b01e32a3c9436c9d2d12aade4b73995ad0871"
+      },
+      "shard_index": 0,
+      "shard_count": 16,
+      "requested_cases": 45,
+      "whole_selected_cases": 714,
+      "models": [
+        "conditional",
+        "unconditional"
+      ],
+      "variants": [
+        "all local markers",
+        "junction markers"
+      ],
+      "requested_fits": 180,
+      "completed_fits": 180,
+      "scope": "frozen strong-tail and matched weak-control numerical/local-effect pilot, not full-family FDR, discovery counts, own-ranked LR or unbiased split replication",
+      "failure_policy": "all requested cases retained, missing/numerical fits remain p=1",
+      "production_changes": false
+    },
+    {
+      "source_hashes": {
+        "analyses/event_sequence_local_read_support_library_qc/manifest.json": "4d982e069245bfecffbd290d79ac274640aca57110840ab73db3148dabc51308",
+        "analyses/event_sequence_local_read_support_library_qc/diagnostics.tsv.gz": "5c275c96a4350e704efb8a600f129262cd268d47661414feeae41403b913d7c7",
+        "analyses/event_sequence_local_read_support_library_qc/subject_support.tsv.gz": "1a1efdb01090b827724996685d030669084da4eb51a9d7df1d2e5afb9d5ea287",
+        "analyses/event_sequence_local_read_support_library_qc/run_support_signatures.tsv.gz": "89c2a2d58308b7ae9702ab4af82b01e32a3c9436c9d2d12aade4b73995ad0871"
+      },
+      "shard_index": 1,
+      "shard_count": 16,
+      "requested_cases": 45,
+      "whole_selected_cases": 714,
+      "models": [
+        "conditional",
+        "unconditional"
+      ],
+      "variants": [
+        "all local markers",
+        "junction markers"
+      ],
+      "requested_fits": 180,
+      "completed_fits": 180,
+      "scope": "frozen strong-tail and matched weak-control numerical/local-effect pilot, not full-family FDR, discovery counts, own-ranked LR or unbiased split replication",
+      "failure_policy": "all requested cases retained, missing/numerical fits remain p=1",
+      "production_changes": false
+    },
+    {
+      "source_hashes": {
+        "analyses/event_sequence_local_read_support_library_qc/manifest.json": "4d982e069245bfecffbd290d79ac274640aca57110840ab73db3148dabc51308",
+        "analyses/event_sequence_local_read_support_library_qc/diagnostics.tsv.gz": "5c275c96a4350e704efb8a600f129262cd268d47661414feeae41403b913d7c7",
+        "analyses/event_sequence_local_read_support_library_qc/subject_support.tsv.gz": "1a1efdb01090b827724996685d030669084da4eb51a9d7df1d2e5afb9d5ea287",
+        "analyses/event_sequence_local_read_support_library_qc/run_support_signatures.tsv.gz": "89c2a2d58308b7ae9702ab4af82b01e32a3c9436c9d2d12aade4b73995ad0871"
+      },
+      "shard_index": 2,
+      "shard_count": 16,
+      "requested_cases": 45,
+      "whole_selected_cases": 714,
+      "models": [
+        "conditional",
+        "unconditional"
+      ],
+      "variants": [
+        "all local markers",
+        "junction markers"
+      ],
+      "requested_fits": 180,
+      "completed_fits": 180,
+      "scope": "frozen strong-tail and matched weak-control numerical/local-effect pilot, not full-family FDR, discovery counts, own-ranked LR or unbiased split replication",
+      "failure_policy": "all requested cases retained, missing/numerical fits remain p=1",
+      "production_changes": false
+    },
+    {
+      "source_hashes": {
+        "analyses/event_sequence_local_read_support_library_qc/manifest.json": "4d982e069245bfecffbd290d79ac274640aca57110840ab73db3148dabc51308",
+        "analyses/event_sequence_local_read_support_library_qc/diagnostics.tsv.gz": "5c275c96a4350e704efb8a600f129262cd268d47661414feeae41403b913d7c7",
+        "analyses/event_sequence_local_read_support_library_qc/subject_support.tsv.gz": "1a1efdb01090b827724996685d030669084da4eb51a9d7df1d2e5afb9d5ea287",
+        "analyses/event_sequence_local_read_support_library_qc/run_support_signatures.tsv.gz": "89c2a2d58308b7ae9702ab4af82b01e32a3c9436c9d2d12aade4b73995ad0871"
+      },
+      "shard_index": 3,
+      "shard_count": 16,
+      "requested_cases": 45,
+      "whole_selected_cases": 714,
+      "models": [
+        "conditional",
+        "unconditional"
+      ],
+      "variants": [
+        "all local markers",
+        "junction markers"
+      ],
+      "requested_fits": 180,
+      "completed_fits": 180,
+      "scope": "frozen strong-tail and matched weak-control numerical/local-effect pilot, not full-family FDR, discovery counts, own-ranked LR or unbiased split replication",
+      "failure_policy": "all requested cases retained, missing/numerical fits remain p=1",
+      "production_changes": false
+    },
+    {
+      "source_hashes": {
+        "analyses/event_sequence_local_read_support_library_qc/manifest.json": "4d982e069245bfecffbd290d79ac274640aca57110840ab73db3148dabc51308",
+        "analyses/event_sequence_local_read_support_library_qc/diagnostics.tsv.gz": "5c275c96a4350e704efb8a600f129262cd268d47661414feeae41403b913d7c7",
+        "analyses/event_sequence_local_read_support_library_qc/subject_support.tsv.gz": "1a1efdb01090b827724996685d030669084da4eb51a9d7df1d2e5afb9d5ea287",
+        "analyses/event_sequence_local_read_support_library_qc/run_support_signatures.tsv.gz": "89c2a2d58308b7ae9702ab4af82b01e32a3c9436c9d2d12aade4b73995ad0871"
+      },
+      "shard_index": 4,
+      "shard_count": 16,
+      "requested_cases": 45,
+      "whole_selected_cases": 714,
+      "models": [
+        "conditional",
+        "unconditional"
+      ],
+      "variants": [
+        "all local markers",
+        "junction markers"
+      ],
+      "requested_fits": 180,
+      "completed_fits": 180,
+      "scope": "frozen strong-tail and matched weak-control numerical/local-effect pilot, not full-family FDR, discovery counts, own-ranked LR or unbiased split replication",
+      "failure_policy": "all requested cases retained, missing/numerical fits remain p=1",
+      "production_changes": false
+    },
+    {
+      "source_hashes": {
+        "analyses/event_sequence_local_read_support_library_qc/manifest.json": "4d982e069245bfecffbd290d79ac274640aca57110840ab73db3148dabc51308",
+        "analyses/event_sequence_local_read_support_library_qc/diagnostics.tsv.gz": "5c275c96a4350e704efb8a600f129262cd268d47661414feeae41403b913d7c7",
+        "analyses/event_sequence_local_read_support_library_qc/subject_support.tsv.gz": "1a1efdb01090b827724996685d030669084da4eb51a9d7df1d2e5afb9d5ea287",
+        "analyses/event_sequence_local_read_support_library_qc/run_support_signatures.tsv.gz": "89c2a2d58308b7ae9702ab4af82b01e32a3c9436c9d2d12aade4b73995ad0871"
+      },
+      "shard_index": 5,
+      "shard_count": 16,
+      "requested_cases": 45,
+      "whole_selected_cases": 714,
+      "models": [
+        "conditional",
+        "unconditional"
+      ],
+      "variants": [
+        "all local markers",
+        "junction markers"
+      ],
+      "requested_fits": 180,
+      "completed_fits": 180,
+      "scope": "frozen strong-tail and matched weak-control numerical/local-effect pilot, not full-family FDR, discovery counts, own-ranked LR or unbiased split replication",
+      "failure_policy": "all requested cases retained, missing/numerical fits remain p=1",
+      "production_changes": false
+    },
+    {
+      "source_hashes": {
+        "analyses/event_sequence_local_read_support_library_qc/manifest.json": "4d982e069245bfecffbd290d79ac274640aca57110840ab73db3148dabc51308",
+        "analyses/event_sequence_local_read_support_library_qc/diagnostics.tsv.gz": "5c275c96a4350e704efb8a600f129262cd268d47661414feeae41403b913d7c7",
+        "analyses/event_sequence_local_read_support_library_qc/subject_support.tsv.gz": "1a1efdb01090b827724996685d030669084da4eb51a9d7df1d2e5afb9d5ea287",
+        "analyses/event_sequence_local_read_support_library_qc/run_support_signatures.tsv.gz": "89c2a2d58308b7ae9702ab4af82b01e32a3c9436c9d2d12aade4b73995ad0871"
+      },
+      "shard_index": 6,
+      "shard_count": 16,
+      "requested_cases": 45,
+      "whole_selected_cases": 714,
+      "models": [
+        "conditional",
+        "unconditional"
+      ],
+      "variants": [
+        "all local markers",
+        "junction markers"
+      ],
+      "requested_fits": 180,
+      "completed_fits": 180,
+      "scope": "frozen strong-tail and matched weak-control numerical/local-effect pilot, not full-family FDR, discovery counts, own-ranked LR or unbiased split replication",
+      "failure_policy": "all requested cases retained, missing/numerical fits remain p=1",
+      "production_changes": false
+    },
+    {
+      "source_hashes": {
+        "analyses/event_sequence_local_read_support_library_qc/manifest.json": "4d982e069245bfecffbd290d79ac274640aca57110840ab73db3148dabc51308",
+        "analyses/event_sequence_local_read_support_library_qc/diagnostics.tsv.gz": "5c275c96a4350e704efb8a600f129262cd268d47661414feeae41403b913d7c7",
+        "analyses/event_sequence_local_read_support_library_qc/subject_support.tsv.gz": "1a1efdb01090b827724996685d030669084da4eb51a9d7df1d2e5afb9d5ea287",
+        "analyses/event_sequence_local_read_support_library_qc/run_support_signatures.tsv.gz": "89c2a2d58308b7ae9702ab4af82b01e32a3c9436c9d2d12aade4b73995ad0871"
+      },
+      "shard_index": 7,
+      "shard_count": 16,
+      "requested_cases": 45,
+      "whole_selected_cases": 714,
+      "models": [
+        "conditional",
+        "unconditional"
+      ],
+      "variants": [
+        "all local markers",
+        "junction markers"
+      ],
+      "requested_fits": 180,
+      "completed_fits": 180,
+      "scope": "frozen strong-tail and matched weak-control numerical/local-effect pilot, not full-family FDR, discovery counts, own-ranked LR or unbiased split replication",
+      "failure_policy": "all requested cases retained, missing/numerical fits remain p=1",
+      "production_changes": false
+    },
+    {
+      "source_hashes": {
+        "analyses/event_sequence_local_read_support_library_qc/manifest.json": "4d982e069245bfecffbd290d79ac274640aca57110840ab73db3148dabc51308",
+        "analyses/event_sequence_local_read_support_library_qc/diagnostics.tsv.gz": "5c275c96a4350e704efb8a600f129262cd268d47661414feeae41403b913d7c7",
+        "analyses/event_sequence_local_read_support_library_qc/subject_support.tsv.gz": "1a1efdb01090b827724996685d030669084da4eb51a9d7df1d2e5afb9d5ea287",
+        "analyses/event_sequence_local_read_support_library_qc/run_support_signatures.tsv.gz": "89c2a2d58308b7ae9702ab4af82b01e32a3c9436c9d2d12aade4b73995ad0871"
+      },
+      "shard_index": 8,
+      "shard_count": 16,
+      "requested_cases": 45,
+      "whole_selected_cases": 714,
+      "models": [
+        "conditional",
+        "unconditional"
+      ],
+      "variants": [
+        "all local markers",
+        "junction markers"
+      ],
+      "requested_fits": 180,
+      "completed_fits": 180,
+      "scope": "frozen strong-tail and matched weak-control numerical/local-effect pilot, not full-family FDR, discovery counts, own-ranked LR or unbiased split replication",
+      "failure_policy": "all requested cases retained, missing/numerical fits remain p=1",
+      "production_changes": false
+    },
+    {
+      "source_hashes": {
+        "analyses/event_sequence_local_read_support_library_qc/manifest.json": "4d982e069245bfecffbd290d79ac274640aca57110840ab73db3148dabc51308",
+        "analyses/event_sequence_local_read_support_library_qc/diagnostics.tsv.gz": "5c275c96a4350e704efb8a600f129262cd268d47661414feeae41403b913d7c7",
+        "analyses/event_sequence_local_read_support_library_qc/subject_support.tsv.gz": "1a1efdb01090b827724996685d030669084da4eb51a9d7df1d2e5afb9d5ea287",
+        "analyses/event_sequence_local_read_support_library_qc/run_support_signatures.tsv.gz": "89c2a2d58308b7ae9702ab4af82b01e32a3c9436c9d2d12aade4b73995ad0871"
+      },
+      "shard_index": 9,
+      "shard_count": 16,
+      "requested_cases": 45,
+      "whole_selected_cases": 714,
+      "models": [
+        "conditional",
+        "unconditional"
+      ],
+      "variants": [
+        "all local markers",
+        "junction markers"
+      ],
+      "requested_fits": 180,
+      "completed_fits": 180,
+      "scope": "frozen strong-tail and matched weak-control numerical/local-effect pilot, not full-family FDR, discovery counts, own-ranked LR or unbiased split replication",
+      "failure_policy": "all requested cases retained, missing/numerical fits remain p=1",
+      "production_changes": false
+    },
+    {
+      "source_hashes": {
+        "analyses/event_sequence_local_read_support_library_qc/manifest.json": "4d982e069245bfecffbd290d79ac274640aca57110840ab73db3148dabc51308",
+        "analyses/event_sequence_local_read_support_library_qc/diagnostics.tsv.gz": "5c275c96a4350e704efb8a600f129262cd268d47661414feeae41403b913d7c7",
+        "analyses/event_sequence_local_read_support_library_qc/subject_support.tsv.gz": "1a1efdb01090b827724996685d030669084da4eb51a9d7df1d2e5afb9d5ea287",
+        "analyses/event_sequence_local_read_support_library_qc/run_support_signatures.tsv.gz": "89c2a2d58308b7ae9702ab4af82b01e32a3c9436c9d2d12aade4b73995ad0871"
+      },
+      "shard_index": 10,
+      "shard_count": 16,
+      "requested_cases": 44,
+      "whole_selected_cases": 714,
+      "models": [
+        "conditional",
+        "unconditional"
+      ],
+      "variants": [
+        "all local markers",
+        "junction markers"
+      ],
+      "requested_fits": 176,
+      "completed_fits": 176,
+      "scope": "frozen strong-tail and matched weak-control numerical/local-effect pilot, not full-family FDR, discovery counts, own-ranked LR or unbiased split replication",
+      "failure_policy": "all requested cases retained, missing/numerical fits remain p=1",
+      "production_changes": false
+    },
+    {
+      "source_hashes": {
+        "analyses/event_sequence_local_read_support_library_qc/manifest.json": "4d982e069245bfecffbd290d79ac274640aca57110840ab73db3148dabc51308",
+        "analyses/event_sequence_local_read_support_library_qc/diagnostics.tsv.gz": "5c275c96a4350e704efb8a600f129262cd268d47661414feeae41403b913d7c7",
+        "analyses/event_sequence_local_read_support_library_qc/subject_support.tsv.gz": "1a1efdb01090b827724996685d030669084da4eb51a9d7df1d2e5afb9d5ea287",
+        "analyses/event_sequence_local_read_support_library_qc/run_support_signatures.tsv.gz": "89c2a2d58308b7ae9702ab4af82b01e32a3c9436c9d2d12aade4b73995ad0871"
+      },
+      "shard_index": 11,
+      "shard_count": 16,
+      "requested_cases": 44,
+      "whole_selected_cases": 714,
+      "models": [
+        "conditional",
+        "unconditional"
+      ],
+      "variants": [
+        "all local markers",
+        "junction markers"
+      ],
+      "requested_fits": 176,
+      "completed_fits": 176,
+      "scope": "frozen strong-tail and matched weak-control numerical/local-effect pilot, not full-family FDR, discovery counts, own-ranked LR or unbiased split replication",
+      "failure_policy": "all requested cases retained, missing/numerical fits remain p=1",
+      "production_changes": false
+    },
+    {
+      "source_hashes": {
+        "analyses/event_sequence_local_read_support_library_qc/manifest.json": "4d982e069245bfecffbd290d79ac274640aca57110840ab73db3148dabc51308",
+        "analyses/event_sequence_local_read_support_library_qc/diagnostics.tsv.gz": "5c275c96a4350e704efb8a600f129262cd268d47661414feeae41403b913d7c7",
+        "analyses/event_sequence_local_read_support_library_qc/subject_support.tsv.gz": "1a1efdb01090b827724996685d030669084da4eb51a9d7df1d2e5afb9d5ea287",
+        "analyses/event_sequence_local_read_support_library_qc/run_support_signatures.tsv.gz": "89c2a2d58308b7ae9702ab4af82b01e32a3c9436c9d2d12aade4b73995ad0871"
+      },
+      "shard_index": 12,
+      "shard_count": 16,
+      "requested_cases": 44,
+      "whole_selected_cases": 714,
+      "models": [
+        "conditional",
+        "unconditional"
+      ],
+      "variants": [
+        "all local markers",
+        "junction markers"
+      ],
+      "requested_fits": 176,
+      "completed_fits": 176,
+      "scope": "frozen strong-tail and matched weak-control numerical/local-effect pilot, not full-family FDR, discovery counts, own-ranked LR or unbiased split replication",
+      "failure_policy": "all requested cases retained, missing/numerical fits remain p=1",
+      "production_changes": false
+    },
+    {
+      "source_hashes": {
+        "analyses/event_sequence_local_read_support_library_qc/manifest.json": "4d982e069245bfecffbd290d79ac274640aca57110840ab73db3148dabc51308",
+        "analyses/event_sequence_local_read_support_library_qc/diagnostics.tsv.gz": "5c275c96a4350e704efb8a600f129262cd268d47661414feeae41403b913d7c7",
+        "analyses/event_sequence_local_read_support_library_qc/subject_support.tsv.gz": "1a1efdb01090b827724996685d030669084da4eb51a9d7df1d2e5afb9d5ea287",
+        "analyses/event_sequence_local_read_support_library_qc/run_support_signatures.tsv.gz": "89c2a2d58308b7ae9702ab4af82b01e32a3c9436c9d2d12aade4b73995ad0871"
+      },
+      "shard_index": 13,
+      "shard_count": 16,
+      "requested_cases": 44,
+      "whole_selected_cases": 714,
+      "models": [
+        "conditional",
+        "unconditional"
+      ],
+      "variants": [
+        "all local markers",
+        "junction markers"
+      ],
+      "requested_fits": 176,
+      "completed_fits": 176,
+      "scope": "frozen strong-tail and matched weak-control numerical/local-effect pilot, not full-family FDR, discovery counts, own-ranked LR or unbiased split replication",
+      "failure_policy": "all requested cases retained, missing/numerical fits remain p=1",
+      "production_changes": false
+    },
+    {
+      "source_hashes": {
+        "analyses/event_sequence_local_read_support_library_qc/manifest.json": "4d982e069245bfecffbd290d79ac274640aca57110840ab73db3148dabc51308",
+        "analyses/event_sequence_local_read_support_library_qc/diagnostics.tsv.gz": "5c275c96a4350e704efb8a600f129262cd268d47661414feeae41403b913d7c7",
+        "analyses/event_sequence_local_read_support_library_qc/subject_support.tsv.gz": "1a1efdb01090b827724996685d030669084da4eb51a9d7df1d2e5afb9d5ea287",
+        "analyses/event_sequence_local_read_support_library_qc/run_support_signatures.tsv.gz": "89c2a2d58308b7ae9702ab4af82b01e32a3c9436c9d2d12aade4b73995ad0871"
+      },
+      "shard_index": 14,
+      "shard_count": 16,
+      "requested_cases": 44,
+      "whole_selected_cases": 714,
+      "models": [
+        "conditional",
+        "unconditional"
+      ],
+      "variants": [
+        "all local markers",
+        "junction markers"
+      ],
+      "requested_fits": 176,
+      "completed_fits": 176,
+      "scope": "frozen strong-tail and matched weak-control numerical/local-effect pilot, not full-family FDR, discovery counts, own-ranked LR or unbiased split replication",
+      "failure_policy": "all requested cases retained, missing/numerical fits remain p=1",
+      "production_changes": false
+    },
+    {
+      "source_hashes": {
+        "analyses/event_sequence_local_read_support_library_qc/manifest.json": "4d982e069245bfecffbd290d79ac274640aca57110840ab73db3148dabc51308",
+        "analyses/event_sequence_local_read_support_library_qc/diagnostics.tsv.gz": "5c275c96a4350e704efb8a600f129262cd268d47661414feeae41403b913d7c7",
+        "analyses/event_sequence_local_read_support_library_qc/subject_support.tsv.gz": "1a1efdb01090b827724996685d030669084da4eb51a9d7df1d2e5afb9d5ea287",
+        "analyses/event_sequence_local_read_support_library_qc/run_support_signatures.tsv.gz": "89c2a2d58308b7ae9702ab4af82b01e32a3c9436c9d2d12aade4b73995ad0871"
+      },
+      "shard_index": 15,
+      "shard_count": 16,
+      "requested_cases": 44,
+      "whole_selected_cases": 714,
+      "models": [
+        "conditional",
+        "unconditional"
+      ],
+      "variants": [
+        "all local markers",
+        "junction markers"
+      ],
+      "requested_fits": 176,
+      "completed_fits": 176,
+      "scope": "frozen strong-tail and matched weak-control numerical/local-effect pilot, not full-family FDR, discovery counts, own-ranked LR or unbiased split replication",
+      "failure_policy": "all requested cases retained, missing/numerical fits remain p=1",
+      "production_changes": false
+    }
+  ],
+  "requested_cases": 714,
+  "requested_fits": 2856,
+  "scope": "numerical/local-marker diagnostic on an ascertained strong/weak panel, not full-family FDR, unbiased replication or own-ranked LR performance",
+  "production_changes": false
+}

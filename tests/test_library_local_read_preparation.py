@@ -73,3 +73,20 @@ def test_library_preparation_rejects_changed_cell_scope_and_incomplete_partition
     with pytest.raises(ValueError):
         prepare(args)
     assert not args.output_dir.exists()
+
+
+def test_exact_production_qc_restriction_preserves_case_family_and_annotations(tmp_path):
+    args = arguments(tmp_path)
+    setup(args)
+    args.cell_qc = tmp_path / "qc"
+    args.cell_qc.mkdir()
+    recipe_path = args.source_root / "recipe.json"
+    retained = pd.read_csv(args.origins / "barcode_library.tsv.gz", sep="\t").iloc[:1]
+    retained.to_csv(args.cell_qc / "retained_barcodes.tsv.gz", sep="\t", index=False)
+    (args.cell_qc / "manifest.json").write_text(json.dumps(dict(exact_cached_group_and_primer_total_match=True, source_read_recipe_sha256=file_hash(recipe_path), retained_production_barcodes=1)))
+    prepare(args)
+    recipe = json.loads((args.output_dir / "recipe.json").read_text())
+    assert set(recipe["barcode_groups"]) == set(retained.barcode)
+    assert set(recipe["bams"][0]["barcode_groups"]) == set(retained.barcode)
+    assert recipe["production_cell_qc"]["exact_cached_group_and_primer_total_match"]
+    assert (args.output_dir / "selected_cases.tsv.gz").read_bytes() == b"frozen"

@@ -1,0 +1,10 @@
+{
+  "input_hashes": {
+    "analyses/tilgner_junction_replication/sign_agreement_by_rank.tsv": "f3c12d23a63abfacbbfd216c374007459ef8a4ac8f6394233e2287d059a1296e",
+    "analyses/event_column_aliases/events.tsv.gz": "adf3badbf401a6bdd803750839ca8680aed436333c4ff50cd91443e8ec07bcb5",
+    ".cache/full_local_read_catalog_qc/feature_definitions.tsv": "72199af769b6335ae945dd67951dadc2f49768ddbe53709cb95fc6356ca12bc2"
+  },
+  "scope": "descriptive representation of unchanged published comparator prefixes only; new full catalog was frozen independently before this audit",
+  "limitations": "Presence in the older supported event family does not prove that specific contrast was requested, fitted or LR-evaluable. Gene coverage, EC dimension and transcript support remain confounded in absence categories. No new significance ranking, cutoff, event filter, power or replication claim.",
+  "production_changes": false
+}

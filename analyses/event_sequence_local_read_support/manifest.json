@@ -1,0 +1,315 @@
+{
+  "recipe_sha256": "53ad00eb465c8a692bd46ec9c3832af8d2b7f2ed1afe6793aa3f4bd47828a2d6",
+  "shards": [
+    {
+      "input": {
+        "path": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/junction_benchmark/starsolo/SRR16966883/Aligned.sortedByCoord.out.bam",
+        "size": 45366795223,
+        "mtime_ns": 1785781106093455414
+      },
+      "recipe_sha256": "53ad00eb465c8a692bd46ec9c3832af8d2b7f2ed1afe6793aa3f4bd47828a2d6",
+      "shard": 0,
+      "requested_events": 525,
+      "filters": {
+        "fetched_alignments": 44766432,
+        "nonprimary": 2005109,
+        "nonunique_or_other_gene": 35897690,
+        "multimapped": 817807,
+        "unrequested_barcode": 5236681,
+        "barcode_umi_event_keys": 842570
+      },
+      "complete": true
+    },
+    {
+      "input": {
+        "path": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/junction_benchmark/starsolo/SRR16966884/Aligned.sortedByCoord.out.bam",
+        "size": 46215623390,
+        "mtime_ns": 1785781782346870921
+      },
+      "recipe_sha256": "53ad00eb465c8a692bd46ec9c3832af8d2b7f2ed1afe6793aa3f4bd47828a2d6",
+      "shard": 1,
+      "requested_events": 525,
+      "filters": {
+        "fetched_alignments": 45017676,
+        "nonprimary": 2316609,
+        "nonunique_or_other_gene": 35700450,
+        "multimapped": 874400,
+        "unrequested_barcode": 5336183,
+        "barcode_umi_event_keys": 814647
+      },
+      "complete": true
+    },
+    {
+      "input": {
+        "path": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/junction_benchmark/starsolo/SRR16966885/Aligned.sortedByCoord.out.bam",
+        "size": 40504255854,
+        "mtime_ns": 1785781400684367697
+      },
+      "recipe_sha256": "53ad00eb465c8a692bd46ec9c3832af8d2b7f2ed1afe6793aa3f4bd47828a2d6",
+      "shard": 2,
+      "requested_events": 525,
+      "filters": {
+        "fetched_alignments": 40183637,
+        "nonprimary": 2023173,
+        "multimapped": 753966,
+        "nonunique_or_other_gene": 31961027,
+        "unrequested_barcode": 4724826,
+        "barcode_umi_event_keys": 796522
+      },
+      "complete": true
+    },
+    {
+      "input": {
+        "path": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/junction_benchmark/starsolo/SRR16966886/Aligned.sortedByCoord.out.bam",
+        "size": 45421972583,
+        "mtime_ns": 1785782284036446609
+      },
+      "recipe_sha256": "53ad00eb465c8a692bd46ec9c3832af8d2b7f2ed1afe6793aa3f4bd47828a2d6",
+      "shard": 3,
+      "requested_events": 525,
+      "filters": {
+        "fetched_alignments": 43336320,
+        "nonprimary": 2388823,
+        "nonunique_or_other_gene": 34108086,
+        "multimapped": 887897,
+        "unrequested_barcode": 5107248,
+        "barcode_umi_event_keys": 1063008
+      },
+      "complete": true
+    },
+    {
+      "input": {
+        "path": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/junction_benchmark/starsolo/SRR16966887/Aligned.sortedByCoord.out.bam",
+        "size": 46516345285,
+        "mtime_ns": 1785781937369332025
+      },
+      "recipe_sha256": "53ad00eb465c8a692bd46ec9c3832af8d2b7f2ed1afe6793aa3f4bd47828a2d6",
+      "shard": 4,
+      "requested_events": 525,
+      "filters": {
+        "fetched_alignments": 44284306,
+        "nonprimary": 2245290,
+        "multimapped": 867043,
+        "nonunique_or_other_gene": 34930091,
+        "unrequested_barcode": 5351798,
+        "barcode_umi_event_keys": 1070292
+      },
+      "complete": true
+    },
+    {
+      "input": {
+        "path": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/junction_benchmark/starsolo/SRR16966888/Aligned.sortedByCoord.out.bam",
+        "size": 56384182020,
+        "mtime_ns": 1785782679652594094
+      },
+      "recipe_sha256": "53ad00eb465c8a692bd46ec9c3832af8d2b7f2ed1afe6793aa3f4bd47828a2d6",
+      "shard": 5,
+      "requested_events": 525,
+      "filters": {
+        "fetched_alignments": 52323798,
+        "multimapped": 1032883,
+        "nonprimary": 2402178,
+        "nonunique_or_other_gene": 41553760,
+        "unrequested_barcode": 6310922,
+        "barcode_umi_event_keys": 1189107
+      },
+      "complete": true
+    },
+    {
+      "input": {
+        "path": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/junction_benchmark/starsolo/SRR16966889/Aligned.sortedByCoord.out.bam",
+        "size": 46791357886,
+        "mtime_ns": 1785782422331813940
+      },
+      "recipe_sha256": "53ad00eb465c8a692bd46ec9c3832af8d2b7f2ed1afe6793aa3f4bd47828a2d6",
+      "shard": 6,
+      "requested_events": 525,
+      "filters": {
+        "fetched_alignments": 44632366,
+        "nonprimary": 2333630,
+        "multimapped": 885904,
+        "nonunique_or_other_gene": 35119294,
+        "unrequested_barcode": 5356308,
+        "barcode_umi_event_keys": 1132908
+      },
+      "complete": true
+    },
+    {
+      "input": {
+        "path": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/junction_benchmark/starsolo/SRR16966890/Aligned.sortedByCoord.out.bam",
+        "size": 50019944964,
+        "mtime_ns": 1785789185637460139
+      },
+      "recipe_sha256": "53ad00eb465c8a692bd46ec9c3832af8d2b7f2ed1afe6793aa3f4bd47828a2d6",
+      "shard": 7,
+      "requested_events": 525,
+      "filters": {
+        "fetched_alignments": 47758389,
+        "nonprimary": 2347150,
+        "nonunique_or_other_gene": 37677561,
+        "multimapped": 974215,
+        "unrequested_barcode": 5793240,
+        "barcode_umi_event_keys": 1153596
+      },
+      "complete": true
+    },
+    {
+      "input": {
+        "path": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/junction_benchmark/starsolo/SRR16966891/Aligned.sortedByCoord.out.bam",
+        "size": 46094464613,
+        "mtime_ns": 1785782664468366076
+      },
+      "recipe_sha256": "53ad00eb465c8a692bd46ec9c3832af8d2b7f2ed1afe6793aa3f4bd47828a2d6",
+      "shard": 8,
+      "requested_events": 525,
+      "filters": {
+        "fetched_alignments": 45372896,
+        "nonprimary": 2335437,
+        "nonunique_or_other_gene": 35986440,
+        "multimapped": 877356,
+        "unrequested_barcode": 5376234,
+        "barcode_umi_event_keys": 821466
+      },
+      "complete": true
+    },
+    {
+      "input": {
+        "path": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/junction_benchmark/starsolo/SRR16966892/Aligned.sortedByCoord.out.bam",
+        "size": 40401841758,
+        "mtime_ns": 1785782044317491391
+      },
+      "recipe_sha256": "53ad00eb465c8a692bd46ec9c3832af8d2b7f2ed1afe6793aa3f4bd47828a2d6",
+      "shard": 9,
+      "requested_events": 525,
+      "filters": {
+        "fetched_alignments": 40509648,
+        "nonprimary": 2042298,
+        "nonunique_or_other_gene": 32221717,
+        "multimapped": 760296,
+        "unrequested_barcode": 4760602,
+        "barcode_umi_event_keys": 799198
+      },
+      "complete": true
+    },
+    {
+      "input": {
+        "path": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/junction_benchmark/starsolo/SRR16966893/Aligned.sortedByCoord.out.bam",
+        "size": 45374821582,
+        "mtime_ns": 1785783144166507453
+      },
+      "recipe_sha256": "53ad00eb465c8a692bd46ec9c3832af8d2b7f2ed1afe6793aa3f4bd47828a2d6",
+      "shard": 10,
+      "requested_events": 525,
+      "filters": {
+        "fetched_alignments": 43717826,
+        "nonprimary": 2415092,
+        "multimapped": 897967,
+        "nonunique_or_other_gene": 34396802,
+        "unrequested_barcode": 5155670,
+        "barcode_umi_event_keys": 1072599
+      },
+      "complete": true
+    },
+    {
+      "input": {
+        "path": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/junction_benchmark/starsolo/SRR16966894/Aligned.sortedByCoord.out.bam",
+        "size": 46395725962,
+        "mtime_ns": 1785784610585471263
+      },
+      "recipe_sha256": "53ad00eb465c8a692bd46ec9c3832af8d2b7f2ed1afe6793aa3f4bd47828a2d6",
+      "shard": 11,
+      "requested_events": 525,
+      "filters": {
+        "fetched_alignments": 44607727,
+        "nonunique_or_other_gene": 35176677,
+        "nonprimary": 2264181,
+        "multimapped": 876251,
+        "unrequested_barcode": 5392484,
+        "barcode_umi_event_keys": 1079863
+      },
+      "complete": true
+    },
+    {
+      "input": {
+        "path": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/junction_benchmark/starsolo/SRR16966895/Aligned.sortedByCoord.out.bam",
+        "size": 56286267338,
+        "mtime_ns": 1785785811019302242
+      },
+      "recipe_sha256": "53ad00eb465c8a692bd46ec9c3832af8d2b7f2ed1afe6793aa3f4bd47828a2d6",
+      "shard": 12,
+      "requested_events": 525,
+      "filters": {
+        "fetched_alignments": 52722728,
+        "nonunique_or_other_gene": 41856080,
+        "nonprimary": 2429412,
+        "multimapped": 1042547,
+        "unrequested_barcode": 6365515,
+        "barcode_umi_event_keys": 1195503
+      },
+      "complete": true
+    },
+    {
+      "input": {
+        "path": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/junction_benchmark/starsolo/SRR16966896/Aligned.sortedByCoord.out.bam",
+        "size": 46674953865,
+        "mtime_ns": 1785785511110914089
+      },
+      "recipe_sha256": "53ad00eb465c8a692bd46ec9c3832af8d2b7f2ed1afe6793aa3f4bd47828a2d6",
+      "shard": 13,
+      "requested_events": 525,
+      "filters": {
+        "fetched_alignments": 44984476,
+        "nonprimary": 2359550,
+        "nonunique_or_other_gene": 35389563,
+        "multimapped": 894415,
+        "unrequested_barcode": 5399675,
+        "barcode_umi_event_keys": 1137196
+      },
+      "complete": true
+    },
+    {
+      "input": {
+        "path": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/junction_benchmark/starsolo/SRR16966897/Aligned.sortedByCoord.out.bam",
+        "size": 49877855829,
+        "mtime_ns": 1785785782083585570
+      },
+      "recipe_sha256": "53ad00eb465c8a692bd46ec9c3832af8d2b7f2ed1afe6793aa3f4bd47828a2d6",
+      "shard": 14,
+      "requested_events": 525,
+      "filters": {
+        "fetched_alignments": 48143671,
+        "nonprimary": 2373942,
+        "multimapped": 985179,
+        "nonunique_or_other_gene": 37959699,
+        "unrequested_barcode": 5851720,
+        "barcode_umi_event_keys": 1161219
+      },
+      "complete": true
+    },
+    {
+      "input": {
+        "path": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/junction_benchmark/starsolo/SRR16966898/Aligned.sortedByCoord.out.bam",
+        "size": 45388643426,
+        "mtime_ns": 1785785384301022509
+      },
+      "recipe_sha256": "53ad00eb465c8a692bd46ec9c3832af8d2b7f2ed1afe6793aa3f4bd47828a2d6",
+      "shard": 15,
+      "requested_events": 525,
+      "filters": {
+        "fetched_alignments": 44348247,
+        "nonprimary": 1977130,
+        "nonunique_or_other_gene": 35578601,
+        "multimapped": 811083,
+        "unrequested_barcode": 5179159,
+        "barcode_umi_event_keys": 836504
+      },
+      "complete": true
+    }
+  ],
+  "requested_tests": 714,
+  "diagnostics": 714,
+  "selection": "identical prior strong raw-p tail and informative-subject-count-matched weak controls in both splits, no LR selection",
+  "scope": "same-read local support diagnostic; unique STAR GX/NH plus per-file barcode/UB keys, not upstream EC-UMI counts, RNA PSI, a significance filter or a new inference model",
+  "caveats": "Published coordinate envelopes and class-unanimous annotation markers do not define an exact read-path likelihood. One-base exon overlaps count. Unmodeled isoforms may contain markers. Keys may duplicate across alignment files and differ from original EC UMI deduplication. Pooled descriptive fractions combine primer-specific opportunities and are NOT RNA PSI or independent validation. Threshold five summarizes read support only, no events or subjects are removed from testing.",
+  "production_changes": false
+}

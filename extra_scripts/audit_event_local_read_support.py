@@ -34,6 +34,25 @@ def event_envelope(event_id):
     return definition[1], definition[-1], (min(coordinates) - 1, max(coordinates))
 
 
+def build_event_features(source, genes):
+    """Same local markers for any frozen catalog; record missing definitions."""
+    features, definitions = [], []
+    for key, row in source.iterrows():
+        feature, error = None, ""
+        try:
+            chromosome, strand, span = event_envelope(row.event_id)
+            record = genes[row.gene_id]
+            if record["chromosome"] != chromosome or record["strand"] != strand:
+                raise ValueError("event and gene annotation disagree")
+            feature = event_local_read_contrast(key, row.gene_id, record, row.included.split(","), row.excluded.split(","), span)
+            features.append(asdict(feature))
+        except (KeyError, ValueError) as exc:
+            error = str(exc)
+        has_markers = feature is not None and any((feature.included_exons, feature.excluded_exons, feature.included_junctions, feature.excluded_junctions))
+        definitions.append(dict(feature_id=key, gene_id=row.gene_id, event_type=row.event_type, status="ok" if has_markers else "no_class_unanimous_features" if feature else "unavailable", error=error, included_exon_segments=len(feature.included_exons) if feature else 0, excluded_exon_segments=len(feature.excluded_exons) if feature else 0, included_junctions=len(feature.included_junctions) if feature else 0, excluded_junctions=len(feature.excluded_junctions) if feature else 0))
+    return features, pd.DataFrame(definitions)
+
+
 def prepare(args):
     if args.output_dir.exists():
         raise ValueError("preserve earlier diagnostics, use a new directory")
@@ -51,21 +70,7 @@ def prepare(args):
         raise ValueError("every frozen request must have its source event definition")
     source = catalog.loc[sorted(set(selected.feature_id))].copy()
     genes = read_gtf_exons(args.gtf)
-    features, definitions = [], []
-    for key, row in source.iterrows():
-        feature = None
-        error = ""
-        try:
-            chromosome, strand, span = event_envelope(row.event_id)
-            record = genes[row.gene_id]
-            if record["chromosome"] != chromosome or record["strand"] != strand:
-                raise ValueError("event and gene annotation disagree")
-            feature = event_local_read_contrast(key, row.gene_id, record, row.included.split(","), row.excluded.split(","), span)
-            features.append(asdict(feature))
-        except (KeyError, ValueError) as exc:
-            error = str(exc)
-        has_markers = feature is not None and any((feature.included_exons, feature.excluded_exons, feature.included_junctions, feature.excluded_junctions))
-        definitions.append(dict(feature_id=key, gene_id=row.gene_id, event_type=row.event_type, status="ok" if has_markers else "no_class_unanimous_features" if feature else "unavailable", error=error, included_exon_segments=len(feature.included_exons) if feature else 0, excluded_exon_segments=len(feature.excluded_exons) if feature else 0, included_junctions=len(feature.included_junctions) if feature else 0, excluded_junctions=len(feature.excluded_junctions) if feature else 0))
+    features, definitions = build_event_features(source, genes)
     bams = sorted(args.starsolo_root.glob("*/Aligned.sortedByCoord.out.bam"))
     if len(bams) != args.expected_bams:
         raise ValueError("whole declared alignment-file family required")
@@ -73,12 +78,12 @@ def prepare(args):
     groups, _ = read_primer_cell_groups(args.metadata, args.primer_pairs, sorted(set(metadata.cell_type)))
     args.output_dir.mkdir(parents=True)
     selected.to_csv(args.output_dir / "selected_cases.tsv.gz", sep="\t", index=False)
-    pd.DataFrame(definitions).to_csv(args.output_dir / "feature_definitions.tsv", sep="\t", index=False)
+    definitions.to_csv(args.output_dir / "feature_definitions.tsv", sep="\t", index=False)
     diagnostic_inputs = [args.diagnostic_root / f"fold{fold}" / name for fold in (0, 1) for name in ("diagnostics.tsv.gz", "subject_influence.tsv.gz")]
     diagnostic_inputs.extend(args.bound_root / f"fold{fold}" / "diagnostics.tsv.gz" for fold in (0, 1))
     recipe = dict(events=features, barcode_groups=groups, bams=[dict(path=str(path.resolve()), size=path.stat().st_size, mtime_ns=path.stat().st_mtime_ns) for path in bams], inputs={str(path): file_hash(path) for path in (args.event_catalog, args.gtf, args.metadata, args.primer_pairs)}, diagnostic_inputs={str(path): file_hash(path) for path in diagnostic_inputs}, diagnostic_root=str(args.diagnostic_root), selected_sha256=file_hash(args.output_dir / "selected_cases.tsv.gz"), selection="identical prior strong raw-p tail and informative-subject-count-matched weak controls in both splits, no LR selection", scope="same-read local support diagnostic; unique STAR GX/NH plus per-file barcode/UB keys, not upstream EC-UMI counts, RNA PSI, a significance filter or a new inference model", production_changes=False)
     (args.output_dir / "recipe.json").write_text(json.dumps(recipe) + "\n")
-    print(pd.DataFrame(definitions).groupby(["status", "event_type"]).size().to_string(), flush=True)
+    print(definitions.groupby(["status", "event_type"]).size().to_string(), flush=True)
 
 
 def collect(args):
@@ -194,7 +199,7 @@ def collate(args):
     features.to_csv(args.public_dir / "feature_definitions.tsv", sep="\t")
     pd.DataFrame(summaries).to_csv(args.public_dir / "summary.tsv", sep="\t", index=False)
     deduplication = "Exact UB keys are unioned within each physical library, never across libraries; this does not reproduce joint upstream UMI error correction." if recipe.get("library_union") else "Keys may duplicate across alignment files and differ from original EC UMI deduplication."
-    manifest = dict(recipe_sha256=file_hash(recipe_path), shards=receipts, requested_tests=len(selected), diagnostics=len(diagnostics), selection=recipe["selection"], scope=recipe["scope"], caveats="Published coordinate envelopes and class-unanimous annotation markers do not define an exact read-path likelihood. One-base exon overlaps count. Unmodeled isoforms may contain markers. " + deduplication + " Pooled descriptive fractions combine primer-specific opportunities and are NOT RNA PSI or independent validation. Threshold five summarizes read support only, no events or subjects are removed from testing.", production_changes=False)
+    manifest = dict(recipe_sha256=file_hash(recipe_path), shards=receipts, requested_tests=len(selected), diagnostics=len(diagnostics), selection=recipe["selection"], scope=recipe["scope"], production_cell_qc=recipe.get("production_cell_qc"), caveats="Published coordinate envelopes and class-unanimous annotation markers do not define an exact read-path likelihood. One-base exon overlaps count. Unmodeled isoforms may contain markers. " + deduplication + " Pooled descriptive fractions combine primer-specific opportunities and are NOT RNA PSI or independent validation. Threshold five summarizes read support only, no events or subjects are removed from testing.", production_changes=False)
     (args.public_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(pd.DataFrame(summaries).to_string(index=False), flush=True)
 

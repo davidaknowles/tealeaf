@@ -1,0 +1,15 @@
+method	cutoff	category	n_selected	complete_prefix	n_tests	n_agree	fraction_of_prefix	agreement
+Reference-sequence EC score, geometry-stratified sign calibration	100	A3SS	100	True	8	4	0.08	0.5
+Reference-sequence EC score, geometry-stratified sign calibration	100	A5SS	100	True	4	1	0.04	0.25
+Reference-sequence EC score, geometry-stratified sign calibration	100	AF	100	True	15	12	0.15	0.8
+Reference-sequence EC score, geometry-stratified sign calibration	100	AL	100	True	3	3	0.03	1.0
+Reference-sequence EC score, geometry-stratified sign calibration	100	MXE	100	True	1	1	0.01	1.0
+Reference-sequence EC score, geometry-stratified sign calibration	100	RI	100	True	1	0	0.01	0.0
+Reference-sequence EC score, geometry-stratified sign calibration	100	SE	100	True	68	61	0.68	0.8970588235294118
+Reference-sequence EC score, geometry-stratified sign calibration	200	A3SS	200	True	19	8	0.095	0.42105263157894735
+Reference-sequence EC score, geometry-stratified sign calibration	200	A5SS	200	True	7	2	0.035	0.2857142857142857
+Reference-sequence EC score, geometry-stratified sign calibration	200	AF	200	True	33	24	0.165	0.7272727272727273
+Reference-sequence EC score, geometry-stratified sign calibration	200	AL	200	True	8	4	0.04	0.5
+Reference-sequence EC score, geometry-stratified sign calibration	200	MXE	200	True	5	2	0.025	0.4
+Reference-sequence EC score, geometry-stratified sign calibration	200	RI	200	True	2	0	0.01	0.0
+Reference-sequence EC score, geometry-stratified sign calibration	200	SE	200	True	126	104	0.63	0.8253968253968254

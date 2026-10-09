@@ -1,0 +1,36 @@
+{
+  "cohort": {
+    "source": ".cache/event_sequence_controls_L150_E001/mixed_score_reference/original_binary/full",
+    "merged_source": ".cache/event_sequence_controls_L150_E001/assess_mixed_score_reference/original_binary/full/merged",
+    "declared_tests": 401128,
+    "complete_tests": 367689,
+    "source_shards": 64,
+    "observed_sha256": "6f21c734c40d29d1c7f1706fb58425c7dfe1cc016369fd22b0d0d79413d64014",
+    "null_sha256": "4c23f3bfa59b4e14d1cb34dc30b5cb6a4dbea28e6c941d2eed340c598372c664",
+    "grid": {
+      "points": 81,
+      "relative_log_variance_min": -24.0,
+      "relative_log_variance_max": 16.0,
+      "endpoints": [
+        0.0,
+        "infinity"
+      ],
+      "scale": "median log(1/(I*B))"
+    },
+    "classes": "balanced max share <=.5; intermediate <=.9; dominated >.9",
+    "training": "original 32 sign draws, original dimension/subject strata crossed with frozen geometry; exact leave-own-test-out plus-one CDF",
+    "small_pools": "no fallback across geometry classes; limited empirical tail resolution remains",
+    "family": "complete original family; every original failed test remains p1",
+    "changes": "calibration strata only; count fits, scores, analytic tails, reporting, original strata, null signs and family unchanged",
+    "selection": "no p-value, fitted heterogeneity, effect direction or LR outcomes used for geometry assignment",
+    "scope": "experimental, requires actual-count-null and both replication endpoints before adoption",
+    "production_changes": false
+  },
+  "source_assessment": "analyses/event_sequence_full_score",
+  "mapping_sha256": "74b56811f55585abf0177387c87dbe2054e7dc9bc7ed20ef6c621ecc7a85eb31",
+  "mapping": "same complete all-tested source association mapping and unchanged count fits, independent A1 reports and LR counts; calibration reranked without an FDR or overlap screen",
+  "eligible_associations": 30391,
+  "score_direction_available": 30046,
+  "scope": "candidate-own calibrated ranking, separate fixed usage and efficient-score directions; no mixing different variants' endpoints",
+  "production_changes": false
+}

@@ -1,0 +1,4 @@
+cutoff	representation	requested	unique_genes	unique_event_definitions	marker_geometry_available
+100	event present in prior support family	100	38	56	100
+200	event present in prior support family	198	85	113	198
+200	gene absent from prior coverage/support family	2	2	2	2

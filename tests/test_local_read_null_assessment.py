@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from extra_scripts.assess_local_read_null import validate_trials
+from extra_scripts.assess_local_read_null import validate_trials, integration_recipe
 
 
 def trials():
@@ -27,3 +27,14 @@ def test_changed_or_incomplete_null_panels_are_rejected(problem):
         table.loc[0, "scenario"] = 1
     with pytest.raises(ValueError):
         validate_trials(table, 0, 2)
+
+
+def test_null_collation_preserves_different_driver_manifest_node_fields():
+    assert integration_recipe(dict(quadrature_nodes=21), 'conditional') == dict(nodes=21, adaptive_integration=False)
+    assert integration_recipe(dict(nodes=11, adaptive_integration=True), 'unconditional') == dict(nodes=11, adaptive_integration=True)
+
+
+@pytest.mark.parametrize('manifest', [dict(nodes=True), dict(nodes=2), dict(nodes=11, adaptive_integration='true')])
+def test_null_collation_rejects_undeclared_integration_types(manifest):
+    with pytest.raises(ValueError):
+        integration_recipe(manifest, 'unconditional')

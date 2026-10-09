@@ -1,0 +1,9 @@
+fold	panel	unavoidable_share_gt_90	requested	available_features	at_least_four_subjects_with_five_discriminating_keys_each_type	median_subjects_with_five_discriminating_keys_each_type	median_dominant_minimum_discriminating_keys	local_direction_available	raw_score_local_direction_agreement
+0	small observed raw p-value	False	160	160	35	0.0	2.0	146	0.8287671232876712
+0	small observed raw p-value	True	31	31	9	0.0	1.0	27	0.5925925925925926
+0	subject-count-matched weak control	False	173	173	17	0.0	1.0	144	0.4027777777777778
+0	subject-count-matched weak control	True	18	18	2	0.0	0.0	15	0.13333333333333333
+1	small observed raw p-value	False	131	131	22	0.0	1.0	109	0.7981651376146789
+1	small observed raw p-value	True	35	35	4	0.0	1.0	29	0.7586206896551724
+1	subject-count-matched weak control	False	149	149	24	0.0	1.0	120	0.44166666666666665
+1	subject-count-matched weak control	True	17	17	7	0.0	1.0	15	0.26666666666666666

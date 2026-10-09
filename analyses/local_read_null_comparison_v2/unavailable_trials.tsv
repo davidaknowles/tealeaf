@@ -1,0 +1,16 @@
+model	scenario	law	draw	exception	parameter_boundary	quadrature_error	n_subjects
+conditional	3	conditional working model	14		False	0.0011543439955978	11
+conditional	3	conditional working model	39		False	0.0001357512951614	12
+conditional	3	unconditional binomial	0		True	0.3366412342982041	11
+conditional	3	unconditional binomial	5		False	0.000108685856853	11
+conditional	3	unconditional binomial	26		False	0.0166781542042393	14
+conditional	3	unconditional binomial	49		False	0.0006300983392861	15
+unconditional	2	conditional working model	29		False	0.002406292158497	20
+unconditional	2	conditional working model	43		False	0.0012076908070355	20
+unconditional	2	unconditional binomial	29		False	0.0028807374085175	20
+unconditional	2	unconditional binomial	30		False	0.0010221601160651	20
+unconditional	2	unconditional binomial	43		False	0.0012077934651131	20
+unconditional	3	conditional working model	0		False	0.0011721892382183	20
+unconditional	3	conditional working model	61		False	0.0010540077326766	20
+unconditional	3	unconditional binomial	0		False	0.0029830030483992	20
+unconditional	3	unconditional binomial	44		False	0.0015195347576195	20

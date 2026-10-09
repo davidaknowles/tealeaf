@@ -2,7 +2,8 @@ import numpy as np
 import pytest
 from scipy import special
 
-from tealeaf.sc.local_read_mixed import LocalReadMixed, local_read_mixed_test
+from tealeaf.sc.local_read_mixed import LocalReadMixed, local_read_mixed_test, local_read_mixed_adaptive_test
+from tealeaf.sc import local_read_mixed as module
 
 
 def counts():
@@ -77,6 +78,42 @@ def test_counted_zero_class_subjects_remain_in_unconditional_likelihood():
     assert LocalReadMixed(observed).n_paired_subjects == 4
 
 
+@pytest.mark.parametrize("included", [False, True])
+def test_globally_class_constant_primer_is_profiled_exactly_not_penalized(included):
+    observed = counts()
+    extra = np.zeros((4, 1, 2, 2), dtype=int)
+    extra[..., 0 if included else 1] = 10
+    extended = np.concatenate([observed, extra], axis=1)
+    likelihood = LocalReadMixed(extended)
+    np.testing.assert_array_equal(likelihood.active_primers, [0, 1])
+    np.testing.assert_array_equal(likelihood.profiled_constant_primers, [2])
+    np.testing.assert_array_equal(likelihood.counts, extended)
+    actual = likelihood.marginal_objective([-.2, .1], .4, .7, .8, nodes=31, gradient=False)
+    expected = brute_objective(extended, [-.2, .1, 45. if included else -45.], .4, .7, .8)
+    np.testing.assert_allclose(actual, expected, atol=1e-8)
+    assert likelihood.n_paired_subjects == 4
+
+
+def test_constant_primer_does_not_create_extra_measured_subjects():
+    observed = counts()
+    observed[0] = 0
+    extra = np.zeros((4, 1, 2, 2), dtype=int)
+    extra[..., 1] = 10
+    likelihood = LocalReadMixed(np.concatenate([observed, extra], axis=1))
+    assert len(likelihood.counts) == 4
+    assert likelihood.n_paired_subjects == 3
+    with pytest.raises(ValueError, match="four subjects"):
+        local_read_mixed_test(likelihood)
+
+
+def test_only_globally_constant_classes_cannot_generate_an_effect_test():
+    observed = np.zeros((4, 2, 2, 2), dtype=int)
+    observed[:, 0, :, 0] = 10
+    observed[:, 1, :, 1] = 10
+    with pytest.raises(ValueError, match="both marker classes"):
+        LocalReadMixed(observed)
+
+
 def test_primer_cell_type_confounding_is_not_rescued_by_latent_priors():
     observed = counts()
     observed[:, 0, 1] = 0
@@ -99,3 +136,61 @@ def test_complete_nested_binomial_lrt_fits_signal_and_checks_both_likelihoods():
     assert result["log_odds_effect"] > 0
     assert result["quadrature_error"] < 1e-3
     assert result["alternative_objective"] <= result["null_objective"]
+
+
+def test_capped_alternative_effect_is_reported_as_censored_not_a_finite_mle():
+    # A synthetic convex marginal objective isolates boundary handling from
+    # finite-count tail validity, which requires separate count simulations.
+    class CappedEffectObjective:
+        counts = np.full((4, 1, 2, 2), 10)
+        active_primers = np.array([0])
+        profiled_constant_primers = np.array([], dtype=int)
+        primers = 1
+        n_paired_subjects = 4
+
+        def marginal_objective(self, means, effect, first, second, *, nodes, gradient=True):
+            value = .5 * np.sum(np.asarray(means)**2) + .05 * (effect - 25.)**2 + first**2 + second**2
+            derivative = np.r_[means, .1 * (effect - 25.), 2 * first**2, 2 * second**2]
+            return (value, derivative) if gradient else value
+
+    result = local_read_mixed_test(CappedEffectObjective())
+    assert result["converged"]
+    assert result["parameter_boundary"]
+    assert result["effect_estimate_censored"]
+    assert not result["nuisance_parameter_boundary"]
+    assert result["log_odds_effect"] == 20.
+    assert result["statistic"] == pytest.approx(60.)
+    assert result["p_value"] < .01
+
+
+def test_increasing_quadrature_refits_both_hypotheses_without_tail_selection(monkeypatch):
+    calls = []
+    def fit(likelihood, *, nodes, max_iter, quadrature_tolerance):
+        calls.append(nodes)
+        return dict(converged=nodes >= 21, quadrature_error=.1 if nodes == 11 else 0., p_value=1. if nodes == 11 else .8)
+    monkeypatch.setattr(module, 'local_read_mixed_test', fit)
+    result = local_read_mixed_adaptive_test(None)
+    assert calls == [11, 21]
+    assert result['quadrature_orders_tried'] == '11;21'
+    assert result['final_quadrature_order'] == 21
+    assert result['p_value'] == .8
+
+
+def test_nonquadrature_failure_is_not_bypassed_and_last_mismatch_stays_failed(monkeypatch):
+    calls = []
+    def fit(likelihood, *, nodes, max_iter, quadrature_tolerance):
+        calls.append(nodes)
+        return dict(converged=False, quadrature_error=likelihood, p_value=1.)
+    monkeypatch.setattr(module, 'local_read_mixed_test', fit)
+    result = local_read_mixed_adaptive_test(0.)
+    assert calls == [11] and not result['converged']
+    calls.clear()
+    result = local_read_mixed_adaptive_test(.1)
+    assert calls == [11, 21, 41]
+    assert not result['converged'] and result['p_value'] == 1.
+
+
+@pytest.mark.parametrize('schedule', [(), (2,), (11, 11), (21, 11), (11.,)])
+def test_invalid_quadrature_schedule_is_rejected(schedule):
+    with pytest.raises(ValueError, match='orders'):
+        local_read_mixed_adaptive_test(None, node_schedule=schedule)

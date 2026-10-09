@@ -29,6 +29,22 @@ def prepare(args):
     for barcode, group in source["barcode_groups"].items():
         if list(origins.loc[barcode, ["subject", "cell_type", "primer"]]) != list(group):
             raise ValueError("original cell/subject/primer annotations must not change")
+    groups = source["barcode_groups"]
+    qc_inputs = []
+    qc = None
+    if getattr(args, "cell_qc", None) is not None:
+        qc_manifest = args.cell_qc / "manifest.json"
+        qc_barcodes = args.cell_qc / "retained_barcodes.tsv.gz"
+        qc = json.loads(qc_manifest.read_text())
+        retained = pd.read_csv(qc_barcodes, sep="\t", dtype=str).set_index("barcode", verify_integrity=True)
+        if qc["exact_cached_group_and_primer_total_match"] is not True or qc["source_read_recipe_sha256"] != file_hash(source_path) or len(retained) != qc["retained_production_barcodes"] or not set(retained.index) <= set(groups):
+            raise ValueError("exact matching production cell QC required")
+        restricted = {barcode: list(retained.loc[barcode, ["subject", "cell_type", "primer"]]) for barcode in retained.index}
+        if any(groups[barcode] != group for barcode, group in restricted.items()):
+            raise ValueError("QC may restrict cells but must not change their annotations")
+        groups = restricted
+        origins = origins.loc[list(groups)]
+        qc_inputs = [qc_manifest, qc_barcodes]
     packets = {Path(row["path"]).parent.name: (index, row) for index, row in enumerate(source["bams"])}
     declared = [value for row in runs.itertuples(index=False) for value in (row.run_a, row.run_b)]
     if runs.library.duplicated().any() or len(set(declared)) != len(declared) or set(declared) != set(packets) or set(origins.library) != set(runs.library):
@@ -45,12 +61,12 @@ def prepare(args):
             if receipt["complete"] is not True or receipt["input"] != packet or receipt["recipe_sha256"] != file_hash(source_path) or not index_path.is_file():
                 raise ValueError("complete original scan and index required for each run")
             inputs.append(dict(**packet, index=str(index_path.resolve()), index_sha256=file_hash(index_path), scan_receipt=str(receipt_path.resolve()), scan_receipt_sha256=file_hash(receipt_path)))
-        groups = {barcode: source["barcode_groups"][barcode] for barcode in origins.index[origins.library.eq(row.library)]}
-        libraries.append(dict(library=row.library, runs=inputs, barcode_groups=groups))
+        local_groups = {barcode: groups[barcode] for barcode in origins.index[origins.library.eq(row.library)]}
+        libraries.append(dict(library=row.library, runs=inputs, barcode_groups=local_groups))
     recipe = dict(source)
-    recipe.update(bams=libraries, library_union=True, scope="same-read local-marker diagnostic, exact CB/UB/gene union within physical library across its runs; not upstream EC UMI counts, RNA PSI, independent validation or a statistical eligibility rule")
+    recipe.update(bams=libraries, barcode_groups=groups, library_union=True, production_cell_qc=qc, scope="same-read local-marker diagnostic, exact CB/UB/gene union within physical library across its runs; " + ("exact production retained-cell QC; " if qc is not None else "broader barcode-metadata cell scope; ") + "not upstream EC UMI counts, RNA PSI, independent validation or a statistical eligibility rule")
     recipe["diagnostic_inputs"] = dict(source["diagnostic_inputs"])
-    recipe["diagnostic_inputs"].update({str(path.resolve()): file_hash(path) for path in (source_path, provenance_path, origins_path, runs_path)})
+    recipe["diagnostic_inputs"].update({str(path.resolve()): file_hash(path) for path in (source_path, provenance_path, origins_path, runs_path, *qc_inputs)})
     args.output_dir.mkdir(parents=True)
     for name in ("selected_cases.tsv.gz", "feature_definitions.tsv"):
         shutil.copyfile(args.source_root / name, args.output_dir / name)
@@ -89,6 +105,7 @@ def main():
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--source-root", type=Path)
     parser.add_argument("--origins", type=Path)
+    parser.add_argument("--cell-qc", type=Path, help="Exact production retained-cell reconstruction, without changing case selection.")
     parser.add_argument("--shard-index", type=int)
     parser.add_argument("--public-dir", type=Path)
     parser.add_argument("--bound-root", type=Path, default=Path("analyses/event_sequence_variance_limits"))

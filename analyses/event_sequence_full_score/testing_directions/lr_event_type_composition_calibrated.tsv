@@ -1,0 +1,14 @@
+method	cutoff	category	n_selected	complete_prefix	n_tests	n_agree	fraction_of_prefix	agreement
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, efficient-score ILR direction	100	A3SS	100	True	6	4	0.06	0.6666666666666666
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, efficient-score ILR direction	100	A5SS	100	True	4	1	0.04	0.25
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, efficient-score ILR direction	100	AF	100	True	22	14	0.22	0.6363636363636364
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, efficient-score ILR direction	100	AL	100	True	4	2	0.04	0.5
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, efficient-score ILR direction	100	RI	100	True	1	0	0.01	0.0
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, efficient-score ILR direction	100	SE	100	True	63	51	0.63	0.8095238095238095
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, efficient-score ILR direction	200	A3SS	200	True	24	12	0.12	0.5
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, efficient-score ILR direction	200	A5SS	200	True	6	2	0.03	0.3333333333333333
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, efficient-score ILR direction	200	AF	200	True	45	26	0.225	0.5777777777777777
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, efficient-score ILR direction	200	AL	200	True	6	3	0.03	0.5
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, efficient-score ILR direction	200	MXE	200	True	3	0	0.015	0.0
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, efficient-score ILR direction	200	RI	200	True	3	0	0.015	0.0
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, efficient-score ILR direction	200	SE	200	True	113	93	0.565	0.8230088495575221

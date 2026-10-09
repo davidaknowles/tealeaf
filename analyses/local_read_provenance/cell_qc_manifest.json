@@ -1,0 +1,24 @@
+{
+  "control_manifest_sha256": "2892100e5c90acff8524fe4ae5964a0150199df61582005bfdafb36c43500f30",
+  "source_read_recipe_sha256": "53ad00eb465c8a692bd46ec9c3832af8d2b7f2ed1afe6793aa3f4bd47828a2d6",
+  "source_barcode_groups_sha256": "65c97b7fe66af1d5b6a0c90c17ece62fd6c90040a97b2d9f421354776c190f7f",
+  "source_primer_pairs_sha256": "a419108836f1922e590f79b8229e1b47610beb9a973e04c3131a6b77e7fca313",
+  "count_input": {
+    "path": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/alevin_t2t_cache",
+    "rows": 744997,
+    "min_eq": 5,
+    "complete_pairs": 64782,
+    "min_half_umis": 500
+  },
+  "groups": 388,
+  "retained_production_barcodes": 60448,
+  "requested_diagnostic_barcodes": 74004,
+  "diagnostic_barcodes_not_retained": 13556,
+  "exact_cached_group_and_primer_total_match": true,
+  "primer_UMIs": [
+    137889342.0,
+    121038253.0
+  ],
+  "scope": "production cell eligibility reconstruction only; no new counts, effect tests, discovery or LR claim",
+  "production_changes": false
+}

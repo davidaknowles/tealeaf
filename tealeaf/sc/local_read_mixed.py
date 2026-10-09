@@ -9,7 +9,7 @@ PSI and does not cancel type-specific capture bias or unmodeled marker paths.
 import numpy as np
 from scipy import special, optimize, stats
 
-MODEL_VERSION = "local_read_binomial_random_intercept_slope_v1"
+MODEL_VERSION = "local_read_binomial_random_intercept_slope_v2"
 
 
 class LocalReadMixed:
@@ -27,9 +27,18 @@ class LocalReadMixed:
         if counts.ndim != 4 or counts.shape[2:] != (2, 2) or not len(counts) or not counts.shape[1] or not np.isfinite(counts).all() or (counts < 0).any() or (counts != np.floor(counts)).any() or (counts > 2**50).any():
             raise ValueError("nonnegative exact M by P by two by two counts required")
         self.counts = counts.astype(np.int64, copy=True)
-        self.active_primers = np.flatnonzero(self.counts.sum(axis=(0, 2, 3)) > 0)
+        class_totals = self.counts.sum(axis=(0, 2))
+        observed = class_totals.sum(axis=1) > 0
+        variable = (class_totals > 0).all(axis=1)
+        self.profiled_constant_primers = np.flatnonzero(observed & ~variable)
+        self.active_primers = np.flatnonzero(variable)
         if not len(self.active_primers):
-            raise ValueError("local read evidence required")
+            raise ValueError("local read evidence with both marker classes required")
+        # A primer with one class absent EVERYWHERE has a free intercept whose
+        # profile supremum is at +/-infinity. Its integrated likelihood factor
+        # tends to one for every finite effect and variance. Remove exactly that
+        # factor, not zero-class subjects within an informative primer. Keep all
+        # requested counts and export the profiled primer identities.
         kept = self.counts[:, self.active_primers]
         self.included = kept[..., 0].reshape(len(kept), -1)
         self.excluded = kept[..., 1].reshape(len(kept), -1)
@@ -166,7 +175,33 @@ def local_read_mixed_test(likelihood, *, nodes=9, max_iter=150, quadrature_toler
     alternative_fine = likelihood.marginal_objective(*alternative[1:5], nodes=2 * nodes, gradient=False)
     coarse, fine = 2 * (null[0] - alternative[0]), 2 * (null_fine - alternative_fine)
     error = max(abs(null[0] - null_fine), abs(alternative[0] - alternative_fine), abs(coarse - fine))
-    boundary = max(np.max(np.abs(null[1])), np.max(np.abs(alternative[1])), abs(alternative[2])) > 20 - 1e-3 or max(null[3], null[4], alternative[3], alternative[4]) > 12 * (1 - 1e-3)
-    converged = bool(not boundary and error <= quadrature_tolerance and min(coarse, fine) >= -1e-6)
+    nuisance_boundary = max(np.max(np.abs(null[1])), np.max(np.abs(alternative[1]))) > 20 - 1e-3 or max(null[3], null[4], alternative[3], alternative[4]) > 12 * (1 - 1e-3)
+    effect_boundary = abs(alternative[2]) > 20 - 1e-3
+    boundary = nuisance_boundary or effect_boundary
+    # A capped alternative effect restricts its likelihood, hence cannot inflate
+    # LR relative to its unrestricted supremum when the null is correctly fit.
+    # Keep the censoring explicit, do not present the endpoint as a finite MLE.
+    # Null/nuisance boundaries and quadrature failures still invalidate the tail.
+    converged = bool(not nuisance_boundary and error <= quadrature_tolerance and min(coarse, fine) >= -1e-6)
     statistic = max(float(fine), 0.) if converged else 0.
-    return dict(model_version=MODEL_VERSION, p_value=float(stats.chi2.sf(statistic, 1)) if converged else 1., statistic=statistic, converged=converged, n_subjects=likelihood.n_paired_subjects, n_requested_subjects=len(likelihood.counts), log_odds_effect=float(alternative[2]) if converged else np.nan, null_baseline_sd=float(null[3]), null_subject_sd=float(null[4]), alternative_baseline_sd=float(alternative[3]), alternative_subject_sd=float(alternative[4]), null_objective=float(null_fine), alternative_objective=float(alternative_fine), quadrature_error=float(error), parameter_boundary=bool(boundary), scope="native-tail unconditional binomial local-read odds model with independent normal baseline/slope, not RNA PSI or certified biological inference")
+    return dict(model_version=MODEL_VERSION, p_value=float(stats.chi2.sf(statistic, 1)) if converged else 1., statistic=statistic, converged=converged, n_subjects=likelihood.n_paired_subjects, n_requested_subjects=len(likelihood.counts), n_profiled_constant_primers=len(likelihood.profiled_constant_primers), profiled_constant_primers=";".join(map(str, likelihood.profiled_constant_primers)), log_odds_effect=float(alternative[2]) if converged else np.nan, effect_estimate_censored=bool(effect_boundary), nuisance_parameter_boundary=bool(nuisance_boundary), null_baseline_sd=float(null[3]), null_subject_sd=float(null[4]), alternative_baseline_sd=float(alternative[3]), alternative_subject_sd=float(alternative[4]), null_objective=float(null_fine), alternative_objective=float(alternative_fine), quadrature_error=float(error), parameter_boundary=bool(boundary), scope="native-tail unconditional binomial local-read odds model with independent normal baseline/slope; exact profiling of globally class-constant primers, capped alternative effects explicitly censored; not RNA PSI or certified biological inference")
+
+
+def local_read_mixed_adaptive_test(likelihood, *, node_schedule=(11, 21, 41), max_iter=150, quadrature_tolerance=1e-3):
+    """Refit both hypotheses at higher quadrature orders only after mismatch.
+
+    The numerical tolerance, likelihood, parameter bounds and tail are fixed.
+    Never choose an order using significance, effect direction or LR agreement.
+    Failed measurement eligibility and other non-quadrature failures are not
+    bypassed. Each attempt includes its own doubled-order likelihood check.
+    """
+    schedule = tuple(node_schedule)
+    if not schedule or any(not isinstance(value, (int, np.integer)) or value < 3 for value in schedule) or any(first >= second for first, second in zip(schedule, schedule[1:])):
+        raise ValueError("positive strictly increasing integer quadrature orders of at least three required")
+    tried = []
+    for nodes in schedule:
+        result = local_read_mixed_test(likelihood, nodes=int(nodes), max_iter=max_iter, quadrature_tolerance=quadrature_tolerance)
+        tried.append(int(nodes))
+        if result['converged'] or not result['quadrature_error'] > quadrature_tolerance:
+            break
+    return dict(result, quadrature_orders_tried=';'.join(map(str, tried)), final_quadrature_order=tried[-1], integration_policy='first doubled-order-validated fit in prespecified increasing-order schedule; refit both hypotheses, no tail/direction-based selection')

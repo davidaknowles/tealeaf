@@ -1,0 +1,13 @@
+method	cutoff	category	n_selected	complete_prefix	n_tests	n_agree	fraction_of_prefix	agreement
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	100	A3SS	100	True	6	3	0.06	0.5
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	100	A5SS	100	True	4	1	0.04	0.25
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	100	AF	100	True	16	13	0.16	0.8125
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	100	AL	100	True	3	2	0.03	0.6666666666666666
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	100	SE	100	True	71	63	0.71	0.8873239436619719
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	200	A3SS	200	True	18	8	0.09	0.4444444444444444
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	200	A5SS	200	True	5	1	0.025	0.2
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	200	AF	200	True	39	30	0.195	0.7692307692307693
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	200	AL	200	True	5	3	0.025	0.6
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	200	MXE	200	True	4	2	0.02	0.5
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	200	RI	200	True	1	0	0.005	0.0
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference	200	SE	200	True	128	105	0.64	0.8203125

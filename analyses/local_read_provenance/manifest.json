@@ -1,0 +1,18 @@
+{
+  "input_hashes": {
+    "analyses/event_sequence_local_read_support_library/manifest.json": "ca06b8fc19873c14719118ed5e68baa6a983b9a5f8efd05f0c88b89ca3db41a8",
+    ".cache/event_sequence_local_read_cell_qc/manifest.json": "a52b42ce1cc909bfccee6d0456c34d3547fd0e69b5199f03be2f3152bae1a32b",
+    ".cache/full_local_read_catalog_qc/manifest.json": "33f73451c5caa51a71718904a82c2d86b085af04181ee614dc107445350896c5",
+    ".cache/event_sequence_local_read_cell_qc/retained_barcodes.tsv.gz": "815ddf371a6bce5a91d10726ca6d0b0c5df6fd71f99a27dbcf57cd62e6d68d7e",
+    ".cache/event_sequence_local_read_cell_qc/diagnostic_barcode_qc.tsv.gz": "8ea96e231bc87b61b102361d002d8d503452b87db4068b694dca6c7723f33c09"
+  },
+  "whole_library_key_totals": {
+    "run_summed_event_keys": 14756518,
+    "library_union_event_keys": 11330538,
+    "duplicated_event_keys": 3425980,
+    "duplicate_fraction_of_run_sum": 0.23216723620030144
+  },
+  "scope": "completed broader-cell diagnostic molecule-key provenance and production cell-QC reconstruction; not statistical or replication results",
+  "caveats": "Keys are event/barcode/UMI units, not unique RNAs across events. Broader-cell read counts are not the production-cell model inputs. Exact STAR UB union does not recreate joint UMI error correction. No established comparator result is invalidated by this local diagnostic.",
+  "production_changes": false
+}

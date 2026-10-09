@@ -1,0 +1,23 @@
+{
+  "declared_events": 23141,
+  "marker_geometry_available": 23141,
+  "local_marker_status": {
+    "ok": 23141
+  },
+  "prior_global_isoform_supported_events": 10935,
+  "prior_requested_full_contrasts": 401128,
+  "production_barcodes": 60448,
+  "physical_libraries": 8,
+  "source_hashes": {
+    ".cache/event_sequence_local_read_support_library/recipe.json": "da35599532d7fa469b818ebdc002e4906bcf4f3c6647a16fcea9d3eebab22084",
+    ".cache/event_sequence_local_read_cell_qc/manifest.json": "a52b42ce1cc909bfccee6d0456c34d3547fd0e69b5199f03be2f3152bae1a32b",
+    ".cache/event_sequence_local_read_cell_qc/retained_barcodes.tsv.gz": "815ddf371a6bce5a91d10726ca6d0b0c5df6fd71f99a27dbcf57cd62e6d68d7e",
+    "analyses/event_column_aliases/events.tsv.gz": "adf3badbf401a6bdd803750839ca8680aed436333c4ff50cd91443e8ec07bcb5",
+    "analyses/event_column_aliases/manifest.json": "68d8078bd5c0390c3b675c0cf1a955d3cc24dd7a8011ec0ed3268ee1f8c2ba36",
+    ".cache/suppa2_statistics/all_event_catalog/event_catalog.tsv.gz": "ad134e1c23d6d1393e6ba7b61a76efec4005e3a455f24551f195a2d68916f5e7",
+    "/gpfs/commons/home/daknowles/knowles_lab/index/kallisto/mus_musculus/with_precursor/gencode.vM32.basic.annotation.gtf": "a5335996c2300493f01c2d8e16c8ddaa3fff3adaa9fd10a1fbbf3b721ed37ace"
+  },
+  "scope": "whole local-marker count preparation only; unavailable/markerless definitions remain in declared family; no power, calibration or replication claim",
+  "selection": "entire original annotation event catalog and production cell QC; no global-isoform support/EC-dimension screen, statistical fits, p-values, significance or LR outcomes",
+  "production_changes": false
+}

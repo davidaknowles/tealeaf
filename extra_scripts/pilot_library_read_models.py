@@ -12,7 +12,7 @@ import pandas as pd
 
 from extra_scripts.audit_event_local_read_support import file_hash
 from tealeaf.sc.conditional_read_odds import ConditionalReadOdds, conditional_read_odds_test
-from tealeaf.sc.local_read_mixed import LocalReadMixed, local_read_mixed_test
+from tealeaf.sc.local_read_mixed import LocalReadMixed, local_read_mixed_test, local_read_mixed_adaptive_test
 
 
 PRIMERS = ("poly(dT)", "random hexamer")
@@ -50,6 +50,7 @@ def main():
     parser.add_argument("--shard-index", type=int, required=True)
     parser.add_argument("--shard-count", type=int, default=16)
     parser.add_argument("--output-root", type=Path, required=True)
+    parser.add_argument("--adaptive-integration", action="store_true", help="Refit quadrature mismatches at orders 11,21,41 without changing likelihood or tolerance.")
     args = parser.parse_args()
     if not 0 <= args.shard_index < args.shard_count:
         raise ValueError("declared shard required")
@@ -60,6 +61,8 @@ def main():
     manifest = json.loads(paths[0].read_text())
     if not len(manifest["shards"]) == 8 or any(not row["complete"] or "library" not in row["input"] for row in manifest["shards"]):
         raise ValueError("all eight library-union sources must be complete")
+    if not manifest.get("production_cell_qc") or manifest["production_cell_qc"]["exact_cached_group_and_primer_total_match"] is not True:
+        raise ValueError("exact production retained-cell QC required for the model pilot")
     cases = pd.read_csv(paths[1], sep="\t").sort_values(["fold", "test_id"]).reset_index(drop=True)
     if cases.duplicated(["fold", "test_id"]).any() or len(cases) != manifest["requested_tests"] or len(cases) != manifest["diagnostics"]:
         raise ValueError("complete unchanged selected family required")
@@ -81,7 +84,11 @@ def main():
                 start = time.monotonic()
                 record = dict(fold=case.fold, test_id=case.test_id, panel=case.panel, feature_id=case.feature_id, model=model, variant=variant, counts_sha256=digest, n_local_included_keys=int(counts[..., 0].sum()), n_local_excluded_keys=int(counts[..., 1].sum()), requested_subjects=len(subjects), p_value=1., converged=False, error="")
                 try:
-                    result = conditional_read_odds_test(ConditionalReadOdds(counts), nodes=21) if model == "conditional" else local_read_mixed_test(LocalReadMixed(counts), nodes=11)
+                    if model == 'conditional':
+                        result = conditional_read_odds_test(ConditionalReadOdds(counts), nodes=21)
+                    else:
+                        fit = local_read_mixed_adaptive_test if args.adaptive_integration else local_read_mixed_test
+                        result = fit(LocalReadMixed(counts)) if args.adaptive_integration else fit(LocalReadMixed(counts), nodes=11)
                     record.update(result)
                 except (ValueError, np.linalg.LinAlgError) as exc:
                     record["error"] = str(exc)
@@ -90,7 +97,7 @@ def main():
         print(f"{len(rows)} requested model/marker fits complete", flush=True)
     folder.mkdir(parents=True)
     pd.DataFrame(rows).to_csv(folder / "tests.tsv.gz", sep="\t", index=False)
-    receipt = dict(source_hashes={str(path): file_hash(path) for path in paths}, shard_index=args.shard_index, shard_count=args.shard_count, requested_cases=len(requested), whole_selected_cases=len(cases), models=MODELS, variants=VARIANTS, requested_fits=len(requested) * len(MODELS) * len(VARIANTS), completed_fits=len(rows), scope="frozen strong-tail and matched weak-control numerical/local-effect pilot, not full-family FDR, discovery counts, own-ranked LR or unbiased split replication", failure_policy="all requested cases retained, missing/numerical fits remain p=1", production_changes=False)
+    receipt = dict(source_hashes={str(path): file_hash(path) for path in paths}, shard_index=args.shard_index, shard_count=args.shard_count, requested_cases=len(requested), whole_selected_cases=len(cases), models=MODELS, variants=VARIANTS, adaptive_integration=args.adaptive_integration, requested_fits=len(requested) * len(MODELS) * len(VARIANTS), completed_fits=len(rows), scope="frozen strong-tail and matched weak-control numerical/local-effect pilot, not full-family FDR, discovery counts, own-ranked LR or unbiased split replication", failure_policy="all requested cases retained, missing/numerical fits remain p=1", production_changes=False)
     (folder / "manifest.json").write_text(json.dumps(receipt, indent=2) + "\n")
     print(json.dumps(receipt, indent=2), flush=True)
 

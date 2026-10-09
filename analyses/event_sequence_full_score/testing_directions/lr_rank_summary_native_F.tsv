@@ -1,0 +1,4 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference, efficient-score ILR direction	40	30391	33	0.825	0.8302563291388019
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference, efficient-score ILR direction	100	30391	81	0.81	0.8318924767762478
+Hybrid full-transcript EC mixed score, original_binary, reference-sequence EC opportunities, target-normalized numerical rank, native F reference, efficient-score ILR direction	200	30391	153	0.765	0.8043576781199195

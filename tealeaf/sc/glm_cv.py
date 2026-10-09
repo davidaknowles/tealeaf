@@ -147,6 +147,40 @@ def _paired_response_with_gene_aux(raw_counts, ec_gene, gene_loss_weight):
     )
 
 
+def paired_primer_row_selection(barcodes, raw_totals, pairs, *, min_half_umis=500):
+    """Production half-cell eligibility, without constructing EC designs.
+
+    N barcodes and N totals identify count rows. Declared pairs contain cell
+    identity, poly(dT) barcode and random-hexamer barcode. Returns retained
+    (cell, first row, second row) tuples and an N-vector primer assignment.
+    Pair-file duplicate handling belongs to the existing pair reader.
+    """
+    totals = np.asarray(raw_totals)
+    if totals.shape != (len(barcodes),) or not np.isfinite(totals).all() or (totals < 0).any():
+        raise ValueError("finite nonnegative half-cell totals must align with barcodes")
+    barcode_to_row = {}
+    for index, barcode in enumerate(barcodes):
+        if barcode in barcode_to_row:
+            raise ValueError(f"duplicate alevin barcode: {barcode}")
+        barcode_to_row[barcode] = index
+    group_by_row = np.full(len(barcodes), -1, dtype=np.int8)
+    complete, seen_half_barcodes = [], set()
+    for cell_id, polydt, ranhex in pairs:
+        if polydt in seen_half_barcodes or ranhex in seen_half_barcodes:
+            raise ValueError("a half-cell barcode occurs in more than one primer pair")
+        seen_half_barcodes.update((polydt, ranhex))
+        poly_row, hex_row = barcode_to_row.get(polydt), barcode_to_row.get(ranhex)
+        if poly_row is not None:
+            group_by_row[poly_row] = 0
+        if hex_row is not None:
+            group_by_row[hex_row] = 1
+        if poly_row is not None and hex_row is not None and totals[poly_row] >= float(min_half_umis) and totals[hex_row] >= float(min_half_umis):
+            complete.append((cell_id, poly_row, hex_row))
+    if not complete:
+        raise ValueError("no complete primer pairs meet min_half_umis")
+    return complete, group_by_row
+
+
 def prepare_paired_primer_glm_data(
     alevin_dir,
     salmon_ref,
@@ -203,34 +237,9 @@ def prepare_paired_primer_glm_data(
     if counts.shape[0] != len(barcodes):
         raise ValueError("count rows do not match alevin barcode rows")
 
-    barcode_to_row = {}
-    for index, barcode in enumerate(barcodes):
-        if barcode in barcode_to_row:
-            raise ValueError(f"duplicate alevin barcode: {barcode}")
-        barcode_to_row[barcode] = index
     pairs = _read_primer_pairs(pair_file)
-    group_by_row = np.full(len(barcodes), -1, dtype=np.int8)
-    complete = []
-    seen_half_barcodes = set()
     raw_totals = np.asarray(counts.sum(axis=1)).ravel()
-    for cell_id, polydt, ranhex in pairs:
-        if polydt in seen_half_barcodes or ranhex in seen_half_barcodes:
-            raise ValueError("a half-cell barcode occurs in more than one primer pair")
-        seen_half_barcodes.update((polydt, ranhex))
-        poly_row = barcode_to_row.get(polydt)
-        hex_row = barcode_to_row.get(ranhex)
-        if poly_row is not None:
-            group_by_row[poly_row] = 0
-        if hex_row is not None:
-            group_by_row[hex_row] = 1
-        if (
-            poly_row is not None and hex_row is not None
-            and raw_totals[poly_row] >= float(min_half_umis)
-            and raw_totals[hex_row] >= float(min_half_umis)
-        ):
-            complete.append((cell_id, poly_row, hex_row))
-    if not complete:
-        raise ValueError("no complete primer pairs meet min_half_umis")
+    complete, group_by_row = paired_primer_row_selection(barcodes, raw_totals, pairs, min_half_umis=min_half_umis)
 
     poly_rows = np.asarray([row[1] for row in complete], dtype=np.int64)
     hex_rows = np.asarray([row[2] for row in complete], dtype=np.int64)

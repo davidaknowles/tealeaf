@@ -1,0 +1,31 @@
+{
+  "input_hashes": {
+    "analyses/tilgner_junction_replication/sign_agreement_by_rank.tsv": "f3c12d23a63abfacbbfd216c374007459ef8a4ac8f6394233e2287d059a1296e",
+    "analyses/event_column_aliases/manifest.json": "68d8078bd5c0390c3b675c0cf1a955d3cc24dd7a8011ec0ed3268ee1f8c2ba36",
+    ".cache/suppa2_statistics/all_event_catalog/event_catalog.tsv.gz": "ad134e1c23d6d1393e6ba7b61a76efec4005e3a455f24551f195a2d68916f5e7",
+    ".cache/event_information_20261007/original_binary_paired/manifest.json": "2892100e5c90acff8524fe4ae5964a0150199df61582005bfdafb36c43500f30",
+    ".cache/event_information_20261007/original_binary_paired/features.txt": "a1d5a6610556ce314b2b5163b71f9770407bcfcd2e54a857ba75c38645e80a89"
+  },
+  "candidate_settings": {
+    "version": 3,
+    "data_cache": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/differential/ec_glmm_prepared.pkl",
+    "features": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/hierarchical/weighted_rank32_joint_glm_cols.txt",
+    "block_cache": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/differential/gencode_vM32_splice_blocks.json.gz",
+    "event_table": null,
+    "test_effect": "cell_type_pairwise",
+    "min_gene_umis": 25.0,
+    "min_gene_samples": 0,
+    "min_cell_types": 2,
+    "min_celltype_mice": 4,
+    "min_conditions": 2,
+    "min_condition_mice": 3,
+    "max_isoforms": 10,
+    "max_ecs": 128,
+    "subject_folds": null,
+    "subject_fold": null,
+    "joint_gene_test": false
+  },
+  "scope": "exact pre-fit screening of unchanged published native LR prefixes; no new ranking, fitting, event selection, discovery or replication claim",
+  "limitation": "Requested does not imply numerical fit success, valid p-values or an available independent report. The old full sequence fit assessment remains pending.",
+  "production_changes": false
+}

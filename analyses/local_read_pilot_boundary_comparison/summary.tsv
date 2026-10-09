@@ -1,0 +1,17 @@
+fold	panel	model	variant	requested	old_usable	new_usable	recovered	newly_unavailable	same_available_direction_agreement	same_available_direction_denominator	old_nominal_05	new_nominal_05
+0	small observed raw p-value	conditional	all local markers	191	34	34	0	0	34	34	17	17
+0	small observed raw p-value	conditional	junction markers	191	20	20	0	0	20	20	9	9
+0	small observed raw p-value	unconditional	all local markers	191	77	79	12	10	67	67	39	43
+0	small observed raw p-value	unconditional	junction markers	191	54	56	8	6	48	48	27	31
+0	subject-count-matched weak control	conditional	all local markers	191	31	31	0	0	31	31	5	5
+0	subject-count-matched weak control	conditional	junction markers	191	16	16	0	0	16	16	1	1
+0	subject-count-matched weak control	unconditional	all local markers	191	72	60	13	25	47	47	12	12
+0	subject-count-matched weak control	unconditional	junction markers	191	45	34	9	20	25	25	6	6
+1	small observed raw p-value	conditional	all local markers	166	30	30	0	0	30	30	10	10
+1	small observed raw p-value	conditional	junction markers	166	15	15	0	0	15	15	6	6
+1	small observed raw p-value	unconditional	all local markers	166	60	66	12	6	54	54	23	29
+1	small observed raw p-value	unconditional	junction markers	166	41	47	11	5	36	36	21	26
+1	subject-count-matched weak control	conditional	all local markers	166	38	38	0	0	38	38	4	4
+1	subject-count-matched weak control	conditional	junction markers	166	18	18	0	0	18	18	3	3
+1	subject-count-matched weak control	unconditional	all local markers	166	78	67	9	20	58	58	8	8
+1	subject-count-matched weak control	unconditional	junction markers	166	49	38	7	18	31	31	2	3
