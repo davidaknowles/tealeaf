@@ -43,3 +43,16 @@ def test_pooled_path_shares_recovers_effective_length_composition():
     truth = np.array([.3, .7])
     expected = {mask: 1e6 * (vector * truth / lengths).sum() / truth.sum() for mask, vector in opportunities.items()}
     assert np.allclose(pooled_path_shares(expected, opportunities, pseudocount=0.), truth, atol=1e-6)
+
+
+def test_projected_opportunities_equal_recomputed():
+    from extra_scripts.run_local_path_tests import project_opportunities
+    ALT = [(100, 200), (300, 350), (500, 600)]
+    PRE = [(100, 600)]
+    full = path_read_opportunities([SKIP, INCLUDE, ALT, PRE], 50)
+    for kept, precursor in (([0, 1], True), ([0, 2], False), ([1, 2], True)):
+        direct = path_read_opportunities([[SKIP, INCLUDE, ALT][i] for i in kept] + ([PRE] if precursor else []), 50)
+        projected = project_opportunities(full, kept, 3, precursor)
+        assert set(direct) == set(projected)
+        for mask in direct:
+            assert np.allclose(direct[mask], projected[mask])

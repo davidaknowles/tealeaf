@@ -34,6 +34,24 @@ def project_mask(mask, kept, n_paths, precursor):
     return value
 
 
+def project_opportunities(opportunities, kept, n_paths, precursor):
+    """Full-target opportunities (mature paths then precursor) -> retained targets.
+
+    A read's class over a subset of targets is its full class restricted to
+    them, so projection equals recomputation; reads from dropped targets are
+    discarded and mask-0 classes are removed.
+    """
+    targets = list(kept) + ([n_paths] if precursor else [])
+    projected = {}
+    for mask, vector in opportunities.items():
+        new = project_mask(int(mask), kept, n_paths, precursor)
+        if new:
+            values = np.asarray(vector, dtype=float)[targets]
+            if values.any():
+                projected[new] = projected.get(new, np.zeros(len(targets))) + values
+    return projected
+
+
 def declared_tests(counts, blocks, subjects, min_subjects, min_molecules, allowed=None):
     """Sorted (path key, level a, level b) tests passing the label-blind screen.
 
@@ -84,6 +102,7 @@ def main():
     parser.add_argument("--precursor", action="store_true")
     parser.add_argument("--primer-offset", action="store_true")
     parser.add_argument("--nodes", type=int, default=9)
+    parser.add_argument("--stored-opportunities", action="store_true", help="use opportunities.json.gz from --local-reads (k-mer rule for pseudoalignment)")
     parser.add_argument("--count-only", action="store_true")
     parser.add_argument("--universe", type=Path, help="matched split universes (gene_id, pair_id 'A||B'); their contrasts are tested")
     parser.add_argument("--lr-cell-types", help="semicolon-separated cell types with a long-read mapping; all their pairs are tested")
@@ -96,6 +115,7 @@ def main():
     subjects = set(folds.subject if args.cohort == "full" else folds.loc[folds.fold.eq(int(args.cohort)), "subject"])
     counts = pd.read_csv(args.local_reads / "counts.tsv.gz", sep="\t")
     blocks = json.load(gzip.open(args.local_reads / "blocks.json.gz", "rt"))
+    stored = json.load(gzip.open(args.local_reads / "opportunities.json.gz", "rt")) if args.stored_opportunities else None
     allowed = None
     if args.universe is not None or args.lr_cell_types:
         pairs = set()
@@ -128,20 +148,16 @@ def main():
         record = {"test_id": test_id, "block_id": block["block_id"], "gene_id": block["gene_id"], "contrast": "cell_type_pairwise", "level_a": level_a, "level_b": level_b, "method": "block-local path classes, random-subject Beta binomial", "n_annotated_paths": n_paths, "n_paths": 0, "path_signatures": "[]", "n_subjects": 0, "median_gene_umis": np.nan, "statistic": 0., "p_value": 1., "raw_p_value": 1., "converged": False, "mean_difference": "[]", "mean_difference_norm": np.nan, "error": ""}
         begin = time.monotonic()
         try:
-            if (key, n_paths) not in opportunity_cache:
-                opportunity_cache[(key, n_paths)] = path_read_opportunities(block["paths"], READ_LENGTH)
-            full_opportunities = opportunity_cache[(key, n_paths)]
+            if key not in opportunity_cache:
+                opportunity_cache[key] = stored[key] if stored is not None else path_read_opportunities(block["paths"], READ_LENGTH)
+            full_opportunities = {int(mask): np.asarray(vector, dtype=float) for mask, vector in opportunity_cache[key].items()}
             pooled = {mask: sum(lookup.get((key, subject, levels[label], primer, mask), 0.) for subject, label in present for primer in PRIMERS) for mask in full_opportunities}
             shares = pooled_path_shares(pooled, full_opportunities)[:n_paths]
             shares = shares / shares.sum()
             kept = [index for index in range(n_paths) if shares[index] >= args.min_share]
             if len(kept) < 2:
                 raise ValueError("fewer than two expressed paths")
-            paths = [block["paths"][index] for index in kept] + ([block["paths"][n_paths]] if args.precursor else [])
-            cache_key = (key, tuple(kept), args.precursor)
-            if cache_key not in opportunity_cache:
-                opportunity_cache[cache_key] = path_read_opportunities(paths, READ_LENGTH)
-            opportunities = opportunity_cache[cache_key]
+            opportunities = project_opportunities(full_opportunities, kept, n_paths, args.precursor)
             projected = {}
             row_totals = {}
             for subject, cell_type, primer, mask, value in entries:
@@ -164,7 +180,7 @@ def main():
     args.output_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows_out).to_csv(args.output_dir / "paired_path.tsv", sep="\t", index=False, na_rep="NA")
     pd.DataFrame(usage_out, columns=["test_id", "block_id", "gene_id", "subject", "cell_type", "path", "path_number", "path_signature", "proportion"]).to_csv(args.output_dir / "path_usage.tsv", sep="\t", index=False, na_rep="NA")
-    settings = {"subject_fold": None if args.cohort == "full" else int(args.cohort), "test_effect": "cell_type_pairwise", "min_subjects": args.min_subjects, "min_molecules": args.min_molecules, "min_share": args.min_share, "anchors": not args.no_anchors, "precursor": args.precursor, "primer_offset": args.primer_offset, "local_reads": str(args.local_reads), "read_length": READ_LENGTH}
+    settings = {"subject_fold": None if args.cohort == "full" else int(args.cohort), "test_effect": "cell_type_pairwise", "min_subjects": args.min_subjects, "min_molecules": args.min_molecules, "min_share": args.min_share, "anchors": not args.no_anchors, "precursor": args.precursor, "primer_offset": args.primer_offset, "stored_opportunities": args.stored_opportunities, "local_reads": str(args.local_reads), "read_length": READ_LENGTH}
     summary = {"candidates": len(rows_out), "converged": int(sum(row["converged"] for row in rows_out)), "elapsed_seconds": time.monotonic() - started, "candidate_settings": settings}
     (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps({key: value for key, value in summary.items() if key != "candidate_settings"}), flush=True)
