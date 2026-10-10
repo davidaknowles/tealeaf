@@ -21,60 +21,17 @@ from extra_scripts.run_paired_path_test import filtered_inputs
 from extra_scripts.run_ec_glmm import local_gene_data
 from extra_scripts.run_ec_block_glmm import local_test_design, partition_candidates
 from tealeaf.sc import ec_glmm
-from tealeaf.sc.differential import helmert_basis
 from tealeaf.sc.ec_block_glmm import pooled_isoform_weights
 from tealeaf.sc.junction_benchmark import JunctionBundle, benjamini_hochberg
 from tealeaf.sc.junction_paths import block_path_exons, path_junction_map
 from tealeaf.sc.path_marginal import BinaryECPathLikelihood
-from tealeaf.sc.local_path_reads import path_read_opportunities, pooled_path_shares
+from tealeaf.sc.local_path_reads import path_read_opportunities
+from tealeaf.sc.local_path_test import PRIMERS, fit_local_block
 from extra_scripts.collect_local_path_reads import path_key
 
 from tealeaf.sc.local_read_mixed import LocalReadMixed, local_read_mixed_test
 
-PRIMERS = ("poly(dT)", "random hexamer")
 READ_LENGTH = 151
-
-
-def local_class_masks(opportunities, n_paths, anchors):
-    """Observed read classes; without anchors the all-paths class is dropped."""
-    full = (1 << n_paths) - 1
-    return sorted(mask for mask in opportunities if anchors or mask != full)
-
-
-def local_read_likelihood(lookup, block, opportunities, subjects, labels, levels, anchors, target=0, shares=None):
-    """Primer-specific block-local class counts, target path versus the rest.
-
-    The compatibility of class k with the target is its read-opportunity count
-    n[k][target]; with the collapsed rest it is sum_j w_j n[k][j] over the
-    other paths, w their label-blind pooled shares renormalized. For two paths
-    this is the plain binary model. Normalizers are effective local lengths.
-    """
-    n_paths = len(next(iter(opportunities.values())))
-    masks = local_class_masks(opportunities, n_paths, anchors)
-    rest = np.ones(n_paths) if shares is None else np.array(shares, dtype=float)
-    rest[target] = 0.
-    rest /= rest.sum()
-    components = np.column_stack([np.zeros(len(masks)), [opportunities[mask][target] for mask in masks], [opportunities[mask] @ rest for mask in masks]])
-    if (components[:, 1].sum() == 0) or (components[:, 2].sum() == 0):
-        raise ValueError("a path has no read opportunity in the chosen classes")
-    keys, rows = [], []
-    for subject in np.unique(subjects):
-        for label in np.unique(labels[subjects == subject]):
-            values = [np.array([lookup.get((block, subject, levels[int(label)], primer, mask), 0.) for mask in masks]) for primer in PRIMERS]
-            if sum(value.sum() for value in values) > 0:
-                keys.append((subject, label))
-                rows.append(values)
-    if not rows:
-        raise ValueError("no block-local molecules")
-    counts = tuple(np.asarray([row[primer] for row in rows]) for primer in range(len(PRIMERS)))
-    n = len(keys)
-    return BinaryECPathLikelihood(counts, (components, components), np.asarray([key[0] for key in keys]), np.asarray([key[1] for key in keys]), np.ones((n, 2)), np.zeros(n))
-
-
-def simes(p_values):
-    """Simes combination of a block's per-path p-values."""
-    ordered = np.sort(np.asarray(p_values, dtype=float))
-    return float(min(1., np.min(len(ordered) * ordered / np.arange(1, len(ordered) + 1))))
 
 
 def junction_likelihood(bundle, index, sample_row, block, signatures, subjects, labels, levels):
@@ -202,47 +159,19 @@ def main():
                 record["runtime_seconds"] = time.monotonic() - begin
                 rows_out.append(record)
                 continue
-            if args.multi_path and len(signatures) > 2:
+            if args.local_reads is not None and (args.multi_path or len(signatures) == 2):
                 block_key = path_key(block_id, signatures)
                 if block_key not in local_opportunities:
                     local_opportunities[block_key] = path_read_opportunities(local_blocks[block_key]["paths"], READ_LENGTH)
-                opportunities = local_opportunities[block_key]
-                masks = local_class_masks(opportunities, len(signatures), not args.no_anchors)
-                pooled = {mask: sum(local_lookup.get((block_key, subject, levels[int(label)], primer, mask), 0.) for subject, label in set(zip(subjects, labels)) for primer in PRIMERS) for mask in masks}
-                shares = pooled_path_shares(pooled, {mask: opportunities[mask] for mask in masks})
-                p_values, statistics, effects, means = [], [], np.full(len(signatures), np.nan), {}
-                for target in range(len(signatures)):
-                    try:
-                        likelihood = local_read_likelihood(local_lookup, block_key, opportunities, subjects, labels, levels, not args.no_anchors, target, shares)
-                        if args.primer_offset:
-                            likelihood.primer_offsets = np.array([0., estimate_primer_offset(likelihood)])
-                        fit = binary_grid_test(likelihood, nodes=args.nodes)
-                    except (ValueError, np.linalg.LinAlgError, FloatingPointError):
-                        p_values.append(1.)
-                        continue
-                    p_values.append(fit["p_value"])
-                    statistics.append(fit["statistic"])
-                    if fit["converged"]:
-                        effects[target] = fit["standardized_means"][1, 0] - fit["standardized_means"][0, 0]
-                        means[target] = fit["standardized_means"][:, 0]
-                record.update({"n_subjects": len(np.unique(subjects)), "statistic": max(statistics, default=0.), "p_value": simes(p_values), "converged": bool(np.isfinite(effects).any()), "n_path_tests": len(signatures), "n_converged_path_tests": int(np.isfinite(effects).sum()), "path_shares": json.dumps(shares.tolist())})
+                fields, usage = fit_local_block(local_lookup, block_key, local_opportunities[block_key], len(signatures), subjects, labels, levels, anchors=not args.no_anchors, primer_offset=args.primer_offset, nodes=args.nodes)
+                record.update({key: json.dumps(value) if isinstance(value, list) else value for key, value in fields.items()})
                 record["raw_p_value"] = record["p_value"]
-                if record["converged"]:
-                    centered = np.where(np.isfinite(effects), effects, 0.)
-                    record["mean_difference"] = json.dumps((helmert_basis(len(signatures)).T @ centered).tolist())
-                    record["mean_difference_norm"] = float(np.linalg.norm(centered))
-                    for target, values in means.items():
-                        for c in (0, 1):
-                            usage_out.append({"test_id": test_id, "block_id": block_id, "gene_id": gene_id, "subject": "model", "cell_type": levels[c], "path": f"Path {target + 1}", "path_number": target + 1, "path_signature": json.dumps(signatures[target]), "proportion": float(values[c])})
+                for target, level, proportion in usage:
+                    usage_out.append({"test_id": test_id, "block_id": block_id, "gene_id": gene_id, "subject": "model", "cell_type": levels[level], "path": f"Path {target + 1}", "path_number": target + 1, "path_signature": json.dumps(signatures[target]), "proportion": proportion})
                 record["runtime_seconds"] = time.monotonic() - begin
                 rows_out.append(record)
                 continue
-            if args.local_reads is not None:
-                block_key = path_key(block_id, signatures)
-                if block_key not in local_opportunities:
-                    local_opportunities[block_key] = path_read_opportunities(local_blocks[block_key]["paths"], READ_LENGTH)
-                likelihood = local_read_likelihood(local_lookup, block_key, local_opportunities[block_key], subjects, labels, levels, not args.no_anchors)
-            elif args.junction_prefix is not None:
+            if args.junction_prefix is not None:
                 likelihood = junction_likelihood(bundle, junction_index, sample_row, blocks[block_id], signatures, subjects, labels, levels)
             else:
                 if args.spliced_ecs_only:

@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+local_multi_anchor	40	1710	33.0	0.825	0.829384721103963	all tested	calibrated then raw
+local_multi_anchor	100	1710	72.0	0.72	0.7940274063580446	all tested	calibrated then raw
+local_multi_anchor	200	1710	137.0	0.685	0.7500596582396721	all tested	calibrated then raw
+local_multi_anchor	40	1710	33.0	0.825	0.829384721103963	all tested	continuous raw
+local_multi_anchor	100	1710	72.0	0.72	0.7940274063580446	all tested	continuous raw
+local_multi_anchor	200	1710	137.0	0.685	0.7500596582396721	all tested	continuous raw
+local_multi_anchor	40	131	33.0	0.825	0.829384721103963	BH discoveries	calibrated then raw
+local_multi_anchor	100	131	72.0	0.72	0.7940274063580446	BH discoveries	calibrated then raw
+local_multi_anchor	200	131	NA	NA	NA	BH discoveries	calibrated then raw
+local_multi_anchor	40	131	33.0	0.825	0.829384721103963	BH discoveries	continuous raw
+local_multi_anchor	100	131	72.0	0.72	0.7940274063580446	BH discoveries	continuous raw
+local_multi_anchor	200	131	NA	NA	NA	BH discoveries	continuous raw

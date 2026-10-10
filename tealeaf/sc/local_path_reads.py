@@ -160,3 +160,35 @@ def pooled_path_shares(class_counts, opportunities, *, pseudocount=.5, max_iter=
             return updated
         shares = updated
     return shares
+
+
+def simulate_null_class_counts(totals, opportunities, shares, subjects, rng, *, subject_concentration=20., row_concentration=20.):
+    """Block-local class counts with no cell-type path effect.
+
+    totals maps (row, primer) -> observed molecules; subjects gives each row's
+    subject. Each subject composition ~ Dirichlet(subject_concentration *
+    shares), each row composition ~ Dirichlet(row_concentration * subject
+    composition), identical in expectation across that subject's cell types.
+    Class probabilities are sum_s psi_s n[k][s] / sum_s psi_s L_s. None of the
+    concentrations means no variation at that level. Returns (row, primer,
+    mask) -> count.
+    """
+    masks = sorted(opportunities)
+    n = np.asarray([opportunities[mask] for mask in masks])
+    lengths = n.sum(axis=0)
+    shares = np.maximum(np.asarray(shares, dtype=float), 1e-6)
+    shares /= shares.sum()
+    subject_mix = {subject: (shares if subject_concentration is None else rng.dirichlet(subject_concentration * shares)) for subject in sorted(set(subjects))}
+    counts = {}
+    rows = sorted({row for row, _ in totals})
+    for row in rows:
+        mix = subject_mix[subjects[row]]
+        psi = mix if row_concentration is None else rng.dirichlet(np.maximum(row_concentration * mix, 1e-6))
+        probabilities = n @ psi / (lengths @ psi)
+        probabilities /= probabilities.sum()
+        for (other, primer), total in totals.items():
+            if other == row and total > 0:
+                for mask, value in zip(masks, rng.multinomial(int(total), probabilities)):
+                    if value:
+                        counts[(row, primer, mask)] = value
+    return counts
