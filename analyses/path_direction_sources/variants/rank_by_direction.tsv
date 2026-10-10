@@ -1,0 +1,37 @@
+universe	ranking	direction	n	A100	c100
+LR eligible, EC direction	zeta64 calibrated	EC fixed	2130	0.656	0.58
+LR eligible, EC direction	zeta64 calibrated	EC free	2130	0.671	0.59
+LR eligible, EC direction	zeta64 raw	EC fixed	2130	0.73	0.65
+LR eligible, EC direction	zeta64 raw	EC free	2130	0.741	0.66
+LR eligible, EC direction	zeta2 raw	EC fixed	2130	0.669	0.6
+LR eligible, EC direction	zeta2 raw	EC free	2130	0.646	0.59
+LR eligible, EC direction	zeta1 fixed	EC fixed	2130	0.735	0.67
+LR eligible, EC direction	zeta1 fixed	EC free	2130	0.726	0.66
+LR eligible, EC direction	zeta1 profiled	EC fixed	2130	0.743	0.69
+LR eligible, EC direction	zeta1 profiled	EC free	2130	0.743	0.69
+LR eligible, EC direction	zeta1 free	EC fixed	2130	0.743	0.67
+LR eligible, EC direction	zeta1 free	EC free	2130	0.743	0.67
+also junction identifiable	zeta64 calibrated	EC fixed	950	0.585	0.52
+also junction identifiable	zeta64 calibrated	EC free	950	0.613	0.54
+also junction identifiable	zeta64 calibrated	junction subject	950	0.709	0.64
+also junction identifiable	zeta64 calibrated	junction pooled	950	0.588	0.64
+also junction identifiable	zeta64 raw	EC fixed	950	0.593	0.56
+also junction identifiable	zeta64 raw	EC free	950	0.613	0.58
+also junction identifiable	zeta64 raw	junction subject	950	0.741	0.69
+also junction identifiable	zeta64 raw	junction pooled	950	0.602	0.61
+also junction identifiable	zeta2 raw	EC fixed	950	0.597	0.52
+also junction identifiable	zeta2 raw	EC free	950	0.569	0.51
+also junction identifiable	zeta2 raw	junction subject	950	0.697	0.69
+also junction identifiable	zeta2 raw	junction pooled	950	0.671	0.69
+also junction identifiable	zeta1 fixed	EC fixed	950	0.595	0.56
+also junction identifiable	zeta1 fixed	EC free	950	0.581	0.55
+also junction identifiable	zeta1 fixed	junction subject	950	0.764	0.75
+also junction identifiable	zeta1 fixed	junction pooled	950	0.712	0.66
+also junction identifiable	zeta1 profiled	EC fixed	950	0.614	0.59
+also junction identifiable	zeta1 profiled	EC free	950	0.614	0.59
+also junction identifiable	zeta1 profiled	junction subject	950	0.771	0.74
+also junction identifiable	zeta1 profiled	junction pooled	950	0.714	0.65
+also junction identifiable	zeta1 free	EC fixed	950	0.62	0.59
+also junction identifiable	zeta1 free	EC free	950	0.62	0.59
+also junction identifiable	zeta1 free	junction subject	950	0.769	0.76
+also junction identifiable	zeta1 free	junction pooled	950	0.72	0.68

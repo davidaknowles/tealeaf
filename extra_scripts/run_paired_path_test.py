@@ -62,6 +62,7 @@ def parse_args():
     parser.add_argument("--paired-inference", choices=("local", "ec-score", "subject-centered", "null-corrected", "mixed-score"), default="local", help="Experimental paired inference alternatives; local remains production.")
     parser.add_argument("--score-null-concentration", type=float, default=1.)
     parser.add_argument("--score-free-null", action="store_true")
+    parser.add_argument("--path-fitter", choices=("fixed", "profiled", "free"), default="fixed", help="Local path fit: fixed nuisance (production), profiled block mass, or free transcript weights.")
     return parser.parse_args()
 
 
@@ -167,6 +168,8 @@ def main():
     args = parse_args()
     if not 0 <= args.shard_index < args.shard_count:
         raise ValueError("invalid shard index")
+    if args.path_fitter != "fixed":
+        differential.fit_path_perturbation = {"profiled": differential.fit_profiled_path_perturbation, "free": differential.fit_free_isoform_paths}[args.path_fitter]
     with args.candidate_cache.open("rb") as handle:
         cached = pickle.load(handle)
     settings = cached["settings"]
