@@ -25,6 +25,36 @@ from tealeaf.sc.ec_block_glmm import pooled_isoform_weights
 from tealeaf.sc.junction_benchmark import JunctionBundle, benjamini_hochberg
 from tealeaf.sc.junction_paths import block_path_exons, path_junction_map
 from tealeaf.sc.path_marginal import BinaryECPathLikelihood
+from tealeaf.sc.local_path_reads import path_read_opportunities
+from extra_scripts.collect_local_path_reads import path_key
+
+PRIMERS = ("poly(dT)", "random hexamer")
+READ_LENGTH = 151
+
+
+def local_read_likelihood(lookup, block, opportunities, subjects, labels, levels, anchors):
+    """Primer-specific block-local class counts with opportunity weights.
+
+    Classes are path-0 only, path-1 only and, with anchors, both paths. The
+    compatibility of class k with path s is its read-opportunity count, so
+    the multinomial normalizer is each path's effective local length.
+    """
+    masks = [mask for mask in ((1, 2, 3) if anchors else (1, 2)) if mask in opportunities]
+    components = np.column_stack([np.zeros(len(masks)), [opportunities[mask][0] for mask in masks], [opportunities[mask][1] for mask in masks]])
+    if (components[:, 1].sum() == 0) or (components[:, 2].sum() == 0):
+        raise ValueError("a path has no read opportunity in the chosen classes")
+    keys, rows = [], []
+    for subject in np.unique(subjects):
+        for label in np.unique(labels[subjects == subject]):
+            values = [np.array([lookup.get((block, subject, levels[int(label)], primer, mask), 0.) for mask in masks]) for primer in PRIMERS]
+            if sum(value.sum() for value in values) > 0:
+                keys.append((subject, label))
+                rows.append(values)
+    if not rows:
+        raise ValueError("no block-local molecules")
+    counts = tuple(np.asarray([row[primer] for row in rows]) for primer in range(len(PRIMERS)))
+    n = len(keys)
+    return BinaryECPathLikelihood(counts, (components, components), np.asarray([key[0] for key in keys]), np.asarray([key[1] for key in keys]), np.ones((n, 2)), np.zeros(n))
 
 
 def junction_likelihood(bundle, index, sample_row, block, signatures, subjects, labels, levels):
@@ -55,7 +85,7 @@ def junction_likelihood(bundle, index, sample_row, block, signatures, subjects, 
     components = np.column_stack([np.zeros(len(keys)), membership[:, 0], membership[:, 1]])
     n = len(keys_out)
     return BinaryECPathLikelihood((np.asarray(counts),), (components,), np.asarray([key[0] for key in keys_out]), np.asarray([key[1] for key in keys_out]), np.ones((n, 2)), np.zeros(n))
-from tealeaf.sc.path_marginal_grid import binary_grid_test, prepare_grid_likelihood
+from tealeaf.sc.path_marginal_grid import binary_grid_test, estimate_primer_offset, prepare_grid_likelihood
 
 
 def merge(root, shard_count):
@@ -84,6 +114,9 @@ def main():
     parser.add_argument("--spliced-ecs-only", action="store_true")
     parser.add_argument("--junction-prefix", type=Path, help="fit junction UMIs on the same block paths instead of ECs")
     parser.add_argument("--block-cache", type=Path)
+    parser.add_argument("--local-reads", type=Path, help="directory from collect_local_path_reads.py --collate")
+    parser.add_argument("--no-anchors", action="store_true", help="with --local-reads, drop the both-paths class")
+    parser.add_argument("--primer-offset", action="store_true", help="estimate a label-blind second-primer logit offset per test")
     parser.add_argument("--merge", action="store_true", help="merge completed shards under --output-dir instead of fitting")
     args = parser.parse_args()
     if args.merge:
@@ -113,6 +146,12 @@ def main():
             junction_index.setdefault((row.chromosome, int(row.start), int(row.end)), []).append(column)
         sample_row = {(row.subject, row.cell_type): position for position, row in enumerate(bundle.samples.itertuples(index=False))}
         blocks = {row["block_id"]: row for row in json.load(gzip.open(args.block_cache or settings["block_cache"], "rt"))}
+    if args.local_reads is not None:
+        import gzip
+        local_counts = pd.read_csv(args.local_reads / "counts.tsv.gz", sep="\t")
+        local_lookup = {(row.path_key, row.subject, row.cell_type, row.primer, int(row.mask)): float(row.count) for row in local_counts.itertuples(index=False)}
+        local_blocks = json.load(gzip.open(args.local_reads / "blocks.json.gz", "rt"))
+        local_opportunities = {}
     rows_out, usage_out, baselines = [], [], {}
     started = time.monotonic()
     for candidate in candidates:
@@ -127,7 +166,12 @@ def main():
             base, _, totals = local_gene_data(tuple(matrix[rows] for matrix in counts), designs, transcripts, gene_ecs[gene], np.ones((len(local_metadata), 1)), subjects, drop_zero=False)
             record["median_gene_umis"] = float(np.median(totals))
             local_index = np.asarray(path_index)
-            if args.junction_prefix is not None:
+            if args.local_reads is not None:
+                block_key = path_key(block_id, signatures)
+                if block_key not in local_opportunities:
+                    local_opportunities[block_key] = path_read_opportunities(local_blocks[block_key]["paths"], READ_LENGTH)
+                likelihood = local_read_likelihood(local_lookup, block_key, local_opportunities[block_key], subjects, labels, levels, not args.no_anchors)
+            elif args.junction_prefix is not None:
                 likelihood = junction_likelihood(bundle, junction_index, sample_row, blocks[block_id], signatures, subjects, labels, levels)
             else:
                 if args.spliced_ecs_only:
@@ -140,6 +184,9 @@ def main():
                         raise ValueError("pooled transcript baseline did not converge")
                     baselines[key] = baseline
                 likelihood = prepare_grid_likelihood(base, local_index, labels, subjects, baselines[key])
+            if args.primer_offset:
+                likelihood.primer_offsets = np.array([0., estimate_primer_offset(likelihood)])
+                record["primer_offset"] = float(likelihood.primer_offsets[1])
             result = binary_grid_test(likelihood, nodes=args.nodes)
             difference = float(result["coefficients"][1]) / np.sqrt(2)
             record.update({"n_subjects": result["n_subjects"], "statistic": result["statistic"], "p_value": result["p_value"], "raw_p_value": result["p_value"], "converged": result["converged"], "mean_difference": json.dumps([difference]), "mean_difference_norm": abs(difference), "null_concentration": result["null_concentration"], "alternative_concentration": result["alternative_concentration"], "null_subject_sd": result["null_subject_sd"], "alternative_subject_sd": result["alternative_subject_sd"], "quadrature_error": result["quadrature_error"], "null_iterations": result["null_fit"].nit, "alternative_iterations": result["alternative_fit"].nit, "final_nodes": result["nodes"], "final_refine": result["refine"]})
@@ -155,7 +202,7 @@ def main():
     pd.DataFrame(rows_out).to_csv(args.output_dir / "paired_path.tsv", sep="\t", index=False, na_rep="NA")
     pd.DataFrame(usage_out, columns=["test_id", "block_id", "gene_id", "subject", "cell_type", "path", "path_number", "path_signature", "proportion"]).to_csv(args.output_dir / "path_usage.tsv", sep="\t", index=False, na_rep="NA")
     fitted = [row for row in rows_out if row["n_paths"] == 2]
-    summary = {"candidates": len(rows_out), "binary_candidates": len(fitted), "converged": int(sum(row["converged"] for row in fitted)), "elapsed_seconds": time.monotonic() - started, "candidate_settings": settings, "nodes": args.nodes, "spliced_ecs_only": args.spliced_ecs_only, "junction_counts": args.junction_prefix is not None, "model": "binary EC Beta random-subject GLMM, grid/AGHQ integration, LRT chi-square"}
+    summary = {"candidates": len(rows_out), "binary_candidates": len(fitted), "converged": int(sum(row["converged"] for row in fitted)), "elapsed_seconds": time.monotonic() - started, "candidate_settings": settings, "nodes": args.nodes, "spliced_ecs_only": args.spliced_ecs_only, "junction_counts": args.junction_prefix is not None, "local_reads": str(args.local_reads), "anchors": not args.no_anchors, "primer_offset": args.primer_offset, "model": "binary EC Beta random-subject GLMM, grid/AGHQ integration, LRT chi-square"}
     (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2, default=str) + "\n")
     print(json.dumps({key: value for key, value in summary.items() if key != "candidate_settings"}), flush=True)
 

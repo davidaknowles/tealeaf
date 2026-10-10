@@ -56,31 +56,83 @@ class RowGrid:
         return log_expit(-self.t)
 
 
+def primer_row_log_likelihood(likelihood, row, t, primer):
+    """One primer's EC log-likelihood for one row at path-0 logits t."""
+    observed, components = likelihood.counts[primer][row], likelihood.components[primer]
+    if observed.sum() <= 0:
+        return np.zeros(len(t))
+    proportions = expit(t)
+    mass = components[:, 0] + proportions[:, None] * components[:, 1] + (1 - proportions[:, None]) * components[:, 2]
+    return np.log(np.maximum(mass, 1e-300)) @ observed - observed.sum() * np.log(mass.sum(axis=1))
+
+
+def shifted_row_log_likelihood(likelihood, row, t, offsets):
+    """Row log-likelihood with primer p evaluated at logit t + offsets[p].
+
+    A fixed per-primer logit offset absorbs capture or positional differences
+    between primers that are shared by every subject and cell type.
+    """
+    total = sum(primer_row_log_likelihood(likelihood, row, t + offset, primer) for primer, offset in enumerate(offsets))
+    return total - likelihood.offsets[row]
+
+
+def estimate_primer_offset(likelihood, *, limit=4., step=.05):
+    """Label-blind logit offset of the second primer, profiling each row's psi.
+
+    Maximizes sum_n max_t [l_n0(t) + l_n1(t + gamma)] over a gamma grid, then
+    refines with a parabola through the best three points. Rows observed in
+    only one primer do not inform gamma. Requires exactly two primers.
+    """
+    if len(likelihood.counts) != 2:
+        raise ValueError("two primers required")
+    moves = np.arange(-int(round(limit / step)), int(round(limit / step)) + 1)
+    pad = moves.max()
+    t = np.arange(-LIMIT - limit, LIMIT + limit + step / 2, step)
+    profile = np.zeros(len(moves))
+    for row in range(len(likelihood.subjects)):
+        if min(values[row].sum() for values in likelihood.counts) <= 0:
+            continue
+        first = primer_row_log_likelihood(likelihood, row, t, 0)[pad:len(t) - pad]
+        second = primer_row_log_likelihood(likelihood, row, t, 1)
+        for index, move in enumerate(moves):
+            profile[index] += np.max(first + second[pad + move:len(t) - pad + move])
+    best = int(np.clip(np.argmax(profile), 1, len(moves) - 2))
+    left, centre, right = profile[best - 1:best + 2]
+    curvature = left - 2 * centre + right
+    correction = np.clip(.5 * (left - right) / curvature, -1, 1) if curvature < 0 else 0.
+    return float((moves[best] + correction) * step)
+
+
 def row_grids(likelihood, *, refine=1., coarse_step=.05):
     """Grid each row's EC log-likelihood, spacing from its own curvature.
 
     Spacing is min(.03, sd/1.5) / refine, where sd is the Laplace width of the
     row likelihood in t; .03 resolves the narrowest Beta prior allowed by
     KAPPA_BOUNDS. Exact pure-path rows keep the Beta-binomial identity.
+    A likelihood attribute primer_offsets (length P logits) evaluates primer p
+    at t + offset_p, which disables the exact Beta-binomial shortcut.
     Each grid is shifted by the row's coarse-grid maximum, which does not
     depend on refine or on any model parameter, so it cancels from likelihood
     ratios and from refined-grid accuracy checks.
     """
     grids = []
     coarse = np.arange(-LIMIT, LIMIT + coarse_step / 2, coarse_step)
+    offsets = getattr(likelihood, "primer_offsets", None)
+    shifted = offsets is not None and np.any(np.asarray(offsets) != 0)
+    evaluate = (lambda row, t: shifted_row_log_likelihood(likelihood, row, t, offsets)) if shifted else (lambda row, t: likelihood.row_log_likelihood(row, expit(t)))
     for row in range(len(likelihood.subjects)):
         terms = likelihood.binomial_terms[row]
-        if np.isfinite(terms).all():
+        if not shifted and np.isfinite(terms).all():
             grids.append(RowGrid(exact=tuple(terms)))
             continue
-        ell = likelihood.row_log_likelihood(row, expit(coarse))
+        ell = evaluate(row, coarse)
         peak = np.argmax(ell)
         width = coarse[ell >= ell[peak] - 2.]
         sd = max((width.max() - width.min()) / 4., coarse_step / 4.)
         step = min(.03, sd / 1.5) / refine
         t = np.linspace(-LIMIT, LIMIT, int(np.ceil(2 * LIMIT / step)) + 1)
         shift = float(ell[peak])
-        ell = likelihood.row_log_likelihood(row, expit(t)) - shift
+        ell = evaluate(row, t) - shift
         weight = np.full(len(t), t[1] - t[0])
         weight[[0, -1]] /= 2
         grids.append(RowGrid(t=t, log_weight=np.log(weight), ell=ell, shift=shift))

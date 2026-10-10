@@ -88,3 +88,16 @@ def test_row_integral_derivatives_match_finite_differences():
             assert np.isclose(curvature[0], (up[1][0] - down[1][0]) / (2 * h), rtol=1e-4, atol=1e-6)
             k_up, k_down = row_integral(current, m, kappa * np.exp(h)), row_integral(current, m, kappa * np.exp(-h))
             assert np.isclose(d_kappa[0], (k_up[0][0] - k_down[0][0]) / (2 * h), rtol=1e-4, atol=1e-6)
+
+
+def test_primer_offset_recovered():
+    from tealeaf.sc.path_marginal_grid import estimate_primer_offset
+    rng = np.random.default_rng(5)
+    rows = []
+    for subject in range(10):
+        psi = expit(rng.normal(0, 1))
+        shifted = expit(np.log(psi / (1 - psi)) + 1.2)
+        rows.append(np.r_[rng.multinomial(400, [.5 * psi / (.5 * psi + .4 * (1 - psi)), .4 * (1 - psi) / (.5 * psi + .4 * (1 - psi))]), rng.multinomial(400, [.5 * shifted / (.5 * shifted + .4 * (1 - shifted)), .4 * (1 - shifted) / (.5 * shifted + .4 * (1 - shifted))])])
+    components = np.array([[0., .5, 0.], [0., 0., .4]])
+    like = BinaryECPathLikelihood((np.array(rows)[:, :2], np.array(rows)[:, 2:]), (components, components), np.array([f"s{i}" for i in range(10)]), np.array(["a"] * 10), np.ones((10, 2)), np.zeros(10))
+    assert abs(estimate_primer_offset(like) - 1.2) < .15
