@@ -1,0 +1,8 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	direction_selected	direction_evaluable	direction_agreement	common_events	failed_tests_fold0	failed_tests_fold1
+LeafCutter	binary_junction_glmm	simes	simes	747	139	2	3	1	1.0	0.8709419788616457	12	12	1.0	1056	707	720
+MAJIQ Heterogen	binary_junction_glmm	simes	simes	2499	479	3	3	2	1.0	0.7331823435376504	16	16	1.0	3456	2392	2481
+SUPPA2	binary_junction_glmm	simes	simes	2342	457	3	3	2	1.0	0.6936523290696067	16	16	1.0	3361	2500	2606
+SUPPA2 primer-aware	binary_junction_glmm	simes	simes	2191	431	3	3	2	1.0	0.6933867505341864	16	16	1.0	3200	2404	2506
+SUPPA2/Tealeaf hybrid	binary_junction_glmm	simes	simes	1755	354	1	1	0	1.0	0.7080506691130214	2	2	1.0	2340	1809	1868
+rMATS (paired)	binary_junction_glmm	simes	simes	3109	597	3	3	1	1.0	0.7126758314641317	14	14	1.0	4159	3073	3190
+scQuint	binary_junction_glmm	simes	simes	2599	506	3	3	2	1.0	0.7112907915449541	15	15	1.0	3569	2552	2659

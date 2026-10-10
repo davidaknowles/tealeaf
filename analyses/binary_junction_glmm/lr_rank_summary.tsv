@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+binary_junction_glmm	40	540	38.0	0.95	0.9967754039464566	all tested	calibrated then raw
+binary_junction_glmm	100	540	71.0	0.71	0.881140991000661	all tested	calibrated then raw
+binary_junction_glmm	200	540	130.0	0.65	0.7767180663488847	all tested	calibrated then raw
+binary_junction_glmm	40	540	38.0	0.95	0.9967754039464566	all tested	continuous raw
+binary_junction_glmm	100	540	71.0	0.71	0.881140991000661	all tested	continuous raw
+binary_junction_glmm	200	540	130.0	0.65	0.7767180663488847	all tested	continuous raw
+binary_junction_glmm	40	15	NA	NA	NA	BH discoveries	calibrated then raw
+binary_junction_glmm	100	15	NA	NA	NA	BH discoveries	calibrated then raw
+binary_junction_glmm	200	15	NA	NA	NA	BH discoveries	calibrated then raw
+binary_junction_glmm	40	15	NA	NA	NA	BH discoveries	continuous raw
+binary_junction_glmm	100	15	NA	NA	NA	BH discoveries	continuous raw
+binary_junction_glmm	200	15	NA	NA	NA	BH discoveries	continuous raw

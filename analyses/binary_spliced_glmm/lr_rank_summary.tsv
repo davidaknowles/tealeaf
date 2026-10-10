@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+binary_spliced_glmm	40	1384	24.0	0.6	0.6918702676361571	all tested	calibrated then raw
+binary_spliced_glmm	100	1384	67.0	0.67	0.6428780827010614	all tested	calibrated then raw
+binary_spliced_glmm	200	1384	122.0	0.61	0.6356236615756145	all tested	calibrated then raw
+binary_spliced_glmm	40	1384	24.0	0.6	0.6918702676361571	all tested	continuous raw
+binary_spliced_glmm	100	1384	67.0	0.67	0.6428780827010614	all tested	continuous raw
+binary_spliced_glmm	200	1384	122.0	0.61	0.6356236615756145	all tested	continuous raw
+binary_spliced_glmm	40	20	NA	NA	NA	BH discoveries	calibrated then raw
+binary_spliced_glmm	100	20	NA	NA	NA	BH discoveries	calibrated then raw
+binary_spliced_glmm	200	20	NA	NA	NA	BH discoveries	calibrated then raw
+binary_spliced_glmm	40	20	NA	NA	NA	BH discoveries	continuous raw
+binary_spliced_glmm	100	20	NA	NA	NA	BH discoveries	continuous raw
+binary_spliced_glmm	200	20	NA	NA	NA	BH discoveries	continuous raw
