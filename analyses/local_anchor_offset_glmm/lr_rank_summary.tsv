@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+local_anchor_offset_glmm	40	1083	34.0	0.85	0.9385114551339895	all tested	calibrated then raw
+local_anchor_offset_glmm	100	1083	67.0	0.67	0.8207885074703428	all tested	calibrated then raw
+local_anchor_offset_glmm	200	1083	129.0	0.645	0.734540349076243	all tested	calibrated then raw
+local_anchor_offset_glmm	40	1083	34.0	0.85	0.9385114551339895	all tested	continuous raw
+local_anchor_offset_glmm	100	1083	67.0	0.67	0.8207885074703428	all tested	continuous raw
+local_anchor_offset_glmm	200	1083	129.0	0.645	0.734540349076243	all tested	continuous raw
+local_anchor_offset_glmm	40	27	NA	NA	NA	BH discoveries	calibrated then raw
+local_anchor_offset_glmm	100	27	NA	NA	NA	BH discoveries	calibrated then raw
+local_anchor_offset_glmm	200	27	NA	NA	NA	BH discoveries	calibrated then raw
+local_anchor_offset_glmm	40	27	NA	NA	NA	BH discoveries	continuous raw
+local_anchor_offset_glmm	100	27	NA	NA	NA	BH discoveries	continuous raw
+local_anchor_offset_glmm	200	27	NA	NA	NA	BH discoveries	continuous raw

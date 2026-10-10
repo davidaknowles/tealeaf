@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+local_binomial_mixed	40	342	30.0	0.75	0.879013798565541	all tested	calibrated then raw
+local_binomial_mixed	100	342	69.0	0.69	0.7798316449038991	all tested	calibrated then raw
+local_binomial_mixed	200	342	128.0	0.64	0.7271356889765077	all tested	calibrated then raw
+local_binomial_mixed	40	342	30.0	0.75	0.879013798565541	all tested	continuous raw
+local_binomial_mixed	100	342	69.0	0.69	0.7798316449038991	all tested	continuous raw
+local_binomial_mixed	200	342	128.0	0.64	0.7271356889765077	all tested	continuous raw
+local_binomial_mixed	40	13	NA	NA	NA	BH discoveries	calibrated then raw
+local_binomial_mixed	100	13	NA	NA	NA	BH discoveries	calibrated then raw
+local_binomial_mixed	200	13	NA	NA	NA	BH discoveries	calibrated then raw
+local_binomial_mixed	40	13	NA	NA	NA	BH discoveries	continuous raw
+local_binomial_mixed	100	13	NA	NA	NA	BH discoveries	continuous raw
+local_binomial_mixed	200	13	NA	NA	NA	BH discoveries	continuous raw

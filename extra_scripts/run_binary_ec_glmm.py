@@ -21,26 +21,40 @@ from extra_scripts.run_paired_path_test import filtered_inputs
 from extra_scripts.run_ec_glmm import local_gene_data
 from extra_scripts.run_ec_block_glmm import local_test_design, partition_candidates
 from tealeaf.sc import ec_glmm
+from tealeaf.sc.differential import helmert_basis
 from tealeaf.sc.ec_block_glmm import pooled_isoform_weights
 from tealeaf.sc.junction_benchmark import JunctionBundle, benjamini_hochberg
 from tealeaf.sc.junction_paths import block_path_exons, path_junction_map
 from tealeaf.sc.path_marginal import BinaryECPathLikelihood
-from tealeaf.sc.local_path_reads import path_read_opportunities
+from tealeaf.sc.local_path_reads import path_read_opportunities, pooled_path_shares
 from extra_scripts.collect_local_path_reads import path_key
+
+from tealeaf.sc.local_read_mixed import LocalReadMixed, local_read_mixed_test
 
 PRIMERS = ("poly(dT)", "random hexamer")
 READ_LENGTH = 151
 
 
-def local_read_likelihood(lookup, block, opportunities, subjects, labels, levels, anchors):
-    """Primer-specific block-local class counts with opportunity weights.
+def local_class_masks(opportunities, n_paths, anchors):
+    """Observed read classes; without anchors the all-paths class is dropped."""
+    full = (1 << n_paths) - 1
+    return sorted(mask for mask in opportunities if anchors or mask != full)
 
-    Classes are path-0 only, path-1 only and, with anchors, both paths. The
-    compatibility of class k with path s is its read-opportunity count, so
-    the multinomial normalizer is each path's effective local length.
+
+def local_read_likelihood(lookup, block, opportunities, subjects, labels, levels, anchors, target=0, shares=None):
+    """Primer-specific block-local class counts, target path versus the rest.
+
+    The compatibility of class k with the target is its read-opportunity count
+    n[k][target]; with the collapsed rest it is sum_j w_j n[k][j] over the
+    other paths, w their label-blind pooled shares renormalized. For two paths
+    this is the plain binary model. Normalizers are effective local lengths.
     """
-    masks = [mask for mask in ((1, 2, 3) if anchors else (1, 2)) if mask in opportunities]
-    components = np.column_stack([np.zeros(len(masks)), [opportunities[mask][0] for mask in masks], [opportunities[mask][1] for mask in masks]])
+    n_paths = len(next(iter(opportunities.values())))
+    masks = local_class_masks(opportunities, n_paths, anchors)
+    rest = np.ones(n_paths) if shares is None else np.array(shares, dtype=float)
+    rest[target] = 0.
+    rest /= rest.sum()
+    components = np.column_stack([np.zeros(len(masks)), [opportunities[mask][target] for mask in masks], [opportunities[mask] @ rest for mask in masks]])
     if (components[:, 1].sum() == 0) or (components[:, 2].sum() == 0):
         raise ValueError("a path has no read opportunity in the chosen classes")
     keys, rows = [], []
@@ -55,6 +69,12 @@ def local_read_likelihood(lookup, block, opportunities, subjects, labels, levels
     counts = tuple(np.asarray([row[primer] for row in rows]) for primer in range(len(PRIMERS)))
     n = len(keys)
     return BinaryECPathLikelihood(counts, (components, components), np.asarray([key[0] for key in keys]), np.asarray([key[1] for key in keys]), np.ones((n, 2)), np.zeros(n))
+
+
+def simes(p_values):
+    """Simes combination of a block's per-path p-values."""
+    ordered = np.sort(np.asarray(p_values, dtype=float))
+    return float(min(1., np.min(len(ordered) * ordered / np.arange(1, len(ordered) + 1))))
 
 
 def junction_likelihood(bundle, index, sample_row, block, signatures, subjects, labels, levels):
@@ -116,6 +136,8 @@ def main():
     parser.add_argument("--block-cache", type=Path)
     parser.add_argument("--local-reads", type=Path, help="directory from collect_local_path_reads.py --collate")
     parser.add_argument("--no-anchors", action="store_true", help="with --local-reads, drop the both-paths class")
+    parser.add_argument("--binomial-mixed", action="store_true", help="with --local-reads, test path-0-only vs path-1-only counts with the local-read binomial random intercept/slope model")
+    parser.add_argument("--multi-path", action="store_true", help="with --local-reads, fit S one-versus-rest tests per multi-path block and combine by Simes")
     parser.add_argument("--primer-offset", action="store_true", help="estimate a label-blind second-primer logit offset per test")
     parser.add_argument("--merge", action="store_true", help="merge completed shards under --output-dir instead of fitting")
     args = parser.parse_args()
@@ -159,13 +181,62 @@ def main():
         record = {"test_id": test_id, "block_id": block_id, "gene_id": gene_id, "contrast": "cell_type_pairwise", "level_a": levels[0], "level_b": levels[1], "method": "binary_ec_random_subject_grid", "n_paths": len(signatures), "path_signatures": json.dumps(signatures), "n_subjects": 0, "median_gene_umis": np.nan, "statistic": 0., "p_value": 1., "raw_p_value": 1., "converged": False, "mean_difference": "[]", "mean_difference_norm": np.nan, "error": ""}
         begin = time.monotonic()
         try:
-            if len(signatures) != 2:
+            if len(signatures) != 2 and not args.multi_path:
                 raise ValueError("multi-path block, not fitted by the binary model")
             local_metadata, _, labels = local_test_design(metadata, rows, levels, "cell_type_pairwise")
             subjects = local_metadata.mouse.astype(str).to_numpy()
             base, _, totals = local_gene_data(tuple(matrix[rows] for matrix in counts), designs, transcripts, gene_ecs[gene], np.ones((len(local_metadata), 1)), subjects, drop_zero=False)
             record["median_gene_umis"] = float(np.median(totals))
             local_index = np.asarray(path_index)
+            if args.binomial_mixed:
+                block_key = path_key(block_id, signatures)
+                tensor = np.asarray([[[[local_lookup.get((block_key, subject, levels[c], primer, mask), 0.) for mask in (1, 2)] for c in (0, 1)] for primer in PRIMERS] for subject in np.unique(subjects)])
+                mixed = local_read_mixed_test(LocalReadMixed(tensor))
+                effect = mixed["log_odds_effect"]
+                record.update({"n_subjects": mixed["n_subjects"], "statistic": mixed["statistic"], "p_value": mixed["p_value"], "raw_p_value": mixed["p_value"], "converged": mixed["converged"], "mean_difference": json.dumps([effect / np.sqrt(2)]), "mean_difference_norm": abs(effect) / np.sqrt(2)})
+                if mixed["converged"]:
+                    for c, sign in ((0, -.5), (1, .5)):
+                        proportion = float(1 / (1 + np.exp(-sign * effect)))
+                        for path, value in enumerate((proportion, 1 - proportion)):
+                            usage_out.append({"test_id": test_id, "block_id": block_id, "gene_id": gene_id, "subject": "model", "cell_type": levels[c], "path": f"Path {path + 1}", "path_number": path + 1, "path_signature": json.dumps(signatures[path]), "proportion": value})
+                record["runtime_seconds"] = time.monotonic() - begin
+                rows_out.append(record)
+                continue
+            if args.multi_path and len(signatures) > 2:
+                block_key = path_key(block_id, signatures)
+                if block_key not in local_opportunities:
+                    local_opportunities[block_key] = path_read_opportunities(local_blocks[block_key]["paths"], READ_LENGTH)
+                opportunities = local_opportunities[block_key]
+                masks = local_class_masks(opportunities, len(signatures), not args.no_anchors)
+                pooled = {mask: sum(local_lookup.get((block_key, subject, levels[int(label)], primer, mask), 0.) for subject, label in set(zip(subjects, labels)) for primer in PRIMERS) for mask in masks}
+                shares = pooled_path_shares(pooled, {mask: opportunities[mask] for mask in masks})
+                p_values, statistics, effects, means = [], [], np.full(len(signatures), np.nan), {}
+                for target in range(len(signatures)):
+                    try:
+                        likelihood = local_read_likelihood(local_lookup, block_key, opportunities, subjects, labels, levels, not args.no_anchors, target, shares)
+                        if args.primer_offset:
+                            likelihood.primer_offsets = np.array([0., estimate_primer_offset(likelihood)])
+                        fit = binary_grid_test(likelihood, nodes=args.nodes)
+                    except (ValueError, np.linalg.LinAlgError, FloatingPointError):
+                        p_values.append(1.)
+                        continue
+                    p_values.append(fit["p_value"])
+                    statistics.append(fit["statistic"])
+                    if fit["converged"]:
+                        effects[target] = fit["standardized_means"][1, 0] - fit["standardized_means"][0, 0]
+                        means[target] = fit["standardized_means"][:, 0]
+                record.update({"n_subjects": len(np.unique(subjects)), "statistic": max(statistics, default=0.), "p_value": simes(p_values), "converged": bool(np.isfinite(effects).any()), "n_path_tests": len(signatures), "n_converged_path_tests": int(np.isfinite(effects).sum()), "path_shares": json.dumps(shares.tolist())})
+                record["raw_p_value"] = record["p_value"]
+                if record["converged"]:
+                    centered = np.where(np.isfinite(effects), effects, 0.)
+                    record["mean_difference"] = json.dumps((helmert_basis(len(signatures)).T @ centered).tolist())
+                    record["mean_difference_norm"] = float(np.linalg.norm(centered))
+                    for target, values in means.items():
+                        for c in (0, 1):
+                            usage_out.append({"test_id": test_id, "block_id": block_id, "gene_id": gene_id, "subject": "model", "cell_type": levels[c], "path": f"Path {target + 1}", "path_number": target + 1, "path_signature": json.dumps(signatures[target]), "proportion": float(values[c])})
+                record["runtime_seconds"] = time.monotonic() - begin
+                rows_out.append(record)
+                continue
             if args.local_reads is not None:
                 block_key = path_key(block_id, signatures)
                 if block_key not in local_opportunities:
@@ -202,7 +273,7 @@ def main():
     pd.DataFrame(rows_out).to_csv(args.output_dir / "paired_path.tsv", sep="\t", index=False, na_rep="NA")
     pd.DataFrame(usage_out, columns=["test_id", "block_id", "gene_id", "subject", "cell_type", "path", "path_number", "path_signature", "proportion"]).to_csv(args.output_dir / "path_usage.tsv", sep="\t", index=False, na_rep="NA")
     fitted = [row for row in rows_out if row["n_paths"] == 2]
-    summary = {"candidates": len(rows_out), "binary_candidates": len(fitted), "converged": int(sum(row["converged"] for row in fitted)), "elapsed_seconds": time.monotonic() - started, "candidate_settings": settings, "nodes": args.nodes, "spliced_ecs_only": args.spliced_ecs_only, "junction_counts": args.junction_prefix is not None, "local_reads": str(args.local_reads), "anchors": not args.no_anchors, "primer_offset": args.primer_offset, "model": "binary EC Beta random-subject GLMM, grid/AGHQ integration, LRT chi-square"}
+    summary = {"candidates": len(rows_out), "binary_candidates": len(fitted), "converged": int(sum(row["converged"] for row in fitted)), "elapsed_seconds": time.monotonic() - started, "candidate_settings": settings, "nodes": args.nodes, "spliced_ecs_only": args.spliced_ecs_only, "junction_counts": args.junction_prefix is not None, "local_reads": str(args.local_reads), "anchors": not args.no_anchors, "primer_offset": args.primer_offset, "multi_path": args.multi_path, "model": "binary EC Beta random-subject GLMM, grid/AGHQ integration, LRT chi-square"}
     (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2, default=str) + "\n")
     print(json.dumps({key: value for key, value in summary.items() if key != "candidate_settings"}), flush=True)
 

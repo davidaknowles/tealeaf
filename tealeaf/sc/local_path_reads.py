@@ -134,3 +134,29 @@ def collect_library_path_reads(bam_paths, index_paths, barcode_groups, blocks):
                     filters["incompatible_molecules"] += 1
             filters["molecules"] += len(masks)
     return dict(counts), dict(filters)
+
+
+def pooled_path_shares(class_counts, opportunities, *, pseudocount=.5, max_iter=1000, tolerance=1e-10):
+    """Label-blind S-path molecule shares from pooled class counts by EM.
+
+    class_counts and opportunities are dicts keyed by mask; a molecule of path
+    s yields class k with probability n[k][s] / L_s, L_s = sum_k n[k][s] over
+    the supplied masks, so this is the effective-length EM. pseudocount is
+    added to each path's expected molecules every iteration.
+    """
+    masks = [mask for mask in opportunities if class_counts.get(mask, 0) > 0]
+    n = np.asarray([opportunities[mask] for mask in opportunities])
+    lengths = n.sum(axis=0)
+    if (lengths <= 0).any():
+        raise ValueError("every path needs read opportunities")
+    observed = np.asarray([opportunities[mask] for mask in masks])
+    counts = np.asarray([class_counts[mask] for mask in masks], dtype=float)
+    shares = np.full(n.shape[1], 1 / n.shape[1])
+    for _ in range(max_iter):
+        weights = observed / lengths * shares
+        molecules = (counts[:, None] * weights / weights.sum(axis=1, keepdims=True)).sum(axis=0) + pseudocount
+        updated = molecules / molecules.sum()
+        if np.abs(updated - shares).max() < tolerance:
+            return updated
+        shares = updated
+    return shares

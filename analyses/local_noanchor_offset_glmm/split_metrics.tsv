@@ -1,0 +1,8 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	direction_selected	direction_evaluable	direction_agreement	common_events	failed_tests_fold0	failed_tests_fold1
+LeafCutter	local_noanchor_offset_glmm	simes	simes	747	139	5	5	2	0.9	0.8104361633834173	18	18	1.0	1056	755	784
+MAJIQ Heterogen	local_noanchor_offset_glmm	simes	simes	2499	479	10	10	4	0.8	0.7637924603813464	40	38	0.9736842105263158	3456	2551	2590
+SUPPA2	local_noanchor_offset_glmm	simes	simes	2342	457	8	6	2	0.8541666666666667	0.7032422763692495	30	28	0.9642857142857143	3361	2752	2806
+SUPPA2 primer-aware	local_noanchor_offset_glmm	simes	simes	2191	431	8	6	2	0.8541666666666667	0.681877750458197	30	28	0.9642857142857143	3200	2649	2695
+SUPPA2/Tealeaf hybrid	local_noanchor_offset_glmm	simes	simes	1755	354	5	5	2	0.8	0.7044914076291443	19	17	0.9411764705882353	2340	1941	1943
+rMATS (paired)	local_noanchor_offset_glmm	simes	simes	3109	597	9	9	3	0.7777777777777777	0.7677730882699215	36	34	0.9705882352941176	4159	3226	3269
+scQuint	local_noanchor_offset_glmm	simes	simes	2599	506	9	9	3	0.7777777777777777	0.7432410296691789	38	36	0.9722222222222222	3569	2699	2747

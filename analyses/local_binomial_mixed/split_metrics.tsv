@@ -1,0 +1,8 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	direction_selected	direction_evaluable	direction_agreement	common_events	failed_tests_fold0	failed_tests_fold1
+LeafCutter	local_binomial_mixed	simes	simes	747	139	3	4	2	0.8333333333333333	0.8500614141777231	12	7	1.0	1056	820	851
+MAJIQ Heterogen	local_binomial_mixed	simes	simes	2499	479	5	5	4	0.9	0.7019370614801304	24	17	1.0	3456	2828	2869
+SUPPA2	local_binomial_mixed	simes	simes	2342	457	3	3	1	0.8333333333333333	0.6537732884524615	18	11	1.0	3361	2938	2986
+SUPPA2 primer-aware	local_binomial_mixed	simes	simes	2191	431	3	3	2	0.8333333333333333	0.634611050700764	18	11	1.0	3200	2825	2869
+SUPPA2/Tealeaf hybrid	local_binomial_mixed	simes	simes	1755	354	3	2	2	0.8333333333333333	0.6755659249349715	9	7	1.0	2340	2063	2073
+rMATS (paired)	local_binomial_mixed	simes	simes	3109	597	4	4	3	0.875	0.6635132009629475	22	15	1.0	4159	3525	3570
+scQuint	local_binomial_mixed	simes	simes	2599	506	4	4	3	0.875	0.6880323533437481	23	16	1.0	3569	2962	3001

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Collect block-local path-compatibility molecule counts from STARsolo BAMs.
 
-Blocks are the distinct two-path (block, path set) pairs in the given pairwise
+Blocks are the distinct (block, path set) pairs in the given pairwise
 candidate caches. Libraries, runs, indexes and production-QC barcode groups
 come from the existing local-read recipe. Run one task per library and gene
 shard, then --collate.
@@ -29,14 +29,14 @@ def path_key(block_id, signatures):
     return f"{block_id}#{zlib.crc32(json.dumps(signatures).encode()):08x}"
 
 
-def declared_blocks(candidate_caches, block_cache):
-    """path key -> block description for every two-path candidate path set."""
+def declared_blocks(candidate_caches, block_cache, max_paths=30):
+    """path key -> block description for every candidate path set (2..max_paths paths)."""
     annotation = {row["block_id"]: row for row in json.load(gzip.open(block_cache, "rt"))}
     blocks = {}
     for cache in candidate_caches:
         for candidate in pickle.load(open(cache, "rb"))["candidates"]:
             block_id, gene_id, signatures = candidate[1], candidate[2], candidate[6]
-            if len(signatures) != 2:
+            if not 2 <= len(signatures) <= max_paths:
                 continue
             key = path_key(block_id, signatures)
             if key not in blocks:

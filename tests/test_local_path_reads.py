@@ -34,3 +34,12 @@ def test_opportunities_cover_each_path_once():
     # skip-junction reads: starts covering positions 99 and 100 of the skip chain
     assert opportunities[1][0] == length - 1
     assert opportunities[3][0] == opportunities[3][1]
+
+
+def test_pooled_path_shares_recovers_effective_length_composition():
+    from tealeaf.sc.local_path_reads import pooled_path_shares
+    opportunities = path_read_opportunities([SKIP, INCLUDE], 50)
+    lengths = sum(opportunities.values())
+    truth = np.array([.3, .7])
+    expected = {mask: 1e6 * (vector * truth / lengths).sum() / truth.sum() for mask, vector in opportunities.items()}
+    assert np.allclose(pooled_path_shares(expected, opportunities, pseudocount=0.), truth, atol=1e-6)
