@@ -133,7 +133,10 @@ def ec_effects(root):
     usage = read_shards(root, "path_usage.tsv", usecols=["test_id", "cell_type", "path_number", "proportion"])
     means = usage.groupby(["test_id", "cell_type", "path_number"]).proportion.mean()
     effects = {}
+    present = set(means.index.get_level_values("test_id"))
     for row in tests.itertuples(index=False):
+        if row.test_id not in present:
+            continue
         local = means.loc[row.test_id]
         n_paths = int(local.index.get_level_values("path_number").max())
         values = [np.array([local.get((level, path), np.nan) for path in range(1, n_paths + 1)]) for level in (row.level_a, row.level_b)]

@@ -1,0 +1,19 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	ranking
+EC subject mean	40	802	29	0.725	0.7175442470147697	calibrated then raw
+EC subject mean	100	802	57	0.57	0.6346074243078244	calibrated then raw
+EC subject mean	200	802	113	0.565	0.6094095454330186	calibrated then raw
+junction pooled	40	802	25	0.625	0.6419695993623803	calibrated then raw
+junction pooled	100	802	65	0.65	0.6397594618081378	calibrated then raw
+junction pooled	200	802	125	0.625	0.6391527480360879	calibrated then raw
+junction subject mean	40	801	31	0.775	0.8395278543682092	calibrated then raw
+junction subject mean	100	801	67	0.67	0.7548107028907729	calibrated then raw
+junction subject mean	200	801	129	0.645	0.7071124276118376	calibrated then raw
+EC subject mean	40	802	25	0.625	0.6050522153396566	continuous raw
+EC subject mean	100	802	62	0.62	0.6197295136893723	continuous raw
+EC subject mean	200	802	113	0.565	0.6000146769223491	continuous raw
+junction pooled	40	802	22	0.55	0.4955386342126202	continuous raw
+junction pooled	100	802	65	0.65	0.5729208173549534	continuous raw
+junction pooled	200	802	125	0.625	0.6065976169331769	continuous raw
+junction subject mean	40	801	31	0.775	0.8106941446342979	continuous raw
+junction subject mean	100	801	71	0.71	0.7679198043401629	continuous raw
+junction subject mean	200	801	126	0.63	0.7147454126571625	continuous raw

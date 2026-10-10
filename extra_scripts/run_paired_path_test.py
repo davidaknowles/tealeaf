@@ -21,7 +21,7 @@ from extra_scripts.run_ec_block_glmm import (
     partition_candidates,
 )
 from extra_scripts.run_ec_glmm import local_gene_data
-from tealeaf.sc import differential, ec_block_glmm
+from tealeaf.sc import differential, ec_block_glmm, ec_glmm
 from tealeaf.sc.path_score import paired_path_score_test, paired_subject_centered_test
 from tealeaf.sc.path_bias import paired_null_corrected_path_test
 from tealeaf.sc.path_score_mixed import mixed_path_score_test, mixed_score_test, MODEL_VERSION as MIXED_SCORE_VERSION
@@ -62,6 +62,7 @@ def parse_args():
     parser.add_argument("--paired-inference", choices=("local", "ec-score", "subject-centered", "null-corrected", "mixed-score"), default="local", help="Experimental paired inference alternatives; local remains production.")
     parser.add_argument("--score-null-concentration", type=float, default=1.)
     parser.add_argument("--score-free-null", action="store_true")
+    parser.add_argument("--spliced-ecs-only", action="store_true", help="Fit only ECs incompatible with the gene's unspliced precursor (spliced reads).")
     parser.add_argument("--path-fitter", choices=("fixed", "profiled", "free"), default="fixed", help="Local path fit: fixed nuisance (production), profiled block mass, or free transcript weights.")
     return parser.parse_args()
 
@@ -235,6 +236,8 @@ def main():
     metadata, counts, _, _, gene_ecs, designs = filtered_inputs(
         args.data_cache, settings
     )
+    if args.spliced_ecs_only:
+        precursor_feature = np.array([name.endswith("-I") for name in Path(settings["features"]).read_text().splitlines()])
     observed_rows = []
     null_rows = []
     failures = []
@@ -281,6 +284,10 @@ def main():
                 clusters,
                 drop_zero=False,
             )
+            if args.spliced_ecs_only:
+                base, kept = ec_glmm.spliced_ec_data(base, precursor_feature[np.asarray(transcripts)])
+                path_index = np.asarray(path_index)[kept]
+                transcripts = np.asarray(transcripts)[kept]
             cache_key = (gene, tuple(rows), tuple(transcripts))
             if cache_key not in pooled_cache:
                 pooled_cache[cache_key] = ec_block_glmm.pooled_isoform_weights(

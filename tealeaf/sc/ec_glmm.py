@@ -39,6 +39,26 @@ def subset_gene_data(counts, designs, transcripts, ecs, fixed, clusters, *, drop
     return ECGLMMData(tuple(value[retained] for value in local_counts), tuple(local_mappings), np.asarray(fixed)[retained], np.asarray(clusters)[retained]), retained, totals
 
 
+def spliced_ec_data(data, precursor):
+    """Keep only ECs incompatible with every unspliced precursor isoform.
+
+    precursor is a boolean length-T mask over the compatibility columns. A
+    read compatible with no precursor must span at least one splice junction,
+    so the retained ECs are the spliced reads; exon-body and intronic reads are
+    dropped in each primer. Precursor columns, now all zero, are removed and the
+    primer multinomials renormalize over the retained ECs. Returns the reduced
+    data and the boolean mask of retained isoform columns.
+    """
+    precursor = np.asarray(precursor, dtype=bool)
+    keep = ~precursor
+    counts, mappings = [], []
+    for observed, mapping in zip(data.counts, data.compatibility):
+        spliced = ~(mapping[:, precursor] > 0).any(axis=1)
+        counts.append(observed[:, spliced])
+        mappings.append(mapping[spliced][:, keep])
+    return ECGLMMData(tuple(counts), tuple(mappings), data.design, data.clusters, data.fixed_effect_tensor), keep
+
+
 def _jax():
     try:
         import jax

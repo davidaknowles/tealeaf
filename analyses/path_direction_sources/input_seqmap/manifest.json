@@ -1,0 +1,18 @@
+{
+  "ec_direction": "zeta=1 subject-mean path-proportion difference from the existing full-data pairwise refit",
+  "junction_direction": "same block paths re-estimated from STARsolo junction UMIs only, EM with total concentration 1.0",
+  "long_read": "pooled Tilgner annotated-transcript UMIs collapsed by the same block path map, eligible at >=20 UMIs per cell type",
+  "ranking": "production full-data zeta=64 pairwise p-values, identical for every direction estimator",
+  "inputs": {
+    "usage_root": ".cache/seqmap_local_path/a1_seqmap",
+    "ranking": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/differential/local_path_full_testing_eb_pairwise/a64/paired_path.tsv",
+    "junction_prefix": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/junction_benchmark/pseudobulk_junctions",
+    "block_cache": "/gpfs/commons/home/daknowles/tealeaf_runs/microglia_less/run/differential/gencode_vM32_splice_blocks.json.gz",
+    "matrix_dir": ".cache/tilgner_scisorseq/LR_annotTranscripts_byCT",
+    "gtf": "/gpfs/commons/home/daknowles/knowles_lab/index/kallisto/mus_musculus/with_precursor/gencode.vM32.basic.annotation.gtf",
+    "output_dir": "analyses/path_direction_sources/input_seqmap",
+    "concentration": "1.0",
+    "variant": "[]",
+    "reuse_table": "None"
+  }
+}
