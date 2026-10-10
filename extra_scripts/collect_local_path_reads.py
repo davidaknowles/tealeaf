@@ -45,6 +45,27 @@ def declared_blocks(candidate_caches, block_cache, max_paths=30):
     return blocks
 
 
+def annotated_blocks(candidate_caches, block_cache, max_paths=10):
+    """Every annotated block (2..max_paths paths) in the candidate caches' genes.
+
+    Paths are all annotated paths of the block, independent of EC support. A
+    final precursor path, one exon spanning the block window, marks reads with
+    no junction inside the window (intronic and exon-body reads).
+    """
+    genes = set()
+    for cache in candidate_caches:
+        genes.update(candidate[2] for candidate in pickle.load(open(cache, "rb"))["candidates"])
+    blocks = {}
+    for block in json.load(gzip.open(block_cache, "rt")):
+        signatures = json.loads(block["path_signatures"]) if isinstance(block["path_signatures"], str) else block["path_signatures"]
+        if block["gene_id"] not in genes or not 2 <= len(signatures) <= max_paths:
+            continue
+        paths = [block_path_exons(anchor(block["left_anchor"]), signature, anchor(block["right_anchor"])) for signature in signatures]
+        window = (min(a for path in paths for a, _ in path), max(b for path in paths for _, b in path))
+        blocks[path_key(block["block_id"], signatures)] = {"block_id": block["block_id"], "gene_id": block["gene_id"], "chromosome": block["chromosome"], "strand": block["strand"], "signatures": signatures, "paths": paths + [[window]], "precursor": True}
+    return blocks
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--recipe", type=Path, required=True)
@@ -55,6 +76,7 @@ def main():
     parser.add_argument("--gene-shard", type=int, default=0)
     parser.add_argument("--gene-shards", type=int, default=1)
     parser.add_argument("--collate", action="store_true")
+    parser.add_argument("--annotated", action="store_true", help="all annotated blocks of the candidate genes, with a precursor path")
     args = parser.parse_args()
     recipe = json.loads(args.recipe.read_text())
     if args.collate:
@@ -65,7 +87,7 @@ def main():
         table = pd.concat([pd.read_csv(path, sep="\t") for path in parts], ignore_index=True)
         table = table.groupby(["path_key", "subject", "cell_type", "primer", "mask"], as_index=False)["count"].sum()
         table.to_csv(args.output_dir / "counts.tsv.gz", sep="\t", index=False)
-        blocks = declared_blocks(args.candidate_cache, args.block_cache)
+        blocks = (annotated_blocks if args.annotated else declared_blocks)(args.candidate_cache, args.block_cache)
         with gzip.open(args.output_dir / "blocks.json.gz", "wt") as handle:
             json.dump(blocks, handle)
         filters = {}
@@ -75,7 +97,7 @@ def main():
         (args.output_dir / "filters.json").write_text(json.dumps(filters, indent=2) + "\n")
         print(f"{len(blocks)} blocks, {len(table)} count rows, {int(table['count'].sum())} molecules; {filters}", flush=True)
         return
-    blocks = declared_blocks(args.candidate_cache, args.block_cache)
+    blocks = (annotated_blocks if args.annotated else declared_blocks)(args.candidate_cache, args.block_cache)
     genes = sorted({block["gene_id"] for block in blocks.values()})
     selected_genes = set(genes[args.gene_shard::args.gene_shards])
     local = {key: block for key, block in blocks.items() if block["gene_id"] in selected_genes}

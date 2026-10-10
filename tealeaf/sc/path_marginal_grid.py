@@ -57,7 +57,13 @@ class RowGrid:
 
 
 def primer_row_log_likelihood(likelihood, row, t, primer):
-    """One primer's EC log-likelihood for one row at path-0 logits t."""
+    """One primer's EC log-likelihood for one row at path-0 logits t.
+
+    A likelihood defining primer_log_likelihood(row, t, primer) (for example
+    with a profiled nuisance component) supplies its own evaluation.
+    """
+    if hasattr(likelihood, "primer_log_likelihood"):
+        return likelihood.primer_log_likelihood(row, t, primer)
     observed, components = likelihood.counts[primer][row], likelihood.components[primer]
     if observed.sum() <= 0:
         return np.zeros(len(t))
@@ -118,7 +124,8 @@ def row_grids(likelihood, *, refine=1., coarse_step=.05):
     grids = []
     coarse = np.arange(-LIMIT, LIMIT + coarse_step / 2, coarse_step)
     offsets = getattr(likelihood, "primer_offsets", None)
-    shifted = offsets is not None and np.any(np.asarray(offsets) != 0)
+    shifted = (offsets is not None and np.any(np.asarray(offsets) != 0)) or hasattr(likelihood, "primer_log_likelihood")
+    offsets = np.zeros(len(likelihood.counts)) if offsets is None else offsets
     evaluate = (lambda row, t: shifted_row_log_likelihood(likelihood, row, t, offsets)) if shifted else (lambda row, t: likelihood.row_log_likelihood(row, expit(t)))
     for row in range(len(likelihood.subjects)):
         terms = likelihood.binomial_terms[row]
@@ -171,17 +178,19 @@ def row_integral(grid, means, kappa):
         total = logsumexp(joint, axis=1, keepdims=True)
         posterior = np.exp(joint - total)
         interior_posterior, left_posterior, right_posterior = posterior[:, :-2], posterior[:, -2:-1], posterior[:, -1:]
-        mean_u = interior_posterior @ log_p + (left_posterior * (-LIMIT - 1 / flat_a)).ravel()
-        mean_v = interior_posterior @ log_q + (right_posterior * (-LIMIT - 1 / flat_c)).ravel()
-        square_u = interior_posterior @ np.square(log_p) + (left_posterior * np.square(-LIMIT - 1 / flat_a)).ravel()
-        square_v = interior_posterior @ np.square(log_q) + (right_posterior * np.square(-LIMIT - 1 / flat_c)).ravel()
+        tail_u, tail_v = -LIMIT - 1 / flat_a, -LIMIT - 1 / flat_c
+        weighted = lambda weight, value: np.where(weight > 0, weight * np.where(weight > 0, value, 0.), 0.).ravel()
+        mean_u = interior_posterior @ log_p + weighted(left_posterior, tail_u)
+        mean_v = interior_posterior @ log_q + weighted(right_posterior, tail_v)
+        square_u = interior_posterior @ np.square(log_p) + weighted(left_posterior, np.square(tail_u))
+        square_v = interior_posterior @ np.square(log_q) + weighted(right_posterior, np.square(tail_v))
         cross = interior_posterior @ (log_p * log_q)
         normalizer = digamma(a + c).ravel()
         value = total.reshape(a.shape) - betaln(a, c)
         da = (mean_u - digamma(a).ravel() + normalizer).reshape(a.shape)
         dc = (mean_v - digamma(c).ravel() + normalizer).reshape(a.shape)
-        daa = (square_u - np.square(mean_u) + (left_posterior / np.square(flat_a)).ravel()).reshape(a.shape) - polygamma(1, a) + trigamma_total
-        dcc = (square_v - np.square(mean_v) + (right_posterior / np.square(flat_c)).ravel()).reshape(a.shape) - polygamma(1, c) + trigamma_total
+        daa = (square_u - np.square(mean_u) + weighted(left_posterior, 1 / np.square(flat_a))).reshape(a.shape) - polygamma(1, a) + trigamma_total
+        dcc = (square_v - np.square(mean_v) + weighted(right_posterior, 1 / np.square(flat_c))).reshape(a.shape) - polygamma(1, c) + trigamma_total
         dac = (cross - mean_u * mean_v).reshape(a.shape) + trigamma_total
     scale = kappa * s * r
     slope = scale * (da - dc)

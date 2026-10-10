@@ -125,6 +125,7 @@ def main():
     parser.add_argument("--gtf", type=Path, required=True)
     parser.add_argument("--block-cache", type=Path, required=True)
     parser.add_argument("--minimum-gene-umis", type=float, default=25.)
+    parser.add_argument("--skip-gene-umi-check", action="store_true", help="for inference not screened on EC gene UMIs (block-local read tests); subject folds are still checked")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -136,7 +137,7 @@ def main():
         cohort = None
         for summary in summaries:
             settings = json.loads(summary.read_text()).get("candidate_settings")
-            if settings is None or settings.get("min_gene_umis") != args.minimum_gene_umis:
+            if settings is None or (not args.skip_gene_umi_check and settings.get("min_gene_umis") != args.minimum_gene_umis):
                 raise ValueError(f"candidate cohort is missing or differs from the required gene-count threshold in {summary}")
             if settings.get("subject_fold") != (None if fold == "full" else fold):
                 raise ValueError("inference subject fold does not match its assessment cohort")
