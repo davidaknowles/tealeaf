@@ -4449,3 +4449,25 @@ Endpoints (`analyses/binary_ec_glmm`, `binary_spliced_glmm`, `binary_junction_gl
 | STARsolo junction UMIs on the block's variable junctions | 540 | .997 | .881 | 1–2 |
 
 The EC input, not the test, drives the poor LR ranking, and it is not explained by exon-body or unspliced reads. The remaining candidate is off-block information: an EC from reads elsewhere in the gene informs the block's path usage through fixed transcript linkage, which Codex's controlled simulation showed can create false local effects. Junction counts have no such linkage. Split power is low for every honest input; junction counts are available for only about a third of two-path tests.
+
+### 2026-10-10 Block-local path reads: anchors, primer offsets and multi-path blocks
+
+Block-local read classes (`tealeaf/sc/local_path_reads.py`, collected by `extra_scripts/collect_local_path_reads.py` from the STARsolo BAMs with the production cell QC; UMI molecules are unioned across the runs of one physical library). For a block with S paths, each molecule gets the bitmask of paths it is compatible with, using only the part of each read inside the block window (span of the path exon chains including the constitutive anchors): every clipped aligned segment must lie in one exon of the path and every junction inside the window must be a path junction. Intronic and unannotated-junction molecules get mask 0 and are dropped. Reads elsewhere in the gene never enter. Read opportunities n_ks (start positions on path s's local spliced sequence, read length 151, yielding class k under the same classifier) are the compatibility weights, so P(class k) = sum_s psi_s n_ks / sum_s psi_s L_s with L_s the effective local length. With anchors all classes are kept, and the both-paths class informs psi through relative coverage; without anchors the all-paths class is dropped. 8,128,428 molecules over 1,624 blocks, 3,398,273 with mask 0.
+
+A label-blind primer offset gamma per block (`estimate_primer_offset`) evaluates the random-hexamer likelihood at logit psi + gamma, profiling every row's psi, to absorb poly(dT) positional capture bias. Multi-path blocks (`tealeaf/sc/local_path_test.py`) are tested by S one-versus-rest binary models with the other paths collapsed by label-blind pooled shares (effective-length EM, `pooled_path_shares`) and combined by Simes; the reported effect is the vector of per-path proportion differences.
+
+| Variant | Replicated genes LeafCutter/MAJIQ/SUPPA2/SUPPA2-PA/hybrid/rMATS/scQuint | LR A40 | LR A100 |
+|---|---|---|---|
+| Gene-level ECs, two-path | 1/1/1/1/1/1/1 | .671 | .627 |
+| Block-local, two-path, anchors | 4/6/3/3/3/4/5 | .911 | .805 |
+| + primer offset | 3/6/3/3/3/4/4 | .939 | .821 |
+| Block-local, two-path, no anchors | 2/4/2/2/2/3/3 | .928 | .834 |
+| + primer offset | 2/4/2/2/2/3/3 | .942 | .852 |
+| Local-read binomial random intercept/slope on the no-anchor counts | 2/4/1/2/2/3/3 | .879 | .780 |
+| Block-local, multi-path, anchors, offset | 16/23/19/19/15/22/22 | .829 | .794 |
+| Block-local, multi-path, no anchors, offset | 15/22/18/18/14/21/21 | .829 | .796 |
+| Comparators | 26/38/21/5/49/12/56 | | .865/.819/.907/.654/.637/.542/.825 |
+
+Of the 38 genes that the SUPPA2-event junction local-read model calls nominal in both halves on the SUPPA2 universe, 20 had no two-path block test, which motivated the multi-path extension. The binomial random-intercept/slope model on identical counts is not more powerful than the Beta random-subject model, so model form was not the gap.
+
+Count-null calibration of the multi-path anchored test (`extra_scripts/assess_local_path_count_null.py`): 160 random full-data contrasts with observed subject/type/primer molecule totals, compositions drawn from Dirichlet(20 x pooled shares) per subject and Dirichlet(c x subject composition) per subject/type, 2 draws, failures as p = 1. Rejection at .05 for two-path/multi-path: .018/.010 (no row variation), .036/.070 (c = 20), .023/.030 (c = 5); none at .001.

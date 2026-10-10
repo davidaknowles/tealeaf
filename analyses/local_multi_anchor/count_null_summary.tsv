@@ -1,0 +1,7 @@
+scenario	multi_path	trials	converged	reject_0.05	reject_0.01	reject_0.001
+subject 20, no row variation	False	220.0	139.0	0.01818181818181818	0.0	0.0
+subject 20, no row variation	True	100.0	92.0	0.01	0.0	0.0
+subject 20, row 20	False	220.0	138.0	0.03636363636363636	0.00909090909090909	0.0
+subject 20, row 20	True	100.0	91.0	0.07	0.02	0.0
+subject 20, row 5	False	220.0	136.0	0.022727272727272728	0.0	0.0
+subject 20, row 5	True	100.0	92.0	0.03	0.0	0.0
