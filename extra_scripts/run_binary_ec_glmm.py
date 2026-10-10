@@ -22,7 +22,39 @@ from extra_scripts.run_ec_glmm import local_gene_data
 from extra_scripts.run_ec_block_glmm import local_test_design, partition_candidates
 from tealeaf.sc import ec_glmm
 from tealeaf.sc.ec_block_glmm import pooled_isoform_weights
-from tealeaf.sc.junction_benchmark import benjamini_hochberg
+from tealeaf.sc.junction_benchmark import JunctionBundle, benjamini_hochberg
+from tealeaf.sc.junction_paths import block_path_exons, path_junction_map
+from tealeaf.sc.path_marginal import BinaryECPathLikelihood
+
+
+def junction_likelihood(bundle, index, sample_row, block, signatures, subjects, labels, levels):
+    """One 'EC' per variable junction, compatibility = path membership.
+
+    Rows are subject-by-type junction UMI vectors; the multinomial normalizer
+    sum_j (M psi)_j = |J_0| psi + |J_1| (1 - psi) is the effective-length
+    correction of tealeaf.sc.junction_paths.
+    """
+    anchor = lambda value: None if value in (None, "null") or (isinstance(value, str) and value.strip() == "null") else tuple(json.loads(value) if isinstance(value, str) else value)
+    paths = [block_path_exons(anchor(block["left_anchor"]), signature, anchor(block["right_anchor"])) for signature in signatures]
+    keys, membership = path_junction_map(paths, block["strand"])
+    if len(keys) == 0 or (membership.sum(axis=0) == 0).any():
+        raise ValueError("a path has no variable junction")
+    columns = [index.get((block["chromosome"], start + 1, end), []) for start, end in keys]
+    keys_out, counts = [], []
+    for subject in np.unique(subjects):
+        for label in np.unique(labels[subjects == subject]):
+            position = sample_row.get((subject, levels[int(label)]))
+            if position is None:
+                continue
+            values = np.array([bundle.counts[position, column].sum() if column else 0. for column in columns])
+            if values.sum() > 0:
+                keys_out.append((subject, label))
+                counts.append(values)
+    if not counts:
+        raise ValueError("no junction UMIs")
+    components = np.column_stack([np.zeros(len(keys)), membership[:, 0], membership[:, 1]])
+    n = len(keys_out)
+    return BinaryECPathLikelihood((np.asarray(counts),), (components,), np.asarray([key[0] for key in keys_out]), np.asarray([key[1] for key in keys_out]), np.ones((n, 2)), np.zeros(n))
 from tealeaf.sc.path_marginal_grid import binary_grid_test, prepare_grid_likelihood
 
 
@@ -50,6 +82,8 @@ def main():
     parser.add_argument("--test-id-file", type=Path)
     parser.add_argument("--nodes", type=int, default=9)
     parser.add_argument("--spliced-ecs-only", action="store_true")
+    parser.add_argument("--junction-prefix", type=Path, help="fit junction UMIs on the same block paths instead of ECs")
+    parser.add_argument("--block-cache", type=Path)
     parser.add_argument("--merge", action="store_true", help="merge completed shards under --output-dir instead of fitting")
     args = parser.parse_args()
     if args.merge:
@@ -70,6 +104,15 @@ def main():
     metadata, counts, _, _, gene_ecs, designs = filtered_inputs(args.data_cache, settings)
     if args.spliced_ecs_only:
         precursor = np.array([name.endswith("-I") for name in Path(settings["features"]).read_text().splitlines()])
+    if args.junction_prefix is not None:
+        import gzip
+        bundle = JunctionBundle.load(args.junction_prefix)
+        bundle.counts = bundle.counts.tocsr()
+        junction_index = {}
+        for column, row in enumerate(bundle.junctions[["chromosome", "start", "end"]].itertuples(index=False)):
+            junction_index.setdefault((row.chromosome, int(row.start), int(row.end)), []).append(column)
+        sample_row = {(row.subject, row.cell_type): position for position, row in enumerate(bundle.samples.itertuples(index=False))}
+        blocks = {row["block_id"]: row for row in json.load(gzip.open(args.block_cache or settings["block_cache"], "rt"))}
     rows_out, usage_out, baselines = [], [], {}
     started = time.monotonic()
     for candidate in candidates:
@@ -84,16 +127,19 @@ def main():
             base, _, totals = local_gene_data(tuple(matrix[rows] for matrix in counts), designs, transcripts, gene_ecs[gene], np.ones((len(local_metadata), 1)), subjects, drop_zero=False)
             record["median_gene_umis"] = float(np.median(totals))
             local_index = np.asarray(path_index)
-            if args.spliced_ecs_only:
-                base, kept = ec_glmm.spliced_ec_data(base, precursor[np.asarray(transcripts)])
-                local_index = local_index[kept]
-            key = (gene, tuple(rows), tuple(np.asarray(transcripts)), args.spliced_ecs_only)
-            if key not in baselines:
-                baseline, converged = pooled_isoform_weights(base, max_iter=250, return_status=True)
-                if not converged:
-                    raise ValueError("pooled transcript baseline did not converge")
-                baselines[key] = baseline
-            likelihood = prepare_grid_likelihood(base, local_index, labels, subjects, baselines[key])
+            if args.junction_prefix is not None:
+                likelihood = junction_likelihood(bundle, junction_index, sample_row, blocks[block_id], signatures, subjects, labels, levels)
+            else:
+                if args.spliced_ecs_only:
+                    base, kept = ec_glmm.spliced_ec_data(base, precursor[np.asarray(transcripts)])
+                    local_index = local_index[kept]
+                key = (gene, tuple(rows), tuple(np.asarray(transcripts)), args.spliced_ecs_only)
+                if key not in baselines:
+                    baseline, converged = pooled_isoform_weights(base, max_iter=250, return_status=True)
+                    if not converged:
+                        raise ValueError("pooled transcript baseline did not converge")
+                    baselines[key] = baseline
+                likelihood = prepare_grid_likelihood(base, local_index, labels, subjects, baselines[key])
             result = binary_grid_test(likelihood, nodes=args.nodes)
             difference = float(result["coefficients"][1]) / np.sqrt(2)
             record.update({"n_subjects": result["n_subjects"], "statistic": result["statistic"], "p_value": result["p_value"], "raw_p_value": result["p_value"], "converged": result["converged"], "mean_difference": json.dumps([difference]), "mean_difference_norm": abs(difference), "null_concentration": result["null_concentration"], "alternative_concentration": result["alternative_concentration"], "null_subject_sd": result["null_subject_sd"], "alternative_subject_sd": result["alternative_subject_sd"], "quadrature_error": result["quadrature_error"], "null_iterations": result["null_fit"].nit, "alternative_iterations": result["alternative_fit"].nit, "final_nodes": result["nodes"], "final_refine": result["refine"]})
@@ -109,7 +155,7 @@ def main():
     pd.DataFrame(rows_out).to_csv(args.output_dir / "paired_path.tsv", sep="\t", index=False, na_rep="NA")
     pd.DataFrame(usage_out, columns=["test_id", "block_id", "gene_id", "subject", "cell_type", "path", "path_number", "path_signature", "proportion"]).to_csv(args.output_dir / "path_usage.tsv", sep="\t", index=False, na_rep="NA")
     fitted = [row for row in rows_out if row["n_paths"] == 2]
-    summary = {"candidates": len(rows_out), "binary_candidates": len(fitted), "converged": int(sum(row["converged"] for row in fitted)), "elapsed_seconds": time.monotonic() - started, "candidate_settings": settings, "nodes": args.nodes, "spliced_ecs_only": args.spliced_ecs_only, "model": "binary EC Beta random-subject GLMM, grid/AGHQ integration, LRT chi-square"}
+    summary = {"candidates": len(rows_out), "binary_candidates": len(fitted), "converged": int(sum(row["converged"] for row in fitted)), "elapsed_seconds": time.monotonic() - started, "candidate_settings": settings, "nodes": args.nodes, "spliced_ecs_only": args.spliced_ecs_only, "junction_counts": args.junction_prefix is not None, "model": "binary EC Beta random-subject GLMM, grid/AGHQ integration, LRT chi-square"}
     (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2, default=str) + "\n")
     print(json.dumps({key: value for key, value in summary.items() if key != "candidate_settings"}), flush=True)
 

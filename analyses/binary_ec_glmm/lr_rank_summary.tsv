@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+binary_ec_glmm	40	1406	23.0	0.575	0.6712344122876969	all tested	calibrated then raw
+binary_ec_glmm	100	1406	67.0	0.67	0.6268674157417804	all tested	calibrated then raw
+binary_ec_glmm	200	1406	124.0	0.62	0.62663726665415	all tested	calibrated then raw
+binary_ec_glmm	40	1406	23.0	0.575	0.6712344122876969	all tested	continuous raw
+binary_ec_glmm	100	1406	67.0	0.67	0.6268674157417804	all tested	continuous raw
+binary_ec_glmm	200	1406	124.0	0.62	0.62663726665415	all tested	continuous raw
+binary_ec_glmm	40	22	NA	NA	NA	BH discoveries	calibrated then raw
+binary_ec_glmm	100	22	NA	NA	NA	BH discoveries	calibrated then raw
+binary_ec_glmm	200	22	NA	NA	NA	BH discoveries	calibrated then raw
+binary_ec_glmm	40	22	NA	NA	NA	BH discoveries	continuous raw
+binary_ec_glmm	100	22	NA	NA	NA	BH discoveries	continuous raw
+binary_ec_glmm	200	22	NA	NA	NA	BH discoveries	continuous raw
