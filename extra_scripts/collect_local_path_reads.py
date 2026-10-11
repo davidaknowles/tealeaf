@@ -77,6 +77,7 @@ def main():
     parser.add_argument("--gene-shards", type=int, default=1)
     parser.add_argument("--collate", action="store_true")
     parser.add_argument("--annotated", action="store_true", help="all annotated blocks of the candidate genes, with a precursor path")
+    parser.add_argument("--include-unassigned", action="store_true", help='also use alignments with STARsolo GX "-" (intronic reads)')
     args = parser.parse_args()
     recipe = json.loads(args.recipe.read_text())
     if args.collate:
@@ -103,7 +104,7 @@ def main():
     local = {key: block for key, block in blocks.items() if block["gene_id"] in selected_genes}
     library = recipe["bams"][args.library_index]
     groups = {barcode: tuple(group) for barcode, group in library["barcode_groups"].items()}
-    counts, filters = collect_library_path_reads([run["path"] for run in library["runs"]], [run["index"] for run in library["runs"]], groups, local)
+    counts, filters = collect_library_path_reads([run["path"] for run in library["runs"]], [run["index"] for run in library["runs"]], groups, local, include_unassigned=args.include_unassigned)
     out = args.output_dir / f"part_{args.library_index}_{args.gene_shard}"
     out.mkdir(parents=True, exist_ok=True)
     rows = [{"path_key": key[0], "subject": key[1], "cell_type": key[2], "primer": key[3], "mask": key[4], "count": value} for key, value in counts.items()]

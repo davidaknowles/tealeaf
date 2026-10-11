@@ -78,14 +78,16 @@ def path_read_opportunities(paths, read_length):
     return dict(opportunities)
 
 
-def collect_library_path_reads(bam_paths, index_paths, barcode_groups, blocks):
+def collect_library_path_reads(bam_paths, index_paths, barcode_groups, blocks, *, include_unassigned=False):
     """UMI-molecule path classes for one physical library.
 
     blocks maps block_id -> dict(gene_id, chromosome, paths). Keys are exact
     (barcode, UB, gene) within the library, unioned across its runs; a
     molecule's mask is the AND of its reads' masks over reads overlapping the
     block window. Only primary NH=1 alignments with CB, UB and a unique
-    matching GX gene are used. Returns counts[(block_id, *group, mask)] and
+    matching GX gene are used; with include_unassigned, alignments without a
+    GX gene (STARsolo GX "-" or absent, mostly intronic reads) are also used,
+    so precursor reads inside the window are counted. Returns counts[(block_id, *group, mask)] and
     filter counters; mask-0 (incompatible or conflicting) molecules are
     counted separately.
     """
@@ -108,11 +110,14 @@ def collect_library_path_reads(bam_paths, index_paths, barcode_groups, blocks):
                 for alignment in source.fetch(chromosome, left, right):
                     if alignment.is_unmapped or alignment.is_secondary or alignment.is_supplementary:
                         continue
-                    if not all(alignment.has_tag(tag) for tag in ("NH", "CB", "UB", "GX")) or alignment.get_tag("NH") != 1:
+                    if not all(alignment.has_tag(tag) for tag in ("NH", "CB", "UB")) or alignment.get_tag("NH") != 1 or not (include_unassigned or alignment.has_tag("GX")):
                         filters["untagged_or_multimapped"] += 1
                         continue
-                    genes = str(alignment.get_tag("GX")).split(";")
-                    if len(genes) != 1 or genes[0].split(".", 1)[0] != gene_stable:
+                    gx = str(alignment.get_tag("GX")) if alignment.has_tag("GX") else "-"
+                    genes = gx.split(";")
+                    if gx == "-" and include_unassigned:
+                        filters["unassigned_used"] += 1
+                    elif len(genes) != 1 or genes[0].split(".", 1)[0] != gene_stable:
                         filters["other_gene"] += 1
                         continue
                     barcode = normalize_starsolo_barcode(alignment.get_tag("CB"))
