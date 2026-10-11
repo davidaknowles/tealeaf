@@ -82,7 +82,7 @@ def main():
     parser.add_argument("--precursor", action="store_true")
     parser.add_argument("--primer-offset", action="store_true")
     parser.add_argument("--nodes", type=int, default=9)
-    parser.add_argument("--stored-opportunities", action="store_true", help="use opportunities.json.gz from --local-reads (k-mer rule for pseudoalignment)")
+    parser.add_argument("--stored-opportunities", action="store_true", help="require opportunities.json.gz in --local-reads (k-mer rule for pseudoalignment); it is used whenever present")
     parser.add_argument("--count-only", action="store_true")
     parser.add_argument("--universe", type=Path, help="matched split universes (gene_id, pair_id 'A||B'); their contrasts are tested")
     parser.add_argument("--lr-cell-types", help="semicolon-separated cell types with a long-read mapping; all their pairs are tested")
@@ -95,7 +95,10 @@ def main():
     subjects = set(folds.subject if args.cohort == "full" else folds.loc[folds.fold.eq(int(args.cohort)), "subject"])
     counts = pd.read_csv(args.local_reads / "counts.tsv.gz", sep="\t")
     blocks = json.load(gzip.open(args.local_reads / "blocks.json.gz", "rt"))
-    stored = json.load(gzip.open(args.local_reads / "opportunities.json.gz", "rt")) if args.stored_opportunities else None
+    stored_path = args.local_reads / "opportunities.json.gz"
+    if args.stored_opportunities and not stored_path.exists():
+        raise FileNotFoundError(stored_path)
+    stored = json.load(gzip.open(stored_path, "rt")) if stored_path.exists() else None
     allowed = None
     if args.universe is not None or args.lr_cell_types:
         pairs = set()
@@ -149,7 +152,7 @@ def main():
     args.output_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows_out).to_csv(args.output_dir / "paired_path.tsv", sep="\t", index=False, na_rep="NA")
     pd.DataFrame(usage_out, columns=["test_id", "block_id", "gene_id", "subject", "cell_type", "path", "path_number", "path_signature", "proportion"]).to_csv(args.output_dir / "path_usage.tsv", sep="\t", index=False, na_rep="NA")
-    settings = {"subject_fold": None if args.cohort == "full" else int(args.cohort), "test_effect": "cell_type_pairwise", "min_subjects": args.min_subjects, "min_molecules": args.min_molecules, "min_share": args.min_share, "anchors": not args.no_anchors, "precursor": args.precursor, "primer_offset": args.primer_offset, "stored_opportunities": args.stored_opportunities, "local_reads": str(args.local_reads), "read_length": READ_LENGTH}
+    settings = {"subject_fold": None if args.cohort == "full" else int(args.cohort), "test_effect": "cell_type_pairwise", "min_subjects": args.min_subjects, "min_molecules": args.min_molecules, "min_share": args.min_share, "anchors": not args.no_anchors, "precursor": args.precursor, "primer_offset": args.primer_offset, "stored_opportunities": stored is not None, "local_reads": str(args.local_reads), "read_length": READ_LENGTH}
     summary = {"candidates": len(rows_out), "converged": int(sum(row["converged"] for row in rows_out)), "elapsed_seconds": time.monotonic() - started, "candidate_settings": settings}
     (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps({key: value for key, value in summary.items() if key != "candidate_settings"}), flush=True)

@@ -22,6 +22,7 @@ from scipy.optimize import minimize
 from scipy.special import betaln, digamma, expit, log_expit, polygamma, roots_hermite
 from scipy.stats import chi2
 
+from . import path_marginal_kernels as kernels
 from .ec_block_glmm import collapse_isoforms_to_paths
 from .path_marginal import BinaryECPathLikelihood
 
@@ -204,6 +205,8 @@ class GridModel:
 
     design is N x C (rows in likelihood order), subjects length N. Mode
     caches hold each subject's last posterior mode of b_u for warm starts.
+    objective runs the compiled kernels (path_marginal_kernels);
+    objective_reference is the numpy implementation of the same formulas.
     """
     grids: list
     design: np.ndarray
@@ -215,6 +218,10 @@ class GridModel:
         self.design = np.asarray(self.design, dtype=float)
         self.groups = [np.flatnonzero(self.subjects == subject) for subject in np.unique(self.subjects)]
         self.hermite = roots_hermite(self.nodes)
+        self.group_start = np.cumsum([0] + [len(rows) for rows in self.groups]).astype(np.int64)
+        self.group_rows = np.concatenate(self.groups).astype(np.int64)
+        self.mode_array = np.zeros(len(self.groups))
+        self.packed = pack_grids(self.grids)
 
     def _subject_terms(self, rows, eta, kappa, sigma, b):
         """f_u(b), its first two b-derivatives and row scores, b any 1-D array."""
@@ -248,7 +255,14 @@ class GridModel:
         return b, 1 / np.sqrt(-curvature[0]) if curvature[0] < 0 else sigma
 
     def objective(self, parameters):
-        """Negative marginal log-likelihood and its gradient."""
+        """Negative marginal log-likelihood and its gradient (compiled)."""
+        coefficients, kappa, sigma = parameters[:-2], np.exp(parameters[-2]), np.exp(parameters[-1])
+        roots, weights = self.hermite
+        total, row_score, kappa_score, sigma_score = kernels.objective(self.design @ coefficients, kappa, sigma, self.group_start, self.group_rows, self.mode_array, roots, np.log(weights), *self.packed)
+        return -total, -np.r_[self.design.T @ row_score, kappa_score, sigma_score]
+
+    def objective_reference(self, parameters):
+        """Negative marginal log-likelihood and its gradient (numpy)."""
         coefficients, kappa, sigma = parameters[:-2], np.exp(parameters[-2]), np.exp(parameters[-1])
         eta = self.design @ coefficients
         roots, weights = self.hermite
@@ -266,6 +280,23 @@ class GridModel:
                 gradient[-2] += posterior @ d_kappa
             gradient[-1] += posterior @ (np.square(points) / sigma ** 2 - 1)
         return -total, -gradient
+
+
+def pack_grids(grids):
+    """Flatten row grids into the array layout of path_marginal_kernels."""
+    kind = np.array([int(grid.exact is not None) for grid in grids], dtype=np.int64)
+    sizes = [0 if grid.exact is not None else len(grid.t) for grid in grids]
+    stop = np.cumsum(sizes).astype(np.int64)
+    start = stop - np.asarray(sizes, dtype=np.int64)
+    interior = [grid for grid in grids if grid.exact is None]
+    join = lambda values: np.concatenate(values) if values else np.zeros(0)
+    log_p = join([grid.log_p for grid in interior])
+    log_q = join([grid.log_q for grid in interior])
+    base = join([grid.ell + grid.log_weight for grid in interior])
+    first = np.array([grid.ell[0] if grid.exact is None else 0. for grid in grids])
+    last = np.array([grid.ell[-1] if grid.exact is None else 0. for grid in grids])
+    terms = np.array([grid.exact if grid.exact is not None else (0., 0., 0.) for grid in grids], dtype=float).reshape(len(grids), 3)
+    return kind, start, stop, log_p, log_q, base, first, last, terms
 
 
 def prepare_grid_likelihood(data, path_index, labels, subjects, baseline):

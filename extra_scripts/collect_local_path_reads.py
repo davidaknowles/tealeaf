@@ -4,12 +4,15 @@
 Blocks are the distinct (block, path set) pairs in the given pairwise
 candidate caches. Libraries, runs, indexes and production-QC barcode groups
 come from the existing local-read recipe. Run one task per library and gene
-shard, then --collate.
+shard, then --collate, which also stores every block's read opportunities
+(read length READ_LENGTH) for the tests.
 """
 
 import argparse
 import gzip
 import json
+from multiprocessing import Pool
+import os
 import pickle
 from pathlib import Path
 import zlib
@@ -17,7 +20,13 @@ import zlib
 import pandas as pd
 
 from tealeaf.sc.junction_paths import block_path_exons
-from tealeaf.sc.local_path_reads import collect_library_path_reads
+from tealeaf.sc.local_path_reads import collect_library_path_reads, path_read_opportunities
+
+READ_LENGTH = 151
+
+
+def block_opportunities(paths):
+    return {str(mask): vector.tolist() for mask, vector in path_read_opportunities(paths, READ_LENGTH).items()}
 
 
 def anchor(value):
@@ -91,6 +100,10 @@ def main():
         blocks = (annotated_blocks if args.annotated else declared_blocks)(args.candidate_cache, args.block_cache)
         with gzip.open(args.output_dir / "blocks.json.gz", "wt") as handle:
             json.dump(blocks, handle)
+        with Pool(len(os.sched_getaffinity(0))) as pool:
+            opportunities = dict(zip(blocks, pool.map(block_opportunities, [block["paths"] for block in blocks.values()], chunksize=8)))
+        with gzip.open(args.output_dir / "opportunities.json.gz", "wt") as handle:
+            json.dump(opportunities, handle)
         filters = {}
         for path in sorted(args.output_dir.glob("part_*/filters.json")):
             for key, value in json.loads(path.read_text()).items():

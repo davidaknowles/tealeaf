@@ -12,6 +12,7 @@ from .differential import helmert_basis
 from .local_path_reads import pooled_path_shares, project_mask, project_opportunities
 from .path_marginal import BinaryECPathLikelihood
 from .path_marginal_grid import binary_grid_test, estimate_primer_offset
+from .path_marginal_kernels import profiled_precursor_log_likelihood
 from scipy.special import expit
 
 PRIMERS = ("poly(dT)", "random hexamer")
@@ -33,6 +34,16 @@ class ProfiledPrecursorLikelihood(BinaryECPathLikelihood):
         return np.full((len(self.subjects), 3), np.nan)
 
     def primer_log_likelihood(self, row, t, primer):
+        """Compiled evaluation; primer_log_likelihood_reference is the numpy version."""
+        observed, components = self.counts[primer][row], self.components[primer]
+        if observed.sum() <= 0:
+            return np.zeros(len(t))
+        if components[:, 0].sum() <= 0:
+            return self.primer_log_likelihood_reference(row, t, primer)
+        seen = observed > 0
+        return profiled_precursor_log_likelihood(np.asarray(t, dtype=float), observed[seen], components[seen, 0], components[seen, 1], components[seen, 2], observed.sum(), components[:, 0].sum(), components[:, 1].sum(), components[:, 2].sum())
+
+    def primer_log_likelihood_reference(self, row, t, primer):
         observed, components = self.counts[primer][row], self.components[primer]
         if observed.sum() <= 0:
             return np.zeros(len(t))

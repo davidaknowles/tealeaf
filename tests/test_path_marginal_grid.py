@@ -101,3 +101,24 @@ def test_primer_offset_recovered():
     components = np.array([[0., .5, 0.], [0., 0., .4]])
     like = BinaryECPathLikelihood((np.array(rows)[:, :2], np.array(rows)[:, 2:]), (components, components), np.array([f"s{i}" for i in range(10)]), np.array(["a"] * 10), np.ones((10, 2)), np.zeros(10))
     assert abs(estimate_primer_offset(like) - 1.2) < .15
+
+
+def test_compiled_objective_matches_numpy_reference():
+    like = simulated(4, .6)
+    # Mix exact rows in by making one row pure-path.
+    design = np.column_stack([np.ones(16), like.labels == "b"]).astype(float)
+    compiled, reference = GridModel(row_grids(like), design, like.subjects), GridModel(row_grids(like), design, like.subjects)
+    for parameters in ([.2, .5, np.log(15.), np.log(.4)], [-1., 2., np.log(.3), np.log(2.)], [3., -4., np.log(1500.), np.log(.02)]):
+        value, gradient = compiled.objective(np.array(parameters))
+        expected, expected_gradient = reference.objective_reference(np.array(parameters))
+        assert np.isclose(value, expected, rtol=1e-10, atol=1e-8)
+        assert np.allclose(gradient, expected_gradient, rtol=1e-7, atol=1e-7)
+    assert np.allclose(compiled.mode_array, [reference.modes[index] for index in range(len(reference.groups))], atol=1e-8)
+
+
+def test_compiled_special_functions():
+    from scipy.special import digamma, polygamma
+    from tealeaf.sc import path_marginal_kernels as kernels
+    for x in (1e-12, 1e-3, .37, 1., 5.5, 9.99, 10., 47., 3e3, 1e7):
+        assert np.isclose(kernels.digamma(x), digamma(x), rtol=1e-12, atol=1e-12)
+        assert np.isclose(kernels.trigamma(x), polygamma(1, x), rtol=1e-12, atol=0)

@@ -56,3 +56,24 @@ def test_precursor_model_ignores_unspliced_excess():
     assert with_precursor["converged"] and without["converged"]
     assert with_precursor["p_value"] > .01
     assert without["p_value"] < 1e-4
+
+
+def test_compiled_precursor_likelihood_matches_reference():
+    rng = np.random.default_rng(5)
+    components = np.column_stack([rng.uniform(0, 3, 6), rng.uniform(0, 2, 6), rng.uniform(0, 2, 6)])
+    components[0, 0] = 0.
+    counts = rng.poisson(8, size=(3, 6)).astype(float)
+    counts[1, 2] = 0.
+    like = ProfiledPrecursorLikelihood((counts, counts), (components, components), np.array(["s", "s", "u"]), np.array([0, 1, 0]), np.ones((3, 2)), np.zeros(3))
+    t = np.linspace(-18, 18, 241)
+    scales = np.exp(np.linspace(-25, 15, 40001))
+    for row in range(3):
+        compiled = like.primer_log_likelihood(row, t, 0)
+        # At least as high as the grid-and-Newton reference, and the maximum of a dense scale grid.
+        assert (compiled >= like.primer_log_likelihood_reference(row, t, 0) - 1e-9).all()
+        observed = counts[row]
+        for index in range(0, len(t), 20):
+            psi = expit(t[index])
+            mass = scales[:, None] * components[:, 0] + psi * components[:, 1] + (1 - psi) * components[:, 2]
+            dense = (np.log(np.maximum(mass, 1e-300)) @ observed - observed.sum() * np.log(mass.sum(axis=1))).max()
+            assert dense - 1e-9 <= compiled[index] <= dense + 1e-6
