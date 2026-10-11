@@ -7,6 +7,9 @@ for the blocks of an existing collect_local_path_reads.py --annotated output;
 corrects barcodes against that library's production-QC barcodes, and writes
 molecule class counts; --stage collate sums libraries and stores k-mer read
 opportunities for every block. Output matches collect_local_path_reads.py.
+Without a D-list, reads from repeat copies elsewhere in the genome that share
+one k-mer with a precursor window are assigned to it; --d-list with the genome
+removes them.
 """
 
 import argparse
@@ -38,13 +41,15 @@ def main():
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--library-index", type=int, default=0)
     parser.add_argument("--threads", type=int, default=8)
+    parser.add_argument("--d-list", type=Path, help="FASTA of sequences to mask (the genome), so reads with genomic k-mers flanking a target are discarded")
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     blocks = json.load(gzip.open(args.blocks, "rt"))
     index = args.output_dir / "blocks.idx"
     if args.stage == "reference":
         write_block_reference(blocks, args.genome, args.output_dir / "blocks.fa")
-        run(["kallisto", "index", "-k", 31, "-t", args.threads, "-i", index, args.output_dir / "blocks.fa"])
+        masking = ["-d", args.d_list] if args.d_list else []
+        run(["kallisto", "index", "-k", 31, "-t", args.threads, *masking, "-T", args.output_dir / "tmp", "-i", index, args.output_dir / "blocks.fa"])
         return
     recipe = json.loads(args.recipe.read_text())
     if args.stage == "library":

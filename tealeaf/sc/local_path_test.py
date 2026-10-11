@@ -9,7 +9,7 @@ blocks reduce to a single binary test.
 import numpy as np
 
 from .differential import helmert_basis
-from .local_path_reads import pooled_path_shares
+from .local_path_reads import pooled_path_shares, project_mask, project_opportunities
 from .path_marginal import BinaryECPathLikelihood
 from .path_marginal_grid import binary_grid_test, estimate_primer_offset
 from scipy.special import expit
@@ -65,6 +65,34 @@ class ProfiledPrecursorLikelihood(BinaryECPathLikelihood):
     def row_log_likelihood(self, row, proportions):
         t = np.log(proportions) - np.log1p(-np.asarray(proportions))
         return sum(self.primer_log_likelihood(row, t, primer) for primer in range(len(self.counts))) - self.offsets[row]
+
+
+def prepare_block_test(block, entries, opportunities, n_paths, levels, min_share=.02, precursor=False):
+    """Prune a block's paths for one contrast and project its read classes.
+
+    entries are (subject, cell type, primer, mask, molecules) tuples for the
+    two levels, with masks over n_paths mature paths then the precursor, and
+    opportunities are the matching full-target vectors. Mature paths whose
+    label-blind pooled share is below min_share are dropped; masks and
+    opportunities are projected onto the retained paths (plus the precursor
+    when precursor is set). Raises ValueError if fewer than two paths remain.
+    """
+    present = sorted({(subject, levels.index(cell_type)) for subject, cell_type, _, _, value in entries if value > 0})
+    pooled = {}
+    for subject, cell_type, _, mask, value in entries:
+        pooled[mask] = pooled.get(mask, 0.) + value
+    shares = pooled_path_shares(pooled, opportunities)[:n_paths]
+    shares = shares / shares.sum()
+    kept = [index for index in range(n_paths) if shares[index] >= min_share]
+    if len(kept) < 2:
+        raise ValueError("fewer than two expressed paths")
+    lookup, totals = {}, {}
+    for subject, cell_type, primer, mask, value in entries:
+        new = project_mask(mask, kept, n_paths, precursor)
+        if new:
+            lookup[(block, subject, cell_type, primer, new)] = lookup.get((block, subject, cell_type, primer, new), 0.) + value
+            totals[(subject, cell_type)] = totals.get((subject, cell_type), 0.) + value
+    return {"lookup": lookup, "opportunities": project_opportunities(opportunities, kept, n_paths, precursor), "kept": kept, "shares": shares, "subjects": np.array([subject for subject, _ in present]), "labels": np.array([label for _, label in present]), "median_molecules": float(np.median([totals.get((subject, levels[label]), 0.) for subject, label in present]))}
 
 
 def local_class_masks(opportunities, n_paths, anchors):

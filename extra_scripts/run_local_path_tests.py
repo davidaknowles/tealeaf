@@ -6,8 +6,11 @@ Tests are defined from block-local molecule counts (collect_local_path_reads.py
 and cell-type pair with at least --min-subjects subjects observed in both types
 and at least --min-molecules pooled molecules. Within each test, mature paths
 whose label-blind pooled share is below --min-share are dropped and read
-classes are projected onto the retained paths. Output follows the
-run_paired_path_test.py shard layout for the split and long-read assessments.
+classes are projected onto the retained paths. Tests left with fewer than two
+paths fail this label-blind screen; their rows are kept in the shards with
+screened = False and are excluded from the merged family, while failed fits of
+screened tests stay as p = 1. Output follows the run_paired_path_test.py shard
+layout for the split and long-read assessments.
 """
 
 import argparse
@@ -20,36 +23,10 @@ import numpy as np
 import pandas as pd
 
 from tealeaf.sc.junction_benchmark import benjamini_hochberg
-from tealeaf.sc.local_path_reads import path_read_opportunities, pooled_path_shares
-from tealeaf.sc.local_path_test import PRIMERS, fit_local_block
+from tealeaf.sc.local_path_reads import path_read_opportunities
+from tealeaf.sc.local_path_test import fit_local_block, prepare_block_test
 
 READ_LENGTH = 151
-
-
-def project_mask(mask, kept, n_paths, precursor):
-    """Old mask over n_paths mature paths plus precursor -> retained-path mask."""
-    value = sum(((mask >> old) & 1) << new for new, old in enumerate(kept))
-    if precursor:
-        value |= ((mask >> n_paths) & 1) << len(kept)
-    return value
-
-
-def project_opportunities(opportunities, kept, n_paths, precursor):
-    """Full-target opportunities (mature paths then precursor) -> retained targets.
-
-    A read's class over a subset of targets is its full class restricted to
-    them, so projection equals recomputation; reads from dropped targets are
-    discarded and mask-0 classes are removed.
-    """
-    targets = list(kept) + ([n_paths] if precursor else [])
-    projected = {}
-    for mask, vector in opportunities.items():
-        new = project_mask(int(mask), kept, n_paths, precursor)
-        if new:
-            values = np.asarray(vector, dtype=float)[targets]
-            if values.any():
-                projected[new] = projected.get(new, np.zeros(len(targets))) + values
-    return projected
 
 
 def declared_tests(counts, blocks, subjects, min_subjects, min_molecules, allowed=None):
@@ -81,6 +58,9 @@ def merge(root, shard_count):
     if missing:
         raise FileNotFoundError(f"incomplete cohort, missing {missing[:3]}")
     table = pd.concat([pd.read_csv(path, sep="\t") for path in paths], ignore_index=True)
+    if "screened" not in table:
+        table["screened"] = ~table.error.fillna("").str.startswith("fewer than two expressed paths")
+    table = table.loc[table.screened.astype(bool)].reset_index(drop=True)
     table["fdr"] = benjamini_hochberg(table.p_value.to_numpy())
     (root / "merged").mkdir(exist_ok=True)
     table.to_csv(root / "merged" / "paired_path.tsv", sep="\t", index=False, na_rep="NA")
@@ -143,32 +123,21 @@ def main():
         test_id = f"{block['block_id']}|cell_type|{level_a}|{level_b}"
         levels = (level_a, level_b)
         entries = [entry for entry in grouped[key] if entry[1] in levels]
-        present = sorted({(subject, levels.index(cell_type)) for subject, cell_type, _, _, value in entries if value > 0})
-        subject_array, labels = np.array([subject for subject, _ in present]), np.array([label for _, label in present])
-        record = {"test_id": test_id, "block_id": block["block_id"], "gene_id": block["gene_id"], "contrast": "cell_type_pairwise", "level_a": level_a, "level_b": level_b, "method": "block-local path classes, random-subject Beta binomial", "n_annotated_paths": n_paths, "n_paths": 0, "path_signatures": "[]", "n_subjects": 0, "median_gene_umis": np.nan, "statistic": 0., "p_value": 1., "raw_p_value": 1., "converged": False, "mean_difference": "[]", "mean_difference_norm": np.nan, "error": ""}
+        record = {"test_id": test_id, "block_id": block["block_id"], "gene_id": block["gene_id"], "contrast": "cell_type_pairwise", "level_a": level_a, "level_b": level_b, "method": "block-local path classes, random-subject Beta binomial", "n_annotated_paths": n_paths, "n_paths": 0, "path_signatures": "[]", "n_subjects": 0, "median_gene_umis": np.nan, "statistic": 0., "p_value": 1., "raw_p_value": 1., "converged": False, "mean_difference": "[]", "mean_difference_norm": np.nan, "screened": True, "error": ""}
         begin = time.monotonic()
         try:
             if key not in opportunity_cache:
                 opportunity_cache[key] = stored[key] if stored is not None else path_read_opportunities(block["paths"], READ_LENGTH)
             full_opportunities = {int(mask): np.asarray(vector, dtype=float) for mask, vector in opportunity_cache[key].items()}
-            pooled = {mask: sum(lookup.get((key, subject, levels[label], primer, mask), 0.) for subject, label in present for primer in PRIMERS) for mask in full_opportunities}
-            shares = pooled_path_shares(pooled, full_opportunities)[:n_paths]
-            shares = shares / shares.sum()
-            kept = [index for index in range(n_paths) if shares[index] >= args.min_share]
-            if len(kept) < 2:
-                raise ValueError("fewer than two expressed paths")
-            opportunities = project_opportunities(full_opportunities, kept, n_paths, args.precursor)
-            projected = {}
-            row_totals = {}
-            for subject, cell_type, primer, mask, value in entries:
-                new = project_mask(mask, kept, n_paths, args.precursor)
-                if new:
-                    projected[(key, subject, cell_type, primer, new)] = projected.get((key, subject, cell_type, primer, new), 0.) + value
-                    row_totals[(subject, cell_type)] = row_totals.get((subject, cell_type), 0.) + value
-            totals = [row_totals.get((subject, levels[label]), 0.) for subject, label in present]
+            try:
+                prepared = prepare_block_test(key, entries, full_opportunities, n_paths, levels, args.min_share, args.precursor)
+            except ValueError:
+                record["screened"] = False
+                raise
+            kept = prepared["kept"]
             signatures = [block["signatures"][index] for index in kept]
-            record.update(n_paths=len(kept), path_signatures=json.dumps(signatures), median_gene_umis=float(np.median(totals)), kept_paths=json.dumps(kept), annotated_path_shares=json.dumps(shares.tolist()))
-            fields, usage = fit_local_block(projected, key, opportunities, len(kept), subject_array, labels, levels, anchors=not args.no_anchors, primer_offset=args.primer_offset, nodes=args.nodes, precursor=args.precursor)
+            record.update(n_paths=len(kept), path_signatures=json.dumps(signatures), median_gene_umis=prepared["median_molecules"], kept_paths=json.dumps(kept), annotated_path_shares=json.dumps(prepared["shares"].tolist()))
+            fields, usage = fit_local_block(prepared["lookup"], key, prepared["opportunities"], len(kept), prepared["subjects"], prepared["labels"], levels, anchors=not args.no_anchors, primer_offset=args.primer_offset, nodes=args.nodes, precursor=args.precursor)
             record.update({name: json.dumps(value) if isinstance(value, list) else value for name, value in fields.items()})
             record["raw_p_value"] = record["p_value"]
             for target, level, proportion in usage:

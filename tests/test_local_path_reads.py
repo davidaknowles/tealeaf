@@ -46,7 +46,7 @@ def test_pooled_path_shares_recovers_effective_length_composition():
 
 
 def test_projected_opportunities_equal_recomputed():
-    from extra_scripts.run_local_path_tests import project_opportunities
+    from tealeaf.sc.local_path_reads import project_opportunities
     ALT = [(100, 200), (300, 350), (500, 600)]
     PRE = [(100, 600)]
     full = path_read_opportunities([SKIP, INCLUDE, ALT, PRE], 50)

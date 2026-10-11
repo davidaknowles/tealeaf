@@ -149,6 +149,8 @@ def pooled_path_shares(class_counts, opportunities, *, pseudocount=.5, max_iter=
     lengths = n.sum(axis=0)
     if (lengths <= 0).any():
         raise ValueError("every path needs read opportunities")
+    if not masks:
+        raise ValueError("no molecules in the supplied classes")
     observed = np.asarray([opportunities[mask] for mask in masks])
     counts = np.asarray([class_counts[mask] for mask in masks], dtype=float)
     shares = np.full(n.shape[1], 1 / n.shape[1])
@@ -162,7 +164,33 @@ def pooled_path_shares(class_counts, opportunities, *, pseudocount=.5, max_iter=
     return shares
 
 
-def simulate_null_class_counts(totals, opportunities, shares, subjects, rng, *, subject_concentration=20., row_concentration=20.):
+def project_mask(mask, kept, n_paths, precursor):
+    """Old mask over n_paths mature paths plus precursor -> retained-path mask."""
+    value = sum(((mask >> old) & 1) << new for new, old in enumerate(kept))
+    if precursor:
+        value |= ((mask >> n_paths) & 1) << len(kept)
+    return value
+
+
+def project_opportunities(opportunities, kept, n_paths, precursor):
+    """Full-target opportunities (mature paths then precursor) -> retained targets.
+
+    A read's class over a subset of targets is its full class restricted to
+    them, so projection equals recomputation; reads from dropped targets are
+    discarded and mask-0 classes are removed.
+    """
+    targets = list(kept) + ([n_paths] if precursor else [])
+    projected = {}
+    for mask, vector in opportunities.items():
+        new = project_mask(int(mask), kept, n_paths, precursor)
+        if new:
+            values = np.asarray(vector, dtype=float)[targets]
+            if values.any():
+                projected[new] = projected.get(new, np.zeros(len(targets))) + values
+    return projected
+
+
+def simulate_null_class_counts(totals, opportunities, shares, subjects, rng, *, subject_concentration=20., row_concentration=20., row_scales=None):
     """Block-local class counts with no cell-type path effect.
 
     totals maps (row, primer) -> observed molecules; subjects gives each row's
@@ -170,8 +198,10 @@ def simulate_null_class_counts(totals, opportunities, shares, subjects, rng, *, 
     shares), each row composition ~ Dirichlet(row_concentration * subject
     composition), identical in expectation across that subject's cell types.
     Class probabilities are sum_s psi_s n[k][s] / sum_s psi_s L_s. None of the
-    concentrations means no variation at that level. Returns (row, primer,
-    mask) -> count.
+    concentrations means no variation at that level. row_scales, if given,
+    maps row -> per-target factors applied to that row's composition before
+    renormalizing (e.g. a cell-type-dependent precursor fraction). Returns
+    (row, primer, mask) -> count.
     """
     masks = sorted(opportunities)
     n = np.asarray([opportunities[mask] for mask in masks])
@@ -184,6 +214,9 @@ def simulate_null_class_counts(totals, opportunities, shares, subjects, rng, *, 
     for row in rows:
         mix = subject_mix[subjects[row]]
         psi = mix if row_concentration is None else rng.dirichlet(np.maximum(row_concentration * mix, 1e-6))
+        if row_scales is not None:
+            psi = psi * row_scales[row]
+            psi /= psi.sum()
         probabilities = n @ psi / (lengths @ psi)
         probabilities /= probabilities.sum()
         for (other, primer), total in totals.items():
