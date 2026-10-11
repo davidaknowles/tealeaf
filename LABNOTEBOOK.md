@@ -4471,3 +4471,37 @@ A label-blind primer offset gamma per block (`estimate_primer_offset`) evaluates
 Of the 38 genes that the SUPPA2-event junction local-read model calls nominal in both halves on the SUPPA2 universe, 20 had no two-path block test, which motivated the multi-path extension. The binomial random-intercept/slope model on identical counts is not more powerful than the Beta random-subject model, so model form was not the gap.
 
 Count-null calibration of the multi-path anchored test (`extra_scripts/assess_local_path_count_null.py`): 160 random full-data contrasts with observed subject/type/primer molecule totals, compositions drawn from Dirichlet(20 x pooled shares) per subject and Dirichlet(c x subject composition) per subject/type, 2 draws, failures as p = 1. Rejection at .05 for two-path/multi-path: .018/.010 (no row variation), .036/.070 (c = 20), .023/.030 (c = 5); none at .001.
+
+### 2026-10-11 Annotated block universe, precursor component, pseudoalignment, block structure
+
+Family. All annotated splice blocks with 2–S paths are collected (3,077 blocks), and a block is a hypothesis for a contrast when, after a label-blind screen that drops paths with pooled share below .02 (effective-length EM over both cell types), at least two paths remain (`prepare_block_test`). Blocks failing the screen are not hypotheses and leave the family rather than entering as p = 1.
+
+Precursor component. Each block gains a precursor target, the genomic window, whose read opportunities count start positions in the unspliced window. Class probabilities are P(k) ∝ x a_k + psi b_k + (1 − psi) d_k, with a_k, b_k, d_k the precursor, target-path and rest opportunities of class k and x ≥ 0 a per-row precursor scale profiled out. In mixture-weight form w = x A/(x A + M) (A, M the precursor and mature opportunity totals) the row log-likelihood is concave in w, so the profile is an exact one-dimensional root solve. Intronic molecules (STARsolo GX "-") are included when collected with `--include-unassigned`.
+
+Pseudoalignment. A block-local kallisto index (one target per path plus the precursor window) assigns about 20% of all reads without a genome decoy; with the genome as a D-list (distinguishing flanking k-mers) the off-target precursor-only assignments halve and the remainder are mostly genuine intronic reads, except in windows longer than about 0.7 Mb. Opportunities come from the k-mer intersection rule.
+
+Compiled kernels. The grid objective (row Beta integrals, per-subject posterior mode, adaptive Gauss–Hermite) and the precursor profile are numba kernels (`tealeaf/sc/path_marginal_kernels.py`) matching the numpy references to 1e-10; with stored read opportunities a test is about 5x faster and p-values agree to 2e-9.
+
+Count null (`extra_scripts/assess_annotated_count_null.py`, 200 random full-data tests x 2 draws): rejection at .05 is .021–.063 and at .001 is 0–.008 for subject concentration 20 with row concentration 20, 5 or none, and for a 4x cell-type shift in the precursor fraction, with and without the precursor component.
+
+Endpoints. LR is the normalized area of cumulative sign agreement over ranks 1–100 (AUC100, the metric of the comparator row); A100 is agreement at rank 100.
+
+| Variant | Replicated genes LeafCutter/MAJIQ/SUPPA2/SUPPA2-PA/hybrid/rMATS/scQuint | LR AUC100 | A100 |
+|---|---|---|---|
+| BAM reads, anchors, offset | 42/73/54/50/39/71/72 | .815 | .76 |
+| + precursor | 39/72/55/51/39/70/70 | .826 | .78 |
+| Pseudoalignment (D-list), anchors, offset | 40/66/54/54/37/65/67 | .826 | .78 |
+| BAM reads incl. intronic, anchors, offset | 39/66/56/53/34/71/70 | .821 | .76 |
+| Internal blocks only, BAM | 14/20/21/19/8/18/20 | .889 | .89 |
+| Internal blocks only, BAM + precursor | 14/19/19/17/8/17/19 | .924 | .90 |
+| Internal blocks only, pseudoalignment | 14/22/23/22/11/21/21 | .871 | .89 |
+| Internal blocks only, BAM incl. intronic | 12/22/23/21/11/23/23 | .917 | .88 |
+| Internal + distinct-junction terminal, BAM | 28/59/43/39/31/59/60 | .827 | .81 |
+| Internal + distinct-junction terminal, BAM + precursor | 27/58/39/36/30/55/58 | .824 | .78 |
+| Internal + distinct-junction terminal, pseudoalignment | 26/48/37/35/26/49/51 | .826 | .76 |
+| Internal + distinct-junction terminal, BAM incl. intronic | 27/54/43/40/28/57/58 | .852 | .81 |
+| Comparators | 26/38/21/5/49/12/56 | .865/.819/.907/.654/.637/.542/.825 | |
+
+Including intronic reads with the precursor component lowers split power (32/52/45/44/30/55/54 for BAM; pseudoalignment 33/57/47/45/33/58/59). No variant is unbeaten on both endpoints; the SUPPA2/Tealeaf hybrid's 49 split genes are not reached by any variant (its extra genes come from transcript-level PSI on low-coverage blocks, a non-local signal).
+
+Block structure (`block_structure`, annotation only). Internal blocks share both flanking constitutive exons (1,060 blocks); terminal blocks have alternative first or last exons, with distinct junction sets (580) or with two paths differing only in transcript start or end (1,437). In the pooled top 200 of the four variants, LR agreement is .885 for internal blocks (.886 two-path, .875 multi-path), .745 for terminal blocks with distinct junctions and .59 for terminal blocks with same-junction paths, so the earlier multi-path deficit was a terminal-block deficit. Terminal blocks carry large label-blind primer offsets (often |gamma| > 2), consistent with positional capture bias dominating their path classes. Restricting to internal blocks gives the best LR of any method (.924, above SUPPA2 .907) but too few replicated genes; the replicated split genes come largely from terminal blocks.

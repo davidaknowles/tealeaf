@@ -1,6 +1,6 @@
 import numpy as np
 
-from tealeaf.sc.local_path_reads import compatibility_mask, path_read_opportunities, path_structures
+from tealeaf.sc.local_path_reads import block_structure, compatibility_mask, path_read_opportunities, path_structures
 
 SKIP = [(100, 200), (500, 600)]
 INCLUDE = [(100, 200), (300, 400), (500, 600)]
@@ -56,3 +56,12 @@ def test_projected_opportunities_equal_recomputed():
         assert set(direct) == set(projected)
         for mask in direct:
             assert np.allclose(direct[mask], projected[mask])
+
+
+def test_block_structure():
+    cassette = [[[0, 100], [200, 300], [400, 500]], [[0, 100], [400, 500]]]
+    assert block_structure(cassette) == {"structure": "internal", "same_junctions": False}
+    first_exons = [[[0, 100], [400, 500]], [[200, 300], [400, 500]]]
+    assert block_structure(first_exons) == {"structure": "terminal", "same_junctions": False}
+    ends = [[[0, 100], [400, 500]], [[0, 100], [400, 800]]]
+    assert block_structure(ends) == {"structure": "terminal", "same_junctions": True}

@@ -32,6 +32,21 @@ def path_structures(paths):
     return exons, junctions, (start, end)
 
 
+def block_structure(paths):
+    """Anchor structure of S mature exon chains (precursor window excluded).
+
+    "internal" when every path starts with the same exon and ends with the same
+    exon (both constitutive anchors), "terminal" otherwise (alternative first or
+    last exons, transcript starts or ends). same_junctions is True when two
+    paths have identical junction sets, so only exon-boundary coverage
+    separates them.
+    """
+    exons, junctions, _ = path_structures(paths)
+    internal = len({chain[0] for chain in exons}) == 1 and len({chain[-1] for chain in exons}) == 1
+    same = any(junctions[i] == junctions[j] for i in range(len(junctions)) for j in range(i + 1, len(junctions)))
+    return {"structure": "internal" if internal else "terminal", "same_junctions": same}
+
+
 def compatibility_mask(blocks, junctions, structures):
     """Bitmask of paths compatible with one aligned read inside the window.
 

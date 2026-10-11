@@ -1,0 +1,8 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	direction_selected	direction_evaluable	direction_agreement	common_events	failed_tests_fold0	failed_tests_fold1
+LeafCutter	bam_ua_anchor, internal blocks	simes	simes	747	139	20	21	12	0.8535714285714285	0.8550273601100704	88	84	0.9761904761904762	614	21	17
+MAJIQ Heterogen	bam_ua_anchor, internal blocks	simes	simes	2499	479	32	34	22	0.8952205882352942	0.8241083397895831	168	159	0.949685534591195	1648	99	94
+SUPPA2	bam_ua_anchor, internal blocks	simes	simes	2342	457	36	35	23	0.8452380952380952	0.7464348910456937	156	148	0.9459459459459459	2042	246	246
+SUPPA2 primer-aware	bam_ua_anchor, internal blocks	simes	simes	2191	431	32	33	21	0.8617424242424243	0.7378532468804667	147	139	0.9424460431654677	1885	189	179
+SUPPA2/Tealeaf hybrid	bam_ua_anchor, internal blocks	simes	simes	1755	354	14	15	11	1.0	0.7827029326054097	81	79	0.9113924050632911	1107	148	151
+rMATS (paired)	bam_ua_anchor, internal blocks	simes	simes	3109	597	26	33	23	0.9393939393939394	0.8011152295034074	156	148	0.9459459459459459	2067	246	245
+scQuint	bam_ua_anchor, internal blocks	simes	simes	2599	506	34	34	23	0.8970588235294117	0.8143726104076203	168	159	0.949685534591195	1798	148	153

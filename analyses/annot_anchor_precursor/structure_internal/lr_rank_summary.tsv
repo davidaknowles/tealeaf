@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+annot_anchor_precursor, internal blocks	40	4459	37	0.925	0.941892455958157	all tested	calibrated then raw
+annot_anchor_precursor, internal blocks	100	4459	90	0.9	0.9239246859940542	all tested	calibrated then raw
+annot_anchor_precursor, internal blocks	200	4459	173	0.865	0.9027067067615979	all tested	calibrated then raw
+annot_anchor_precursor, internal blocks	40	4459	37	0.925	0.941892455958157	all tested	continuous raw
+annot_anchor_precursor, internal blocks	100	4459	90	0.9	0.9239246859940542	all tested	continuous raw
+annot_anchor_precursor, internal blocks	200	4459	173	0.865	0.9027067067615979	all tested	continuous raw
+annot_anchor_precursor, internal blocks	40	338	37	0.925	0.941892455958157	BH discoveries	calibrated then raw
+annot_anchor_precursor, internal blocks	100	338	90	0.9	0.9239246859940542	BH discoveries	calibrated then raw
+annot_anchor_precursor, internal blocks	200	338	173	0.865	0.9027067067615979	BH discoveries	calibrated then raw
+annot_anchor_precursor, internal blocks	40	338	37	0.925	0.941892455958157	BH discoveries	continuous raw
+annot_anchor_precursor, internal blocks	100	338	90	0.9	0.9239246859940542	BH discoveries	continuous raw
+annot_anchor_precursor, internal blocks	200	338	173	0.865	0.9027067067615979	BH discoveries	continuous raw

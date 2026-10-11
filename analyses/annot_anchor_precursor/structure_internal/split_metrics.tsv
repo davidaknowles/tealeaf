@@ -1,0 +1,8 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	direction_selected	direction_evaluable	direction_agreement	common_events	failed_tests_fold0	failed_tests_fold1
+LeafCutter	annot_anchor_precursor, internal blocks	simes	simes	747	139	20	23	14	0.8880434782608695	0.8436601135649581	93	84	0.9642857142857143	632	33	31
+MAJIQ Heterogen	annot_anchor_precursor, internal blocks	simes	simes	2499	479	30	32	19	0.8697916666666667	0.7743638816571171	165	150	0.9533333333333334	1611	98	95
+SUPPA2	annot_anchor_precursor, internal blocks	simes	simes	2342	457	29	31	19	0.8654060066740823	0.6969985686147869	158	144	0.9583333333333334	1801	116	118
+SUPPA2 primer-aware	annot_anchor_precursor, internal blocks	simes	simes	2191	431	26	29	17	0.8521220159151194	0.682762266632216	147	133	0.9548872180451128	1711	116	112
+SUPPA2/Tealeaf hybrid	annot_anchor_precursor, internal blocks	simes	simes	1755	354	12	17	8	0.9583333333333333	0.7454264414389828	86	78	0.9487179487179487	952	48	57
+rMATS (paired)	annot_anchor_precursor, internal blocks	simes	simes	3109	597	30	30	17	0.8833333333333333	0.7562184669622748	160	146	0.958904109589041	1832	120	120
+scQuint	annot_anchor_precursor, internal blocks	simes	simes	2599	506	30	32	19	0.8697916666666667	0.781644150577744	164	149	0.9530201342281879	1681	106	107

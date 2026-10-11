@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+pa_anchor, distinct_junctions blocks	40	6849	33	0.825	0.8812550195318888	all tested	calibrated then raw
+pa_anchor, distinct_junctions blocks	100	6849	76	0.76	0.8256722977714861	all tested	calibrated then raw
+pa_anchor, distinct_junctions blocks	200	6849	149	0.745	0.7849291248558936	all tested	calibrated then raw
+pa_anchor, distinct_junctions blocks	40	6849	33	0.825	0.8812550195318888	all tested	continuous raw
+pa_anchor, distinct_junctions blocks	100	6849	76	0.76	0.8256722977714861	all tested	continuous raw
+pa_anchor, distinct_junctions blocks	200	6849	149	0.745	0.7849291248558936	all tested	continuous raw
+pa_anchor, distinct_junctions blocks	40	683	33	0.825	0.8812550195318888	BH discoveries	calibrated then raw
+pa_anchor, distinct_junctions blocks	100	683	76	0.76	0.8256722977714861	BH discoveries	calibrated then raw
+pa_anchor, distinct_junctions blocks	200	683	149	0.745	0.7849291248558936	BH discoveries	calibrated then raw
+pa_anchor, distinct_junctions blocks	40	683	33	0.825	0.8812550195318888	BH discoveries	continuous raw
+pa_anchor, distinct_junctions blocks	100	683	76	0.76	0.8256722977714861	BH discoveries	continuous raw
+pa_anchor, distinct_junctions blocks	200	683	149	0.745	0.7849291248558936	BH discoveries	continuous raw

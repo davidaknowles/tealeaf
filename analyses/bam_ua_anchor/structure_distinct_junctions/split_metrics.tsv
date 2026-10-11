@@ -1,0 +1,8 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	direction_selected	direction_evaluable	direction_agreement	common_events	failed_tests_fold0	failed_tests_fold1
+LeafCutter	bam_ua_anchor, distinct_junctions blocks	simes	simes	747	139	36	38	27	0.8786549707602339	0.8287698412698413	168	153	0.9607843137254902	843	21	17
+MAJIQ Heterogen	bam_ua_anchor, distinct_junctions blocks	simes	simes	2499	479	69	72	54	0.8725845410628019	0.7430368323363988	355	318	0.9433962264150944	2460	161	129
+SUPPA2	bam_ua_anchor, distinct_junctions blocks	simes	simes	2342	457	62	60	43	0.8360215053763441	0.7029743672220267	310	276	0.9420289855072463	2654	257	260
+SUPPA2 primer-aware	bam_ua_anchor, distinct_junctions blocks	simes	simes	2191	431	59	58	40	0.820572764465225	0.6986753409306994	292	259	0.9382239382239382	2432	200	192
+SUPPA2/Tealeaf hybrid	bam_ua_anchor, distinct_junctions blocks	simes	simes	1755	354	44	38	28	0.8450956937799043	0.6818051125417977	168	146	0.9178082191780822	1599	197	192
+rMATS (paired)	bam_ua_anchor, distinct_junctions blocks	simes	simes	3109	597	77	76	57	0.8495386192754614	0.7110679507524361	355	316	0.9462025316455697	3085	347	311
+scQuint	bam_ua_anchor, distinct_junctions blocks	simes	simes	2599	506	76	79	58	0.8390239840106596	0.7205910836619305	354	314	0.9426751592356688	2715	236	208

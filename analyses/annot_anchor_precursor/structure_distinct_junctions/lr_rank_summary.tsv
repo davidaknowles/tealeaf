@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+annot_anchor_precursor, distinct_junctions blocks	40	7489	34	0.85	0.8510224780969097	all tested	calibrated then raw
+annot_anchor_precursor, distinct_junctions blocks	100	7489	78	0.78	0.824256037946717	all tested	calibrated then raw
+annot_anchor_precursor, distinct_junctions blocks	200	7489	154	0.77	0.8037608117298373	all tested	calibrated then raw
+annot_anchor_precursor, distinct_junctions blocks	40	7489	34	0.85	0.8510224780969097	all tested	continuous raw
+annot_anchor_precursor, distinct_junctions blocks	100	7489	78	0.78	0.824256037946717	all tested	continuous raw
+annot_anchor_precursor, distinct_junctions blocks	200	7489	154	0.77	0.8037608117298373	all tested	continuous raw
+annot_anchor_precursor, distinct_junctions blocks	40	773	34	0.85	0.8510224780969097	BH discoveries	calibrated then raw
+annot_anchor_precursor, distinct_junctions blocks	100	773	78	0.78	0.824256037946717	BH discoveries	calibrated then raw
+annot_anchor_precursor, distinct_junctions blocks	200	773	154	0.77	0.8037608117298373	BH discoveries	calibrated then raw
+annot_anchor_precursor, distinct_junctions blocks	40	773	34	0.85	0.8510224780969097	BH discoveries	continuous raw
+annot_anchor_precursor, distinct_junctions blocks	100	773	78	0.78	0.824256037946717	BH discoveries	continuous raw
+annot_anchor_precursor, distinct_junctions blocks	200	773	154	0.77	0.8037608117298373	BH discoveries	continuous raw

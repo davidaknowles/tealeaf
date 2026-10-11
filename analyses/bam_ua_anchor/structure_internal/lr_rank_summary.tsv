@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+bam_ua_anchor, internal blocks	40	4673	37	0.925	0.9275054219610223	all tested	calibrated then raw
+bam_ua_anchor, internal blocks	100	4673	88	0.88	0.9167265030769532	all tested	calibrated then raw
+bam_ua_anchor, internal blocks	200	4673	169	0.845	0.884965923878879	all tested	calibrated then raw
+bam_ua_anchor, internal blocks	40	4673	37	0.925	0.9275054219610223	all tested	continuous raw
+bam_ua_anchor, internal blocks	100	4673	88	0.88	0.9167265030769532	all tested	continuous raw
+bam_ua_anchor, internal blocks	200	4673	169	0.845	0.884965923878879	all tested	continuous raw
+bam_ua_anchor, internal blocks	40	345	37	0.925	0.9275054219610223	BH discoveries	calibrated then raw
+bam_ua_anchor, internal blocks	100	345	88	0.88	0.9167265030769532	BH discoveries	calibrated then raw
+bam_ua_anchor, internal blocks	200	345	169	0.845	0.884965923878879	BH discoveries	calibrated then raw
+bam_ua_anchor, internal blocks	40	345	37	0.925	0.9275054219610223	BH discoveries	continuous raw
+bam_ua_anchor, internal blocks	100	345	88	0.88	0.9167265030769532	BH discoveries	continuous raw
+bam_ua_anchor, internal blocks	200	345	169	0.845	0.884965923878879	BH discoveries	continuous raw

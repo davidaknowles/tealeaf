@@ -1,0 +1,11 @@
+{
+  "model": "annot_anchor",
+  "filter": "distinct_junctions",
+  "blocks_by_structure": {
+    "terminal, same junctions": 1437,
+    "internal": 1060,
+    "terminal, distinct junctions": 580
+  },
+  "retained_blocks": 1640,
+  "selection": "annotation-only block structure; fits and p-values unchanged"
+}
