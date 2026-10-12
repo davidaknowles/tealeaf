@@ -1,0 +1,12 @@
+{
+  "model": "annot_anchor_precursor",
+  "terminal_model": "term_junction",
+  "filter": "internal",
+  "blocks_by_structure": {
+    "terminal, same junctions": 1437,
+    "internal": 1060,
+    "terminal, distinct junctions": 580
+  },
+  "retained_blocks": 1060,
+  "selection": "annotation-only block structure; fits and p-values unchanged"
+}

@@ -9,7 +9,10 @@ usage (tealeaf.sc.local_path_reads.simulate_null_class_counts) and each draw
 is fitted with and without the precursor component. The "precursor shift"
 scenario multiplies the precursor fraction of level-b rows by --precursor-shift,
 a cell-type difference in unspliced RNA that leaves mature ratios unchanged.
-Failed fits stay as p = 1.
+Failed fits stay as p = 1. With --junction-only (a junction-only collection,
+--structure terminal blocks, same-junction paths merged as in
+run_local_path_tests.py --group-same-junctions) there is no precursor target,
+only the anchors model is fitted and the precursor-shift scenario is skipped.
 """
 
 import argparse
@@ -22,7 +25,7 @@ import numpy as np
 import pandas as pd
 
 from extra_scripts.run_local_path_tests import declared_tests
-from tealeaf.sc.local_path_reads import path_read_opportunities, pooled_path_shares, project_mask, project_opportunities, simulate_null_class_counts
+from tealeaf.sc.local_path_reads import block_structure, path_read_opportunities, same_junction_groups, pooled_path_shares, project_mask, project_opportunities, simulate_null_class_counts
 from tealeaf.sc.local_path_test import PRIMERS, fit_local_block, prepare_block_test
 
 READ_LENGTH = 151
@@ -42,11 +45,12 @@ def main():
     parser.add_argument("--stored-opportunities", action="store_true")
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--shard-count", type=int, default=1)
+    parser.add_argument("--junction-only", action="store_true")
     parser.add_argument("--collect", action="store_true")
     args = parser.parse_args()
     if args.collect:
         table = pd.concat([pd.read_csv(path, sep="\t") for path in sorted(args.output_dir.glob("shard_*/null.tsv"))], ignore_index=True)
-        if len(table) != 2 * args.hypotheses * args.draws * len(SCENARIOS):
+        if len(table) != (args.hypotheses * args.draws * (len(SCENARIOS) - 1) if args.junction_only else 2 * args.hypotheses * args.draws * len(SCENARIOS)):
             raise ValueError(f"incomplete null family: {len(table)} fits")
         table["multi_path"] = table.n_paths > 2
         summary = table.groupby(["scenario", "model", "multi_path"]).apply(lambda local: pd.Series({"trials": len(local), "converged": int(local.converged.sum()), **{f"reject_{level:g}": float((local.p_value < level).mean()) for level in (.05, .01, .001)}}), include_groups=False).reset_index()
@@ -58,6 +62,9 @@ def main():
     counts = pd.read_csv(args.local_reads / "counts.tsv.gz", sep="\t")
     counts = counts.loc[counts.subject.astype(str).isin(set(folds.subject))]
     blocks = json.load(gzip.open(args.local_reads / "blocks.json.gz", "rt"))
+    if args.junction_only:
+        blocks = {key: block for key, block in blocks.items() if block_structure(block["paths"][:len(block["signatures"])])["structure"] == "terminal"}
+        counts = counts.loc[counts.path_key.isin(set(blocks))]
     stored = json.load(gzip.open(args.local_reads / "opportunities.json.gz", "rt")) if args.stored_opportunities else None
     universe = pd.read_csv(args.universe, sep="\t", usecols=["gene_id", "pair_id"]).drop_duplicates()
     pairs = {(gene.split(".")[0], tuple(sorted(pair.split("||")))) for gene, pair in zip(universe.gene_id, universe.pair_id)}
@@ -73,7 +80,8 @@ def main():
         n_paths = len(blocks[key]["signatures"])
         full = {int(mask): np.asarray(vector, dtype=float) for mask, vector in (stored[key] if stored is not None else path_read_opportunities(blocks[key]["paths"], READ_LENGTH)).items()}
         try:
-            prepared = prepare_block_test(key, [entry for entry in grouped[key] if entry[1] in levels], full, n_paths, levels, precursor=True)
+            groups = same_junction_groups(blocks[key]["paths"][:n_paths]) if args.junction_only else None
+            prepared = prepare_block_test(key, [entry for entry in grouped[key] if entry[1] in levels], full, n_paths, levels, precursor=not args.junction_only, groups=groups)
         except ValueError:
             continue
         chosen.append((key, levels, prepared))
@@ -90,8 +98,10 @@ def main():
         for (_, _, _, _, mask), value in lookup.items():
             pooled[mask] = pooled.get(mask, 0.) + value
         shares = pooled_path_shares(pooled, opportunities)
-        mature_opportunities = project_opportunities(opportunities, list(range(size)), size, False)
+        mature_opportunities = opportunities if args.junction_only else project_opportunities(opportunities, list(range(size)), size, False)
         for scenario, (subject_concentration, row_concentration, shift) in SCENARIOS.items():
+            if shift and args.junction_only:
+                continue
             scales = {row: np.r_[np.ones(size), args.precursor_shift if label == 1 else 1.] for row, (_, label) in enumerate(rows)} if shift else None
             for draw in range(args.draws):
                 rng = np.random.default_rng(zlib.crc32(f"{test_id}|{scenario}|{draw}".encode()))
@@ -100,10 +110,11 @@ def main():
                 for (row, primer, mask), value in simulated.items():
                     subject, label = rows[row]
                     with_precursor[(key, subject, levels[label], primer, mask)] = float(value)
-                    new = project_mask(mask, list(range(size)), size, False)
+                    new = mask if args.junction_only else project_mask(mask, list(range(size)), size, False)
                     if new:
                         mature[(key, subject, levels[label], primer, new)] = mature.get((key, subject, levels[label], primer, new), 0.) + float(value)
-                for model, local_lookup, local_opportunities, precursor in (("anchors", mature, mature_opportunities, False), ("anchors + precursor", with_precursor, opportunities, True)):
+                models = (("anchors", mature, mature_opportunities, False),) + (() if args.junction_only else (("anchors + precursor", with_precursor, opportunities, True),))
+                for model, local_lookup, local_opportunities, precursor in models:
                     record = {"test_id": test_id, "n_paths": size, "scenario": scenario, "draw": draw, "model": model, "p_value": 1., "converged": False, "error": ""}
                     try:
                         fields, _ = fit_local_block(local_lookup, key, local_opportunities, size, prepared["subjects"], prepared["labels"], levels, anchors=True, primer_offset=True, precursor=precursor)

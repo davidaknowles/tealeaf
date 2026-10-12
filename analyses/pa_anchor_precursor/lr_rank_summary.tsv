@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+pa_anchor_precursor	40	15871	34	0.85	0.8888360495870167	all tested	calibrated then raw
+pa_anchor_precursor	100	15871	79	0.79	0.8515744359687853	all tested	calibrated then raw
+pa_anchor_precursor	200	15871	156	0.78	0.8146039525914339	all tested	calibrated then raw
+pa_anchor_precursor	40	15871	34	0.85	0.8888360495870167	all tested	continuous raw
+pa_anchor_precursor	100	15871	79	0.79	0.8515744359687853	all tested	continuous raw
+pa_anchor_precursor	200	15871	156	0.78	0.8146039525914339	all tested	continuous raw
+pa_anchor_precursor	40	881	34	0.85	0.8888360495870167	BH discoveries	calibrated then raw
+pa_anchor_precursor	100	881	79	0.79	0.8515744359687853	BH discoveries	calibrated then raw
+pa_anchor_precursor	200	881	156	0.78	0.8146039525914339	BH discoveries	calibrated then raw
+pa_anchor_precursor	40	881	34	0.85	0.8888360495870167	BH discoveries	continuous raw
+pa_anchor_precursor	100	881	79	0.79	0.8515744359687853	BH discoveries	continuous raw
+pa_anchor_precursor	200	881	156	0.78	0.8146039525914339	BH discoveries	continuous raw

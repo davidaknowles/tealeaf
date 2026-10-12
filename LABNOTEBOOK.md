@@ -4505,3 +4505,18 @@ Endpoints. LR is the normalized area of cumulative sign agreement over ranks 1�
 Including intronic reads with the precursor component lowers split power (32/52/45/44/30/55/54 for BAM; pseudoalignment 33/57/47/45/33/58/59). No variant is unbeaten on both endpoints; the SUPPA2/Tealeaf hybrid's 49 split genes are not reached by any variant (its extra genes come from transcript-level PSI on low-coverage blocks, a non-local signal).
 
 Block structure (`block_structure`, annotation only). Internal blocks share both flanking constitutive exons (1,060 blocks); terminal blocks have alternative first or last exons, with distinct junction sets (580) or with two paths differing only in transcript start or end (1,437). In the pooled top 200 of the four variants, LR agreement is .885 for internal blocks (.886 two-path, .875 multi-path), .745 for terminal blocks with distinct junctions and .59 for terminal blocks with same-junction paths, so the earlier multi-path deficit was a terminal-block deficit. Terminal blocks carry large label-blind primer offsets (often |gamma| > 2), consistent with positional capture bias dominating their path classes. Restricting to internal blocks gives the best LR of any method (.924, above SUPPA2 .907) but too few replicated genes; the replicated split genes come largely from terminal blocks.
+
+### 2026-10-12 Junction-only classes for terminal blocks
+
+Terminal blocks (alternative first or last exons) are refitted on junction-only read classes: a molecule enters only if one of its reads spans a variable junction (a junction of some but not all of the block's annotated mature paths), and read opportunities count only start positions whose read spans a variable junction (`path_read_opportunities(..., variable)`, `collect_library_path_reads(..., junction_only=True)`). Exon-body coverage, which in these blocks is dominated by positional capture bias, no longer enters. Paths with identical junction sets cannot be separated by such reads and are merged before the label-blind screen (`same_junction_groups`, `group_paths`: a class is compatible with a group if compatible with any member, the group opportunity is the members' mean); a block whose paths all share one junction set (alternative transcript start or end only) is not a hypothesis. Long-read counts of a merged path sum its member transcripts. 1.70M of 14.46M block-overlapping molecules span a variable junction. Internal blocks keep their all-read fits.
+
+Count null (`assess_annotated_count_null.py --junction-only`, 200 terminal tests x 2 draws): rejection at .05 is .018–.044 (two-path) and .038–.071 (multi-path, the high value at row concentration 5), at .01 0–.016, none at .001.
+
+| Internal-block fits + junction-only terminal blocks | Replicated genes LeafCutter/MAJIQ/SUPPA2/SUPPA2-PA/hybrid/rMATS/scQuint | LR AUC100 | A100 |
+|---|---|---|---|
+| BAM reads | 28/48/41/38/23/46/47 | .927 | .88 |
+| BAM + precursor | 28/46/40/37/23/45/46 | .936 | .90 |
+| BAM incl. intronic | 31/48/43/40/23/48/49 | .928 | .90 |
+| Comparators | 26/38/21/5/49/12/56 | .865/.819/.907/.654/.637/.542/.825 | |
+
+LR agreement of terminal tests in the top 100 rises from about .70 to .89, matching internal blocks (.87–.92). This is the first variant with the best LR of all methods; on split it beats LeafCutter, MAJIQ, SUPPA2, SUPPA2-PA and rMATS but not scQuint (49 vs 56) or the SUPPA2/Tealeaf hybrid (23 vs 49). Of the 27 scQuint-replicated genes we miss, 9 are nominal in both folds and 7 have no test: their terminal blocks merge to one junction group, their minor path is below the 2% share screen, or the block has more than 10 annotated paths and was not collected. Most of the hybrid's genes we miss are untested or weak in both folds.

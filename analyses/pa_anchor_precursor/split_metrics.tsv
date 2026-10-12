@@ -1,0 +1,8 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	direction_selected	direction_evaluable	direction_agreement	common_events	failed_tests_fold0	failed_tests_fold1
+LeafCutter	pa_anchor_precursor	simes	simes	747	139	47	43	33	0.8112320633349827	0.7697454045435173	187	161	0.9565217391304348	1664	27	33
+MAJIQ Heterogen	pa_anchor_precursor	simes	simes	2499	479	87	74	57	0.8404784094439267	0.6920102519397936	356	304	0.9506578947368421	4815	118	129
+SUPPA2	pa_anchor_precursor	simes	simes	2342	457	77	61	47	0.8322333404300617	0.6549591708654973	310	260	0.9615384615384616	5000	118	128
+SUPPA2 primer-aware	pa_anchor_precursor	simes	simes	2191	431	73	58	45	0.8455361360415683	0.6434083152835388	299	254	0.952755905511811	4654	117	122
+SUPPA2/Tealeaf hybrid	pa_anchor_precursor	simes	simes	1755	354	48	40	33	0.8479166666666667	0.5944115652315308	147	118	0.9491525423728814	2992	74	76
+rMATS (paired)	pa_anchor_precursor	simes	simes	3109	597	88	76	58	0.8319377990430622	0.6501862426673265	354	302	0.9536423841059603	5858	151	159
+scQuint	pa_anchor_precursor	simes	simes	2599	506	90	79	59	0.8359353023909986	0.6628045614896204	364	308	0.9448051948051948	5150	133	135

@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+bam_ua_anchor, internal blocks + term_junction terminal blocks	40	6927	37	0.925	0.9554441339095678	all tested	calibrated then raw
+bam_ua_anchor, internal blocks + term_junction terminal blocks	100	6927	90	0.9	0.9275024995889009	all tested	calibrated then raw
+bam_ua_anchor, internal blocks + term_junction terminal blocks	200	6927	176	0.88	0.9102748939434201	all tested	calibrated then raw
+bam_ua_anchor, internal blocks + term_junction terminal blocks	40	6927	37	0.925	0.9554441339095678	all tested	continuous raw
+bam_ua_anchor, internal blocks + term_junction terminal blocks	100	6927	90	0.9	0.9275024995889009	all tested	continuous raw
+bam_ua_anchor, internal blocks + term_junction terminal blocks	200	6927	176	0.88	0.9102748939434201	all tested	continuous raw
+bam_ua_anchor, internal blocks + term_junction terminal blocks	40	615	37	0.925	0.9554441339095678	BH discoveries	calibrated then raw
+bam_ua_anchor, internal blocks + term_junction terminal blocks	100	615	90	0.9	0.9275024995889009	BH discoveries	calibrated then raw
+bam_ua_anchor, internal blocks + term_junction terminal blocks	200	615	176	0.88	0.9102748939434201	BH discoveries	calibrated then raw
+bam_ua_anchor, internal blocks + term_junction terminal blocks	40	615	37	0.925	0.9554441339095678	BH discoveries	continuous raw
+bam_ua_anchor, internal blocks + term_junction terminal blocks	100	615	90	0.9	0.9275024995889009	BH discoveries	continuous raw
+bam_ua_anchor, internal blocks + term_junction terminal blocks	200	615	176	0.88	0.9102748939434201	BH discoveries	continuous raw
