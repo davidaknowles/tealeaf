@@ -4,7 +4,8 @@ Read-end profiles f_m(d3) and g_m(d5) give the relative density of reads of
 primer m whose 3'-most transcript base lies d3 bases (spliced) from the
 transcript 3' end and d5 bases from its 5' end, relative to the middle of the
 transcript. They are estimated label-blind from single-transcript genes
-(end_profiles) and are 1 beyond their last bin. A read start position on a
+(end_profiles) and keep their last bin's value beyond it; a constant weight
+far from both ends cancels within a block. A read start position on a
 block path is weighted by f_m(d3) g_m(d5) averaged over the annotated
 transcripts of the path (path_end_distances), and the weighted start
 positions give primer-specific read opportunities
@@ -35,35 +36,46 @@ def transcript_end_distance(exons, strand, position):
     return None
 
 
-def end_profiles(gene_counts, bin_width=25, n_bins=80, middle=2000):
+def end_profiles(gene_counts, bin_width=25, n_bins=80, middle=2000, smooth_from=8, window=5, clip=50.):
     """Read-end profiles from per-gene read-end histograms.
 
     gene_counts is an iterable of (length, counts3, counts5, middle_count)
     with length the spliced transcript length, counts3 / counts5 read-end
     counts in n_bins bins of bin_width bases from the 3' / 5' end, and
-    middle_count the reads ending at least middle bases from both ends.
-    Returns (f, g), each n_bins relative densities: summed bin counts over the
-    summed expected count at the middle density (ratio of sums over genes).
+    middle_count the reads ending at least middle bases from both ends. Each
+    gene's bin counts are divided by its expected count at its middle
+    density (ratios clipped at clip) and averaged over genes with weights
+    min(expected count, median expected count), so that no single highly
+    expressed gene dominates. Bins from smooth_from on are smoothed by a
+    centred moving average of window bins. Returns (f, g).
     """
-    observed3, observed5, expected = np.zeros(n_bins), np.zeros(n_bins), 0.
+    ratios3, ratios5, expected = [], [], []
     for length, counts3, counts5, middle_count in gene_counts:
         span = length - 2 * middle
-        if span <= 0:
+        if span <= 0 or middle_count <= 0:
             continue
-        observed3 += counts3
-        observed5 += counts5
-        expected += middle_count / span * bin_width
-    if expected <= 0:
-        raise ValueError("no gene has a middle region")
-    return observed3 / expected, observed5 / expected
+        value = middle_count / span * bin_width
+        expected.append(value)
+        ratios3.append(np.clip(np.asarray(counts3, dtype=float) / value, 0., clip))
+        ratios5.append(np.clip(np.asarray(counts5, dtype=float) / value, 0., clip))
+    if not expected:
+        raise ValueError("no gene has reads in a middle region")
+    weights = np.minimum(expected, np.median(expected))
+    profiles = []
+    for ratios in (ratios3, ratios5):
+        profile = weights @ np.asarray(ratios) / weights.sum()
+        tail = profile[smooth_from:]
+        padded = np.r_[np.full(window // 2, tail[0]), tail, np.full(window // 2, tail[-1])]
+        profile[smooth_from:] = np.convolve(padded, np.ones(window) / window, mode="valid")
+        profiles.append(profile)
+    return tuple(profiles)
 
 
 def profile_weight(profile, distance, bin_width):
-    """Relative density at integer distances (array); 0 for negative distances, 1 beyond the profile."""
+    """Relative density at integer distances (array); 0 for negative distances, the last bin's value beyond the profile."""
     distance = np.asarray(distance)
-    index = np.floor_divide(distance, bin_width)
-    inside = (distance >= 0) & (index < len(profile))
-    return np.where(distance < 0, 0., np.where(inside, np.asarray(profile)[np.clip(index, 0, len(profile) - 1)], 1.))
+    index = np.clip(np.floor_divide(distance, bin_width), 0, len(profile) - 1)
+    return np.where(distance < 0, 0., np.asarray(profile)[index])
 
 
 def path_end_distances(path, transcripts, strand):
