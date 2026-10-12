@@ -124,8 +124,11 @@ def load_path_usage(root, selected_tests, *, require_complete=False):
     return table.groupby(["test_id", "cell_type", "path_number"], as_index=False)["proportion"].mean()
 
 
-def block_feature_rows(block, tested_signatures, features):
-    signature_to_path = {tuple(tuple(interval) for interval in signature): index + 1 for index, signature in enumerate(tested_signatures)}
+def block_feature_rows(block, tested_signatures, features, members=None):
+    """Long-read feature rows of a block's tested paths; members (one list of
+    signatures per tested path) maps several annotated paths to one tested path."""
+    members = [[signature] for signature in tested_signatures] if members is None else members
+    signature_to_path = {tuple(tuple(interval) for interval in signature): index + 1 for index, group in enumerate(members) for signature in group}
     transcript_paths = {}
     for transcript, path_index in zip(block["transcripts"], block["path_index"]):
         if path_index < 0:

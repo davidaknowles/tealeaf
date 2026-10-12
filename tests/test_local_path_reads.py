@@ -1,6 +1,6 @@
 import numpy as np
 
-from tealeaf.sc.local_path_reads import block_structure, compatibility_mask, path_read_opportunities, path_structures
+from tealeaf.sc.local_path_reads import block_structure, compatibility_mask, group_paths, path_read_opportunities, path_structures, same_junction_groups, variable_junctions
 
 SKIP = [(100, 200), (500, 600)]
 INCLUDE = [(100, 200), (300, 400), (500, 600)]
@@ -65,3 +65,20 @@ def test_block_structure():
     assert block_structure(first_exons) == {"structure": "terminal", "same_junctions": False}
     ends = [[[0, 100], [400, 500]], [[0, 100], [400, 800]]]
     assert block_structure(ends) == {"structure": "terminal", "same_junctions": True}
+
+
+def test_junction_only_opportunities_and_groups():
+    paths = [[(0, 100), (400, 500)], [(200, 300), (400, 500)], [(250, 300), (400, 500)]]
+    variable = variable_junctions(paths)
+    assert variable == {(100, 400), (300, 400)}
+    groups = same_junction_groups(paths)
+    assert groups == [[0], [1, 2]]
+    opportunities = path_read_opportunities(paths, 151, variable)
+    full = path_read_opportunities(paths, 151)
+    assert all(np.all(opportunities[mask] <= full[mask]) for mask in opportunities)
+    assert opportunities[1][0] == 150
+    entries = [("s", "a", "dT", 1, 3.), ("s", "a", "dT", 6, 2.), ("s", "a", "dT", 2, 1.)]
+    grouped_entries, grouped, kept = group_paths(entries, opportunities, groups, 3)
+    assert kept == groups
+    assert [entry[3] for entry in grouped_entries] == [1, 2, 2]
+    np.testing.assert_allclose(sum(grouped.values()), [150., 150.])

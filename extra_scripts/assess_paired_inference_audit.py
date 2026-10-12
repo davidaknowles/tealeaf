@@ -76,10 +76,12 @@ def long_read_assessment(tests, root, matrix_dir, gtf, block_path, output, model
         if row.block_id not in blocks:
             continue
         signatures = json.loads(row.path_signatures)
-        key = (row.block_id, row.path_signatures)
+        members = getattr(row, "path_members", None)
+        members = json.loads(members) if isinstance(members, str) else None
+        key = (row.block_id, row.path_signatures, json.dumps(members))
         if key not in count_cache:
             gene = row.gene_id.split(".")[0]
-            local = block_feature_rows(blocks[row.block_id], signatures, feature_groups.get(gene, features.iloc[:0]))
+            local = block_feature_rows(blocks[row.block_id], signatures, feature_groups.get(gene, features.iloc[:0]), members)
             path_rows = {path: frame.row.to_numpy(int) for path, frame in local.groupby("path_number")}
             complete = set(path_rows) == set(range(1, len(signatures) + 1))
             counts = {group: np.asarray([matrix[path_rows.get(path, np.empty(0, int))][:, indices].sum() for path in range(1, len(signatures) + 1)], dtype=float) for group, indices in groups.items()}

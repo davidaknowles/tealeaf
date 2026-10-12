@@ -5,7 +5,9 @@ Blocks are the distinct (block, path set) pairs in the given pairwise
 candidate caches. Libraries, runs, indexes and production-QC barcode groups
 come from the existing local-read recipe. Run one task per library and gene
 shard, then --collate, which also stores every block's read opportunities
-(read length READ_LENGTH) for the tests.
+(read length READ_LENGTH) for the tests. With --junction-only, molecules and
+opportunities are restricted to reads spanning a variable junction of the
+block's mature paths; pass it to both steps.
 """
 
 import argparse
@@ -20,13 +22,18 @@ import zlib
 import pandas as pd
 
 from tealeaf.sc.junction_paths import block_path_exons
-from tealeaf.sc.local_path_reads import collect_library_path_reads, path_read_opportunities
+from tealeaf.sc.local_path_reads import collect_library_path_reads, path_read_opportunities, variable_junctions
 
 READ_LENGTH = 151
 
 
-def block_opportunities(paths):
-    return {str(mask): vector.tolist() for mask, vector in path_read_opportunities(paths, READ_LENGTH).items()}
+def block_opportunities(block, junction_only=False):
+    variable = variable_junctions(block["paths"][:len(block["signatures"])]) if junction_only else None
+    return {str(mask): vector.tolist() for mask, vector in path_read_opportunities(block["paths"], READ_LENGTH, variable).items()}
+
+
+def junction_block_opportunities(block):
+    return block_opportunities(block, True)
 
 
 def anchor(value):
@@ -87,6 +94,7 @@ def main():
     parser.add_argument("--collate", action="store_true")
     parser.add_argument("--annotated", action="store_true", help="all annotated blocks of the candidate genes, with a precursor path")
     parser.add_argument("--include-unassigned", action="store_true", help='also use alignments with STARsolo GX "-" (intronic reads)')
+    parser.add_argument("--junction-only", action="store_true", help="only molecules with a read spanning a variable junction of the block")
     args = parser.parse_args()
     recipe = json.loads(args.recipe.read_text())
     if args.collate:
@@ -101,7 +109,7 @@ def main():
         with gzip.open(args.output_dir / "blocks.json.gz", "wt") as handle:
             json.dump(blocks, handle)
         with Pool(len(os.sched_getaffinity(0))) as pool:
-            opportunities = dict(zip(blocks, pool.map(block_opportunities, [block["paths"] for block in blocks.values()], chunksize=8)))
+            opportunities = dict(zip(blocks, pool.map(junction_block_opportunities if args.junction_only else block_opportunities, list(blocks.values()), chunksize=8)))
         with gzip.open(args.output_dir / "opportunities.json.gz", "wt") as handle:
             json.dump(opportunities, handle)
         filters = {}
@@ -117,7 +125,7 @@ def main():
     local = {key: block for key, block in blocks.items() if block["gene_id"] in selected_genes}
     library = recipe["bams"][args.library_index]
     groups = {barcode: tuple(group) for barcode, group in library["barcode_groups"].items()}
-    counts, filters = collect_library_path_reads([run["path"] for run in library["runs"]], [run["index"] for run in library["runs"]], groups, local, include_unassigned=args.include_unassigned)
+    counts, filters = collect_library_path_reads([run["path"] for run in library["runs"]], [run["index"] for run in library["runs"]], groups, local, include_unassigned=args.include_unassigned, junction_only=args.junction_only)
     out = args.output_dir / f"part_{args.library_index}_{args.gene_shard}"
     out.mkdir(parents=True, exist_ok=True)
     rows = [{"path_key": key[0], "subject": key[1], "cell_type": key[2], "primer": key[3], "mask": key[4], "count": value} for key, value in counts.items()]

@@ -47,6 +47,21 @@ def block_structure(paths):
     return {"structure": "internal" if internal else "terminal", "same_junctions": same}
 
 
+def variable_junctions(paths):
+    """Junctions in some but not all of the mature exon chains paths."""
+    _, junctions, _ = path_structures(paths)
+    return set().union(*junctions) - set.intersection(*junctions)
+
+
+def same_junction_groups(paths):
+    """Path indices grouped by identical junction sets, in first-index order."""
+    _, junctions, _ = path_structures(paths)
+    groups = {}
+    for index, junction_set in enumerate(junctions):
+        groups.setdefault(frozenset(junction_set), []).append(index)
+    return sorted(groups.values())
+
+
 def compatibility_mask(blocks, junctions, structures):
     """Bitmask of paths compatible with one aligned read inside the window.
 
@@ -66,13 +81,14 @@ def compatibility_mask(blocks, junctions, structures):
     return mask
 
 
-def path_read_opportunities(paths, read_length):
+def path_read_opportunities(paths, read_length, variable=None):
     """n[mask] -> length-S vector of start positions per path yielding mask.
 
     Each path's local transcript is its exon chain, reads of read_length start
     at every position that overlaps it by at least one base, and the part
     outside the chain is clipped as reads leaving the window are in the data.
-    Mask 0 positions are not returned.
+    Mask 0 positions are not returned. With a set of variable junctions, only
+    reads spanning at least one of them are counted (junction-only classes).
     """
     structures = path_structures(paths)
     opportunities = defaultdict(lambda: np.zeros(len(paths)))
@@ -87,13 +103,15 @@ def path_read_opportunities(paths, read_length):
                 if low < high:
                     blocks.append((a + low - offsets[exon], a + high - offsets[exon]))
             junctions = [(blocks[i][1], blocks[i + 1][0]) for i in range(len(blocks) - 1) if blocks[i][1] < blocks[i + 1][0]]
+            if variable is not None and not variable.intersection(junctions):
+                continue
             mask = compatibility_mask(blocks, junctions, structures)
             if mask:
                 opportunities[mask][index] += 1
     return dict(opportunities)
 
 
-def collect_library_path_reads(bam_paths, index_paths, barcode_groups, blocks, *, include_unassigned=False):
+def collect_library_path_reads(bam_paths, index_paths, barcode_groups, blocks, *, include_unassigned=False, junction_only=False):
     """UMI-molecule path classes for one physical library.
 
     blocks maps block_id -> dict(gene_id, chromosome, paths). Keys are exact
@@ -102,7 +120,10 @@ def collect_library_path_reads(bam_paths, index_paths, barcode_groups, blocks, *
     block window. Only primary NH=1 alignments with CB, UB and a unique
     matching GX gene are used; with include_unassigned, alignments without a
     GX gene (STARsolo GX "-" or absent, mostly intronic reads) are also used,
-    so precursor reads inside the window are counted. Returns counts[(block_id, *group, mask)] and
+    so precursor reads inside the window are counted. With junction_only, a
+    molecule is counted only if one of its reads spans a variable junction of
+    the block's mature paths (the first len(signatures) paths when the block
+    has signatures). Returns counts[(block_id, *group, mask)] and
     filter counters; mask-0 (incompatible or conflicting) molecules are
     counted separately.
     """
@@ -110,15 +131,16 @@ def collect_library_path_reads(bam_paths, index_paths, barcode_groups, blocks, *
 
     by_gene = defaultdict(list)
     for block_id, block in blocks.items():
-        by_gene[(block["chromosome"], block["gene_id"])].append((block_id, path_structures(block["paths"])))
+        mature = block["paths"][:len(block["signatures"])] if "signatures" in block else block["paths"]
+        by_gene[(block["chromosome"], block["gene_id"])].append((block_id, path_structures(block["paths"]), variable_junctions(mature)))
     counts, filters = defaultdict(int), defaultdict(int)
     with ExitStack() as stack:
         sources = [stack.enter_context(pysam.AlignmentFile(str(bam), "rb", index_filename=str(index))) for bam, index in zip(bam_paths, index_paths)]
         for (chromosome, gene), local in sorted(by_gene.items()):
-            left = min(structures[2][0] for _, structures in local)
-            right = max(structures[2][1] for _, structures in local)
+            left = min(structures[2][0] for _, structures, _ in local)
+            right = max(structures[2][1] for _, structures, _ in local)
             gene_stable = gene.split(".", 1)[0]
-            masks = {}
+            masks, informative = {}, set()
             for source in sources:
                 if chromosome not in source.references:
                     continue
@@ -140,15 +162,20 @@ def collect_library_path_reads(bam_paths, index_paths, barcode_groups, blocks, *
                         continue
                     aligned = tuple(alignment.get_blocks())
                     junctions = tuple(_alignment_junctions(alignment))
-                    for block_id, structures in local:
+                    for block_id, structures, variable in local:
                         start, end = structures[2]
                         if not any(a < end and b > start for a, b in aligned):
                             continue
                         key = (block_id, barcode, str(alignment.get_tag("UB")))
+                        if variable.intersection(junctions):
+                            informative.add(key)
                         mask = compatibility_mask(aligned, junctions, structures)
                         masks[key] = masks.get(key, -1) & mask if key in masks else mask
-            for (block_id, barcode, _), mask in masks.items():
-                if mask:
+            for key, mask in masks.items():
+                block_id, barcode, _ = key
+                if junction_only and key not in informative:
+                    filters["no_variable_junction"] += 1
+                elif mask:
                     counts[(block_id, *barcode_groups[barcode], mask)] += 1
                 else:
                     filters["incompatible_molecules"] += 1
@@ -182,6 +209,35 @@ def pooled_path_shares(class_counts, opportunities, *, pseudocount=.5, max_iter=
             return updated
         shares = updated
     return shares
+
+
+def group_paths(entries, opportunities, groups, n_paths):
+    """Merge mature paths into groups for junction-only classes.
+
+    entries are (subject, cell type, primer, mask, molecules) tuples with masks
+    over n_paths mature paths (a precursor bit, if any, is dropped), groups
+    are lists of path indices (same_junction_groups). A class is compatible
+    with a group when it is compatible with any member, and the group's
+    opportunity is the mean of its members'. Groups without opportunities
+    (no read spanning one of their variable junctions) are dropped. Returns
+    entries, opportunities and the retained groups.
+    """
+    lengths = np.zeros(len(groups))
+    for vector in opportunities.values():
+        lengths += [np.mean([vector[index] for index in group]) for group in groups]
+    groups = [group for group, length in zip(groups, lengths) if length > 0]
+    bits = [sum(1 << index for index in group) for group in groups]
+
+    def regroup(mask):
+        return sum(1 << position for position, member in enumerate(bits) if mask & member)
+
+    grouped = defaultdict(lambda: np.zeros(len(groups)))
+    for mask, vector in opportunities.items():
+        new = regroup(mask)
+        if new:
+            grouped[new] += [np.mean([vector[index] for index in group]) for group in groups]
+    regrouped = [(subject, cell_type, primer, regroup(mask), value) for subject, cell_type, primer, mask, value in entries]
+    return [entry for entry in regrouped if entry[3]], dict(grouped), groups
 
 
 def project_mask(mask, kept, n_paths, precursor):

@@ -9,8 +9,12 @@ whose label-blind pooled share is below --min-share are dropped and read
 classes are projected onto the retained paths. Tests left with fewer than two
 paths fail this label-blind screen; their rows are kept in the shards with
 screened = False and are excluded from the merged family, while failed fits of
-screened tests stay as p = 1. Output follows the run_paired_path_test.py shard
-layout for the split and long-read assessments.
+screened tests stay as p = 1. --structure restricts the family to internal
+or terminal blocks (block_structure of the annotated mature paths). With
+--group-same-junctions (for junction-only collections), paths with identical
+junction sets are merged before the screen; each reported path then lists its
+member signatures in path_members. Output follows the run_paired_path_test.py
+shard layout for the split and long-read assessments.
 """
 
 import argparse
@@ -23,7 +27,7 @@ import numpy as np
 import pandas as pd
 
 from tealeaf.sc.junction_benchmark import benjamini_hochberg
-from tealeaf.sc.local_path_reads import path_read_opportunities
+from tealeaf.sc.local_path_reads import block_structure, path_read_opportunities, same_junction_groups
 from tealeaf.sc.local_path_test import fit_local_block, prepare_block_test
 
 READ_LENGTH = 151
@@ -86,6 +90,8 @@ def main():
     parser.add_argument("--count-only", action="store_true")
     parser.add_argument("--universe", type=Path, help="matched split universes (gene_id, pair_id 'A||B'); their contrasts are tested")
     parser.add_argument("--lr-cell-types", help="semicolon-separated cell types with a long-read mapping; all their pairs are tested")
+    parser.add_argument("--structure", choices=("all", "internal", "terminal"), default="all")
+    parser.add_argument("--group-same-junctions", action="store_true")
     parser.add_argument("--merge", action="store_true")
     args = parser.parse_args()
     if args.merge:
@@ -95,6 +101,9 @@ def main():
     subjects = set(folds.subject if args.cohort == "full" else folds.loc[folds.fold.eq(int(args.cohort)), "subject"])
     counts = pd.read_csv(args.local_reads / "counts.tsv.gz", sep="\t")
     blocks = json.load(gzip.open(args.local_reads / "blocks.json.gz", "rt"))
+    if args.structure != "all":
+        blocks = {key: block for key, block in blocks.items() if block_structure(block["paths"][:len(block["signatures"])])["structure"] == args.structure}
+        counts = counts.loc[counts.path_key.isin(set(blocks))]
     stored_path = args.local_reads / "opportunities.json.gz"
     if args.stored_opportunities and not stored_path.exists():
         raise FileNotFoundError(stored_path)
@@ -133,12 +142,16 @@ def main():
                 opportunity_cache[key] = stored[key] if stored is not None else path_read_opportunities(block["paths"], READ_LENGTH)
             full_opportunities = {int(mask): np.asarray(vector, dtype=float) for mask, vector in opportunity_cache[key].items()}
             try:
-                prepared = prepare_block_test(key, entries, full_opportunities, n_paths, levels, args.min_share, args.precursor)
+                groups = same_junction_groups(block["paths"][:n_paths]) if args.group_same_junctions else None
+                prepared = prepare_block_test(key, entries, full_opportunities, n_paths, levels, args.min_share, args.precursor, groups)
             except ValueError:
                 record["screened"] = False
                 raise
             kept = prepared["kept"]
-            signatures = [block["signatures"][index] for index in kept]
+            members = [[block["signatures"][index] for index in (prepared["groups"][position] if prepared["groups"] is not None else [position])] for position in kept]
+            signatures = [member[0] for member in members]
+            if prepared["groups"] is not None:
+                record["path_members"] = json.dumps(members)
             record.update(n_paths=len(kept), path_signatures=json.dumps(signatures), median_gene_umis=prepared["median_molecules"], kept_paths=json.dumps(kept), annotated_path_shares=json.dumps(prepared["shares"].tolist()))
             fields, usage = fit_local_block(prepared["lookup"], key, prepared["opportunities"], len(kept), prepared["subjects"], prepared["labels"], levels, anchors=not args.no_anchors, primer_offset=args.primer_offset, nodes=args.nodes, precursor=args.precursor)
             record.update({name: json.dumps(value) if isinstance(value, list) else value for name, value in fields.items()})
@@ -152,7 +165,7 @@ def main():
     args.output_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows_out).to_csv(args.output_dir / "paired_path.tsv", sep="\t", index=False, na_rep="NA")
     pd.DataFrame(usage_out, columns=["test_id", "block_id", "gene_id", "subject", "cell_type", "path", "path_number", "path_signature", "proportion"]).to_csv(args.output_dir / "path_usage.tsv", sep="\t", index=False, na_rep="NA")
-    settings = {"subject_fold": None if args.cohort == "full" else int(args.cohort), "test_effect": "cell_type_pairwise", "min_subjects": args.min_subjects, "min_molecules": args.min_molecules, "min_share": args.min_share, "anchors": not args.no_anchors, "precursor": args.precursor, "primer_offset": args.primer_offset, "stored_opportunities": stored is not None, "local_reads": str(args.local_reads), "read_length": READ_LENGTH}
+    settings = {"subject_fold": None if args.cohort == "full" else int(args.cohort), "test_effect": "cell_type_pairwise", "min_subjects": args.min_subjects, "min_molecules": args.min_molecules, "min_share": args.min_share, "anchors": not args.no_anchors, "precursor": args.precursor, "primer_offset": args.primer_offset, "stored_opportunities": stored is not None, "structure": args.structure, "group_same_junctions": args.group_same_junctions, "local_reads": str(args.local_reads), "read_length": READ_LENGTH}
     summary = {"candidates": len(rows_out), "converged": int(sum(row["converged"] for row in rows_out)), "elapsed_seconds": time.monotonic() - started, "candidate_settings": settings}
     (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps({key: value for key, value in summary.items() if key != "candidate_settings"}), flush=True)
