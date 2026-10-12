@@ -7,7 +7,7 @@ come from the existing local-read recipe. Run one task per library and gene
 shard, then --collate, which also stores every block's read opportunities
 (read length READ_LENGTH) for the tests. With --junction-only, molecules and
 opportunities are restricted to reads spanning a variable junction of the
-block's mature paths; pass it to both steps.
+block's mature paths; pass it, and --max-paths, to both steps.
 """
 
 import argparse
@@ -82,6 +82,11 @@ def annotated_blocks(candidate_caches, block_cache, max_paths=10):
     return blocks
 
 
+def select_blocks(args):
+    function = annotated_blocks if args.annotated else declared_blocks
+    return function(args.candidate_cache, args.block_cache) if args.max_paths is None else function(args.candidate_cache, args.block_cache, args.max_paths)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--recipe", type=Path, required=True)
@@ -95,6 +100,7 @@ def main():
     parser.add_argument("--annotated", action="store_true", help="all annotated blocks of the candidate genes, with a precursor path")
     parser.add_argument("--include-unassigned", action="store_true", help='also use alignments with STARsolo GX "-" (intronic reads)')
     parser.add_argument("--junction-only", action="store_true", help="only molecules with a read spanning a variable junction of the block")
+    parser.add_argument("--max-paths", type=int, help="largest annotated path count per block (default 10 with --annotated, 30 otherwise)")
     args = parser.parse_args()
     recipe = json.loads(args.recipe.read_text())
     if args.collate:
@@ -105,7 +111,7 @@ def main():
         table = pd.concat([pd.read_csv(path, sep="\t") for path in parts], ignore_index=True)
         table = table.groupby(["path_key", "subject", "cell_type", "primer", "mask"], as_index=False)["count"].sum()
         table.to_csv(args.output_dir / "counts.tsv.gz", sep="\t", index=False)
-        blocks = (annotated_blocks if args.annotated else declared_blocks)(args.candidate_cache, args.block_cache)
+        blocks = select_blocks(args)
         with gzip.open(args.output_dir / "blocks.json.gz", "wt") as handle:
             json.dump(blocks, handle)
         with Pool(len(os.sched_getaffinity(0))) as pool:
@@ -119,7 +125,7 @@ def main():
         (args.output_dir / "filters.json").write_text(json.dumps(filters, indent=2) + "\n")
         print(f"{len(blocks)} blocks, {len(table)} count rows, {int(table['count'].sum())} molecules; {filters}", flush=True)
         return
-    blocks = (annotated_blocks if args.annotated else declared_blocks)(args.candidate_cache, args.block_cache)
+    blocks = select_blocks(args)
     genes = sorted({block["gene_id"] for block in blocks.values()})
     selected_genes = set(genes[args.gene_shard::args.gene_shards])
     local = {key: block for key, block in blocks.items() if block["gene_id"] in selected_genes}

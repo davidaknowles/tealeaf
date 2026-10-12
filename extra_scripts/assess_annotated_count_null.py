@@ -13,6 +13,8 @@ Failed fits stay as p = 1. With --junction-only (a junction-only collection,
 --structure terminal blocks, same-junction paths merged as in
 run_local_path_tests.py --group-same-junctions) there is no precursor target,
 only the anchors model is fitted and the precursor-shift scenario is skipped.
+--structure restricts the sampled blocks and --min-share is the label-blind
+path screen of run_local_path_tests.py.
 """
 
 import argparse
@@ -46,6 +48,8 @@ def main():
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--shard-count", type=int, default=1)
     parser.add_argument("--junction-only", action="store_true")
+    parser.add_argument("--structure", choices=("all", "internal", "terminal"), help="block structure to sample (default terminal with --junction-only, all otherwise)")
+    parser.add_argument("--min-share", type=float, default=.02)
     parser.add_argument("--collect", action="store_true")
     args = parser.parse_args()
     if args.collect:
@@ -62,8 +66,9 @@ def main():
     counts = pd.read_csv(args.local_reads / "counts.tsv.gz", sep="\t")
     counts = counts.loc[counts.subject.astype(str).isin(set(folds.subject))]
     blocks = json.load(gzip.open(args.local_reads / "blocks.json.gz", "rt"))
-    if args.junction_only:
-        blocks = {key: block for key, block in blocks.items() if block_structure(block["paths"][:len(block["signatures"])])["structure"] == "terminal"}
+    structure = args.structure or ("terminal" if args.junction_only else "all")
+    if structure != "all":
+        blocks = {key: block for key, block in blocks.items() if block_structure(block["paths"][:len(block["signatures"])])["structure"] == structure}
         counts = counts.loc[counts.path_key.isin(set(blocks))]
     stored = json.load(gzip.open(args.local_reads / "opportunities.json.gz", "rt")) if args.stored_opportunities else None
     universe = pd.read_csv(args.universe, sep="\t", usecols=["gene_id", "pair_id"]).drop_duplicates()
@@ -81,7 +86,7 @@ def main():
         full = {int(mask): np.asarray(vector, dtype=float) for mask, vector in (stored[key] if stored is not None else path_read_opportunities(blocks[key]["paths"], READ_LENGTH)).items()}
         try:
             groups = same_junction_groups(blocks[key]["paths"][:n_paths]) if args.junction_only else None
-            prepared = prepare_block_test(key, [entry for entry in grouped[key] if entry[1] in levels], full, n_paths, levels, precursor=not args.junction_only, groups=groups)
+            prepared = prepare_block_test(key, [entry for entry in grouped[key] if entry[1] in levels], full, n_paths, levels, args.min_share, precursor=not args.junction_only, groups=groups)
         except ValueError:
             continue
         chosen.append((key, levels, prepared))
@@ -115,7 +120,7 @@ def main():
                         mature[(key, subject, levels[label], primer, new)] = mature.get((key, subject, levels[label], primer, new), 0.) + float(value)
                 models = (("anchors", mature, mature_opportunities, False),) + (() if args.junction_only else (("anchors + precursor", with_precursor, opportunities, True),))
                 for model, local_lookup, local_opportunities, precursor in models:
-                    record = {"test_id": test_id, "n_paths": size, "scenario": scenario, "draw": draw, "model": model, "p_value": 1., "converged": False, "error": ""}
+                    record = {"test_id": test_id, "n_paths": size, "smallest_share": float(np.min(shares[:size])), "scenario": scenario, "draw": draw, "model": model, "p_value": 1., "converged": False, "error": ""}
                     try:
                         fields, _ = fit_local_block(local_lookup, key, local_opportunities, size, prepared["subjects"], prepared["labels"], levels, anchors=True, primer_offset=True, precursor=precursor)
                         record.update(p_value=fields["p_value"], converged=fields["converged"], statistic=fields["statistic"], n_converged_path_tests=fields["n_converged_path_tests"])
