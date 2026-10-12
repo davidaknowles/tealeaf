@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+bam_ua_p30_s01, internal blocks + term_junction_p30_s01 terminal blocks	40	7929	38	0.95	0.9578465231869571	all tested	calibrated then raw
+bam_ua_p30_s01, internal blocks + term_junction_p30_s01 terminal blocks	100	7929	90	0.9	0.9333098075820605	all tested	calibrated then raw
+bam_ua_p30_s01, internal blocks + term_junction_p30_s01 terminal blocks	200	7929	176	0.88	0.9156953403687409	all tested	calibrated then raw
+bam_ua_p30_s01, internal blocks + term_junction_p30_s01 terminal blocks	40	7929	38	0.95	0.9578465231869571	all tested	continuous raw
+bam_ua_p30_s01, internal blocks + term_junction_p30_s01 terminal blocks	100	7929	90	0.9	0.9333098075820605	all tested	continuous raw
+bam_ua_p30_s01, internal blocks + term_junction_p30_s01 terminal blocks	200	7929	176	0.88	0.9156953403687409	all tested	continuous raw
+bam_ua_p30_s01, internal blocks + term_junction_p30_s01 terminal blocks	40	654	38	0.95	0.9578465231869571	BH discoveries	calibrated then raw
+bam_ua_p30_s01, internal blocks + term_junction_p30_s01 terminal blocks	100	654	90	0.9	0.9333098075820605	BH discoveries	calibrated then raw
+bam_ua_p30_s01, internal blocks + term_junction_p30_s01 terminal blocks	200	654	176	0.88	0.9156953403687409	BH discoveries	calibrated then raw
+bam_ua_p30_s01, internal blocks + term_junction_p30_s01 terminal blocks	40	654	38	0.95	0.9578465231869571	BH discoveries	continuous raw
+bam_ua_p30_s01, internal blocks + term_junction_p30_s01 terminal blocks	100	654	90	0.9	0.9333098075820605	BH discoveries	continuous raw
+bam_ua_p30_s01, internal blocks + term_junction_p30_s01 terminal blocks	200	654	176	0.88	0.9156953403687409	BH discoveries	continuous raw

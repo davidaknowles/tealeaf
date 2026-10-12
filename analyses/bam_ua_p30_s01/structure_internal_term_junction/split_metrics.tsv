@@ -1,0 +1,8 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	direction_selected	direction_evaluable	direction_agreement	common_events	failed_tests_fold0	failed_tests_fold1
+LeafCutter	bam_ua_p30_s01, internal blocks + term_junction_p30_s01 terminal blocks	simes	simes	747	139	40	41	33	0.901219512195122	0.7851821262799583	157	137	0.9781021897810219	1110	27	19
+MAJIQ Heterogen	bam_ua_p30_s01, internal blocks + term_junction_p30_s01 terminal blocks	simes	simes	2499	479	71	73	54	0.867933629172294	0.6981391806465066	341	283	0.9540636042402827	3089	119	116
+SUPPA2	bam_ua_p30_s01, internal blocks + term_junction_p30_s01 terminal blocks	simes	simes	2342	457	67	65	49	0.8563719862227325	0.6641878317814323	316	261	0.9616858237547893	3383	262	267
+SUPPA2 primer-aware	bam_ua_p30_s01, internal blocks + term_junction_p30_s01 terminal blocks	simes	simes	2191	431	63	62	45	0.8481822836661546	0.6610722046727076	300	245	0.9591836734693877	3133	204	199
+SUPPA2/Tealeaf hybrid	bam_ua_p30_s01, internal blocks + term_junction_p30_s01 terminal blocks	simes	simes	1755	354	41	33	27	0.8750923872875093	0.6678422828800596	170	142	0.9295774647887324	1932	162	171
+rMATS (paired)	bam_ua_p30_s01, internal blocks + term_junction_p30_s01 terminal blocks	simes	simes	3109	597	72	72	53	0.8611111111111112	0.7096717193385291	335	279	0.956989247311828	3627	269	273
+scQuint	bam_ua_p30_s01, internal blocks + term_junction_p30_s01 terminal blocks	simes	simes	2599	506	74	73	55	0.8572750833024805	0.6950353009179305	342	283	0.9540636042402827	3236	167	175

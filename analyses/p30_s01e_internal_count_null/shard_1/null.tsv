@@ -1,0 +1,209 @@
+test_id	n_paths	smallest_share	scenario	draw	model	p_value	converged	error	statistic	n_converged_path_tests
+ENSMUSG00000020598.17:B2|cell_type|EX_cortical|ODC	2	0.008434953477570428	subject 20, row 20	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000020598.17:B2|cell_type|EX_cortical|ODC	2	0.008434953477570428	subject 20, row 20	0	anchors + precursor	0.8418289995036408	True		0.03982200672102998	1.0
+ENSMUSG00000020598.17:B2|cell_type|EX_cortical|ODC	2	0.008434953477570428	subject 20, row 20	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000020598.17:B2|cell_type|EX_cortical|ODC	2	0.008434953477570428	subject 20, row 20	1	anchors + precursor	0.7661052421558517	True		0.08849032309546345	1.0
+ENSMUSG00000020598.17:B2|cell_type|EX_cortical|ODC	2	0.008434953477570428	subject 20, no row variation	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000020598.17:B2|cell_type|EX_cortical|ODC	2	0.008434953477570428	subject 20, no row variation	0	anchors + precursor	1.0	True		0.0	1.0
+ENSMUSG00000020598.17:B2|cell_type|EX_cortical|ODC	2	0.008434953477570428	subject 20, no row variation	1	anchors	0.8836906535502146	True		0.02140143356411528	1.0
+ENSMUSG00000020598.17:B2|cell_type|EX_cortical|ODC	2	0.008434953477570428	subject 20, no row variation	1	anchors + precursor	0.8874017501976644	True		0.020048486668512666	1.0
+ENSMUSG00000020598.17:B2|cell_type|EX_cortical|ODC	2	0.008434953477570428	subject 20, row 5	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000020598.17:B2|cell_type|EX_cortical|ODC	2	0.008434953477570428	subject 20, row 5	0	anchors + precursor	1.0	False		0.0	0.0
+ENSMUSG00000020598.17:B2|cell_type|EX_cortical|ODC	2	0.008434953477570428	subject 20, row 5	1	anchors	0.9971868587039661	True		1.2430962855525252e-05	1.0
+ENSMUSG00000020598.17:B2|cell_type|EX_cortical|ODC	2	0.008434953477570428	subject 20, row 5	1	anchors + precursor	0.9972642059770203	True		1.1756779466409739e-05	1.0
+ENSMUSG00000020598.17:B2|cell_type|EX_cortical|ODC	2	0.008434953477570428	precursor shift	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000020598.17:B2|cell_type|EX_cortical|ODC	2	0.008434953477570428	precursor shift	0	anchors + precursor	0.618064025499832	True		0.24859796858986272	1.0
+ENSMUSG00000020598.17:B2|cell_type|EX_cortical|ODC	2	0.008434953477570428	precursor shift	1	anchors	1.0	True		0.0	1.0
+ENSMUSG00000020598.17:B2|cell_type|EX_cortical|ODC	2	0.008434953477570428	precursor shift	1	anchors + precursor	1.0	True		0.0	1.0
+ENSMUSG00000025576.18:B3|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.003820817376499057	subject 20, row 20	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000025576.18:B3|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.003820817376499057	subject 20, row 20	0	anchors + precursor	0.16863479915038126	True		1.8950378108624468	1.0
+ENSMUSG00000025576.18:B3|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.003820817376499057	subject 20, row 20	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000025576.18:B3|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.003820817376499057	subject 20, row 20	1	anchors + precursor	0.999997613544073	True		8.945955087824586e-12	1.0
+ENSMUSG00000025576.18:B3|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.003820817376499057	subject 20, no row variation	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000025576.18:B3|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.003820817376499057	subject 20, no row variation	0	anchors + precursor	1.0	True		0.0	1.0
+ENSMUSG00000025576.18:B3|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.003820817376499057	subject 20, no row variation	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000025576.18:B3|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.003820817376499057	subject 20, no row variation	1	anchors + precursor	0.6148153956516685	True		0.25322207811092845	1.0
+ENSMUSG00000025576.18:B3|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.003820817376499057	subject 20, row 5	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000025576.18:B3|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.003820817376499057	subject 20, row 5	0	anchors + precursor	0.33070661533200446	True		0.9461288939456312	1.0
+ENSMUSG00000025576.18:B3|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.003820817376499057	subject 20, row 5	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000025576.18:B3|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.003820817376499057	subject 20, row 5	1	anchors + precursor	0.9999950602985835	True		3.8328451523739204e-11	1.0
+ENSMUSG00000025576.18:B3|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.003820817376499057	precursor shift	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000025576.18:B3|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.003820817376499057	precursor shift	0	anchors + precursor	0.9968365306754022	True		1.5719886565346286e-05	1.0
+ENSMUSG00000025576.18:B3|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.003820817376499057	precursor shift	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000025576.18:B3|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.003820817376499057	precursor shift	1	anchors + precursor	0.99770289150598	True		8.288655554355984e-06	1.0
+ENSMUSG00000040003.19:B2|cell_type|EX_cortical|INH_migrating_interneuron	3	0.0062479544929653795	subject 20, row 20	0	anchors	0.9816327680770816	True		0.23314229899317507	3.0
+ENSMUSG00000040003.19:B2|cell_type|EX_cortical|INH_migrating_interneuron	3	0.0062479544929653795	subject 20, row 20	0	anchors + precursor	0.9214880379403505	True		0.30136724359646294	3.0
+ENSMUSG00000040003.19:B2|cell_type|EX_cortical|INH_migrating_interneuron	3	0.0062479544929653795	subject 20, row 20	1	anchors	0.9999924016180941	True		1.9219248414970025e-10	3.0
+ENSMUSG00000040003.19:B2|cell_type|EX_cortical|INH_migrating_interneuron	3	0.0062479544929653795	subject 20, row 20	1	anchors + precursor	0.9999927285610957	True		1.532631799250339e-10	3.0
+ENSMUSG00000040003.19:B2|cell_type|EX_cortical|INH_migrating_interneuron	3	0.0062479544929653795	subject 20, no row variation	0	anchors	0.7932773783647072	True		0.43939014787254216	3.0
+ENSMUSG00000040003.19:B2|cell_type|EX_cortical|INH_migrating_interneuron	3	0.0062479544929653795	subject 20, no row variation	0	anchors + precursor	0.5811748701879224	True		0.7549044580555613	3.0
+ENSMUSG00000040003.19:B2|cell_type|EX_cortical|INH_migrating_interneuron	3	0.0062479544929653795	subject 20, no row variation	1	anchors	0.5942407627714867	True		0.9412249424493142	3.0
+ENSMUSG00000040003.19:B2|cell_type|EX_cortical|INH_migrating_interneuron	3	0.0062479544929653795	subject 20, no row variation	1	anchors + precursor	0.22099764331010763	True		2.1884619869675426	3.0
+ENSMUSG00000040003.19:B2|cell_type|EX_cortical|INH_migrating_interneuron	3	0.0062479544929653795	subject 20, row 5	0	anchors	1.0	True		4.9396042811622465e-11	3.0
+ENSMUSG00000040003.19:B2|cell_type|EX_cortical|INH_migrating_interneuron	3	0.0062479544929653795	subject 20, row 5	0	anchors + precursor	0.9999979920978325	True		1.5717059298481217e-07	3.0
+ENSMUSG00000040003.19:B2|cell_type|EX_cortical|INH_migrating_interneuron	3	0.0062479544929653795	subject 20, row 5	1	anchors	0.534529482154817	True		0.8583402861127958	3.0
+ENSMUSG00000040003.19:B2|cell_type|EX_cortical|INH_migrating_interneuron	3	0.0062479544929653795	subject 20, row 5	1	anchors + precursor	0.8440545292511508	True		0.4026984557480695	3.0
+ENSMUSG00000040003.19:B2|cell_type|EX_cortical|INH_migrating_interneuron	3	0.0062479544929653795	precursor shift	0	anchors	1.0	True		3.6838976313902094e-11	3.0
+ENSMUSG00000040003.19:B2|cell_type|EX_cortical|INH_migrating_interneuron	3	0.0062479544929653795	precursor shift	0	anchors + precursor	0.9999983051860656	True		2.1627563739912148e-08	3.0
+ENSMUSG00000040003.19:B2|cell_type|EX_cortical|INH_migrating_interneuron	3	0.0062479544929653795	precursor shift	1	anchors	1.0	True		6.133760166449065e-11	3.0
+ENSMUSG00000040003.19:B2|cell_type|EX_cortical|INH_migrating_interneuron	3	0.0062479544929653795	precursor shift	1	anchors + precursor	0.99999852111841	True		2.3442137120355255e-11	3.0
+ENSMUSG00000021820.19:B4|cell_type|ASC|EX_cortical	2	0.1057973210587609	subject 20, row 20	0	anchors	0.12326127863373082	True		2.3753840836206237	1.0
+ENSMUSG00000021820.19:B4|cell_type|ASC|EX_cortical	2	0.1057973210587609	subject 20, row 20	0	anchors + precursor	0.05492630122682244	True		3.6843219139323224	1.0
+ENSMUSG00000021820.19:B4|cell_type|ASC|EX_cortical	2	0.1057973210587609	subject 20, row 20	1	anchors	0.8122701316189544	True		0.0564055075748513	1.0
+ENSMUSG00000021820.19:B4|cell_type|ASC|EX_cortical	2	0.1057973210587609	subject 20, row 20	1	anchors + precursor	0.9609848748112704	True		0.002392942401669984	1.0
+ENSMUSG00000021820.19:B4|cell_type|ASC|EX_cortical	2	0.1057973210587609	subject 20, no row variation	0	anchors	0.1327134989044037	True		2.2604732510153127	1.0
+ENSMUSG00000021820.19:B4|cell_type|ASC|EX_cortical	2	0.1057973210587609	subject 20, no row variation	0	anchors + precursor	0.10486468454905272	True		2.629955014017604	1.0
+ENSMUSG00000021820.19:B4|cell_type|ASC|EX_cortical	2	0.1057973210587609	subject 20, no row variation	1	anchors	0.7400332780970786	True		0.1100973968794392	1.0
+ENSMUSG00000021820.19:B4|cell_type|ASC|EX_cortical	2	0.1057973210587609	subject 20, no row variation	1	anchors + precursor	0.7875583254089448	True		0.07262087513768734	1.0
+ENSMUSG00000021820.19:B4|cell_type|ASC|EX_cortical	2	0.1057973210587609	subject 20, row 5	0	anchors	0.3997686062328397	True		0.7090222083635496	1.0
+ENSMUSG00000021820.19:B4|cell_type|ASC|EX_cortical	2	0.1057973210587609	subject 20, row 5	0	anchors + precursor	0.5811241549802199	True		0.30442080469783406	1.0
+ENSMUSG00000021820.19:B4|cell_type|ASC|EX_cortical	2	0.1057973210587609	subject 20, row 5	1	anchors	0.9030485408469388	True		0.014837969320296907	1.0
+ENSMUSG00000021820.19:B4|cell_type|ASC|EX_cortical	2	0.1057973210587609	subject 20, row 5	1	anchors + precursor	0.559028274837488	True		0.34138949540290753	1.0
+ENSMUSG00000021820.19:B4|cell_type|ASC|EX_cortical	2	0.1057973210587609	precursor shift	0	anchors	0.5894944515767715	True		0.2911344688350255	1.0
+ENSMUSG00000021820.19:B4|cell_type|ASC|EX_cortical	2	0.1057973210587609	precursor shift	0	anchors + precursor	0.7364319971566875	True		0.113287469532807	1.0
+ENSMUSG00000021820.19:B4|cell_type|ASC|EX_cortical	2	0.1057973210587609	precursor shift	1	anchors	0.04684226785589868	True		3.9510450918828184	1.0
+ENSMUSG00000021820.19:B4|cell_type|ASC|EX_cortical	2	0.1057973210587609	precursor shift	1	anchors + precursor	0.5908249062829833	True		0.2890578645011139	1.0
+ENSMUSG00000034160.14:B3|cell_type|EX_thalamus|ODC	2	0.0443946873561714	subject 20, row 20	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000034160.14:B3|cell_type|EX_thalamus|ODC	2	0.0443946873561714	subject 20, row 20	0	anchors + precursor	0.46165053116752375	True		0.5418899318057573	1.0
+ENSMUSG00000034160.14:B3|cell_type|EX_thalamus|ODC	2	0.0443946873561714	subject 20, row 20	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000034160.14:B3|cell_type|EX_thalamus|ODC	2	0.0443946873561714	subject 20, row 20	1	anchors + precursor	0.9999987978757596	True		2.269961996148595e-12	1.0
+ENSMUSG00000034160.14:B3|cell_type|EX_thalamus|ODC	2	0.0443946873561714	subject 20, no row variation	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000034160.14:B3|cell_type|EX_thalamus|ODC	2	0.0443946873561714	subject 20, no row variation	0	anchors + precursor	1.0	True		0.0	1.0
+ENSMUSG00000034160.14:B3|cell_type|EX_thalamus|ODC	2	0.0443946873561714	subject 20, no row variation	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000034160.14:B3|cell_type|EX_thalamus|ODC	2	0.0443946873561714	subject 20, no row variation	1	anchors + precursor	0.9999987368100126	True		2.5064395003937534e-12	1.0
+ENSMUSG00000034160.14:B3|cell_type|EX_thalamus|ODC	2	0.0443946873561714	subject 20, row 5	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000034160.14:B3|cell_type|EX_thalamus|ODC	2	0.0443946873561714	subject 20, row 5	0	anchors + precursor	0.9959272739121118	True		2.6055178565353998e-05	1.0
+ENSMUSG00000034160.14:B3|cell_type|EX_thalamus|ODC	2	0.0443946873561714	subject 20, row 5	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000034160.14:B3|cell_type|EX_thalamus|ODC	2	0.0443946873561714	subject 20, row 5	1	anchors + precursor	0.9999926653250366	True		8.450484756394872e-11	1.0
+ENSMUSG00000034160.14:B3|cell_type|EX_thalamus|ODC	2	0.0443946873561714	precursor shift	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000034160.14:B3|cell_type|EX_thalamus|ODC	2	0.0443946873561714	precursor shift	0	anchors + precursor	0.9999987830334361	True		2.326361325799553e-12	1.0
+ENSMUSG00000034160.14:B3|cell_type|EX_thalamus|ODC	2	0.0443946873561714	precursor shift	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000034160.14:B3|cell_type|EX_thalamus|ODC	2	0.0443946873561714	precursor shift	1	anchors + precursor	0.9999911845122123	True		1.2207101995898029e-10	1.0
+ENSMUSG00000036591.17:B2|cell_type|EX_cerebellum_granule|EX_cortical	2	0.008246920722511254	subject 20, row 20	0	anchors	0.725718640114577	True		0.12307911621736167	1.0
+ENSMUSG00000036591.17:B2|cell_type|EX_cerebellum_granule|EX_cortical	2	0.008246920722511254	subject 20, row 20	0	anchors + precursor	0.6267666565239874	True		0.23647098340797434	1.0
+ENSMUSG00000036591.17:B2|cell_type|EX_cerebellum_granule|EX_cortical	2	0.008246920722511254	subject 20, row 20	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000036591.17:B2|cell_type|EX_cerebellum_granule|EX_cortical	2	0.008246920722511254	subject 20, row 20	1	anchors + precursor	0.8804625219992865	True		0.022615020299452837	1.0
+ENSMUSG00000036591.17:B2|cell_type|EX_cerebellum_granule|EX_cortical	2	0.008246920722511254	subject 20, no row variation	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000036591.17:B2|cell_type|EX_cerebellum_granule|EX_cortical	2	0.008246920722511254	subject 20, no row variation	0	anchors + precursor	0.9999970490311151	True		1.3678835841801629e-11	1.0
+ENSMUSG00000036591.17:B2|cell_type|EX_cerebellum_granule|EX_cortical	2	0.008246920722511254	subject 20, no row variation	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000036591.17:B2|cell_type|EX_cerebellum_granule|EX_cortical	2	0.008246920722511254	subject 20, no row variation	1	anchors + precursor	0.9999962190565849	True		2.2455370896068416e-11	1.0
+ENSMUSG00000036591.17:B2|cell_type|EX_cerebellum_granule|EX_cortical	2	0.008246920722511254	subject 20, row 5	0	anchors	0.9964117451002037	True		2.0225039478738438e-05	1.0
+ENSMUSG00000036591.17:B2|cell_type|EX_cerebellum_granule|EX_cortical	2	0.008246920722511254	subject 20, row 5	0	anchors + precursor	0.999996376324239	True		2.0626167440696008e-11	1.0
+ENSMUSG00000036591.17:B2|cell_type|EX_cerebellum_granule|EX_cortical	2	0.008246920722511254	subject 20, row 5	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000036591.17:B2|cell_type|EX_cerebellum_granule|EX_cortical	2	0.008246920722511254	subject 20, row 5	1	anchors + precursor	0.9621858783497923	True		0.0022477771983844264	1.0
+ENSMUSG00000036591.17:B2|cell_type|EX_cerebellum_granule|EX_cortical	2	0.008246920722511254	precursor shift	0	anchors	0.12525537722469615	True		2.3503438400829566	1.0
+ENSMUSG00000036591.17:B2|cell_type|EX_cerebellum_granule|EX_cortical	2	0.008246920722511254	precursor shift	0	anchors + precursor	0.42122402256276026	True		0.6468976963153494	1.0
+ENSMUSG00000036591.17:B2|cell_type|EX_cerebellum_granule|EX_cortical	2	0.008246920722511254	precursor shift	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000036591.17:B2|cell_type|EX_cerebellum_granule|EX_cortical	2	0.008246920722511254	precursor shift	1	anchors + precursor	0.99999852418028	True		3.4212632726848824e-12	1.0
+ENSMUSG00000001911.17:B2|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.10922621769530598	subject 20, row 20	0	anchors	0.9952201936351683	True		3.588770437445987e-05	1.0
+ENSMUSG00000001911.17:B2|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.10922621769530598	subject 20, row 20	0	anchors + precursor	1.0	True		0.0	1.0
+ENSMUSG00000001911.17:B2|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.10922621769530598	subject 20, row 20	1	anchors	0.2537223865146808	True		1.302690338522721	1.0
+ENSMUSG00000001911.17:B2|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.10922621769530598	subject 20, row 20	1	anchors + precursor	0.25444851437258953	True		1.2987126087419956	1.0
+ENSMUSG00000001911.17:B2|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.10922621769530598	subject 20, no row variation	0	anchors	0.45778569093556265	True		0.5513032117804109	1.0
+ENSMUSG00000001911.17:B2|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.10922621769530598	subject 20, no row variation	0	anchors + precursor	0.45864077546718296	True		0.5492097359485992	1.0
+ENSMUSG00000001911.17:B2|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.10922621769530598	subject 20, no row variation	1	anchors	0.4841857516959043	True		0.48942087705276727	1.0
+ENSMUSG00000001911.17:B2|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.10922621769530598	subject 20, no row variation	1	anchors + precursor	0.4839329669918625	True		0.4899873060245925	1.0
+ENSMUSG00000001911.17:B2|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.10922621769530598	subject 20, row 5	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000001911.17:B2|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.10922621769530598	subject 20, row 5	0	anchors + precursor	0.9909100062159345	True		0.0001297973540754782	1.0
+ENSMUSG00000001911.17:B2|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.10922621769530598	subject 20, row 5	1	anchors	0.20204669648606396	True		1.6275179386946412	1.0
+ENSMUSG00000001911.17:B2|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.10922621769530598	subject 20, row 5	1	anchors + precursor	0.2018757327990851	True		1.6287521343929523	1.0
+ENSMUSG00000001911.17:B2|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.10922621769530598	precursor shift	0	anchors	1.0	True		0.0	1.0
+ENSMUSG00000001911.17:B2|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.10922621769530598	precursor shift	0	anchors + precursor	1.0	True		0.0	1.0
+ENSMUSG00000001911.17:B2|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.10922621769530598	precursor shift	1	anchors	1.0	True		0.0	1.0
+ENSMUSG00000001911.17:B2|cell_type|EX_hippocampus_granule|EX_hippocampus_pyramidal	2	0.10922621769530598	precursor shift	1	anchors + precursor	1.0	True		0.0	1.0
+ENSMUSG00000021720.12:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.004721002356677478	subject 20, row 20	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000021720.12:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.004721002356677478	subject 20, row 20	0	anchors + precursor	1.0	True		0.0	1.0
+ENSMUSG00000021720.12:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.004721002356677478	subject 20, row 20	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000021720.12:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.004721002356677478	subject 20, row 20	1	anchors + precursor	1.0	True		0.0	1.0
+ENSMUSG00000021720.12:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.004721002356677478	subject 20, no row variation	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000021720.12:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.004721002356677478	subject 20, no row variation	0	anchors + precursor	0.9999936376898764	True		6.358424897712212e-11	1.0
+ENSMUSG00000021720.12:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.004721002356677478	subject 20, no row variation	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000021720.12:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.004721002356677478	subject 20, no row variation	1	anchors + precursor	1.0	True		0.0	1.0
+ENSMUSG00000021720.12:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.004721002356677478	subject 20, row 5	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000021720.12:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.004721002356677478	subject 20, row 5	0	anchors + precursor	1.0	True		0.0	1.0
+ENSMUSG00000021720.12:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.004721002356677478	subject 20, row 5	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000021720.12:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.004721002356677478	subject 20, row 5	1	anchors + precursor	1.0	True		0.0	1.0
+ENSMUSG00000021720.12:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.004721002356677478	precursor shift	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000021720.12:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.004721002356677478	precursor shift	0	anchors + precursor	0.9999924817387406	True		8.878808799295257e-11	1.0
+ENSMUSG00000021720.12:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.004721002356677478	precursor shift	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000021720.12:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.004721002356677478	precursor shift	1	anchors + precursor	1.0	True		0.0	1.0
+ENSMUSG00000046876.17:B2|cell_type|ASC|ODC	2	0.00708363980568676	subject 20, row 20	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000046876.17:B2|cell_type|ASC|ODC	2	0.00708363980568676	subject 20, row 20	0	anchors + precursor	0.7527960121138986	True		0.09919649351613913	1.0
+ENSMUSG00000046876.17:B2|cell_type|ASC|ODC	2	0.00708363980568676	subject 20, row 20	1	anchors	0.5467604697045961	True		0.36315275283884585	1.0
+ENSMUSG00000046876.17:B2|cell_type|ASC|ODC	2	0.00708363980568676	subject 20, row 20	1	anchors + precursor	0.5378048394480682	True		0.3796234294395333	1.0
+ENSMUSG00000046876.17:B2|cell_type|ASC|ODC	2	0.00708363980568676	subject 20, no row variation	0	anchors	0.15069385517583644	True		2.0652131722622578	1.0
+ENSMUSG00000046876.17:B2|cell_type|ASC|ODC	2	0.00708363980568676	subject 20, no row variation	0	anchors + precursor	0.2440602009933483	True		1.3569878233294244	1.0
+ENSMUSG00000046876.17:B2|cell_type|ASC|ODC	2	0.00708363980568676	subject 20, no row variation	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000046876.17:B2|cell_type|ASC|ODC	2	0.00708363980568676	subject 20, no row variation	1	anchors + precursor	0.9999982661837101	True		4.722000568335716e-12	1.0
+ENSMUSG00000046876.17:B2|cell_type|ASC|ODC	2	0.00708363980568676	subject 20, row 5	0	anchors	0.21210416203932148	True		1.557005839192767	1.0
+ENSMUSG00000046876.17:B2|cell_type|ASC|ODC	2	0.00708363980568676	subject 20, row 5	0	anchors + precursor	0.27080002550243154	True		1.2126900121756448	1.0
+ENSMUSG00000046876.17:B2|cell_type|ASC|ODC	2	0.00708363980568676	subject 20, row 5	1	anchors	0.9999977250808323	True		8.129275030910321e-12	1.0
+ENSMUSG00000046876.17:B2|cell_type|ASC|ODC	2	0.00708363980568676	subject 20, row 5	1	anchors + precursor	0.9999980349720762	True		6.065370428132155e-12	1.0
+ENSMUSG00000046876.17:B2|cell_type|ASC|ODC	2	0.00708363980568676	precursor shift	0	anchors	0.9999977089820227	True		8.244738225471338e-12	1.0
+ENSMUSG00000046876.17:B2|cell_type|ASC|ODC	2	0.00708363980568676	precursor shift	0	anchors + precursor	0.9999979215290704	True		6.785905171113882e-12	1.0
+ENSMUSG00000046876.17:B2|cell_type|ASC|ODC	2	0.00708363980568676	precursor shift	1	anchors	0.9999966784904993	True		1.7329693235978993e-11	1.0
+ENSMUSG00000046876.17:B2|cell_type|ASC|ODC	2	0.00708363980568676	precursor shift	1	anchors + precursor	0.9999971144481568	True		1.3079093363899119e-11	1.0
+ENSMUSG00000037902.19:B2|cell_type|ASC|EX_cerebellum_granule	2	0.03146478002940917	subject 20, row 20	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000037902.19:B2|cell_type|ASC|EX_cerebellum_granule	2	0.03146478002940917	subject 20, row 20	0	anchors + precursor	0.010892069469840468	True		6.482841957121948	1.0
+ENSMUSG00000037902.19:B2|cell_type|ASC|EX_cerebellum_granule	2	0.03146478002940917	subject 20, row 20	1	anchors	0.7036816748274854	True		0.1446701708283129	1.0
+ENSMUSG00000037902.19:B2|cell_type|ASC|EX_cerebellum_granule	2	0.03146478002940917	subject 20, row 20	1	anchors + precursor	1.0	False		0.0	0.0
+ENSMUSG00000037902.19:B2|cell_type|ASC|EX_cerebellum_granule	2	0.03146478002940917	subject 20, no row variation	0	anchors	0.7560465378659633	True		0.09651990907333641	1.0
+ENSMUSG00000037902.19:B2|cell_type|ASC|EX_cerebellum_granule	2	0.03146478002940917	subject 20, no row variation	0	anchors + precursor	0.3077161443755094	True		1.0404529790421257	1.0
+ENSMUSG00000037902.19:B2|cell_type|ASC|EX_cerebellum_granule	2	0.03146478002940917	subject 20, no row variation	1	anchors	0.052069304862899096	True		3.7735406059828343	1.0
+ENSMUSG00000037902.19:B2|cell_type|ASC|EX_cerebellum_granule	2	0.03146478002940917	subject 20, no row variation	1	anchors + precursor	0.09720686444885927	True		2.7507821774142087	1.0
+ENSMUSG00000037902.19:B2|cell_type|ASC|EX_cerebellum_granule	2	0.03146478002940917	subject 20, row 5	0	anchors	0.4107248346668694	True		0.6767016021203247	1.0
+ENSMUSG00000037902.19:B2|cell_type|ASC|EX_cerebellum_granule	2	0.03146478002940917	subject 20, row 5	0	anchors + precursor	1.0	False		0.0	0.0
+ENSMUSG00000037902.19:B2|cell_type|ASC|EX_cerebellum_granule	2	0.03146478002940917	subject 20, row 5	1	anchors	0.9999950123408516	True		3.907629775312671e-11	1.0
+ENSMUSG00000037902.19:B2|cell_type|ASC|EX_cerebellum_granule	2	0.03146478002940917	subject 20, row 5	1	anchors + precursor	0.9937883438340412	True		6.060988605938178e-05	1.0
+ENSMUSG00000037902.19:B2|cell_type|ASC|EX_cerebellum_granule	2	0.03146478002940917	precursor shift	0	anchors	0.6312000420204797	True		0.23043692807810245	1.0
+ENSMUSG00000037902.19:B2|cell_type|ASC|EX_cerebellum_granule	2	0.03146478002940917	precursor shift	0	anchors + precursor	0.7528457254243637	True		0.09915525515454604	1.0
+ENSMUSG00000037902.19:B2|cell_type|ASC|EX_cerebellum_granule	2	0.03146478002940917	precursor shift	1	anchors	0.021747065134716647	True		5.265908812265515	1.0
+ENSMUSG00000037902.19:B2|cell_type|ASC|EX_cerebellum_granule	2	0.03146478002940917	precursor shift	1	anchors + precursor	0.04763646360792691	True		3.9227652542898888	1.0
+ENSMUSG00000064043.16:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.026604879300901198	subject 20, row 20	0	anchors	0.37364283624150507	True		0.7915136064621962	1.0
+ENSMUSG00000064043.16:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.026604879300901198	subject 20, row 20	0	anchors + precursor	0.3738536441321366	True		0.7908155197140374	1.0
+ENSMUSG00000064043.16:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.026604879300901198	subject 20, row 20	1	anchors	0.7332512386879404	True		0.1161472761503779	1.0
+ENSMUSG00000064043.16:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.026604879300901198	subject 20, row 20	1	anchors + precursor	0.7332862787218779	True		0.1161155551461528	1.0
+ENSMUSG00000064043.16:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.026604879300901198	subject 20, no row variation	0	anchors	0.27850968089757633	True		1.1743478069814017	1.0
+ENSMUSG00000064043.16:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.026604879300901198	subject 20, no row variation	0	anchors + precursor	0.2784602210374207	True		1.1745895178412162	1.0
+ENSMUSG00000064043.16:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.026604879300901198	subject 20, no row variation	1	anchors	0.21163440506193823	True		1.5602104769406395	1.0
+ENSMUSG00000064043.16:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.026604879300901198	subject 20, no row variation	1	anchors + precursor	0.21174500480290914	True		1.5594552169745608	1.0
+ENSMUSG00000064043.16:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.026604879300901198	subject 20, row 5	0	anchors	0.47359811977759003	True		0.5135685626368875	1.0
+ENSMUSG00000064043.16:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.026604879300901198	subject 20, row 5	0	anchors + precursor	0.47376545800199066	True		0.5131800725284812	1.0
+ENSMUSG00000064043.16:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.026604879300901198	subject 20, row 5	1	anchors	0.24773471288211218	True		1.3360333231034502	1.0
+ENSMUSG00000064043.16:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.026604879300901198	subject 20, row 5	1	anchors + precursor	0.2475735908088674	True		1.3369441638611583	1.0
+ENSMUSG00000064043.16:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.026604879300901198	precursor shift	0	anchors	0.6430081282144553	True		0.2148295162237126	1.0
+ENSMUSG00000064043.16:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.026604879300901198	precursor shift	0	anchors + precursor	0.6449426957487427	True		0.212335877038484	1.0
+ENSMUSG00000064043.16:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.026604879300901198	precursor shift	1	anchors	0.3477472863987461	True		0.8816604945673667	1.0
+ENSMUSG00000064043.16:B2|cell_type|EX_cortical|EX_hippocampus_pyramidal	2	0.026604879300901198	precursor shift	1	anchors + precursor	0.34813379068568173	True		0.8802478997034164	1.0
+ENSMUSG00000019852.8:B2|cell_type|ASC|EX_hippocampus_pyramidal	2	0.007834195602007684	subject 20, row 20	0	anchors	0.9959429830201054	True		2.585456710590961e-05	1.0
+ENSMUSG00000019852.8:B2|cell_type|ASC|EX_hippocampus_pyramidal	2	0.007834195602007684	subject 20, row 20	0	anchors + precursor	0.9974079863600208	True		1.05534867689272e-05	1.0
+ENSMUSG00000019852.8:B2|cell_type|ASC|EX_hippocampus_pyramidal	2	0.007834195602007684	subject 20, row 20	1	anchors	0.9986310682873909	True		2.9436344171074325e-06	1.0
+ENSMUSG00000019852.8:B2|cell_type|ASC|EX_hippocampus_pyramidal	2	0.007834195602007684	subject 20, row 20	1	anchors + precursor	0.9999979161292446	True		6.821210263296962e-12	1.0
+ENSMUSG00000019852.8:B2|cell_type|ASC|EX_hippocampus_pyramidal	2	0.007834195602007684	subject 20, no row variation	0	anchors	0.9988629394098998	True		2.0308946044877985e-06	1.0
+ENSMUSG00000019852.8:B2|cell_type|ASC|EX_hippocampus_pyramidal	2	0.007834195602007684	subject 20, no row variation	0	anchors + precursor	0.996484688567487	True		1.9411106850775184e-05	1.0
+ENSMUSG00000019852.8:B2|cell_type|ASC|EX_hippocampus_pyramidal	2	0.007834195602007684	subject 20, no row variation	1	anchors	0.8560163919392365	True		0.0329231703071855	1.0
+ENSMUSG00000019852.8:B2|cell_type|ASC|EX_hippocampus_pyramidal	2	0.007834195602007684	subject 20, no row variation	1	anchors + precursor	0.9374541257977774	True		0.0061575541889382635	1.0
+ENSMUSG00000019852.8:B2|cell_type|ASC|EX_hippocampus_pyramidal	2	0.007834195602007684	subject 20, row 5	0	anchors	0.989695842560167	True		0.00016678961014271465	1.0
+ENSMUSG00000019852.8:B2|cell_type|ASC|EX_hippocampus_pyramidal	2	0.007834195602007684	subject 20, row 5	0	anchors + precursor	0.9975088043389397	True		9.748481366145256e-06	1.0
+ENSMUSG00000019852.8:B2|cell_type|ASC|EX_hippocampus_pyramidal	2	0.007834195602007684	subject 20, row 5	1	anchors	0.1612695569258464	True		1.962281212244232	1.0
+ENSMUSG00000019852.8:B2|cell_type|ASC|EX_hippocampus_pyramidal	2	0.007834195602007684	subject 20, row 5	1	anchors + precursor	0.1426075215979298	True		2.1495948006217134	1.0
+ENSMUSG00000019852.8:B2|cell_type|ASC|EX_hippocampus_pyramidal	2	0.007834195602007684	precursor shift	0	anchors	0.9915518813581924	True		0.0001121130365557832	1.0
+ENSMUSG00000019852.8:B2|cell_type|ASC|EX_hippocampus_pyramidal	2	0.007834195602007684	precursor shift	0	anchors + precursor	0.027375949034616053	True		4.86694337283498	1.0
+ENSMUSG00000019852.8:B2|cell_type|ASC|EX_hippocampus_pyramidal	2	0.007834195602007684	precursor shift	1	anchors	0.9965635935917346	True		1.8549474162909974e-05	1.0
+ENSMUSG00000019852.8:B2|cell_type|ASC|EX_hippocampus_pyramidal	2	0.007834195602007684	precursor shift	1	anchors + precursor	0.999992144421636	True		9.693401636923227e-11	1.0
+ENSMUSG00000003863.19:B2|cell_type|EX_hippocampus_granule|ODC	2	0.019338772911999896	subject 20, row 20	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000003863.19:B2|cell_type|EX_hippocampus_granule|ODC	2	0.019338772911999896	subject 20, row 20	0	anchors + precursor	1.0	True		0.0	1.0
+ENSMUSG00000003863.19:B2|cell_type|EX_hippocampus_granule|ODC	2	0.019338772911999896	subject 20, row 20	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000003863.19:B2|cell_type|EX_hippocampus_granule|ODC	2	0.019338772911999896	subject 20, row 20	1	anchors + precursor	1.0	True		0.0	1.0
+ENSMUSG00000003863.19:B2|cell_type|EX_hippocampus_granule|ODC	2	0.019338772911999896	subject 20, no row variation	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000003863.19:B2|cell_type|EX_hippocampus_granule|ODC	2	0.019338772911999896	subject 20, no row variation	0	anchors + precursor	0.9999962360497592	True		2.2253976439401413e-11	1.0
+ENSMUSG00000003863.19:B2|cell_type|EX_hippocampus_granule|ODC	2	0.019338772911999896	subject 20, no row variation	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000003863.19:B2|cell_type|EX_hippocampus_granule|ODC	2	0.019338772911999896	subject 20, no row variation	1	anchors + precursor	1.0	True		0.0	1.0
+ENSMUSG00000003863.19:B2|cell_type|EX_hippocampus_granule|ODC	2	0.019338772911999896	subject 20, row 5	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000003863.19:B2|cell_type|EX_hippocampus_granule|ODC	2	0.019338772911999896	subject 20, row 5	0	anchors + precursor	1.0	True		0.0	1.0
+ENSMUSG00000003863.19:B2|cell_type|EX_hippocampus_granule|ODC	2	0.019338772911999896	subject 20, row 5	1	anchors	1.0	False	no molecules in the supplied classes	NA	NA
+ENSMUSG00000003863.19:B2|cell_type|EX_hippocampus_granule|ODC	2	0.019338772911999896	subject 20, row 5	1	anchors + precursor	0.9999977146500963	True		8.203993040467594e-12	1.0
+ENSMUSG00000003863.19:B2|cell_type|EX_hippocampus_granule|ODC	2	0.019338772911999896	precursor shift	0	anchors	1.0	False		0.0	0.0
+ENSMUSG00000003863.19:B2|cell_type|EX_hippocampus_granule|ODC	2	0.019338772911999896	precursor shift	0	anchors + precursor	1.0	True		0.0	1.0
+ENSMUSG00000003863.19:B2|cell_type|EX_hippocampus_granule|ODC	2	0.019338772911999896	precursor shift	1	anchors	1.0	False		0.0	0.0
+ENSMUSG00000003863.19:B2|cell_type|EX_hippocampus_granule|ODC	2	0.019338772911999896	precursor shift	1	anchors + precursor	1.0	True		0.0	1.0

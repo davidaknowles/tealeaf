@@ -1,0 +1,17 @@
+scenario	model	multi_path	trials	converged	reject_0.05	reject_0.01	reject_0.001
+precursor shift	anchors	False	348.0	166.0	0.03735632183908046	0.011494252873563218	0.0028735632183908046
+precursor shift	anchors	True	52.0	30.0	0.0	0.0	0.0
+precursor shift	anchors + precursor	False	348.0	329.0	0.034482758620689655	0.0	0.0
+precursor shift	anchors + precursor	True	52.0	52.0	0.019230769230769232	0.019230769230769232	0.0
+subject 20, no row variation	anchors	False	348.0	172.0	0.017241379310344827	0.0028735632183908046	0.0
+subject 20, no row variation	anchors	True	52.0	31.0	0.019230769230769232	0.0	0.0
+subject 20, no row variation	anchors + precursor	False	348.0	326.0	0.014367816091954023	0.0	0.0
+subject 20, no row variation	anchors + precursor	True	52.0	52.0	0.0	0.0	0.0
+subject 20, row 20	anchors	False	348.0	174.0	0.008620689655172414	0.0	0.0
+subject 20, row 20	anchors	True	52.0	30.0	0.019230769230769232	0.019230769230769232	0.0
+subject 20, row 20	anchors + precursor	False	348.0	320.0	0.020114942528735632	0.0	0.0
+subject 20, row 20	anchors + precursor	True	52.0	52.0	0.019230769230769232	0.019230769230769232	0.0
+subject 20, row 5	anchors	False	348.0	160.0	0.028735632183908046	0.0028735632183908046	0.0
+subject 20, row 5	anchors	True	52.0	29.0	0.019230769230769232	0.0	0.0
+subject 20, row 5	anchors + precursor	False	348.0	315.0	0.031609195402298854	0.0028735632183908046	0.0
+subject 20, row 5	anchors + precursor	True	52.0	51.0	0.0	0.0	0.0
