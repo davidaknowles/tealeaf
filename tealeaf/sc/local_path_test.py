@@ -78,7 +78,7 @@ class ProfiledPrecursorLikelihood(BinaryECPathLikelihood):
         return sum(self.primer_log_likelihood(row, t, primer) for primer in range(len(self.counts))) - self.offsets[row]
 
 
-def prepare_block_test(block, entries, opportunities, n_paths, levels, min_share=.02, precursor=False, groups=None):
+def prepare_block_test(block, entries, opportunities, n_paths, levels, min_share=.02, precursor=False, groups=None, min_subjects=4, min_molecules=20.):
     """Prune a block's paths for one contrast and project its read classes.
 
     entries are (subject, cell type, primer, mask, molecules) tuples for the
@@ -89,7 +89,10 @@ def prepare_block_test(block, entries, opportunities, n_paths, levels, min_share
     when precursor is set). Raises ValueError if fewer than two paths remain.
     With groups (lists of mature path indices, for junction-only classes),
     paths are first merged by group_paths and kept indexes the retained
-    groups, returned as "groups"; precursor must then be False.
+    groups, returned as "groups"; precursor must then be False. The
+    eligibility screen (min_subjects subjects observed in both levels,
+    min_molecules molecules) is repeated on the projected classes, since
+    molecules compatible only with a dropped precursor leave the fit.
     """
     if groups is not None:
         if precursor:
@@ -98,7 +101,6 @@ def prepare_block_test(block, entries, opportunities, n_paths, levels, min_share
         n_paths = len(groups)
         if n_paths < 2:
             raise ValueError("fewer than two expressed paths")
-    present = sorted({(subject, levels.index(cell_type)) for subject, cell_type, _, _, value in entries if value > 0})
     pooled = {}
     for subject, cell_type, _, mask, value in entries:
         pooled[mask] = pooled.get(mask, 0.) + value
@@ -113,6 +115,10 @@ def prepare_block_test(block, entries, opportunities, n_paths, levels, min_share
         if new:
             lookup[(block, subject, cell_type, primer, new)] = lookup.get((block, subject, cell_type, primer, new), 0.) + value
             totals[(subject, cell_type)] = totals.get((subject, cell_type), 0.) + value
+    present = sorted((subject, levels.index(cell_type)) for subject, cell_type in totals if totals[(subject, cell_type)] > 0)
+    paired = sum((subject, levels[0]) in totals and (subject, levels[1]) in totals for subject in {subject for subject, _ in present})
+    if paired < min_subjects or sum(totals.values()) < min_molecules:
+        raise ValueError("too few paired subjects or molecules in the projected classes")
     return {"lookup": lookup, "opportunities": project_opportunities(opportunities, kept, n_paths, precursor), "kept": kept, "shares": shares, "subjects": np.array([subject for subject, _ in present]), "labels": np.array([label for _, label in present]), "median_molecules": float(np.median([totals.get((subject, levels[label]), 0.) for subject, label in present])), "groups": groups}
 
 

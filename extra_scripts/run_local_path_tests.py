@@ -143,7 +143,7 @@ def main():
             full_opportunities = {int(mask): np.asarray(vector, dtype=float) for mask, vector in opportunity_cache[key].items()}
             try:
                 groups = same_junction_groups(block["paths"][:n_paths]) if args.group_same_junctions else None
-                prepared = prepare_block_test(key, entries, full_opportunities, n_paths, levels, args.min_share, args.precursor, groups)
+                prepared = prepare_block_test(key, entries, full_opportunities, n_paths, levels, args.min_share, args.precursor, groups, args.min_subjects, args.min_molecules)
             except ValueError:
                 record["screened"] = False
                 raise

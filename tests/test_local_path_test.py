@@ -1,8 +1,9 @@
 import numpy as np
+import pytest
 from scipy.special import expit
 
 from tealeaf.sc.local_path_reads import path_read_opportunities
-from tealeaf.sc.local_path_test import PRIMERS, ProfiledPrecursorLikelihood, fit_local_block, local_class_masks, local_read_likelihood
+from tealeaf.sc.local_path_test import PRIMERS, ProfiledPrecursorLikelihood, fit_local_block, local_class_masks, local_read_likelihood, prepare_block_test
 
 SKIP = [(100, 200), (500, 600)]
 INCLUDE = [(100, 200), (300, 400), (500, 600)]
@@ -77,3 +78,16 @@ def test_compiled_precursor_likelihood_matches_reference():
             mass = scales[:, None] * components[:, 0] + psi * components[:, 1] + (1 - psi) * components[:, 2]
             dense = (np.log(np.maximum(mass, 1e-300)) @ observed - observed.sum() * np.log(mass.sum(axis=1))).max()
             assert dense - 1e-9 <= compiled[index] <= dense + 1e-6
+
+
+def test_eligibility_rechecked_after_dropping_precursor():
+    paths = [[(0, 100), (300, 400)], [(0, 100), (200, 250), (300, 400)], [(0, 400)]]
+    opportunities = path_read_opportunities(paths, 50)
+    precursor_only = 1 << 2
+    mature = 0b011
+    levels = ("a", "b")
+    entries = [(f"s{index}", level, PRIMERS[0], precursor_only, 10.) for index in range(6) for level in levels]
+    entries += [(f"s{index}", level, PRIMERS[0], mask, 5.) for index in range(2) for level in levels for mask in (mature, 0b001, 0b010)]
+    prepare_block_test("b", entries, opportunities, 2, levels, precursor=True)
+    with pytest.raises(ValueError):
+        prepare_block_test("b", entries, opportunities, 2, levels, precursor=False)
