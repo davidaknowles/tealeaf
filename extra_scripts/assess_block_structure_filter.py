@@ -42,7 +42,7 @@ def main():
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
     blocks = json.load(gzip.open(args.local_reads / "blocks.json.gz", "rt"))
-    structure = {block["block_id"]: block_structure(block["paths"][:len(block["signatures"])]) for block in blocks.values()}
+    structure = {block["block_id"]: block_structure(block["paths"][:block.get("n_annotated", len(block["signatures"]))]) for block in blocks.values()}
     keep = {block for block, value in structure.items() if FILTERS[args.filter](value)}
     output = args.output_dir
     output.mkdir(parents=True, exist_ok=True)

@@ -68,7 +68,7 @@ def main():
     blocks = json.load(gzip.open(args.local_reads / "blocks.json.gz", "rt"))
     structure = args.structure or ("terminal" if args.junction_only else "all")
     if structure != "all":
-        blocks = {key: block for key, block in blocks.items() if block_structure(block["paths"][:len(block["signatures"])])["structure"] == structure}
+        blocks = {key: block for key, block in blocks.items() if block_structure(block["paths"][:block.get("n_annotated", len(block["signatures"]))])["structure"] == structure}
         counts = counts.loc[counts.path_key.isin(set(blocks))]
     stored = json.load(gzip.open(args.local_reads / "opportunities.json.gz", "rt")) if args.stored_opportunities else None
     universe = pd.read_csv(args.universe, sep="\t", usecols=["gene_id", "pair_id"]).drop_duplicates()
