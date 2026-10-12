@@ -1,0 +1,12 @@
+{
+  "model": "bam_ua_p30_s01e",
+  "terminal_model": "term_all",
+  "filter": "internal",
+  "blocks_by_structure": {
+    "terminal, same junctions": 1452,
+    "internal": 1060,
+    "terminal, distinct junctions": 588
+  },
+  "retained_blocks": 1060,
+  "selection": "annotation-only block structure; fits and p-values unchanged"
+}

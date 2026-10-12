@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+internal_pos, internal blocks + term_all_pos terminal blocks	40	16792	31	0.775	0.842470919377439	all tested	calibrated then raw
+internal_pos, internal blocks + term_all_pos terminal blocks	100	16792	77	0.77	0.8129572829841504	all tested	calibrated then raw
+internal_pos, internal blocks + term_all_pos terminal blocks	200	16792	148	0.74	0.7860355370823158	all tested	calibrated then raw
+internal_pos, internal blocks + term_all_pos terminal blocks	40	16792	31	0.775	0.842470919377439	all tested	continuous raw
+internal_pos, internal blocks + term_all_pos terminal blocks	100	16792	77	0.77	0.8129572829841504	all tested	continuous raw
+internal_pos, internal blocks + term_all_pos terminal blocks	200	16792	148	0.74	0.7860355370823158	all tested	continuous raw
+internal_pos, internal blocks + term_all_pos terminal blocks	40	1163	31	0.775	0.842470919377439	BH discoveries	calibrated then raw
+internal_pos, internal blocks + term_all_pos terminal blocks	100	1163	77	0.77	0.8129572829841504	BH discoveries	calibrated then raw
+internal_pos, internal blocks + term_all_pos terminal blocks	200	1163	148	0.74	0.7860355370823158	BH discoveries	calibrated then raw
+internal_pos, internal blocks + term_all_pos terminal blocks	40	1163	31	0.775	0.842470919377439	BH discoveries	continuous raw
+internal_pos, internal blocks + term_all_pos terminal blocks	100	1163	77	0.77	0.8129572829841504	BH discoveries	continuous raw
+internal_pos, internal blocks + term_all_pos terminal blocks	200	1163	148	0.74	0.7860355370823158	BH discoveries	continuous raw

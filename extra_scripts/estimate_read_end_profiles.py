@@ -7,6 +7,8 @@ uniquely mapped, gene-assigned read in a QC cell (one per barcode, UMI and
 position) is located on the transcript. Per library and primer, read ends are
 binned by spliced distance from the 3' and 5' ends; --collect pools libraries
 and writes tealeaf.sc.position_bias.end_profiles per primer to profiles.json.
+--by-cell-type keys histograms and profiles by "primer|cell type" instead
+(a diagnostic: the opportunities use the label-blind primer profiles).
 """
 
 import argparse
@@ -19,8 +21,6 @@ import numpy as np
 
 from tealeaf.sc.junction_benchmark import normalize_starsolo_barcode
 from tealeaf.sc.position_bias import end_profiles, transcript_end_distance
-
-PRIMERS = ("poly(dT)", "random hexamer")
 
 
 def single_transcript_genes(gtf, min_length):
@@ -54,6 +54,7 @@ def main():
     parser.add_argument("--bin-width", type=int, default=25)
     parser.add_argument("--bins", type=int, default=80)
     parser.add_argument("--collect", action="store_true")
+    parser.add_argument("--by-cell-type", action="store_true")
     args = parser.parse_args()
     middle = args.bin_width * args.bins
     if args.collect:
@@ -68,8 +69,8 @@ def main():
             profiles[primer] = {"three_prime": f.tolist(), "five_prime": g.tolist()}
         result = {"bin_width": args.bin_width, "libraries": len(parts), "genes": {primer: len(values) for primer, values in rows.items()}, "profiles": profiles}
         (args.output_dir / "profiles.json").write_text(json.dumps(result, indent=1) + "\n")
-        for primer, value in profiles.items():
-            print(primer, "3':", np.round(value["three_prime"][:12], 2).tolist(), "5':", np.round(value["five_prime"][:12], 2).tolist(), flush=True)
+        for primer, value in sorted(profiles.items()):
+            print(primer, result["genes"][primer], "3':", np.round(value["three_prime"][:12], 2).tolist(), "5':", np.round(value["five_prime"][:12], 2).tolist(), flush=True)
         return
     import pysam
 
@@ -79,11 +80,12 @@ def main():
     library = json.loads(args.recipe.read_text())["bams"][args.library_index]
     groups = library["barcode_groups"]
     sources = [pysam.AlignmentFile(run["path"], "rb", index_filename=run["index"]) for run in library["runs"]]
-    result = {primer: [] for primer in PRIMERS}
+    label = (lambda group: f"{group[2]}|{group[1]}") if args.by_cell_type else (lambda group: group[2])
+    result = defaultdict(list)
     for gene in chosen:
         chromosome, strand, exons = genes[gene]
         length = sum(b - a for a, b in exons)
-        seen = {primer: set() for primer in PRIMERS}
+        seen = defaultdict(set)
         for source in sources:
             if chromosome not in source.references:
                 continue
@@ -98,7 +100,7 @@ def main():
                 end = alignment.reference_end - 1 if strand == "+" else alignment.reference_start
                 distance = transcript_end_distance(exons, strand, end)
                 if distance is not None:
-                    seen[groups[barcode][2]].add((barcode, alignment.get_tag("UB"), distance))
+                    seen[label(groups[barcode])].add((barcode, alignment.get_tag("UB"), distance))
         for primer, reads in seen.items():
             three, five, middle_count = np.zeros(args.bins), np.zeros(args.bins), 0
             for _, _, (d3, d5) in reads:

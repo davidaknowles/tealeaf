@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+internal_pos, internal blocks + tj_pos terminal blocks	40	7942	38	0.95	0.961298904139338	all tested	calibrated then raw
+internal_pos, internal blocks + tj_pos terminal blocks	100	7942	89	0.89	0.9271967873476987	all tested	calibrated then raw
+internal_pos, internal blocks + tj_pos terminal blocks	200	7942	174	0.87	0.9089635960789161	all tested	calibrated then raw
+internal_pos, internal blocks + tj_pos terminal blocks	40	7942	38	0.95	0.961298904139338	all tested	continuous raw
+internal_pos, internal blocks + tj_pos terminal blocks	100	7942	89	0.89	0.9271967873476987	all tested	continuous raw
+internal_pos, internal blocks + tj_pos terminal blocks	200	7942	174	0.87	0.9089635960789161	all tested	continuous raw
+internal_pos, internal blocks + tj_pos terminal blocks	40	695	38	0.95	0.961298904139338	BH discoveries	calibrated then raw
+internal_pos, internal blocks + tj_pos terminal blocks	100	695	89	0.89	0.9271967873476987	BH discoveries	calibrated then raw
+internal_pos, internal blocks + tj_pos terminal blocks	200	695	174	0.87	0.9089635960789161	BH discoveries	calibrated then raw
+internal_pos, internal blocks + tj_pos terminal blocks	40	695	38	0.95	0.961298904139338	BH discoveries	continuous raw
+internal_pos, internal blocks + tj_pos terminal blocks	100	695	89	0.89	0.9271967873476987	BH discoveries	continuous raw
+internal_pos, internal blocks + tj_pos terminal blocks	200	695	174	0.87	0.9089635960789161	BH discoveries	continuous raw
