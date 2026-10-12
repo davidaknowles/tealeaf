@@ -78,7 +78,7 @@ class ProfiledPrecursorLikelihood(BinaryECPathLikelihood):
         return sum(self.primer_log_likelihood(row, t, primer) for primer in range(len(self.counts))) - self.offsets[row]
 
 
-def prepare_block_test(block, entries, opportunities, n_paths, levels, min_share=.02, precursor=False, groups=None, min_subjects=4, min_molecules=20.):
+def prepare_block_test(block, entries, opportunities, n_paths, levels, min_share=.02, precursor=False, groups=None, min_subjects=4, min_molecules=20., primer_opportunities=None):
     """Prune a block's paths for one contrast and project its read classes.
 
     entries are (subject, cell type, primer, mask, molecules) tuples for the
@@ -93,11 +93,20 @@ def prepare_block_test(block, entries, opportunities, n_paths, levels, min_share
     eligibility screen (min_subjects subjects observed in both levels,
     min_molecules molecules) is repeated on the projected classes, since
     molecules compatible only with a dropped precursor leave the fit.
+    primer_opportunities ({primer: opportunities}, e.g. position-weighted,
+    with opportunities their mean) are grouped and projected in the same
+    way and returned as "primer_opportunities".
     """
     if groups is not None:
         if precursor:
             raise ValueError("path groups are for junction-only classes without a precursor")
+        full_paths = n_paths
         entries, opportunities, groups = group_paths(entries, opportunities, groups, n_paths)
+        if primer_opportunities is not None:
+            regrouped = {primer: group_paths([], values, groups, full_paths) for primer, values in primer_opportunities.items()}
+            if any(len(value[2]) != len(groups) for value in regrouped.values()):
+                raise ValueError("a path group has no read opportunity for one primer")
+            primer_opportunities = {primer: value[1] for primer, value in regrouped.items()}
         n_paths = len(groups)
         if n_paths < 2:
             raise ValueError("fewer than two expressed paths")
@@ -119,7 +128,9 @@ def prepare_block_test(block, entries, opportunities, n_paths, levels, min_share
     paired = sum((subject, levels[0]) in totals and (subject, levels[1]) in totals for subject in {subject for subject, _ in present})
     if paired < min_subjects or sum(totals.values()) < min_molecules:
         raise ValueError("too few paired subjects or molecules in the projected classes")
-    return {"lookup": lookup, "opportunities": project_opportunities(opportunities, kept, n_paths, precursor), "kept": kept, "shares": shares, "subjects": np.array([subject for subject, _ in present]), "labels": np.array([label for _, label in present]), "median_molecules": float(np.median([totals.get((subject, levels[label]), 0.) for subject, label in present])), "groups": groups}
+    if primer_opportunities is not None:
+        primer_opportunities = {primer: project_opportunities(values, kept, n_paths, precursor) for primer, values in primer_opportunities.items()}
+    return {"primer_opportunities": primer_opportunities, "lookup": lookup, "opportunities": project_opportunities(opportunities, kept, n_paths, precursor), "kept": kept, "shares": shares, "subjects": np.array([subject for subject, _ in present]), "labels": np.array([label for _, label in present]), "median_molecules": float(np.median([totals.get((subject, levels[label]), 0.) for subject, label in present])), "groups": groups}
 
 
 def local_class_masks(opportunities, n_paths, anchors):
@@ -129,7 +140,7 @@ def local_class_masks(opportunities, n_paths, anchors):
     return sorted(mask for mask in opportunities if anchors or (mask & full) != full)
 
 
-def local_read_likelihood(lookup, block, opportunities, subjects, labels, levels, anchors, target=0, shares=None, n_paths=None, precursor=False):
+def local_read_likelihood(lookup, block, opportunities, subjects, labels, levels, anchors, target=0, shares=None, n_paths=None, precursor=False, primer_opportunities=None):
     """Primer-specific block-local class counts, target path versus the rest.
 
     Opportunity vectors have n_paths mature entries, plus a final precursor
@@ -138,14 +149,20 @@ def local_read_likelihood(lookup, block, opportunities, subjects, labels, levels
     other mature paths, w their label-blind pooled shares renormalized; with
     the precursor it is n[k][precursor], scaled by a profiled per-row factor.
     For two mature paths without precursor this is the plain binary model.
+    With primer_opportunities ({primer: opportunities}), each primer's
+    components use its own opportunities over the classes of opportunities.
     """
     n_paths = len(next(iter(opportunities.values()))) - int(precursor) if n_paths is None else n_paths
     masks = local_class_masks(opportunities, n_paths, anchors)
     rest = np.ones(n_paths) if shares is None else np.array(shares[:n_paths], dtype=float)
     rest[target] = 0.
     rest /= rest.sum()
-    components = np.column_stack([[opportunities[mask][n_paths] if precursor else 0. for mask in masks], [opportunities[mask][target] for mask in masks], [opportunities[mask][:n_paths] @ rest for mask in masks]])
-    if (components[:, 1].sum() == 0) or (components[:, 2].sum() == 0):
+    def build(values):
+        vectors = [np.asarray(values.get(mask, np.zeros(len(opportunities[mask]))), dtype=float) for mask in masks]
+        return np.column_stack([[vector[n_paths] if precursor else 0. for vector in vectors], [vector[target] for vector in vectors], [vector[:n_paths] @ rest for vector in vectors]])
+
+    components = tuple(build(primer_opportunities[primer]) for primer in PRIMERS) if primer_opportunities is not None else (build(opportunities),) * len(PRIMERS)
+    if any(value[:, 1].sum() == 0 or value[:, 2].sum() == 0 for value in components):
         raise ValueError("a path has no read opportunity in the chosen classes")
     keys, rows = [], []
     for subject in np.unique(subjects):
@@ -159,7 +176,7 @@ def local_read_likelihood(lookup, block, opportunities, subjects, labels, levels
     counts = tuple(np.asarray([row[primer] for row in rows]) for primer in range(len(PRIMERS)))
     n = len(keys)
     model = ProfiledPrecursorLikelihood if precursor else BinaryECPathLikelihood
-    return model(counts, (components, components), np.asarray([key[0] for key in keys]), np.asarray([key[1] for key in keys]), np.ones((n, 2)), np.zeros(n))
+    return model(counts, components, np.asarray([key[0] for key in keys]), np.asarray([key[1] for key in keys]), np.ones((n, 2)), np.zeros(n))
 
 
 def row_compositions(lookup, block, opportunities, subjects, labels, levels, masks, n_paths):
@@ -189,7 +206,7 @@ def simes(p_values):
     return float(min(1., np.min(len(ordered) * ordered / np.arange(1, len(ordered) + 1))))
 
 
-def fit_local_block(lookup, block, opportunities, n_paths, subjects, labels, levels, *, anchors=True, primer_offset=True, nodes=9, precursor=False):
+def fit_local_block(lookup, block, opportunities, n_paths, subjects, labels, levels, *, anchors=True, primer_offset=True, nodes=9, precursor=False, primer_opportunities=None):
     """Test one block contrast; returns summary fields and per-level path usage.
 
     lookup maps (block, subject, cell type, primer, mask) -> molecules, labels
@@ -205,7 +222,7 @@ def fit_local_block(lookup, block, opportunities, n_paths, subjects, labels, lev
     p_values, statistics, offsets, means = [], [], [], {}
     for target in targets:
         try:
-            likelihood = local_read_likelihood(lookup, block, opportunities, subjects, labels, levels, anchors, target, shares, n_paths=n_paths, precursor=precursor)
+            likelihood = local_read_likelihood(lookup, block, opportunities, subjects, labels, levels, anchors, target, shares, n_paths=n_paths, precursor=precursor, primer_opportunities=primer_opportunities)
             if primer_offset:
                 likelihood.primer_offsets = np.array([0., estimate_primer_offset(likelihood)])
                 offsets.append(float(likelihood.primer_offsets[1]))

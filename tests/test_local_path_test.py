@@ -91,3 +91,23 @@ def test_eligibility_rechecked_after_dropping_precursor():
     prepare_block_test("b", entries, opportunities, 2, levels, precursor=True)
     with pytest.raises(ValueError):
         prepare_block_test("b", entries, opportunities, 2, levels, precursor=False)
+
+
+def test_identical_primer_opportunities_match_shared():
+    rng = np.random.default_rng(1)
+    lookup = {}
+    subjects, labels = [], []
+    for index in range(6):
+        for label, level in enumerate(("a", "b")):
+            subjects.append(f"s{index}")
+            labels.append(label)
+            for primer in PRIMERS:
+                for mask in OPPORTUNITIES:
+                    if mask & 3:
+                        lookup[("b", f"s{index}", level, primer, mask)] = float(rng.poisson(20))
+    mature = {mask: vector[:2] for mask, vector in OPPORTUNITIES.items() if mask & 3}
+    subjects, labels = np.array(subjects), np.array(labels)
+    shared = local_read_likelihood(lookup, "b", mature, subjects, labels, ("a", "b"), True, n_paths=2)
+    split = local_read_likelihood(lookup, "b", mature, subjects, labels, ("a", "b"), True, n_paths=2, primer_opportunities={primer: mature for primer in PRIMERS})
+    for row in range(len(shared.counts[0])):
+        assert np.allclose(shared.row_log_likelihood(row, np.array([.3, .6])), split.row_log_likelihood(row, np.array([.3, .6])))

@@ -82,3 +82,24 @@ def test_junction_only_opportunities_and_groups():
     assert kept == groups
     assert [entry[3] for entry in grouped_entries] == [1, 2, 2]
     np.testing.assert_allclose(sum(grouped.values()), [150., 150.])
+
+
+def test_position_weights_reduce_to_uniform_and_distances():
+    from tealeaf.sc.position_bias import path_end_distances, transcript_end_distance, weighted_path_read_opportunities
+    paths = [[(0, 100), (300, 400)], [(0, 100), (200, 250), (300, 400)]]
+    flat = {"p": (np.ones(4), np.ones(4))}
+    weighted = weighted_path_read_opportunities(paths, 50, "+", [[(5000, 5000)], [(5000, 5000)]], flat, 25, floor=0.)["p"]
+    uniform = path_read_opportunities(paths, 50)
+    assert set(weighted) == set(uniform)
+    for mask in uniform:
+        assert np.allclose(weighted[mask], uniform[mask])
+    exons = [(0, 100), (300, 400), (1000, 1200)]
+    assert transcript_end_distance(exons, "+", 1199) == (0, 399)
+    assert transcript_end_distance(exons, "-", 0) == (0, 399)
+    assert transcript_end_distance(exons, "+", 150) is None
+    assert path_end_distances([(300, 400)], [exons], "+") == [(200, 100)]
+    assert path_end_distances([(300, 400)], [exons], "-") == [(100, 200)]
+    # a poly(dT)-like spike at the 3' end raises the weight of reads ending there
+    spike = {"p": (np.r_[10., np.ones(3)], np.ones(4))}
+    terminal = weighted_path_read_opportunities([[(0, 100), (300, 400)]], 50, "+", [[(0, 0)]], spike, 25, floor=0.)["p"]
+    assert sum(vector[0] for vector in terminal.values()) > sum(vector[0] for vector in path_read_opportunities([[(0, 100), (300, 400)]], 50).values())
