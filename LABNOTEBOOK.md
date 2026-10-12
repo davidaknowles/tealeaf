@@ -4520,3 +4520,20 @@ Count null (`assess_annotated_count_null.py --junction-only`, 200 terminal tests
 | Comparators | 26/38/21/5/49/12/56 | .865/.819/.907/.654/.637/.542/.825 | |
 
 LR agreement of terminal tests in the top 100 rises from about .70 to .89, matching internal blocks (.87–.92). This is the first variant with the best LR of all methods; on split it beats LeafCutter, MAJIQ, SUPPA2, SUPPA2-PA and rMATS but not scQuint (49 vs 56) or the SUPPA2/Tealeaf hybrid (23 vs 49). Of the 27 scQuint-replicated genes we miss, 9 are nominal in both folds and 7 have no test: their terminal blocks merge to one junction group, their minor path is below the 2% share screen, or the block has more than 10 annotated paths and was not collected. Most of the hybrid's genes we miss are untested or weak in both folds.
+
+### 2026-10-12 Path cap 30 and share screen .01
+
+Blocks with up to 30 annotated paths are now collected (`collect_local_path_reads.py --max-paths 30`, previously 10), which adds 23 blocks (3,100) and raises junction-spanning molecules from 1.70M to 1.82M. The label-blind share screen is lowered from .02 to .01 (`--min-share .01`). Internal blocks use BAM reads including GX-unassigned alignments (no precursor component), terminal blocks junction-only classes as above.
+
+| Internal (BAM incl. intronic) + junction-only terminal | Replicated genes LeafCutter/MAJIQ/SUPPA2/SUPPA2-PA/hybrid/rMATS/scQuint | LR AUC100 | A100 |
+|---|---|---|---|
+| Cap 10, share .02 | 31/48/43/40/23/48/49 | .928 | .90 |
+| Cap 30, share .02 | 33/53/47/44/26/52/53 | .929 | .89 |
+| Cap 30, share .01 | 33/54/49/45/27/53/55 | .933 | .90 |
+| Comparators | 26/38/21/5/49/12/56 | .865/.819/.907/.654/.637/.542/.825 | |
+
+Count null at share .01 (`assess_annotated_count_null.py --min-share .01`, 200 tests x 2 draws, now recording each test's smallest retained share): terminal junction-only rejection at .05 is .017–.045, internal .009–.037 (anchors) and .014–.034 (anchors + precursor), with no difference between tests whose smallest retained share is below .02 and the rest. Among converged internal anchors-only fits the precursor-shift scenario rejects 13/166 at .05, the one mildly elevated cell.
+
+Eligibility fix. The test screen (at least 4 subjects observed in both levels, at least 20 molecules) was evaluated on all molecules, including those compatible only with the precursor. Without the precursor component these leave the fit, and about 30% of internal tests then failed the fit's own subject check and entered the family as p = 1. `prepare_block_test` now repeats the screen on the projected classes; internal full-cohort tests drop from 25,062 to 18,884, with convergence from 71% to 95%. Split and LR results are unchanged (33/54/49/45/27/53/55, AUC100 .933), and earlier variants without the precursor component carried the same inflated family.
+
+The variant is one gene short of scQuint (55 vs 56) and has the best LR of all methods; the SUPPA2/Tealeaf hybrid (49) remains out of reach on split.
