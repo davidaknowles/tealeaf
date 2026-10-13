@@ -27,7 +27,7 @@ from tealeaf.sc.junction_paths import block_path_exons, path_junction_map
 from tealeaf.sc.path_marginal import BinaryECPathLikelihood
 from tealeaf.sc.local_path_reads import path_read_opportunities
 from tealeaf.sc.local_path_test import PRIMERS, fit_local_block
-from extra_scripts.collect_local_path_reads import path_key
+from tealeaf.sc.local_blocks import path_key
 
 from tealeaf.sc.local_read_mixed import LocalReadMixed, local_read_mixed_test
 

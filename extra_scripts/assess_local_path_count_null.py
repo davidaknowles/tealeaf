@@ -18,7 +18,7 @@ import zlib
 import numpy as np
 import pandas as pd
 
-from extra_scripts.collect_local_path_reads import path_key
+from tealeaf.sc.local_blocks import path_key
 from extra_scripts.run_ec_block_glmm import local_test_design, partition_candidates
 from extra_scripts.run_paired_path_test import filtered_inputs
 from tealeaf.sc.local_path_reads import path_read_opportunities, pooled_path_shares, simulate_null_class_counts
