@@ -60,9 +60,10 @@ def main():
     parser.add_argument("--blocks", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--rust-library", type=Path, help="also time the Rust kernel (rust/native_align) on the same reads and check identical output")
+    parser.add_argument("--known-junctions", type=Path, help="second pass: junctions.tsv.gz of a first pass (native_collect.py --stage junctions)")
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    reference = load_reference(args.reference_dir / "reference.npz")
+    reference = load_reference(args.reference_dir / "reference.npz", known_junctions=args.known_junctions)
     sequences = []
     for chunk in fastq_records(args.fastq_dir / f"{args.run}_1.fastq.gz"):
         sequences.append(chunk)
@@ -136,6 +137,8 @@ def main():
         s, v = star.get(number), native.get(number)
         s = s if s and s[0] == 1 else None
         v = v if v and v[0] == na.UNIQUE else None
+        if s is None and v is None:
+            continue
         chromosome = (s or v)[1]
         if chromosome not in windows:
             continue

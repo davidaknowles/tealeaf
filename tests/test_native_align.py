@@ -82,6 +82,19 @@ def test_unspliced_spliced_and_reverse(setup):
     assert list(mismatches) == [0, 0, 0, 0]
 
 
+def test_minimum_junction_overhang(setup):
+    """Terminal blocks shorter than 3 bases (annotated junction) or 5 bases (novel) are clipped, as in STAR."""
+    chr1 = setup[0].sequences["chr1"]
+    reads = [spliced(chr1, [(1051, 1200), (3000, 3002)]), spliced(chr1, [(1053, 1200), (3000, 3004)]),
+             spliced(chr1, [(1196, 1200), (3000, 3147)]), spliced(chr1, [(1053, 1200), (4000, 4004)])]
+    status, _, _, _, _, n_blocks, blocks = align(setup, reads)
+    assert list(status) == [na.UNIQUE] * 4
+    assert n_blocks[0] == 1 and genomic(setup, n_blocks, blocks, 0)[0][0] == 1051
+    assert genomic(setup, n_blocks, blocks, 1) == [(1053, 1200), (3000, 3004)]
+    assert genomic(setup, n_blocks, blocks, 2) == [(1196, 1200), (3000, 3147)]
+    assert n_blocks[3] == 1
+
+
 def test_novel_exon_and_mismatches(setup):
     chr1 = setup[0].sequences["chr1"]
     read = spliced(chr1, [(1170, 1200), (4000, 4100), (5000, 5021)])
@@ -178,3 +191,15 @@ def test_simulated_opportunities_track_geometry(setup):
     assert difference / total < .02
     # the skip junction is variable; reads across it are junction-informative for path 2 only
     assert junction[2][1] > 0 and 2 in junction
+
+
+def test_known_junctions_second_pass(setup):
+    """A first-pass novel junction added with add_junctions allows annotated-length (3-base) overhangs."""
+    genome, reference, index, unique = setup
+    chr1 = genome.sequences["chr1"]
+    read = spliced(chr1, [(1053, 1200), (4000, 4004)])
+    junctions = na.add_junctions(reference, ["chr1", "chr2"], [1200, 1200], [4000, 4000])
+    assert len(junctions) == len(reference["junctions"]) + 1
+    second = dict(reference, junctions=junctions)
+    status, _, _, _, _, n_blocks, blocks = na.align_reads(np.stack([na.encode(read)]), second["ref"], index["index_codes"], index["index_positions"], index["buckets"], unique, na.K, second["locus_ref_start"], second["locus_ref_end"], second["tx_space_start"], second["tx_ref_start"], second["tx_length"], second["exon_offsets"], second["exon_tx_start"], second["exon_ref_start"], second["exon_length"], second["junctions"])
+    assert status[0] == na.UNIQUE and genomic(setup, n_blocks, blocks, 0) == [(1053, 1200), (4000, 4004)]

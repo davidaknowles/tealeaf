@@ -9,12 +9,15 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 const MIN_INTRON: i64 = 21;
 const MAX_INTRON: i64 = 1_000_000;
 const MAX_INDEL: i64 = 6;
+const MIN_OVERHANG: i64 = 5;
+const MIN_OVERHANG_ANNOTATED: i64 = 3;
 const MAX_OCCURRENCES: usize = 32;
 const MAX_HITS: usize = 1024;
 const MAX_SEGMENTS: usize = 128;
 const MAX_BLOCKS: usize = 8;
 const MAX_CANDIDATES: usize = 24;
 const STRIDE: usize = 4;
+const MAX_MISMATCHES: i64 = 10;
 const BUCKET_BITS: u64 = 24;
 
 const UNIQUE: i8 = 1;
@@ -64,6 +67,7 @@ struct Candidates {
     dg: [[i64; MAX_BLOCKS]; MAX_CANDIDATES],
     unique: [bool; MAX_CANDIDATES],
     orient: [i8; MAX_CANDIDATES],
+    current: i8,
 }
 
 impl Candidates {
@@ -81,6 +85,7 @@ impl Candidates {
             dg: [[0; MAX_BLOCKS]; MAX_CANDIDATES],
             unique: [false; MAX_CANDIDATES],
             orient: [0; MAX_CANDIDATES],
+            current: 0,
         }
     }
 }
@@ -176,14 +181,22 @@ fn mismatch(q: &[u8], r: i64, rf: &Reference, diagonal: i64) -> i64 {
     if b > 3 { 0 } else if rf.base(diagonal + r) != b { 1 } else { 0 }
 }
 
-fn extend_left(q: &[u8], rf: &Reference, diagonal: i64, start: i64, floor: i64) -> i64 {
+fn extend_left(q: &[u8], rf: &Reference, diagonal: i64, start: i64, floor: i64, mut budget: i64) -> i64 {
     let (mut best, mut score, mut best_start) = (0i64, 0i64, start);
     let mut r = start - 1;
     while r >= floor {
         if rf.base(diagonal + r) > 3 {
             break;
         }
-        score += if mismatch(q, r, rf, diagonal) == 1 { -1 } else if q[r as usize] <= 3 { 1 } else { 0 };
+        if mismatch(q, r, rf, diagonal) == 1 {
+            if budget == 0 {
+                break;
+            }
+            budget -= 1;
+            score -= 1;
+        } else if q[r as usize] <= 3 {
+            score += 1;
+        }
         if score > best {
             best = score;
             best_start = r;
@@ -196,14 +209,22 @@ fn extend_left(q: &[u8], rf: &Reference, diagonal: i64, start: i64, floor: i64) 
     best_start
 }
 
-fn extend_right(q: &[u8], rf: &Reference, diagonal: i64, end: i64, ceiling: i64) -> i64 {
+fn extend_right(q: &[u8], rf: &Reference, diagonal: i64, end: i64, ceiling: i64, mut budget: i64) -> i64 {
     let (mut best, mut score, mut best_end) = (0i64, 0i64, end);
     let mut r = end;
     while r < ceiling {
         if rf.base(diagonal + r) > 3 {
             break;
         }
-        score += if mismatch(q, r, rf, diagonal) == 1 { -1 } else if q[r as usize] <= 3 { 1 } else { 0 };
+        if mismatch(q, r, rf, diagonal) == 1 {
+            if budget == 0 {
+                break;
+            }
+            budget -= 1;
+            score -= 1;
+        } else if q[r as usize] <= 3 {
+            score += 1;
+        }
         if score > best {
             best = score;
             best_end = r + 1;
@@ -250,8 +271,9 @@ fn transcript_candidate(q: &[u8], rf: &Reference, diagonal: i64, seed_start: i64
     let length = q.len() as i64;
     let floor = 0i64.max(tx_start - diagonal);
     let ceiling = length.min(tx_end - diagonal);
-    let start = extend_left(q, rf, diagonal, seed_start, floor);
-    let end = extend_right(q, rf, diagonal, seed_end, ceiling);
+    let start = extend_left(q, rf, diagonal, seed_start, floor, MAX_MISMATCHES);
+    let spent: i64 = (start..seed_end).map(|r| mismatch(q, r, rf, diagonal)).sum();
+    let end = extend_right(q, rf, diagonal, seed_end, ceiling, 0i64.max(MAX_MISMATCHES - spent));
     let mut n = 0usize;
     for e in rf.exon_offsets[t] as usize..rf.exon_offsets[t + 1] as usize {
         let e_start = tx_start + rf.exon_tx_start[e];
@@ -313,7 +335,7 @@ fn join(q: &[u8], rf: &Reference, a_diagonal: i64, b_diagonal: i64, low: i64, hi
 fn rescue_right(q: &[u8], rf: &Reference, diagonal: i64, block_start: i64, end: i64, locus_end: i64) -> (i64, i64, i64) {
     let length = q.len() as i64;
     let (mut best_split, mut best_acceptor, mut best_delta) = (-1i64, -1i64, 0i64);
-    if length - end < 5 {
+    if length - end < MIN_OVERHANG_ANNOTATED {
         return (best_split, best_acceptor, best_delta);
     }
     let first = (find(rf.acceptors, diagonal + end + MIN_INTRON - 1) + 1) as usize;
@@ -325,7 +347,7 @@ fn rescue_right(q: &[u8], rf: &Reference, diagonal: i64, block_start: i64, end: 
             let donor = diagonal + split;
             let annotated = contains(rf.junctions, (donor << 32) | acceptor);
             let m = motif(rf, donor, acceptor);
-            if !annotated && m == 0 {
+            if !annotated && (m == 0 || length - split < MIN_OVERHANG) {
                 continue;
             }
             let (mut gain, mut lost, mut tail_mm) = (0i64, 0i64, 0i64);
@@ -363,7 +385,7 @@ fn rescue_right(q: &[u8], rf: &Reference, diagonal: i64, block_start: i64, end: 
 
 fn rescue_left(q: &[u8], rf: &Reference, diagonal: i64, start: i64, block_end: i64, locus_start: i64) -> (i64, i64, i64) {
     let (mut best_split, mut best_donor, mut best_delta) = (-1i64, -1i64, 0i64);
-    if start < 5 {
+    if start < MIN_OVERHANG_ANNOTATED {
         return (best_split, best_donor, best_delta);
     }
     let mut i = find(rf.donors, diagonal + start - MIN_INTRON + 1);
@@ -376,7 +398,7 @@ fn rescue_left(q: &[u8], rf: &Reference, diagonal: i64, start: i64, block_end: i
             let acceptor = diagonal + split;
             let annotated = contains(rf.junctions, (donor << 32) | acceptor);
             let m = motif(rf, donor, acceptor);
-            if !annotated && m == 0 {
+            if !annotated && (m == 0 || split < MIN_OVERHANG) {
                 continue;
             }
             let (mut gain, mut lost, mut head_mm) = (0i64, 0i64, 0i64);
@@ -418,35 +440,81 @@ fn locus_of(rf: &Reference, position: i64) -> i64 {
     if i >= 0 && position < rf.locus_end[i as usize] { i } else { -1 }
 }
 
-fn add_candidate(q: &[u8], rf: &Reference, w: &Work, n: usize, bonus: i64, c: &mut Candidates) {
-    let (matches, mismatches) = score_blocks(q, rf, &w.rs, &w.re, &w.dg, n);
-    let span = w.dg[n - 1] + w.re[n - 1] - (w.dg[0] + w.rs[0]);
+fn trim_overhangs(rf: &Reference, rs: &[i64], re: &[i64], dg: &[i64], n: usize) -> (usize, usize) {
+    let minimum = |i: usize| {
+        let (donor, acceptor) = (dg[i] + re[i], dg[i + 1] + rs[i + 1]);
+        if contains(rf.junctions, (donor << 32) | acceptor) { MIN_OVERHANG_ANNOTATED } else { MIN_OVERHANG }
+    };
+    let (mut first, mut last) = (0usize, n - 1);
+    while last > first && dg[first + 1] - dg[first] >= MIN_INTRON {
+        if re[first] - rs[first] >= minimum(first) {
+            break;
+        }
+        first += 1;
+    }
+    while last > first && dg[last] - dg[last - 1] >= MIN_INTRON {
+        if re[last] - rs[last] >= minimum(last - 1) {
+            break;
+        }
+        last -= 1;
+    }
+    (first, last)
+}
+
+fn gap_score(rf: &Reference, rs: &[i64], re: &[i64], dg: &[i64], n: usize) -> i64 {
+    let mut score = 0i64;
+    for i in 0..n - 1 {
+        let gap = dg[i + 1] - dg[i];
+        if gap >= MIN_INTRON {
+            let (donor, acceptor) = (dg[i] + re[i], dg[i + 1] + rs[i + 1]);
+            score += junction_score(motif(rf, donor, acceptor), contains(rf.junctions, (donor << 32) | acceptor));
+        } else {
+            score -= 2 + 2 * gap.abs();
+        }
+    }
+    score
+}
+
+fn add_candidate(q: &[u8], rf: &Reference, w: &Work, n: usize, c: &mut Candidates) {
+    let (first, last) = trim_overhangs(rf, &w.rs, &w.re, &w.dg, n);
+    let (rs, re, dg, n) = (&w.rs[first..=last], &w.re[first..=last], &w.dg[first..=last], last + 1 - first);
+    let (matches, mismatches) = score_blocks(q, rf, rs, re, dg, n);
+    let span = dg[n - 1] + re[n - 1] - (dg[0] + rs[0]);
     let length_penalty = (((span.max(1) as f64).log2() * -0.25 - 0.5).ceil() as i64).min(0);
-    let score = matches - mismatches + bonus + length_penalty;
-    let (start, end) = (w.dg[0] + w.rs[0], w.dg[n - 1] + w.re[n - 1]);
+    let score = matches - mismatches + gap_score(rf, rs, re, dg, n) + length_penalty;
+    let (start, end) = (dg[0] + rs[0], dg[n - 1] + re[n - 1]);
     for j in 0..c.n {
-        if c.start[j] == start && c.end[j] == end && c.blocks[j] == n {
+        if c.start[j] == start && c.end[j] == end && c.blocks[j] == n && c.orient[j] == c.current {
             if score > c.score[j] {
                 c.score[j] = score;
             }
             return;
         }
     }
+    let mut j = c.n;
     if c.n >= MAX_CANDIDATES {
-        return;
+        j = 0;
+        for i in 1..c.n {
+            if c.score[i] < c.score[j] {
+                j = i;
+            }
+        }
+        if c.score[j] >= score {
+            return;
+        }
     }
-    let j = c.n;
     c.score[j] = score;
     c.matches[j] = matches;
     c.mm[j] = mismatches;
     c.start[j] = start;
     c.end[j] = end;
     c.blocks[j] = n;
-    c.rs[j][..n].copy_from_slice(&w.rs[..n]);
-    c.re[j][..n].copy_from_slice(&w.re[..n]);
-    c.dg[j][..n].copy_from_slice(&w.dg[..n]);
-    c.unique[j] = genome_unique(q, rf, &w.rs, &w.re, &w.dg, n);
-    c.n += 1;
+    c.rs[j][..n].copy_from_slice(&rs[..n]);
+    c.re[j][..n].copy_from_slice(&re[..n]);
+    c.dg[j][..n].copy_from_slice(&dg[..n]);
+    c.unique[j] = genome_unique(q, rf, rs, re, dg, n);
+    c.orient[j] = c.current;
+    c.n = c.n.max(j + 1);
 }
 
 fn align_one(q: &[u8], rf: &Reference, w: &mut Work, c: &mut Candidates) {
@@ -510,7 +578,7 @@ fn align_one(q: &[u8], rf: &Reference, w: &mut Work, c: &mut Candidates) {
     for s in 0..n_seg {
         let d = w.seg_diag[s];
         let position = d + w.seg_start[s];
-        if position < rf.tx_space_start || c.n >= MAX_CANDIDATES {
+        if position < rf.tx_space_start {
             continue;
         }
         let t = find(rf.tx_ref_start, position);
@@ -523,8 +591,7 @@ fn align_one(q: &[u8], rf: &Reference, w: &mut Work, c: &mut Candidates) {
         if n == 0 {
             continue;
         }
-        let bonus = 2 * (n as i64 - 1);
-        add_candidate(q, rf, w, n, bonus, c);
+        add_candidate(q, rf, w, n, c);
     }
     // locus-space chaining
     let mut by_start: Vec<usize> = (0..n_seg).filter(|&s| w.seg_diag[s] + w.seg_start[s] < rf.tx_space_start).collect();
@@ -564,7 +631,7 @@ fn align_one(q: &[u8], rf: &Reference, w: &mut Work, c: &mut Candidates) {
     ends.sort_by_key(|&j| -dp[j]);
     let mut chain: Vec<usize> = Vec::with_capacity(n_locus);
     for &e in &ends {
-        if used[e] || c.n >= MAX_CANDIDATES || dp[e] < (2 * k as i64) / 2 {
+        if used[e] || dp[e] < (2 * k as i64) / 2 {
             continue;
         }
         chain.clear();
@@ -578,10 +645,9 @@ fn align_one(q: &[u8], rf: &Reference, w: &mut Work, c: &mut Candidates) {
         let locus = loci[e] as usize;
         let (l_start, l_end) = (rf.locus_start[locus], rf.locus_end[locus]);
         let mut n = 0usize;
-        let mut penalty = 0i64;
         let first = chain[0];
         w.dg[0] = w.seg_diag[first];
-        w.rs[0] = extend_left(q, rf, w.seg_diag[first], w.seg_start[first], 0i64.max(l_start - w.seg_diag[first]));
+        w.rs[0] = extend_left(q, rf, w.seg_diag[first], w.seg_start[first], 0i64.max(l_start - w.seg_diag[first]), MAX_MISMATCHES);
         let mut ok = true;
         for ci in 1..chain.len() {
             let (a, b) = (chain[ci - 1], chain[ci]);
@@ -598,7 +664,7 @@ fn align_one(q: &[u8], rf: &Reference, w: &mut Work, c: &mut Candidates) {
                 break;
             }
             let joined = join(q, rf, w.seg_diag[a], w.seg_diag[b], low, high, l_start, l_end);
-            let (split, m, annotated) = match joined {
+            let (split, _, _) = match joined {
                 Some(value) if n + 1 < MAX_BLOCKS => value,
                 _ => {
                     ok = false;
@@ -606,26 +672,17 @@ fn align_one(q: &[u8], rf: &Reference, w: &mut Work, c: &mut Candidates) {
                 }
             };
             w.re[n] = split;
-            if gap >= MIN_INTRON {
-                penalty -= junction_score(m, annotated);
-                n += 1;
-                w.rs[n] = split;
-            } else if gap > 0 {
-                penalty += 2 + 2 * gap;
-                n += 1;
-                w.rs[n] = split;
-            } else {
-                penalty += 2 - 2 * gap;
-                n += 1;
-                w.rs[n] = split - gap;
-            }
+            n += 1;
+            w.rs[n] = if gap < 0 { split - gap } else { split };
             w.dg[n] = w.seg_diag[b];
         }
         if !ok {
             continue;
         }
         let last = chain[chain.len() - 1];
-        w.re[n] = extend_right(q, rf, w.seg_diag[last], w.seg_end[last], (length as i64).min(l_end - w.seg_diag[last]));
+        w.re[n] = w.seg_end[last];
+        let spent = score_blocks(q, rf, &w.rs, &w.re, &w.dg, n + 1).1;
+        w.re[n] = extend_right(q, rf, w.seg_diag[last], w.seg_end[last], (length as i64).min(l_end - w.seg_diag[last]), 0i64.max(MAX_MISMATCHES - spent));
         n += 1;
         if n < MAX_BLOCKS {
             let (split, acceptor, delta) = rescue_right(q, rf, w.dg[n - 1], w.rs[n - 1], w.re[n - 1], l_end);
@@ -655,7 +712,7 @@ fn align_one(q: &[u8], rf: &Reference, w: &mut Work, c: &mut Candidates) {
         if (0..n).any(|i| w.re[i] <= w.rs[i]) {
             continue;
         }
-        add_candidate(q, rf, w, n, -penalty, c);
+        add_candidate(q, rf, w, n, c);
     }
 }
 
@@ -680,14 +737,11 @@ fn align_read(q: &[u8], reverse: &mut [u8], rf: &Reference, w: &mut Work, out: &
     }
     let mut c = Candidates::new();
     for o in 0..2i8 {
-        let before = c.n;
+        c.current = o;
         if o == 0 {
             align_one(q, rf, w, &mut c);
         } else {
             align_one(reverse, rf, w, &mut c);
-        }
-        for j in before..c.n {
-            c.orient[j] = o;
         }
     }
     if c.n == 0 {
@@ -702,7 +756,7 @@ fn align_read(q: &[u8], reverse: &mut [u8], rf: &Reference, w: &mut Work, out: &
     let minimum = (0.66 * (length as f64 - 1.0)) as i64;
     // SAFETY: each read index is written by exactly one thread.
     unsafe {
-        if c.score[best] < minimum || c.matches[best] < minimum || c.mm[best] > 10 || (c.mm[best] as f64) > 0.3 * ((c.matches[best] + c.mm[best]) as f64) {
+        if c.score[best] < minimum || c.matches[best] < minimum || c.mm[best] > MAX_MISMATCHES || (c.mm[best] as f64) > 0.3 * ((c.matches[best] + c.mm[best]) as f64) {
             *out.status.add(read) = TOO_SHORT;
             return;
         }

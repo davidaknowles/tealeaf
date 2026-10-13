@@ -56,12 +56,15 @@ SEPARATOR = 300
 MIN_INTRON = 21
 MAX_INTRON = 1_000_000
 MAX_INDEL = 6
+MIN_OVERHANG = 5  # STAR alignSJoverhangMin: minimum terminal block length after a novel junction
+MIN_OVERHANG_ANNOTATED = 3  # STAR alignSJDBoverhangMin, for annotated junctions
 MAX_OCCURRENCES = 32
 MAX_HITS = 1024
 MAX_SEGMENTS = 128
 MAX_BLOCKS = 8
 MAX_CANDIDATES = 24
 STRIDE = 4
+MAX_MISMATCHES = 10
 
 CODE = np.full(256, 4, dtype=np.uint8)
 for _base, _value in zip(b"ACGTacgt", (0, 1, 2, 3, 0, 1, 2, 3)):
@@ -398,14 +401,20 @@ def _mismatch(q, r, ref, diagonal):
 
 
 @njit(cache=True)
-def _extend_left(q, ref, diagonal, start, floor):
-    """Leftmost read start of a soft-clipped extension from read position start (exclusive) down to floor."""
+def _extend_left(q, ref, diagonal, start, floor, budget):
+    """Leftmost read start of a soft-clipped extension from read position start (exclusive) down to floor, with at most budget mismatches."""
     best, score, best_start = 0, 0, start
     r = start - 1
     while r >= floor:
         if ref[diagonal + r] > 3:
             break
-        score += -1 if _mismatch(q, r, ref, diagonal) else (1 if q[r] <= 3 else 0)
+        if _mismatch(q, r, ref, diagonal):
+            if budget == 0:
+                break
+            budget -= 1
+            score -= 1
+        elif q[r] <= 3:
+            score += 1
         if score > best:
             best, best_start = score, r
         if score < best - 8:
@@ -415,13 +424,19 @@ def _extend_left(q, ref, diagonal, start, floor):
 
 
 @njit(cache=True)
-def _extend_right(q, ref, diagonal, end, ceiling):
+def _extend_right(q, ref, diagonal, end, ceiling, budget):
     best, score, best_end = 0, 0, end
     r = end
     while r < ceiling:
         if ref[diagonal + r] > 3:
             break
-        score += -1 if _mismatch(q, r, ref, diagonal) else (1 if q[r] <= 3 else 0)
+        if _mismatch(q, r, ref, diagonal):
+            if budget == 0:
+                break
+            budget -= 1
+            score -= 1
+        elif q[r] <= 3:
+            score += 1
         if score > best:
             best, best_end = score, r + 1
         if score < best - 8:
@@ -466,8 +481,11 @@ def _transcript_candidate(q, ref, diagonal, seed_start, seed_end, tx_start, tx_e
     length = len(q)
     floor = max(0, tx_start - diagonal)
     ceiling = min(length, tx_end - diagonal)
-    start = _extend_left(q, ref, diagonal, seed_start, floor)
-    end = _extend_right(q, ref, diagonal, seed_end, ceiling)
+    start = _extend_left(q, ref, diagonal, seed_start, floor, MAX_MISMATCHES)
+    spent = 0
+    for r in range(start, seed_end):
+        spent += _mismatch(q, r, ref, diagonal)
+    end = _extend_right(q, ref, diagonal, seed_end, ceiling, max(0, MAX_MISMATCHES - spent))
     n = 0
     for e in range(exon_offsets[t], exon_offsets[t + 1]):
         e_start = tx_start + exon_tx_start[e]
@@ -521,7 +539,7 @@ def _rescue_right(q, ref, diagonal, block_start, end, acceptors, junctions, locu
     """
     length = len(q)
     best_split, best_acceptor, best_delta = -1, -1, 0
-    if length - end < 5:
+    if length - end < MIN_OVERHANG_ANNOTATED:
         return best_split, best_acceptor, best_delta
     first = _find(acceptors, diagonal + end + MIN_INTRON - 1) + 1
     for i in range(first, len(acceptors)):
@@ -532,7 +550,7 @@ def _rescue_right(q, ref, diagonal, block_start, end, acceptors, junctions, locu
             donor = diagonal + split
             annotated = _contains(junctions, (donor << 32) | acceptor)
             motif = _motif(ref, donor, acceptor)
-            if not annotated and motif == 0:
+            if not annotated and (motif == 0 or length - split < MIN_OVERHANG):
                 continue
             gain, lost, tail_mm = 0, 0, 0
             for r in range(split, length):
@@ -560,7 +578,7 @@ def _rescue_right(q, ref, diagonal, block_start, end, acceptors, junctions, locu
 def _rescue_left(q, ref, diagonal, start, block_end, donors, junctions, locus_start):
     """Best junction from an annotated donor into the clipped left end; returns (split, donor, delta)."""
     best_split, best_donor, best_delta = -1, -1, 0
-    if start < 5:
+    if start < MIN_OVERHANG_ANNOTATED:
         return best_split, best_donor, best_delta
     last = _find(donors, diagonal + start - MIN_INTRON + 1)
     i = last
@@ -572,7 +590,7 @@ def _rescue_left(q, ref, diagonal, start, block_end, donors, junctions, locus_st
             acceptor = diagonal + split
             annotated = _contains(junctions, (donor << 32) | acceptor)
             motif = _motif(ref, donor, acceptor)
-            if not annotated and motif == 0:
+            if not annotated and (motif == 0 or split < MIN_OVERHANG):
                 continue
             gain, lost, head_mm = 0, 0, 0
             for r in range(split):
@@ -606,8 +624,8 @@ def _locus_of(locus_ref_start, locus_ref_end, position):
 
 
 @njit(cache=True)
-def _align_one(q, ref, index_codes, index_positions, buckets, shift, unique, k, locus_ref_start, locus_ref_end, tx_space_start, tx_ref_start, tx_length, exon_offsets, exon_tx_start, exon_ref_start, exon_length, junctions, donors, acceptors, hits_diag, hits_read, seg_diag, seg_start, seg_end, seg_n, cand_score, cand_matches, cand_mm, cand_start, cand_end, cand_n, cand_rs, cand_re, cand_dg, cand_unique, n_cand, work_rs, work_re, work_dg, order):
-    """Append alignment candidates of one read orientation q; returns the new candidate count."""
+def _align_one(q, ref, index_codes, index_positions, buckets, shift, unique, k, locus_ref_start, locus_ref_end, tx_space_start, tx_ref_start, tx_length, exon_offsets, exon_tx_start, exon_ref_start, exon_length, junctions, donors, acceptors, hits_diag, hits_read, seg_diag, seg_start, seg_end, seg_n, cand_score, cand_matches, cand_mm, cand_start, cand_end, cand_n, cand_rs, cand_re, cand_dg, cand_unique, n_cand, work_rs, work_re, work_dg, order, cand_orient, o):
+    """Add alignment candidates of read orientation o (sequence q); returns the new candidate count."""
     length = len(q)
     n_hits = 0
     p = 0
@@ -648,7 +666,7 @@ def _align_one(q, ref, index_codes, index_positions, buckets, shift, unique, k, 
     for s in range(n_seg):
         d = seg_diag[s]
         position = d + seg_start[s]
-        if position < tx_space_start or n_cand >= MAX_CANDIDATES:
+        if position < tx_space_start:
             continue
         t = _find(tx_ref_start, position)
         if t < 0 or position >= tx_ref_start[t] + tx_length[t]:
@@ -656,10 +674,7 @@ def _align_one(q, ref, index_codes, index_positions, buckets, shift, unique, k, 
         n = _transcript_candidate(q, ref, d, seg_start[s], seg_end[s], tx_ref_start[t], tx_ref_start[t] + tx_length[t], t, exon_offsets, exon_tx_start, exon_ref_start, exon_length, work_rs, work_re, work_dg)
         if n == 0:
             continue
-        n_junction_penalty = 0
-        for i in range(n - 1):
-            n_junction_penalty += 2  # annotated junctions
-        n_cand = _add_candidate(q, ref, unique, k, work_rs, work_re, work_dg, n, n_junction_penalty, cand_score, cand_matches, cand_mm, cand_start, cand_end, cand_n, cand_rs, cand_re, cand_dg, cand_unique, n_cand)
+        n_cand = _add_candidate(q, ref, unique, k, junctions, work_rs, work_re, work_dg, n, cand_score, cand_matches, cand_mm, cand_start, cand_end, cand_n, cand_rs, cand_re, cand_dg, cand_unique, n_cand, cand_orient, o)
     # locus-space chaining
     n_locus = 0
     for s in range(n_seg):
@@ -691,7 +706,7 @@ def _align_one(q, ref, index_codes, index_positions, buckets, shift, unique, k, 
     used = np.zeros(n_locus, dtype=np.bool_)
     ends = np.argsort(-dp, kind="mergesort")
     for e in ends:
-        if used[e] or n_cand >= MAX_CANDIDATES or dp[e] < 2 * k // 2:
+        if used[e] or dp[e] < 2 * k // 2:
             continue
         chain_len = 0
         j = e
@@ -707,10 +722,9 @@ def _align_one(q, ref, index_codes, index_positions, buckets, shift, unique, k, 
         locus = loci[e]
         l_start, l_end = locus_ref_start[locus], locus_ref_end[locus]
         n = 0
-        penalty = 0
         first = chain[0]
         work_dg[0] = seg_diag[first]
-        work_rs[0] = _extend_left(q, ref, seg_diag[first], seg_start[first], max(0, l_start - seg_diag[first]))
+        work_rs[0] = _extend_left(q, ref, seg_diag[first], seg_start[first], max(0, l_start - seg_diag[first]), MAX_MISMATCHES)
         ok = True
         for c in range(1, chain_len):
             a, b = chain[c - 1], chain[c]
@@ -729,23 +743,15 @@ def _align_one(q, ref, index_codes, index_positions, buckets, shift, unique, k, 
                 ok = False
                 break
             work_re[n] = split
-            if gap >= MIN_INTRON:
-                penalty -= _junction_score(motif, annotated)
-                n += 1
-                work_rs[n] = split
-            elif gap > 0:
-                penalty += 2 + 2 * gap
-                n += 1
-                work_rs[n] = split
-            else:
-                penalty += 2 - 2 * gap
-                n += 1
-                work_rs[n] = split - gap
+            n += 1
+            work_rs[n] = split - gap if gap < 0 else split
             work_dg[n] = seg_diag[b]
         if not ok:
             continue
         last = chain[chain_len - 1]
-        work_re[n] = _extend_right(q, ref, seg_diag[last], seg_end[last], min(length, l_end - seg_diag[last]))
+        work_re[n] = seg_end[last]
+        spent = _score_blocks(q, ref, work_rs, work_re, work_dg, n + 1)[1]
+        work_re[n] = _extend_right(q, ref, seg_diag[last], seg_end[last], min(length, l_end - seg_diag[last]), max(0, MAX_MISMATCHES - spent))
         n += 1
         if n < MAX_BLOCKS:
             split, acceptor, delta = _rescue_right(q, ref, work_dg[n - 1], work_rs[n - 1], work_re[n - 1], acceptors, junctions, l_end)
@@ -771,30 +777,72 @@ def _align_one(q, ref, index_codes, index_positions, buckets, shift, unique, k, 
                 valid = False
         if not valid:
             continue
-        n_cand = _add_candidate(q, ref, unique, k, work_rs, work_re, work_dg, n, -penalty, cand_score, cand_matches, cand_mm, cand_start, cand_end, cand_n, cand_rs, cand_re, cand_dg, cand_unique, n_cand)
+        n_cand = _add_candidate(q, ref, unique, k, junctions, work_rs, work_re, work_dg, n, cand_score, cand_matches, cand_mm, cand_start, cand_end, cand_n, cand_rs, cand_re, cand_dg, cand_unique, n_cand, cand_orient, o)
     return n_cand
 
 
 @njit(cache=True)
-def _add_candidate(q, ref, unique, k, rs, re, dg, n, bonus, cand_score, cand_matches, cand_mm, cand_start, cand_end, cand_n, cand_rs, cand_re, cand_dg, cand_unique, n_cand):
+def _trim_overhangs(ref, junctions, rs, re, dg, n):
+    """First and last kept block after dropping terminal blocks shorter than the minimum junction overhang (STAR's 3 for annotated, 5 for novel junctions)."""
+    first, last = 0, n - 1
+    while last > first and dg[first + 1] - dg[first] >= MIN_INTRON:
+        donor, acceptor = dg[first] + re[first], dg[first + 1] + rs[first + 1]
+        minimum = MIN_OVERHANG_ANNOTATED if _contains(junctions, (donor << 32) | acceptor) else MIN_OVERHANG
+        if re[first] - rs[first] >= minimum:
+            break
+        first += 1
+    while last > first and dg[last] - dg[last - 1] >= MIN_INTRON:
+        donor, acceptor = dg[last - 1] + re[last - 1], dg[last] + rs[last]
+        minimum = MIN_OVERHANG_ANNOTATED if _contains(junctions, (donor << 32) | acceptor) else MIN_OVERHANG
+        if re[last] - rs[last] >= minimum:
+            break
+        last -= 1
+    return first, last
+
+
+@njit(cache=True)
+def _gap_score(ref, junctions, rs, re, dg, n):
+    """Junction scores plus indel penalties between consecutive blocks."""
+    score = 0
+    for i in range(n - 1):
+        gap = dg[i + 1] - dg[i]
+        if gap >= MIN_INTRON:
+            donor, acceptor = dg[i] + re[i], dg[i + 1] + rs[i + 1]
+            score += _junction_score(_motif(ref, donor, acceptor), _contains(junctions, (donor << 32) | acceptor))
+        else:
+            score -= 2 + 2 * abs(gap)
+    return score
+
+
+@njit(cache=True)
+def _add_candidate(q, ref, unique, k, junctions, rs, re, dg, n, cand_score, cand_matches, cand_mm, cand_start, cand_end, cand_n, cand_rs, cand_re, cand_dg, cand_unique, n_cand, cand_orient, o):
+    """Store a candidate; a full table drops its lowest-scoring candidate if the new one scores higher."""
+    first, last = _trim_overhangs(ref, junctions, rs, re, dg, n)
+    rs, re, dg, n = rs[first:last + 1], re[first:last + 1], dg[first:last + 1], last + 1 - first
     matches, mismatches = _score_blocks(q, ref, rs, re, dg, n)
     span = dg[n - 1] + re[n - 1] - (dg[0] + rs[0])
     length_penalty = min(0, int(np.ceil(np.log2(max(span, 1)) * -0.25 - 0.5)))
-    score = matches - mismatches + bonus + length_penalty
+    score = matches - mismatches + _gap_score(ref, junctions, rs, re, dg, n) + length_penalty
     start, end = dg[0] + rs[0], dg[n - 1] + re[n - 1]
     for c in range(n_cand):
-        if cand_start[c] == start and cand_end[c] == end and cand_n[c] == n:
+        if cand_start[c] == start and cand_end[c] == end and cand_n[c] == n and cand_orient[c] == o:
             if score > cand_score[c]:
                 cand_score[c] = score
             return n_cand
+    j = n_cand
     if n_cand >= MAX_CANDIDATES:
-        return n_cand
-    cand_score[n_cand], cand_matches[n_cand], cand_mm[n_cand] = score, matches, mismatches
-    cand_start[n_cand], cand_end[n_cand], cand_n[n_cand] = start, end, n
+        j = 0
+        for c in range(1, n_cand):
+            if cand_score[c] < cand_score[j]:
+                j = c
+        if cand_score[j] >= score:
+            return n_cand
+    cand_score[j], cand_matches[j], cand_mm[j] = score, matches, mismatches
+    cand_start[j], cand_end[j], cand_n[j], cand_orient[j] = start, end, n, o
     for i in range(n):
-        cand_rs[n_cand, i], cand_re[n_cand, i], cand_dg[n_cand, i] = rs[i], re[i], dg[i]
-    cand_unique[n_cand] = _genome_unique(q, ref, unique, rs, re, dg, n, k)
-    return n_cand + 1
+        cand_rs[j, i], cand_re[j, i], cand_dg[j, i] = rs[i], re[i], dg[i]
+    cand_unique[j] = _genome_unique(q, ref, unique, rs, re, dg, n, k)
+    return max(n_cand, j + 1)
 
 
 def align_reads(reads, ref, index_codes, index_positions, buckets, unique, k, locus_ref_start, locus_ref_end, tx_space_start, tx_ref_start, tx_length, exon_offsets, exon_tx_start, exon_ref_start, exon_length, junctions, chunk=4096):
@@ -856,18 +904,15 @@ def _align_reads(reads, ref, index_codes, index_positions, buckets, unique, k, l
                 reverse[i] = 3 - b if b <= 3 else 4
             n_cand = 0
             for o in range(2):
-                before = n_cand
                 query = q if o == 0 else reverse
-                n_cand = _align_one(query, ref, index_codes, index_positions, buckets, shift, unique, k, locus_ref_start, locus_ref_end, tx_space_start, tx_ref_start, tx_length, exon_offsets, exon_tx_start, exon_ref_start, exon_length, junctions, donors, acceptors, hits_diag, hits_read, seg_diag, seg_start, seg_end, seg_n, cand_score, cand_matches, cand_mm, cand_start, cand_end, cand_n, cand_rs, cand_re, cand_dg, cand_unique, n_cand, work_rs, work_re, work_dg, order)
-                for j in range(before, n_cand):
-                    cand_orient[j] = o
+                n_cand = _align_one(query, ref, index_codes, index_positions, buckets, shift, unique, k, locus_ref_start, locus_ref_end, tx_space_start, tx_ref_start, tx_length, exon_offsets, exon_tx_start, exon_ref_start, exon_length, junctions, donors, acceptors, hits_diag, hits_read, seg_diag, seg_start, seg_end, seg_n, cand_score, cand_matches, cand_mm, cand_start, cand_end, cand_n, cand_rs, cand_re, cand_dg, cand_unique, n_cand, work_rs, work_re, work_dg, order, cand_orient, o)
             if n_cand == 0:
                 continue
             best = 0
             for j in range(1, n_cand):
                 if cand_score[j] > cand_score[best]:
                     best = j
-            if cand_score[best] < minimum or cand_matches[best] < minimum or cand_mm[best] > 10 or cand_mm[best] > 0.3 * (cand_matches[best] + cand_mm[best]):
+            if cand_score[best] < minimum or cand_matches[best] < minimum or cand_mm[best] > MAX_MISMATCHES or cand_mm[best] > 0.3 * (cand_matches[best] + cand_mm[best]):
                 status[read] = TOO_SHORT
                 continue
             multi = False
@@ -1240,6 +1285,19 @@ def simulated_opportunities(blocks, reference, align, read_length, batch=4_000_0
     if pending:
         flush()
     return {key: tuple({mask: vector for mask, vector in table.items()} for table in totals[key]) for key in keys}
+
+
+def add_junctions(reference, chromosomes, donors, acceptors):
+    """Sorted junction keys of the reference plus genomic junctions [donor, acceptor) that fall inside one target locus."""
+    keys = [reference["junctions"]]
+    genome_start = reference["locus_genome_start"]
+    genome_end = genome_start + reference["locus_ref_end"] - reference["locus_ref_start"]
+    chromosomes, donors, acceptors = np.asarray(chromosomes).astype(str), np.asarray(donors, dtype=np.int64), np.asarray(acceptors, dtype=np.int64)
+    for locus, chromosome in enumerate(reference["locus_chromosome"].astype(str)):
+        inside = (chromosomes == chromosome) & (donors >= genome_start[locus]) & (acceptors <= genome_end[locus])
+        shift = reference["locus_ref_start"][locus] - genome_start[locus]
+        keys.append(((donors[inside] + shift) << 32) | (acceptors[inside] + shift))
+    return np.unique(np.concatenate(keys)).astype(np.int64)
 
 
 def locus_to_genome(reference, locus, position):

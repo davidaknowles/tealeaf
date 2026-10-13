@@ -25,6 +25,12 @@ Stages:
              opportunities come from error-free reads passed through the
              aligner instead of from path geometry.
 
+With --known-junctions (junctions.tsv.gz of a first pass), canonical-motif
+junctions of the first pass join the annotated junctions for rescue of clipped
+read ends, overhang minimums and scoring, as in STAR's two-pass mode; align,
+junctions and collect then use runs_pass2/, junctions_pass2.tsv.gz and
+blocks_pass2.json.gz.
+
 collect --sense-only drops reads antisense to the block's gene (read 1 is
 sense to the RNA in this protocol). --rust-library runs the Rust alignment
 kernel (rust/native_align) in place of numba; both give identical output.
@@ -60,10 +66,20 @@ def candidate_genes(caches):
     return genes
 
 
-def load_reference(path, index=True):
+def load_reference(path, index=True, known_junctions=None):
+    """Reference arrays; known_junctions (a first-pass junctions.tsv.gz) adds its canonical-motif junctions to reference["junctions"]."""
     data = np.load(path, allow_pickle=False)
     keys = REFERENCE_KEYS + (("index_codes", "index_positions", "buckets", "unique") if index else ())
-    return {key: data[key] for key in keys}
+    reference = {key: data[key] for key in keys}
+    if known_junctions is not None:
+        table = pd.read_csv(known_junctions, sep="\t")
+        table = table[table["strand"] != "."]
+        reference["junctions"] = na.add_junctions(reference, table["chromosome"], table["donor"], table["acceptor"])
+    return reference
+
+
+def suffix(args):
+    return "_pass2" if args.known_junctions else ""
 
 
 def fastq_records(path, chunk_bytes=1 << 27):
@@ -162,9 +178,9 @@ def stage_align(args):
     library = next(library for library in recipe["bams"] if any(Path(run["path"]).parent.name == args.run for run in library["runs"]))
     barcodes = sorted(library["barcode_groups"])
     tables, lookup, size = barcode_tools(args.whitelist_dir, barcodes)
-    reference = load_reference(args.output_dir / "reference.npz")
+    reference = load_reference(args.output_dir / "reference.npz", known_junctions=args.known_junctions)
     kernel = na.rust_aligner(args.rust_library) if args.rust_library else na.align_reads
-    out = args.output_dir / "runs" / args.run
+    out = args.output_dir / f"runs{suffix(args)}" / args.run
     out.mkdir(parents=True, exist_ok=True)
     homopolymers = {sum(base * 4 ** i for i in range(UMI[1] - UMI[0])) for base in range(4)}
     status_counts = np.zeros(5, dtype=np.int64)
@@ -242,16 +258,16 @@ def stage_junctions(args):
     reads, libraries, strands = {}, {}, {}
     for index, library in enumerate(recipe["bams"]):
         for run in library["runs"]:
-            for key, (n, strand) in run_junctions(args.output_dir / "runs" / Path(run["path"]).parent.name / "junctions.npz", reference, reference["junctions"]).items():
+            for key, (n, strand) in run_junctions(args.output_dir / f"runs{suffix(args)}" / Path(run["path"]).parent.name / "junctions.npz", reference, reference["junctions"]).items():
                 reads[key] = reads.get(key, 0) + n
                 libraries.setdefault(key, set()).add(index)
                 strands[key] = strand
     support = {key: (reads[key], len(libraries[key]), strands[key]) for key in reads}
-    pd.DataFrame([(c, d, a, *value) for (c, d, a), value in sorted(support.items())], columns=["chromosome", "donor", "acceptor", "reads", "libraries", "strand"]).to_csv(args.output_dir / "junctions.tsv.gz", sep="\t", index=False)
+    pd.DataFrame([(c, d, a, *value) for (c, d, a), value in sorted(support.items())], columns=["chromosome", "donor", "acceptor", "reads", "libraries", "strand"]).to_csv(args.output_dir / f"junctions{suffix(args)}.tsv.gz", sep="\t", index=False)
     genes = read_gtf_exons(args.gtf)
     options = {"min_reads": args.novel_min_reads, "min_libraries": args.novel_min_libraries, "max_novel": args.novel_max}
     blocks = annotated_blocks(args.candidate_cache, args.block_cache, args.max_paths, junction_support(support), options, genes)
-    with gzip.open(args.output_dir / "blocks.json.gz", "wt") as handle:
+    with gzip.open(args.output_dir / f"blocks{suffix(args)}.json.gz", "wt") as handle:
         json.dump(blocks, handle)
     novel = sum(len(block["signatures"]) - block["n_annotated"] for block in blocks.values())
     print(f"{len(support)} junctions; {len(blocks)} blocks, {sum(':N' in block['block_id'] for block in blocks.values())} new, {novel} novel paths", flush=True)
@@ -268,7 +284,7 @@ def stage_collect(args):
     parts = {name: [] for name in ("cell", "umi", "locus", "orientation", "offsets", "starts", "ends")}
     total = 0
     for run in library["runs"]:
-        for path in sorted((args.output_dir / "runs" / Path(run["path"]).parent.name).glob("chunk_*.npz")):
+        for path in sorted((args.output_dir / f"runs{suffix(args)}" / Path(run["path"]).parent.name).glob("chunk_*.npz")):
             data = np.load(path)
             for name in ("cell", "umi", "locus", "orientation", "starts", "ends"):
                 parts[name].append(data[name].astype(np.int64))
@@ -315,7 +331,7 @@ def stage_collate(args):
     blocks = json.load(gzip.open(args.blocks, "rt"))
     simulated = None
     if args.simulated_opportunities:
-        reference = load_reference(args.output_dir / "reference.npz")
+        reference = load_reference(args.output_dir / "reference.npz", known_junctions=args.known_junctions)
         tables = [reference[name] for name in ("ref", "index_codes", "index_positions", "buckets", "unique")] + [na.K] + [reference[name] for name in ("locus_ref_start", "locus_ref_end", "tx_space_start", "tx_ref_start", "tx_length", "exon_offsets", "exon_tx_start", "exon_ref_start", "exon_length", "junctions")]
         kernel = na.rust_aligner(args.rust_library) if args.rust_library else na.align_reads
         clock = time.time()
@@ -369,6 +385,7 @@ def main():
     parser.add_argument("--sense-only", action="store_true", help="collect: drop reads antisense to the block's gene")
     parser.add_argument("--simulated-opportunities", action="store_true", help="collate: read opportunities from error-free reads passed through the aligner (tealeaf.sc.native_align.simulated_opportunities)")
     parser.add_argument("--rust-library", type=Path, help="use the Rust alignment kernel (rust/native_align) instead of numba")
+    parser.add_argument("--known-junctions", type=Path, help="second pass: junctions.tsv.gz of the first pass")
     parser.add_argument("--collate-dir", type=Path, help="collate: write the collated collections here instead of --collection-dir")
     parser.add_argument("--max-paths", type=int, default=30)
     parser.add_argument("--novel-min-reads", type=int, default=20)
@@ -376,7 +393,7 @@ def main():
     parser.add_argument("--novel-max", type=int, default=8)
     args = parser.parse_args()
     if args.blocks is None:
-        args.blocks = args.output_dir / "blocks.json.gz"
+        args.blocks = args.output_dir / f"blocks{suffix(args)}.json.gz"
     {"reference": stage_reference, "align": stage_align, "junctions": stage_junctions, "collect": stage_collect, "collate": stage_collate}[args.stage](args)
 
 
