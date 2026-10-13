@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+internal_novel, internal blocks + tj_novel terminal blocks	40	6390	38	0.95	0.9578465231869571	all tested	calibrated then raw
+internal_novel, internal blocks + tj_novel terminal blocks	100	6390	91	0.91	0.9314412708292427	all tested	calibrated then raw
+internal_novel, internal blocks + tj_novel terminal blocks	200	6390	179	0.895	0.9205347661327389	all tested	calibrated then raw
+internal_novel, internal blocks + tj_novel terminal blocks	40	6390	38	0.95	0.9578465231869571	all tested	continuous raw
+internal_novel, internal blocks + tj_novel terminal blocks	100	6390	91	0.91	0.9314412708292427	all tested	continuous raw
+internal_novel, internal blocks + tj_novel terminal blocks	200	6390	179	0.895	0.9205347661327389	all tested	continuous raw
+internal_novel, internal blocks + tj_novel terminal blocks	40	513	38	0.95	0.9578465231869571	BH discoveries	calibrated then raw
+internal_novel, internal blocks + tj_novel terminal blocks	100	513	91	0.91	0.9314412708292427	BH discoveries	calibrated then raw
+internal_novel, internal blocks + tj_novel terminal blocks	200	513	179	0.895	0.9205347661327389	BH discoveries	calibrated then raw
+internal_novel, internal blocks + tj_novel terminal blocks	40	513	38	0.95	0.9578465231869571	BH discoveries	continuous raw
+internal_novel, internal blocks + tj_novel terminal blocks	100	513	91	0.91	0.9314412708292427	BH discoveries	continuous raw
+internal_novel, internal blocks + tj_novel terminal blocks	200	513	179	0.895	0.9205347661327389	BH discoveries	continuous raw

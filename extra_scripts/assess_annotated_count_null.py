@@ -50,6 +50,7 @@ def main():
     parser.add_argument("--junction-only", action="store_true")
     parser.add_argument("--structure", choices=("all", "internal", "terminal"), help="block structure to sample (default terminal with --junction-only, all otherwise)")
     parser.add_argument("--min-share", type=float, default=.02)
+    parser.add_argument("--novel-only", action="store_true", help="sample only blocks with unannotated paths (collect_local_path_reads.py --novel-paths)")
     parser.add_argument("--collect", action="store_true")
     args = parser.parse_args()
     if args.collect:
@@ -69,6 +70,9 @@ def main():
     structure = args.structure or ("terminal" if args.junction_only else "all")
     if structure != "all":
         blocks = {key: block for key, block in blocks.items() if block_structure(block["paths"][:block.get("n_annotated", len(block["signatures"]))])["structure"] == structure}
+        counts = counts.loc[counts.path_key.isin(set(blocks))]
+    if args.novel_only:
+        blocks = {key: block for key, block in blocks.items() if block.get("n_annotated", len(block["signatures"])) < len(block["signatures"])}
         counts = counts.loc[counts.path_key.isin(set(blocks))]
     stored = json.load(gzip.open(args.local_reads / "opportunities.json.gz", "rt")) if args.stored_opportunities else None
     universe = pd.read_csv(args.universe, sep="\t", usecols=["gene_id", "pair_id"]).drop_duplicates()
