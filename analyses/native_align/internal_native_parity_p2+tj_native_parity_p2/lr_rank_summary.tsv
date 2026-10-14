@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+internal_native_parity_p2, internal blocks + tj_native_parity_p2 terminal blocks	40	5790	39	0.975	0.9893969169319667	all tested	calibrated then raw
+internal_native_parity_p2, internal blocks + tj_native_parity_p2 terminal blocks	100	5790	94	0.94	0.9615672307942563	all tested	calibrated then raw
+internal_native_parity_p2, internal blocks + tj_native_parity_p2 terminal blocks	200	5790	183	0.915	0.9450636595880598	all tested	calibrated then raw
+internal_native_parity_p2, internal blocks + tj_native_parity_p2 terminal blocks	40	5790	39	0.975	0.9893969169319667	all tested	continuous raw
+internal_native_parity_p2, internal blocks + tj_native_parity_p2 terminal blocks	100	5790	94	0.94	0.9615672307942563	all tested	continuous raw
+internal_native_parity_p2, internal blocks + tj_native_parity_p2 terminal blocks	200	5790	183	0.915	0.9450636595880598	all tested	continuous raw
+internal_native_parity_p2, internal blocks + tj_native_parity_p2 terminal blocks	40	396	39	0.975	0.9893969169319667	BH discoveries	calibrated then raw
+internal_native_parity_p2, internal blocks + tj_native_parity_p2 terminal blocks	100	396	94	0.94	0.9615672307942563	BH discoveries	calibrated then raw
+internal_native_parity_p2, internal blocks + tj_native_parity_p2 terminal blocks	200	396	183	0.915	0.9450636595880598	BH discoveries	calibrated then raw
+internal_native_parity_p2, internal blocks + tj_native_parity_p2 terminal blocks	40	396	39	0.975	0.9893969169319667	BH discoveries	continuous raw
+internal_native_parity_p2, internal blocks + tj_native_parity_p2 terminal blocks	100	396	94	0.94	0.9615672307942563	BH discoveries	continuous raw
+internal_native_parity_p2, internal blocks + tj_native_parity_p2 terminal blocks	200	396	183	0.915	0.9450636595880598	BH discoveries	continuous raw

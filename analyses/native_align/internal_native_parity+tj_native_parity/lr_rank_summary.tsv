@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+internal_native_parity, internal blocks + tj_native_parity terminal blocks	40	5971	37	0.925	0.9356238703528021	all tested	calibrated then raw
+internal_native_parity, internal blocks + tj_native_parity terminal blocks	100	5971	89	0.89	0.9085396539001216	all tested	calibrated then raw
+internal_native_parity, internal blocks + tj_native_parity terminal blocks	200	5971	179	0.895	0.9019694484492803	all tested	calibrated then raw
+internal_native_parity, internal blocks + tj_native_parity terminal blocks	40	5971	37	0.925	0.9356238703528021	all tested	continuous raw
+internal_native_parity, internal blocks + tj_native_parity terminal blocks	100	5971	89	0.89	0.9085396539001216	all tested	continuous raw
+internal_native_parity, internal blocks + tj_native_parity terminal blocks	200	5971	179	0.895	0.9019694484492803	all tested	continuous raw
+internal_native_parity, internal blocks + tj_native_parity terminal blocks	40	421	37	0.925	0.9356238703528021	BH discoveries	calibrated then raw
+internal_native_parity, internal blocks + tj_native_parity terminal blocks	100	421	89	0.89	0.9085396539001216	BH discoveries	calibrated then raw
+internal_native_parity, internal blocks + tj_native_parity terminal blocks	200	421	179	0.895	0.9019694484492803	BH discoveries	calibrated then raw
+internal_native_parity, internal blocks + tj_native_parity terminal blocks	40	421	37	0.925	0.9356238703528021	BH discoveries	continuous raw
+internal_native_parity, internal blocks + tj_native_parity terminal blocks	100	421	89	0.89	0.9085396539001216	BH discoveries	continuous raw
+internal_native_parity, internal blocks + tj_native_parity terminal blocks	200	421	179	0.895	0.9019694484492803	BH discoveries	continuous raw

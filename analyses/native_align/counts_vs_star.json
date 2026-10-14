@@ -1,0 +1,46 @@
+{
+  "all": {
+    "molecules_first": 54443881.0,
+    "molecules_second": 52508974.0,
+    "overlap_of_first": 0.9541994443783315,
+    "overlap_of_second": 0.9893608090685604,
+    "blocks": 4013,
+    "block_total_pearson_log": 0.9889658694644216,
+    "block_log2_ratio_quantiles": {
+      "5%": -0.105,
+      "25%": -0.065,
+      "50%": -0.051,
+      "75%": -0.041,
+      "95%": 0.0
+    },
+    "class_distribution_tv_quantiles": {
+      "50%": 0.0039,
+      "75%": 0.008,
+      "90%": 0.0161,
+      "99%": 0.1236
+    },
+    "class_distribution_tv_weighted_mean": 0.0046525931625097435
+  },
+  "junction": {
+    "molecules_first": 2106645.0,
+    "molecules_second": 2130030.0,
+    "overlap_of_first": 0.9292690510266324,
+    "overlap_of_second": 0.9190668676028038,
+    "blocks": 2925,
+    "block_total_pearson_log": 0.9496951952581684,
+    "block_log2_ratio_quantiles": {
+      "5%": -0.114,
+      "25%": -0.016,
+      "50%": 0.057,
+      "75%": 0.212,
+      "95%": 1.552
+    },
+    "class_distribution_tv_quantiles": {
+      "50%": 0.0206,
+      "75%": 0.0632,
+      "90%": 0.1829,
+      "99%": 0.7899
+    },
+    "class_distribution_tv_weighted_mean": 0.03731567076435859
+  }
+}

@@ -1,0 +1,8 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	direction_selected	direction_evaluable	direction_agreement	common_events	failed_tests_fold0	failed_tests_fold1
+LeafCutter	internal_native_sense_sim, internal blocks + tj_native_sense_sim terminal blocks	simes	simes	747	139	50	52	38	0.8042307692307692	0.7134331121413888	210	185	0.9783783783783784	1972	47	45
+MAJIQ Heterogen	internal_native_sense_sim, internal blocks + tj_native_sense_sim terminal blocks	simes	simes	2499	479	89	89	67	0.8314606741573034	0.6207034698595948	423	359	0.958217270194986	5793	204	200
+SUPPA2	internal_native_sense_sim, internal blocks + tj_native_sense_sim terminal blocks	simes	simes	2342	457	75	80	58	0.8391666666666666	0.5859397034942927	388	331	0.9577039274924471	5610	194	199
+SUPPA2 primer-aware	internal_native_sense_sim, internal blocks + tj_native_sense_sim terminal blocks	simes	simes	2191	431	72	76	55	0.8380847953216375	0.5890946500061348	372	315	0.9587301587301588	5352	183	185
+SUPPA2/Tealeaf hybrid	internal_native_sense_sim, internal blocks + tj_native_sense_sim terminal blocks	simes	simes	1755	354	49	45	34	0.8414965986394558	0.5815726608294747	209	172	0.9476744186046512	3477	148	157
+rMATS (paired)	internal_native_sense_sim, internal blocks + tj_native_sense_sim terminal blocks	simes	simes	3109	597	81	85	64	0.8618010167029775	0.5762543028513277	399	341	0.9589442815249267	6621	255	244
+scQuint	internal_native_sense_sim, internal blocks + tj_native_sense_sim terminal blocks	simes	simes	2599	506	87	87	67	0.8448275862068966	0.5694513784058525	407	344	0.9593023255813954	6096	218	231

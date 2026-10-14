@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+internal_native_sense_p2, internal blocks + tj_native_sense_p2 terminal blocks	40	5744	39	0.975	0.9884353784704281	all tested	calibrated then raw
+internal_native_sense_p2, internal blocks + tj_native_sense_p2 terminal blocks	100	5744	94	0.94	0.9596913414717291	all tested	calibrated then raw
+internal_native_sense_p2, internal blocks + tj_native_sense_p2 terminal blocks	200	5744	181	0.905	0.9397287435315568	all tested	calibrated then raw
+internal_native_sense_p2, internal blocks + tj_native_sense_p2 terminal blocks	40	5744	39	0.975	0.9884353784704281	all tested	continuous raw
+internal_native_sense_p2, internal blocks + tj_native_sense_p2 terminal blocks	100	5744	94	0.94	0.9596913414717291	all tested	continuous raw
+internal_native_sense_p2, internal blocks + tj_native_sense_p2 terminal blocks	200	5744	181	0.905	0.9397287435315568	all tested	continuous raw
+internal_native_sense_p2, internal blocks + tj_native_sense_p2 terminal blocks	40	392	39	0.975	0.9884353784704281	BH discoveries	calibrated then raw
+internal_native_sense_p2, internal blocks + tj_native_sense_p2 terminal blocks	100	392	94	0.94	0.9596913414717291	BH discoveries	calibrated then raw
+internal_native_sense_p2, internal blocks + tj_native_sense_p2 terminal blocks	200	392	181	0.905	0.9397287435315568	BH discoveries	calibrated then raw
+internal_native_sense_p2, internal blocks + tj_native_sense_p2 terminal blocks	40	392	39	0.975	0.9884353784704281	BH discoveries	continuous raw
+internal_native_sense_p2, internal blocks + tj_native_sense_p2 terminal blocks	100	392	94	0.94	0.9596913414717291	BH discoveries	continuous raw
+internal_native_sense_p2, internal blocks + tj_native_sense_p2 terminal blocks	200	392	181	0.905	0.9397287435315568	BH discoveries	continuous raw

@@ -4599,7 +4599,7 @@ Alignment (`align_reads`, numba; `rust/native_align`, the same algorithm in Rust
 
 Barcodes and molecules. Read 2 carries the UMI (bases 1–10) and three 8-base barcode segments; each segment is corrected to its 96-entry whitelist within two mismatches when the nearest entry is unique, as STARsolo's EditDist_2. UMIs are collapsed within (cell, locus) with 1MM_All. Block classes are computed per read and combined over a molecule's reads as in the STAR-based collector. Read 1 is sense to the RNA in this protocol, so each read's strand relative to its block's gene is known (`--sense-only` drops antisense reads).
 
-Two passes (`--known-junctions`). Canonical-motif junctions of the first pass that pass STAR's SJ.out.tab filters join the annotated junctions in the second pass, as in STAR's two-pass mode, so short overhangs at novel junctions are rescued.
+Two passes (`--known-junctions`). Canonical-motif junctions of the first pass with the support required of novel paths (at least 20 reads in at least 4 libraries) join the annotated junctions in the second pass, as in STAR's two-pass mode, so short overhangs at novel junctions are rescued. This adds 42k junctions to the 25k annotated ones. Adding all 1.14M first-pass junctions made alignment 32 times slower, because rescue of a clipped end scans every known donor or acceptor within intron range.
 
 Aligner-consistent opportunities (`simulated_opportunities`). Error-free sense reads from every start position on every block path, with genomic flanks for precursor reads, are passed through the aligner and classified like the data, so clipping, overhang minimums and mappability enter the opportunity model the same way they enter the counts.
 
@@ -4610,7 +4610,28 @@ Read-level parity with STAR (2M reads of one run, `extra_scripts/benchmark_nativ
 | First version | .942 | .994 | .908 | .9965 | 18,935 / 1,699 |
 | Overhang minimums | .942 | .996 | .927 | .9977 | 18,928 / 1,572 |
 | Candidate replacement, mismatch budget | .975 | .996 | .930 | .9976 | 6,626 / 1,788 |
+| Second pass (known first-pass junctions) | .976 | .995 | .931 | .9967 | 6,601 / 1,902 |
 
 Of native unique reads, 0.3% are multi-mapping in STAR and 0.2% unaligned by STAR. Of STAR unique reads in loci the native aligner reports 1.7% as not genome-unique (no unique 23-mer in the alignment; stricter than STAR), 0.6% as too short and 0.1% as unmapped. Two-thirds of the STAR junctions the native aligner misses are unannotated junctions reached with 8–20 base overhangs, which STAR finds by genome-wide seed search; the second pass targets these.
 
-Speed. With 16 threads the Rust kernel aligns 139k reads/s and numba 101k reads/s, with identical output on 2M reads; the first numba call compiles in about 50 s. A full run (about 345M read pairs) takes about 90 min, half of it reading and parsing FASTQ, against about 67 min for STARsolo on 12 threads over the whole genome.
+Speed. With 16 threads the Rust kernel aligns 139k reads/s and numba 101k reads/s, with identical output on 2M reads; the first numba call compiles in about 50 s. A full run (about 345M read pairs) takes about 1 h 50 min in the first pass and 2 h 15 min in the second, against about 67 min for STARsolo on 12 threads over the whole genome. Alignment itself takes 40 min (first pass) and 60 min (second pass); the rest is reading and parsing FASTQ and barcode handling.
+
+Full data (16 runs, 8 libraries, 5.6G read pairs). The first pass gives 1.39G unique alignments in the loci; 585M reads carry a barcode of a QC'd cell, matching the 9.9% of STAR-aligned reads that are kept. Junctions and blocks are rebuilt from the native alignments with the same rules as the STAR-based collector, giving 3,999 blocks (899 new) and 2,317 novel paths in the first pass and 4,054 blocks (954 new) and 2,479 novel paths in the second.
+
+Counts against the STAR collection on the STAR block set (`extra_scripts/compare_native_counts.py`). With all reads, native molecules are 0.96 of STAR's (median block log2 ratio −0.05), 95% of STAR's counts per (block, subject, cell type, primer, class) are matched, block totals correlate 0.989 on log scale and the weighted mean total-variation distance between class distributions is 0.005. For junction-spanning reads the totals agree (1.01), the overlap is 0.93 and the class distance 0.037. The second pass changes none of these by more than 0.003.
+
+Endpoints, internal (all reads) + junction-only terminal blocks with novel paths, cap 30, share .01, each run on its own native block set.
+
+| Collection | Replicated genes LeafCutter/MAJIQ/SUPPA2/SUPPA2-PA/hybrid/rMATS/scQuint | LR AUC100 | A100 |
+|---|---|---|---|
+| STAR (previous best) | 35/66/59/56/34/66/66 | .933 | .91 |
+| Native, first pass | 38/71/62/59/35/67/70 | .909 | .89 |
+| Native, first pass, sense reads only | 39/68/57/54/33/64/69 | .907 | .89 |
+| Native, first pass, sense only, simulated opportunities | 38/67/58/55/34/64/67 | .910 | .88 |
+| Native, second pass | 39/68/61/58/33/65/67 | .962 | .94 |
+| Native, second pass, sense reads only | 38/65/58/55/34/64/65 | .960 | .94 |
+| Native, second pass, sense only, simulated opportunities | 38/63/57/54/32/63/64 | .962 | .93 |
+| Comparators | 26/38/21/5/49/12/56 | .865/.819/.907/.654/.637/.542/.825 | |
+
+The native collection replaces STAR without loss: on split it matches or exceeds the STAR-based model against every comparator, and the second pass has the best LR value of any run (94 of the top 100 tests agree with long reads, against 91 for STAR). The LR differences rest on a few tests: the first and second native passes share 92 of their top 100 tests and differ in 5 disagreements, so the gain of the second pass over the first is within what small changes to the block set produce. Restricting to sense reads and simulating opportunities through the aligner do not improve either endpoint. As with STAR, the only comparator the model does not beat on split is the SUPPA2/Tealeaf hybrid (33–35 vs 49), whose extra genes are at chance in long reads (above).
+

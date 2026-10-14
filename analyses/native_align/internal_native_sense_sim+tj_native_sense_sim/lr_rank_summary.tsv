@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+internal_native_sense_sim, internal blocks + tj_native_sense_sim terminal blocks	40	6122	37	0.925	0.9334747475457845	all tested	calibrated then raw
+internal_native_sense_sim, internal blocks + tj_native_sense_sim terminal blocks	100	6122	88	0.88	0.9099640452265073	all tested	calibrated then raw
+internal_native_sense_sim, internal blocks + tj_native_sense_sim terminal blocks	200	6122	173	0.865	0.8924535247082761	all tested	calibrated then raw
+internal_native_sense_sim, internal blocks + tj_native_sense_sim terminal blocks	40	6122	37	0.925	0.9334747475457845	all tested	continuous raw
+internal_native_sense_sim, internal blocks + tj_native_sense_sim terminal blocks	100	6122	88	0.88	0.9099640452265073	all tested	continuous raw
+internal_native_sense_sim, internal blocks + tj_native_sense_sim terminal blocks	200	6122	173	0.865	0.8924535247082761	all tested	continuous raw
+internal_native_sense_sim, internal blocks + tj_native_sense_sim terminal blocks	40	427	37	0.925	0.9334747475457845	BH discoveries	calibrated then raw
+internal_native_sense_sim, internal blocks + tj_native_sense_sim terminal blocks	100	427	88	0.88	0.9099640452265073	BH discoveries	calibrated then raw
+internal_native_sense_sim, internal blocks + tj_native_sense_sim terminal blocks	200	427	173	0.865	0.8924535247082761	BH discoveries	calibrated then raw
+internal_native_sense_sim, internal blocks + tj_native_sense_sim terminal blocks	40	427	37	0.925	0.9334747475457845	BH discoveries	continuous raw
+internal_native_sense_sim, internal blocks + tj_native_sense_sim terminal blocks	100	427	88	0.88	0.9099640452265073	BH discoveries	continuous raw
+internal_native_sense_sim, internal blocks + tj_native_sense_sim terminal blocks	200	427	173	0.865	0.8924535247082761	BH discoveries	continuous raw

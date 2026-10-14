@@ -1,0 +1,53 @@
+{
+  "reads": 2000000,
+  "kernels": {
+    "threads": 16,
+    "numba_first_call_seconds": 47.45717096328735,
+    "numba_seconds": 10.432045221328735,
+    "numba_reads_per_second": 191716.9603435882,
+    "rust_seconds": 7.448195695877075,
+    "rust_reads_per_second": 268521.4086288164,
+    "rust_speedup": 1.4006137388553526,
+    "reads_with_different_output": 0
+  },
+  "star_scan_seconds": 352.21234011650085,
+  "native_status": {
+    "unmapped": 1026056,
+    "unique": 482906,
+    "multi": 31018,
+    "not_genome_unique": 80619,
+    "too_short": 379401
+  },
+  "star_unique_in_loci": 510305,
+  "star_multi_in_loci": 13978,
+  "recall": 0.9416858545379724,
+  "native_status_of_star_unique": {
+    "unique": 480547,
+    "too_short": 18858,
+    "not_genome_unique": 8663,
+    "multi": 1490,
+    "unmapped": 747
+  },
+  "same_blocks_given_both": 0.9700029341562844,
+  "same_junctions_given_both": 0.995975419677992,
+  "spliced_star_unique": 36421,
+  "spliced_recall": 0.9267730155679416,
+  "native_unique": 482906,
+  "native_unique_star_nh": {
+    "1": 480547,
+    "2": 1268,
+    "0": 981,
+    "3": 68,
+    "4": 21,
+    "5": 6,
+    "6": 4,
+    "7": 3,
+    "10": 3,
+    "8": 3,
+    "9": 2
+  },
+  "block_class_pairs": 350916,
+  "block_class_agreement": 0.9976803565525653,
+  "block_entries_star_only": 18928,
+  "block_entries_native_only": 1572
+}

@@ -1,0 +1,12 @@
+{
+  "model": "internal_native_sense_sim",
+  "terminal_model": "tj_native_sense_sim",
+  "filter": "internal",
+  "blocks_by_structure": {
+    "internal": 1943,
+    "terminal, same junctions": 1452,
+    "terminal, distinct junctions": 604
+  },
+  "retained_blocks": 1943,
+  "selection": "annotation-only block structure; fits and p-values unchanged"
+}
