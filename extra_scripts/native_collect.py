@@ -266,9 +266,9 @@ def stage_junctions(args):
     support = {key: (reads[key], len(libraries[key]), strands[key]) for key in reads}
     pd.DataFrame([(c, d, a, *value) for (c, d, a), value in sorted(support.items())], columns=["chromosome", "donor", "acceptor", "reads", "libraries", "strand"]).to_csv(args.output_dir / f"junctions{suffix(args)}.tsv.gz", sep="\t", index=False)
     genes = read_gtf_exons(args.gtf)
-    options = {"min_reads": args.novel_min_reads, "min_libraries": args.novel_min_libraries, "max_novel": args.novel_max}
+    options = {"min_reads": args.novel_min_reads, "min_libraries": args.novel_min_libraries, "max_novel": args.novel_max, "terminal_length": args.novel_terminal_length}
     blocks = annotated_blocks(args.candidate_cache, args.block_cache, args.max_paths, junction_support(support), options, genes)
-    with gzip.open(args.output_dir / f"blocks{suffix(args)}.json.gz", "wt") as handle:
+    with gzip.open(args.blocks, "wt") as handle:
         json.dump(blocks, handle)
     novel = sum(len(block["signatures"]) - block["n_annotated"] for block in blocks.values())
     print(f"{len(support)} junctions; {len(blocks)} blocks, {sum(':N' in block['block_id'] for block in blocks.values())} new, {novel} novel paths", flush=True)
@@ -381,7 +381,7 @@ def main():
     parser.add_argument("--chunk-reads", type=int, default=4_000_000)
     parser.add_argument("--max-reads", type=int, default=0)
     parser.add_argument("--library-index", type=int, default=0)
-    parser.add_argument("--blocks", type=Path, help="blocks.json.gz to classify into (default: <output-dir>/blocks.json.gz)")
+    parser.add_argument("--blocks", type=Path, help="blocks.json.gz written by the junctions stage and classified into by collect and collate (default: <output-dir>/blocks.json.gz, blocks_pass2.json.gz with --known-junctions)")
     parser.add_argument("--collection-dir", type=Path, help="collection root; all/ and junction/ hold the two read-class collections")
     parser.add_argument("--sense-only", action="store_true", help="collect: drop reads antisense to the block's gene")
     parser.add_argument("--simulated-opportunities", action="store_true", help="collate: read opportunities from error-free reads passed through the aligner (tealeaf.sc.native_align.simulated_opportunities)")
@@ -392,6 +392,7 @@ def main():
     parser.add_argument("--novel-min-reads", type=int, default=20)
     parser.add_argument("--novel-min-libraries", type=int, default=4)
     parser.add_argument("--novel-max", type=int, default=8)
+    parser.add_argument("--novel-terminal-length", type=int, default=0, help="length of unannotated first or last exons from deep intronic novel splice sites (tealeaf.sc.novel_paths); 0 skips them")
     args = parser.parse_args()
     if args.blocks is None:
         args.blocks = args.output_dir / f"blocks{suffix(args)}.json.gz"

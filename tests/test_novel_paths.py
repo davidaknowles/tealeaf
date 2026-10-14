@@ -44,3 +44,29 @@ def test_new_block_for_skipped_constitutive_exon():
     blocks = novel_junction_blocks(transcripts, support, windows=[(0, 300)])
     assert blocks == [([[[200, 300], [400, 500], [600, 650]]], [([[200, 300], [600, 650]], 80)])]
     assert novel_junction_blocks(transcripts, support, windows=[(250, 650)]) == []
+
+
+def test_novel_first_and_last_exons():
+    included, skipped = [(0, 100), (1000, 1100), (2000, 2100)], [(0, 100), (2000, 2100)]
+    annotated = {(100, 1000): (500, 8), (1100, 2000): (500, 8), (100, 2000): (300, 8)}
+
+    def found(support, **options):
+        return [[tuple(exon) for exon in chain] for chain, _ in novel_block_paths([included, skipped], {**annotated, **support}, **options)]
+
+    # deep donor at 1600 spliced to the last exon: new first exon, clipped at the preceding exon's end
+    assert found({(1600, 2000): (100, 8)}) == []
+    assert found({(1600, 2000): (100, 8)}, terminal_length=30) == [[(1570, 1600), (2000, 2100)]]
+    assert found({(1600, 2000): (100, 8)}, terminal_length=1000) == [[(1100, 1600), (2000, 2100)]]
+    # deep acceptor: new last exon
+    assert found({(1100, 1500): (100, 8)}, terminal_length=30) == [[(0, 100), (1000, 1100), (1500, 1530)]]
+    # a junction pair still makes an internal new exon
+    assert found({(100, 1400): (60, 8), (1500, 2000): (50, 8)}, terminal_length=30) == [[(0, 100), (1400, 1500), (2000, 2100)]]
+
+
+def test_new_block_for_novel_first_exon():
+    from tealeaf.sc.novel_paths import novel_junction_blocks
+    transcripts = [[(0, 100), (2000, 2100), (3000, 3100)]]
+    support = {(100, 2000): (500, 8, "+"), (2100, 3000): (500, 8, "+"), (1500, 2000): (80, 8, "+")}
+    assert novel_junction_blocks(transcripts, support, windows=[]) == []
+    blocks = novel_junction_blocks(transcripts, support, windows=[], terminal_length=151)
+    assert blocks == [([[[0, 100], [2000, 2100]]], [([[1349, 1500], [2000, 2100]], 80)])]

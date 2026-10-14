@@ -33,7 +33,7 @@ def select_blocks(args, recipe=None):
     if args.novel_paths:
         if not args.annotated:
             raise ValueError("--novel-paths requires --annotated")
-        options = {"min_reads": args.novel_min_reads, "min_libraries": args.novel_min_libraries, "max_novel": args.novel_max}
+        options = {"min_reads": args.novel_min_reads, "min_libraries": args.novel_min_libraries, "max_novel": args.novel_max, "terminal_length": args.novel_terminal_length}
         return annotated_blocks(args.candidate_cache, args.block_cache, args.max_paths or 10, star_junction_support(recipe), options, read_gtf_exons(args.gtf))
     function = annotated_blocks if args.annotated else declared_blocks
     return function(args.candidate_cache, args.block_cache) if args.max_paths is None else function(args.candidate_cache, args.block_cache, args.max_paths)
@@ -58,6 +58,7 @@ def main():
     parser.add_argument("--novel-min-reads", type=int, default=20)
     parser.add_argument("--novel-min-libraries", type=int, default=4)
     parser.add_argument("--novel-max", type=int, default=8, help="most novel paths per block")
+    parser.add_argument("--novel-terminal-length", type=int, default=0, help="length of unannotated first or last exons from deep intronic novel splice sites (tealeaf.sc.novel_paths); 0 skips them")
     args = parser.parse_args()
     recipe = json.loads(args.recipe.read_text())
     if args.collate:

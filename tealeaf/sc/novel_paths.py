@@ -12,14 +12,25 @@ exon chains, each a modification of one annotated path:
   a splice site may extend an exon into the neighbouring intron by at most
   max_extension bases;
 - two novel junctions (d, x) and (y, a) with x < y and y - x <= max_exon add
-  the new exon [x, y) between the donor and acceptor exons.
+  the new exon [x, y) between the donor and acceptor exons;
+- with terminal_length > 0, a novel junction whose donor lies deep in an
+  intron (no exon of the path holds it, even with extension) and that pairs
+  with no other junction starts the path with a new first exon
+  [d - terminal_length, d), clipped at the end of the path's preceding exon,
+  followed by the acceptor exon and the rest of the path; symmetrically a
+  deep acceptor ends the path with a new last exon [a, a + terminal_length).
+  These are unannotated first or last exons (alternative promoters,
+  intronic polyadenylation); terminal_length at least the read length keeps
+  every junction-spanning read inside the new exon.
 
 Novel junctions outside every annotated block window (for example skipping
 an exon that is constitutive in the annotation) get new blocks
 (novel_junction_blocks): overlapping junctions are clustered, the gene's
 annotated transcripts give the local exon chains between the exon holding the
-cluster's first donor and the exon holding its last acceptor, clipped to
-shared anchors, and novel_block_paths adds the novel paths.
+cluster's first donor and the exon holding its last acceptor (with
+terminal_length, the last exon ending before a deep donor or the first exon
+starting after a deep acceptor), clipped to shared anchors, and
+novel_block_paths adds the novel paths.
 
 Junctions are genomic (donor exon end, acceptor exon start), 0-based
 half-open as in tealeaf.sc.local_path_reads.
@@ -82,7 +93,19 @@ def _apply(chain, donor, acceptor, middle, max_extension):
     return tuple(chain[:i]) + ((chain[i][0], donor),) + tuple(middle) + ((acceptor, chain[j][1]),) + tuple(chain[j + 1:]), left + right
 
 
-def novel_block_paths(paths, support, *, min_reads=20, min_libraries=4, min_fraction=.02, max_extension=300, max_exon=1000, max_novel=8):
+def _apply_terminal(chain, donor, acceptor, max_extension, length, low, high):
+    """(chain starting with a new first exon ending at donor, or ending with a new last exon starting at acceptor, 0), or None."""
+    (i, _), (j, _) = _donor_exon(chain, donor, max_extension), _acceptor_exon(chain, acceptor, max_extension)
+    if i is None and j is not None:
+        floor = max([low] + [end for _, end in chain if end < donor])
+        return ((max(donor - length, floor), donor), (acceptor, chain[j][1])) + tuple(chain[j + 1:]), 0
+    if j is None and i is not None:
+        ceiling = min([high] + [start for start, _ in chain if start > acceptor])
+        return tuple(chain[:i]) + ((chain[i][0], donor), (acceptor, min(acceptor + length, ceiling))), 0
+    return None
+
+
+def novel_block_paths(paths, support, *, min_reads=20, min_libraries=4, min_fraction=.02, max_extension=300, max_exon=1000, max_novel=8, terminal_length=0):
     """Novel exon chains for one block, most supported first.
 
     paths are the block's annotated mature exon chains; support maps
@@ -94,7 +117,9 @@ def novel_block_paths(paths, support, *, min_reads=20, min_libraries=4, min_frac
     path where it replaces a junction sharing its donor or acceptor, then the
     least exon extension, then the path whose least supported junction has
     most reads. A junction that pairs with another into a new exon is not
-    used alone with an exon extension. Returns at most max_novel
+    used alone with an exon extension. With terminal_length > 0, an unpaired
+    junction that fits no path gives a new first or last exon (module
+    docstring). Returns at most max_novel
     (chain, reads) pairs, chains distinct from the annotated paths, ordered by
     the smallest read count of their novel junctions.
     """
@@ -116,6 +141,8 @@ def novel_block_paths(paths, support, *, min_reads=20, min_libraries=4, min_frac
         best = None
         for index, chain in enumerate(exons):
             result = _apply(chain, donor, acceptor, middle, max_extension)
+            if result is None and terminal_length and not middle and (donor, acceptor) not in paired:
+                result = _apply_terminal(chain, donor, acceptor, max_extension, terminal_length, low, high)
             if result is None or result[0] in known or (not middle and result[1] and (donor, acceptor) in paired):
                 continue
             new, extension = result
@@ -163,6 +190,11 @@ def novel_junction_blocks(transcripts, support, windows, *, min_reads=20, min_li
         segments = []
         for chain in chains:
             (i, _), (j, _) = _donor_exon(chain, donor, max_extension), _acceptor_exon(chain, acceptor, max_extension)
+            if options.get("terminal_length") and (i is None) != (j is None):
+                if i is None:
+                    i = max((index for index, (_, end) in enumerate(chain) if end < donor), default=None)
+                else:
+                    j = min((index for index, (start, _) in enumerate(chain) if start > acceptor), default=None)
             if i is not None and j is not None and i <= j:
                 segments.append(chain[i:j + 1])
         if not segments:
