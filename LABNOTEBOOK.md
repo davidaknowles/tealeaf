@@ -4624,7 +4624,7 @@ Endpoints, internal (all reads) + junction-only terminal blocks with novel paths
 
 | Collection | Replicated genes LeafCutter/MAJIQ/SUPPA2/SUPPA2-PA/hybrid/rMATS/scQuint | LR AUC100 | A100 |
 |---|---|---|---|
-| STAR (previous best) | 35/66/59/56/34/66/66 | .933 | .91 |
+| STAR (previous best) | 35/66/59/56/34/66/66 | .931 | .91 |
 | Native, first pass | 38/71/62/59/35/67/70 | .909 | .89 |
 | Native, first pass, sense reads only | 39/68/57/54/33/64/69 | .907 | .89 |
 | Native, first pass, sense only, simulated opportunities | 38/67/58/55/34/64/67 | .910 | .88 |
