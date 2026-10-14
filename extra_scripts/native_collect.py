@@ -26,10 +26,11 @@ Stages:
              aligner instead of from path geometry.
 
 With --known-junctions (junctions.tsv.gz of a first pass), canonical-motif
-junctions of the first pass join the annotated junctions for rescue of clipped
-read ends, overhang minimums and scoring, as in STAR's two-pass mode; align,
-junctions and collect then use runs_pass2/, junctions_pass2.tsv.gz and
-blocks_pass2.json.gz.
+junctions of the first pass that pass --novel-min-reads and
+--novel-min-libraries (the support required of novel paths) join the annotated
+junctions for rescue of clipped read ends, overhang minimums and scoring, as
+in STAR's two-pass mode; align, junctions and collect then use runs_pass2/,
+junctions_pass2.tsv.gz and blocks_pass2.json.gz.
 
 collect --sense-only drops reads antisense to the block's gene (read 1 is
 sense to the RNA in this protocol). --rust-library runs the Rust alignment
@@ -66,14 +67,14 @@ def candidate_genes(caches):
     return genes
 
 
-def load_reference(path, index=True, known_junctions=None):
-    """Reference arrays; known_junctions (a first-pass junctions.tsv.gz) adds its canonical-motif junctions to reference["junctions"]."""
+def load_reference(path, index=True, known_junctions=None, min_reads=1, min_libraries=1):
+    """Reference arrays; known_junctions (a first-pass junctions.tsv.gz) adds its canonical-motif junctions with at least min_reads reads in min_libraries libraries to reference["junctions"]."""
     data = np.load(path, allow_pickle=False)
     keys = REFERENCE_KEYS + (("index_codes", "index_positions", "buckets", "unique") if index else ())
     reference = {key: data[key] for key in keys}
     if known_junctions is not None:
         table = pd.read_csv(known_junctions, sep="\t")
-        table = table[table["strand"] != "."]
+        table = table[(table["strand"] != ".") & (table["reads"] >= min_reads) & (table["libraries"] >= min_libraries)]
         reference["junctions"] = na.add_junctions(reference, table["chromosome"], table["donor"], table["acceptor"])
     return reference
 
@@ -178,7 +179,7 @@ def stage_align(args):
     library = next(library for library in recipe["bams"] if any(Path(run["path"]).parent.name == args.run for run in library["runs"]))
     barcodes = sorted(library["barcode_groups"])
     tables, lookup, size = barcode_tools(args.whitelist_dir, barcodes)
-    reference = load_reference(args.output_dir / "reference.npz", known_junctions=args.known_junctions)
+    reference = load_reference(args.output_dir / "reference.npz", known_junctions=args.known_junctions, min_reads=args.novel_min_reads, min_libraries=args.novel_min_libraries)
     kernel = na.rust_aligner(args.rust_library) if args.rust_library else na.align_reads
     out = args.output_dir / f"runs{suffix(args)}" / args.run
     out.mkdir(parents=True, exist_ok=True)
@@ -331,7 +332,7 @@ def stage_collate(args):
     blocks = json.load(gzip.open(args.blocks, "rt"))
     simulated = None
     if args.simulated_opportunities:
-        reference = load_reference(args.output_dir / "reference.npz", known_junctions=args.known_junctions)
+        reference = load_reference(args.output_dir / "reference.npz", known_junctions=args.known_junctions, min_reads=args.novel_min_reads, min_libraries=args.novel_min_libraries)
         tables = [reference[name] for name in ("ref", "index_codes", "index_positions", "buckets", "unique")] + [na.K] + [reference[name] for name in ("locus_ref_start", "locus_ref_end", "tx_space_start", "tx_ref_start", "tx_length", "exon_offsets", "exon_tx_start", "exon_ref_start", "exon_length", "junctions")]
         kernel = na.rust_aligner(args.rust_library) if args.rust_library else na.align_reads
         clock = time.time()
@@ -385,7 +386,7 @@ def main():
     parser.add_argument("--sense-only", action="store_true", help="collect: drop reads antisense to the block's gene")
     parser.add_argument("--simulated-opportunities", action="store_true", help="collate: read opportunities from error-free reads passed through the aligner (tealeaf.sc.native_align.simulated_opportunities)")
     parser.add_argument("--rust-library", type=Path, help="use the Rust alignment kernel (rust/native_align) instead of numba")
-    parser.add_argument("--known-junctions", type=Path, help="second pass: junctions.tsv.gz of the first pass")
+    parser.add_argument("--known-junctions", type=Path, help="second pass: junctions.tsv.gz of the first pass; junctions passing --novel-min-reads and --novel-min-libraries become known junctions")
     parser.add_argument("--collate-dir", type=Path, help="collate: write the collated collections here instead of --collection-dir")
     parser.add_argument("--max-paths", type=int, default=30)
     parser.add_argument("--novel-min-reads", type=int, default=20)

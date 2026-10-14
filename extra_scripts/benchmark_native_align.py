@@ -61,9 +61,11 @@ def main():
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--rust-library", type=Path, help="also time the Rust kernel (rust/native_align) on the same reads and check identical output")
     parser.add_argument("--known-junctions", type=Path, help="second pass: junctions.tsv.gz of a first pass (native_collect.py --stage junctions)")
+    parser.add_argument("--known-min-reads", type=int, default=20)
+    parser.add_argument("--known-min-libraries", type=int, default=4)
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    reference = load_reference(args.reference_dir / "reference.npz", known_junctions=args.known_junctions)
+    reference = load_reference(args.reference_dir / "reference.npz", known_junctions=args.known_junctions, min_reads=args.known_min_reads, min_libraries=args.known_min_libraries)
     sequences = []
     for chunk in fastq_records(args.fastq_dir / f"{args.run}_1.fastq.gz"):
         sequences.append(chunk)
