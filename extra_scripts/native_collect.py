@@ -144,6 +144,18 @@ def paired_batches(read1, read2, batch):
         yield out[0], out[1]
 
 
+def numpy_batches(read1, read2, batch, tables, lookup, size):
+    """Yield (read-1 codes, cell, UMI code, UMI valid) per batch, as tealeaf.sc.native_align.rust_fastq_pairs."""
+    homopolymers = [sum(base * 4 ** i for i in range(UMI[1] - UMI[0])) for base in range(4)]
+    for first, second in paired_batches(read1, read2, batch):
+        codes2 = na.CODE[second]
+        segment = [tables[i][na.pack(codes2[:, a:b])[0]] for i, (a, b) in enumerate(SEGMENTS)]
+        valid_cell = (segment[0] >= 0) & (segment[1] >= 0) & (segment[2] >= 0)
+        cell = np.where(valid_cell, (segment[0] * size + segment[1]) * size + segment[2], 0)
+        umi, umi_n = na.pack(codes2[:, UMI[0]:UMI[1]])
+        yield na.CODE[first], np.where(valid_cell, lookup[cell], -1), umi, ~umi_n & ~np.isin(umi, homopolymers)
+
+
 def barcode_tools(whitelist_dir, barcodes):
     """Segment lookup tables and a cell-code -> library barcode index lookup."""
     whitelists = [Path(whitelist_dir, f"barcode_segment_{i}.txt").read_text().split() for i in (1, 2, 3)]
@@ -183,24 +195,23 @@ def stage_align(args):
     kernel = na.rust_aligner(args.rust_library) if args.rust_library else na.align_reads
     out = args.output_dir / f"runs{suffix(args)}" / args.run
     out.mkdir(parents=True, exist_ok=True)
-    homopolymers = {sum(base * 4 ** i for i in range(UMI[1] - UMI[0])) for base in range(4)}
     status_counts = np.zeros(5, dtype=np.int64)
     junction_keys, junction_overhangs = [], []
     stats = {"reads": 0, "library_barcode": 0, "valid_umi": 0, "stored": 0}
-    timing = {"align": 0., "total": time.time()}
+    timing = {"read": 0., "align": 0., "total": time.time()}
     read1, read2 = (args.fastq_dir / f"{args.run}_{mate}.fastq.gz" for mate in (1, 2))
-    for chunk, (first, second) in enumerate(paired_batches(read1, read2, args.chunk_reads)):
-        if args.max_reads and stats["reads"] >= args.max_reads:
+    if args.rust_library and not args.numpy_reader:
+        batches = na.rust_fastq_pairs(args.rust_library, read1, read2, tables, lookup, size, UMI, SEGMENTS, args.chunk_reads)
+    else:
+        batches = numpy_batches(read1, read2, args.chunk_reads, tables, lookup, size)
+    chunk = 0
+    while True:
+        clock = time.time()
+        batch = next(batches, None)
+        timing["read"] += time.time() - clock
+        if batch is None or (args.max_reads and stats["reads"] >= args.max_reads):
             break
-        if args.max_reads:
-            first, second = first[:args.max_reads - stats["reads"]], second[:args.max_reads - stats["reads"]]
-        codes1, codes2 = na.CODE[first], na.CODE[second]
-        segment = [tables[i][na.pack(codes2[:, a:b])[0]] for i, (a, b) in enumerate(SEGMENTS)]
-        valid_cell = (segment[0] >= 0) & (segment[1] >= 0) & (segment[2] >= 0)
-        cell = np.where(valid_cell, (segment[0] * size + segment[1]) * size + segment[2], 0)
-        local = np.where(valid_cell, lookup[cell], -1)
-        umi, umi_n = na.pack(codes2[:, UMI[0]:UMI[1]])
-        valid_umi = ~umi_n & ~np.isin(umi, list(homopolymers))
+        codes1, local, umi, valid_umi = (part[:args.max_reads - stats["reads"]] for part in batch) if args.max_reads else batch
         clock = time.time()
         status, orientation, _, _, _, n_blocks, blocks = kernel(np.ascontiguousarray(codes1), reference["ref"], reference["index_codes"], reference["index_positions"], reference["buckets"], reference["unique"], na.K, reference["locus_ref_start"], reference["locus_ref_end"], reference["tx_space_start"], reference["tx_ref_start"], reference["tx_length"], reference["exon_offsets"], reference["exon_tx_start"], reference["exon_ref_start"], reference["exon_length"], reference["junctions"])
         timing["align"] += time.time() - clock
@@ -216,11 +227,12 @@ def stage_align(args):
         offsets, starts, ends = na.flatten_blocks(n_blocks[keep], blocks[keep])
         locus = np.searchsorted(reference["locus_ref_start"], blocks[keep, 0, 0], side="right") - 1
         np.savez(out / f"chunk_{chunk:04d}.npz", read=np.flatnonzero(keep) + stats["reads"], cell=local[keep].astype(np.int32), umi=umi[keep].astype(np.int32), locus=locus.astype(np.int32), orientation=orientation[keep], offsets=offsets, starts=starts.astype(np.int32), ends=ends.astype(np.int32))
-        stats["reads"] += len(first)
+        stats["reads"] += len(codes1)
         stats["library_barcode"] += int((local >= 0).sum())
         stats["valid_umi"] += int(((local >= 0) & valid_umi).sum())
         stats["stored"] += int(keep.sum())
-        print(f"chunk {chunk}: {stats['reads']} reads, {dict(zip(('unmapped', 'unique', 'multi', 'not_genome_unique', 'too_short'), status_counts.tolist()))}, align {timing['align']:.0f} s", flush=True)
+        print(f"chunk {chunk}: {stats['reads']} reads, {dict(zip(('unmapped', 'unique', 'multi', 'not_genome_unique', 'too_short'), status_counts.tolist()))}, read {timing['read']:.0f} s, align {timing['align']:.0f} s, total {time.time() - timing['total']:.0f} s", flush=True)
+        chunk += 1
     keys = np.concatenate(junction_keys) if junction_keys else np.zeros(0, dtype=np.int64)
     overhangs = np.concatenate(junction_overhangs) if junction_overhangs else np.zeros(0, dtype=np.int64)
     order = np.argsort(keys, kind="stable")
@@ -385,7 +397,8 @@ def main():
     parser.add_argument("--collection-dir", type=Path, help="collection root; all/ and junction/ hold the two read-class collections")
     parser.add_argument("--sense-only", action="store_true", help="collect: drop reads antisense to the block's gene")
     parser.add_argument("--simulated-opportunities", action="store_true", help="collate: read opportunities from error-free reads passed through the aligner (tealeaf.sc.native_align.simulated_opportunities)")
-    parser.add_argument("--rust-library", type=Path, help="use the Rust alignment kernel (rust/native_align) instead of numba")
+    parser.add_argument("--rust-library", type=Path, help="use the Rust alignment kernel and FASTQ reader (rust/native_align) instead of numba and numpy")
+    parser.add_argument("--numpy-reader", action="store_true", help="align: read FASTQ with zcat and numpy even with --rust-library")
     parser.add_argument("--known-junctions", type=Path, help="second pass: junctions.tsv.gz of the first pass; junctions passing --novel-min-reads and --novel-min-libraries become known junctions")
     parser.add_argument("--collate-dir", type=Path, help="collate: write the collated collections here instead of --collection-dir")
     parser.add_argument("--max-paths", type=int, default=30)

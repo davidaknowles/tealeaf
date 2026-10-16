@@ -203,3 +203,40 @@ def test_known_junctions_second_pass(setup):
     second = dict(reference, junctions=junctions)
     status, _, _, _, _, n_blocks, blocks = na.align_reads(np.stack([na.encode(read)]), second["ref"], index["index_codes"], index["index_positions"], index["buckets"], unique, na.K, second["locus_ref_start"], second["locus_ref_end"], second["tx_space_start"], second["tx_ref_start"], second["tx_length"], second["exon_offsets"], second["exon_tx_start"], second["exon_ref_start"], second["exon_length"], second["junctions"])
     assert status[0] == na.UNIQUE and genomic(setup, n_blocks, blocks, 0) == [(1053, 1200), (4000, 4004)]
+
+
+@pytest.mark.skipif(not RUST_LIBRARY.exists(), reason="Rust aligner not built (cargo build --release in rust/native_align)")
+def test_rust_fastq_reader_matches_numpy(tmp_path):
+    import gzip
+    from extra_scripts.native_collect import SEGMENTS, UMI, numpy_batches
+
+    rng = np.random.default_rng(3)
+    words = ["".join(rng.choice(list("ACGT"), 8)) for _ in range(6)]
+    tables = [na.segment_table(words) for _ in range(3)]
+    size = len(words)
+    lookup = np.full(size ** 3, -1, dtype=np.int64)
+    lookup[rng.choice(size ** 3, 50, replace=False)] = np.arange(50)
+    records = [[], []]
+    for i in range(1000):
+        cdna = "".join(rng.choice(list("ACGTN"), 151, p=[.24, .24, .24, .24, .04]))
+        umi = "A" * 10 if i % 50 == 0 else "".join(rng.choice(list("ACGTN"), 10, p=[.245, .245, .245, .245, .02]))
+        segments = [words[rng.integers(size)] for _ in range(3)]
+        segments = [s[:3] + "T" + s[4:] if rng.random() < .2 else s for s in segments]
+        barcode = umi + segments[0] + "G" * 30 + segments[1] + "C" * 22 + segments[2] + "A" * 65
+        for mate, sequence in enumerate((cdna, barcode)):
+            records[mate].append(f"@r{i}\n{sequence}\n+\n{'F' * len(sequence)}\n")
+    paths = [tmp_path / f"x_{mate}.fastq.gz" for mate in (1, 2)]
+    for path, lines in zip(paths, records):
+        with gzip.open(path, "wt") as handle:
+            handle.write("".join(lines))
+    expected = list(numpy_batches(paths[0], paths[1], 300, tables, lookup, size))
+    observed = list(na.rust_fastq_pairs(RUST_LIBRARY, paths[0], paths[1], tables, lookup, size, UMI, SEGMENTS, batch=300))
+    assert [len(b[0]) for b in observed] == [300, 300, 300, 100]
+    for a, b in zip(expected, observed):
+        for x, y in zip(a, b):
+            np.testing.assert_array_equal(x, y)
+    assert sum((b[1] >= 0).sum() for b in observed) > 0 and sum((~b[3]).sum() for b in observed) > 20
+    with gzip.open(paths[1], "wt") as handle:
+        handle.write("".join(records[1][:999]))
+    with pytest.raises(ValueError, match="different record counts"):
+        list(na.rust_fastq_pairs(RUST_LIBRARY, paths[0], paths[1], tables, lookup, size, UMI, SEGMENTS, batch=300))

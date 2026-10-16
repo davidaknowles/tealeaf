@@ -4,6 +4,8 @@
 //! implementation line for line so that both give identical output; see the
 //! Python module for the description of the method.
 
+pub mod fastq;
+
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 const MIN_INTRON: i64 = 21;

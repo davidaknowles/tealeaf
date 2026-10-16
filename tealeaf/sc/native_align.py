@@ -969,6 +969,53 @@ def rust_aligner(library, threads=None, chunk=4096):
     return run
 
 
+def rust_fastq_pairs(library, read1, read2, tables, lookup, size, umi, segments, batch=1 << 22):
+    """Yield (read-1 codes, cell, UMI code, UMI valid) per batch of a pair of gzipped FASTQ files.
+
+    Reading is done by the Rust library (rust/native_align, fastq.rs): one
+    background thread per mate decompresses and parses ahead of the caller.
+    Read-1 codes are n x L uint8 as CODE; read 2 is reduced to the cell index
+    lookup[corrected segment triple] (-1 when a segment does not correct or
+    the triple is not in lookup), the UMI code (pack) and whether the UMI has
+    no N and is not a homopolymer. tables are the three segment correction
+    tables (segment_table), size the whitelist size, umi and segments the
+    (start, end) of the UMI and the three barcode segments in read 2.
+    """
+    import ctypes
+
+    handle = ctypes.CDLL(str(library))
+    handle.fastq_pair_open.restype = ctypes.c_void_p
+    handle.fastq_pair_peek.restype = ctypes.c_int64
+    handle.fastq_pair_error.restype = ctypes.c_char_p
+    for name in ("fastq_pair_peek", "fastq_pair_take", "fastq_pair_error", "fastq_pair_close"):
+        getattr(handle, name).argtypes = [ctypes.c_void_p] + {"fastq_pair_peek": [ctypes.c_void_p], "fastq_pair_take": [ctypes.c_void_p] * 4}.get(name, [])
+    segment_length = segments[0][1] - segments[0][0]
+    stacked = np.ascontiguousarray(np.concatenate(tables), dtype=np.int64)
+    lookup = np.ascontiguousarray(lookup, dtype=np.int64)
+    starts = np.array([a for a, _ in segments], dtype=np.uintp)
+    ends = np.array([b for _, b in segments], dtype=np.uintp)
+    if len(stacked) != 3 * 4 ** segment_length or len(lookup) != size ** 3 or any(b - a != segment_length for a, b in segments):
+        raise ValueError("barcode tables do not match the segment layout")
+
+    def pointer(array):
+        return array.ctypes.data_as(ctypes.c_void_p)
+
+    pair = handle.fastq_pair_open(str(read1).encode(), str(read2).encode(), ctypes.c_size_t(batch), pointer(stacked), ctypes.c_size_t(segment_length), pointer(starts), pointer(ends), pointer(lookup), ctypes.c_int64(size), ctypes.c_size_t(umi[0]), ctypes.c_size_t(umi[1]))
+    try:
+        length = ctypes.c_size_t(0)
+        while True:
+            n = handle.fastq_pair_peek(pair, ctypes.byref(length))
+            if n < 0:
+                raise ValueError(handle.fastq_pair_error(pair).decode())
+            if n == 0:
+                return
+            out = (np.empty((n, length.value), dtype=np.uint8), np.empty(n, dtype=np.int64), np.empty(n, dtype=np.int64), np.empty(n, dtype=np.uint8))
+            handle.fastq_pair_take(pair, *(pointer(a) for a in out))
+            yield out[0], out[1], out[2], out[3].astype(bool)
+    finally:
+        handle.fastq_pair_close(pair)
+
+
 # ---------------------------------------------------------------- barcodes and UMIs
 
 
