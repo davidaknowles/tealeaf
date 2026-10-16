@@ -1,0 +1,7 @@
+scenario	model	multi_path	trials	converged	reject_0.05	reject_0.01	reject_0.001
+subject 20, no row variation	anchors	False	68.0	63.0	0.04411764705882353	0.0	0.0
+subject 20, no row variation	anchors	True	332.0	331.0	0.0391566265060241	0.006024096385542169	0.0
+subject 20, row 20	anchors	False	68.0	66.0	0.058823529411764705	0.0	0.0
+subject 20, row 20	anchors	True	332.0	332.0	0.05421686746987952	0.018072289156626505	0.0
+subject 20, row 5	anchors	False	68.0	57.0	0.029411764705882353	0.014705882352941176	0.0
+subject 20, row 5	anchors	True	332.0	332.0	0.0572289156626506	0.015060240963855422	0.0

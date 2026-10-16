@@ -1,0 +1,12 @@
+{
+  "model": "internal_native_terminal_p2",
+  "terminal_model": "tj_native_terminal_p2",
+  "filter": "internal",
+  "blocks_by_structure": {
+    "internal": 2493,
+    "terminal, same junctions": 1452,
+    "terminal, distinct junctions": 607
+  },
+  "retained_blocks": 2493,
+  "selection": "annotation-only block structure; fits and p-values unchanged"
+}

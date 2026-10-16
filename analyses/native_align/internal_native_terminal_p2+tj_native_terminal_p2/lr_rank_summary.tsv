@@ -1,0 +1,13 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	scope	ranking
+internal_native_terminal_p2, internal blocks + tj_native_terminal_p2 terminal blocks	40	5424	38	0.95	0.9840407296409968	all tested	calibrated then raw
+internal_native_terminal_p2, internal blocks + tj_native_terminal_p2 terminal blocks	100	5424	93	0.93	0.9524312348381067	all tested	calibrated then raw
+internal_native_terminal_p2, internal blocks + tj_native_terminal_p2 terminal blocks	200	5424	178	0.89	0.9352227596304633	all tested	calibrated then raw
+internal_native_terminal_p2, internal blocks + tj_native_terminal_p2 terminal blocks	40	5424	38	0.95	0.9840407296409968	all tested	continuous raw
+internal_native_terminal_p2, internal blocks + tj_native_terminal_p2 terminal blocks	100	5424	93	0.93	0.9524312348381067	all tested	continuous raw
+internal_native_terminal_p2, internal blocks + tj_native_terminal_p2 terminal blocks	200	5424	178	0.89	0.9352227596304633	all tested	continuous raw
+internal_native_terminal_p2, internal blocks + tj_native_terminal_p2 terminal blocks	40	365	38	0.95	0.9840407296409968	BH discoveries	calibrated then raw
+internal_native_terminal_p2, internal blocks + tj_native_terminal_p2 terminal blocks	100	365	93	0.93	0.9524312348381067	BH discoveries	calibrated then raw
+internal_native_terminal_p2, internal blocks + tj_native_terminal_p2 terminal blocks	200	365	178	0.89	0.9352227596304633	BH discoveries	calibrated then raw
+internal_native_terminal_p2, internal blocks + tj_native_terminal_p2 terminal blocks	40	365	38	0.95	0.9840407296409968	BH discoveries	continuous raw
+internal_native_terminal_p2, internal blocks + tj_native_terminal_p2 terminal blocks	100	365	93	0.93	0.9524312348381067	BH discoveries	continuous raw
+internal_native_terminal_p2, internal blocks + tj_native_terminal_p2 terminal blocks	200	365	178	0.89	0.9352227596304633	BH discoveries	continuous raw

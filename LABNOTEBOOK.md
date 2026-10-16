@@ -4614,7 +4614,7 @@ Read-level parity with STAR (2M reads of one run, `extra_scripts/benchmark_nativ
 
 Of native unique reads, 0.3% are multi-mapping in STAR and 0.2% unaligned by STAR. Of STAR unique reads in loci the native aligner reports 1.7% as not genome-unique (no unique 23-mer in the alignment; stricter than STAR), 0.6% as too short and 0.1% as unmapped. Two-thirds of the STAR junctions the native aligner misses are unannotated junctions reached with 8–20 base overhangs, which STAR finds by genome-wide seed search; the second pass targets these.
 
-Speed. With 16 threads the Rust kernel aligns 139k reads/s and numba 101k reads/s, with identical output on 2M reads; the first numba call compiles in about 50 s. A full run (about 345M read pairs) takes about 1 h 50 min in the first pass and 2 h 15 min in the second, against about 67 min for STARsolo on 12 threads over the whole genome. Alignment itself takes 40 min (first pass) and 60 min (second pass); the rest is reading and parsing FASTQ and barcode handling.
+Speed. With 16 threads the Rust kernel aligns 139k reads/s and numba 101k reads/s, with identical output on 2M reads; the first numba call compiles in about 50 s. A full run (about 345M read pairs) took about 1 h 50 min in the first pass and 2 h 15 min in the second when FASTQ files were read with zcat and parsed with numpy; alignment itself takes 40 min (first pass) and 60 min (second pass). The Rust FASTQ reader (`rust_fastq_pairs`, rust/native_align/src/fastq.rs) decompresses and parses each mate on its own background thread, returns read 1 as 2-bit codes and reduces read 2 to the corrected cell and UMI, so reading overlaps alignment. With it the first pass of one run takes 45 min on 16 threads (11.6 CPU hours, 7.7 GB), with identical output; the aligner waits for input 55 s in total, and the kernel takes 42 min because the two reader threads share the cores.
 
 Full data (16 runs, 8 libraries, 5.6G read pairs). The first pass gives 1.39G unique alignments in the loci; 585M reads carry a barcode of a QC'd cell, matching the 9.9% of STAR-aligned reads that are kept. Junctions and blocks are rebuilt from the native alignments with the same rules as the STAR-based collector, giving 3,999 blocks (899 new) and 2,317 novel paths in the first pass and 4,054 blocks (954 new) and 2,479 novel paths in the second.
 
@@ -4634,4 +4634,20 @@ Endpoints, internal (all reads) + junction-only terminal blocks with novel paths
 | Comparators | 26/38/21/5/49/12/56 | .865/.819/.907/.654/.637/.542/.825 | |
 
 The native collection replaces STAR without loss: on split it matches or exceeds the STAR-based model against every comparator, and the second pass has the best LR value of any run (94 of the top 100 tests agree with long reads, against 91 for STAR). The LR differences rest on a few tests: the first and second native passes share 92 of their top 100 tests and differ in 5 disagreements, so the gain of the second pass over the first is within what small changes to the block set produce. Restricting to sense reads and simulating opportunities through the aligner do not improve either endpoint. As with STAR, the only comparator the model does not beat on split is the SUPPA2/Tealeaf hybrid (33–35 vs 49), whose extra genes are at chance in long reads (above).
+
+Speed against other tools on one run (about 345M read pairs), wall time and CPU hours: STARsolo over the whole genome with BAM sorting 67 min on 12 threads (13 CPU hours); salmon alevin `--sketch` on a spliceu index about 30 min on 20 threads (10 CPU hours) before alevin-fry; salmon selective alignment about 64 min per run on 20 threads (21 CPU hours); kallisto bus on the block-only index 25–50 min on 8 threads (4–7 CPU hours); the native aligner 45 min on 16 threads (12 CPU hours) for the first pass.
+
+### 2026-10-15 Novel first and last exons
+
+Novel junctions with a donor or acceptor deep in an intron (more than 300 bases from any exon of the path, the exon-extension limit) were dropped, so unannotated first exons (alternative promoters) and last exons (intronic polyadenylation) had no path. With `--novel-terminal-length L` (`novel_block_paths(terminal_length=L)`), such a junction that pairs with no other novel junction into a new internal exon starts the path with a new first exon [d − L, d), clipped at the end of the path's preceding exon, followed by the acceptor exon and the rest of the path, or ends it with a new last exon [a, a + L). L = 151, the read length, keeps every junction-spanning read inside the new exon. Outside annotated block windows (`novel_junction_blocks`), the new block's annotated paths run from the last exon ending before a deep donor (or to the first exon starting after a deep acceptor). Support thresholds are those of the other novel paths (20 reads in 4 libraries, 2% of the block's top junction).
+
+On the native second pass this adds 498 blocks (4,552, of which 1,452 new) and 1,131 novel paths (3,610); 851 blocks have a path with a novel terminal exon, 560 of them annotated blocks (450 terminal, 110 internal) and 291 new blocks.
+
+| Native second pass, internal (all reads) + junction-only terminal | Replicated genes LeafCutter/MAJIQ/SUPPA2/SUPPA2-PA/hybrid/rMATS/scQuint | LR AUC100 | A100 |
+|---|---|---|---|
+| Novel paths | 39/68/61/58/33/65/67 | .962 | .94 |
+| Novel paths + novel first and last exons | 39/74/63/60/33/70/74 | .952 | .93 |
+| Comparators | 26/38/21/5/49/12/56 | .865/.819/.907/.654/.637/.542/.825 | |
+
+Split gains 2–7 genes against every comparator except the hybrid. The LR difference is within noise (93 versus 94 of the top 100 tests agree with long reads; 90 of the top 100 tests are shared). Count null on blocks with novel paths (200 tests x 2 draws, min share .01): internal rejection at .05 is at most .029 among converged fits, terminal junction-only .029–.058 with at most .018 at .01, as for the earlier novel paths.
 
