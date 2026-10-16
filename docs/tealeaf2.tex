@@ -1,0 +1,295 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,decorations.pathreplacing}
+\emergencystretch=1em
+
+\definecolor{tealeafNavy}{HTML}{17324D}
+\definecolor{tealeafTeal}{HTML}{168C8C}
+\definecolor{tealeafLightTeal}{HTML}{DDF1EF}
+\definecolor{tealeafOrange}{HTML}{E6813B}
+\definecolor{tealeafLight}{HTML}{F3F6F7}
+
+\newcommand{\expit}{\operatorname{expit}}
+\newcommand{\logit}{\operatorname{logit}}
+\newcommand{\BetaDist}{\operatorname{Beta}}
+
+\title{Tealeaf: Block-Local Splice-Path Tests from Targeted Spliced Alignment}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Overview}
+
+Tealeaf tests whether the usage of local splice paths differs between two cell types measured in the same subjects. The unit of analysis is a \emph{splice block}, a genomic window of one gene in which transcripts take two or more alternative exon chains, the \emph{paths}. For every block and pair of cell types, Tealeaf asks whether the probability that a molecule from the block originates from a given path differs between the cell types, with subjects as biological replicates.
+
+The method works from sequencing reads to tests in five steps (Figure~\ref{fig:pipeline}).
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Targeted spliced alignment.} Reads are aligned to the genomic loci of the target genes only, by an aligner that reproduces the scoring, filters and uniqueness criteria of a genome alignment with STAR, but replaces whole-genome search by a genome-wide k-mer uniqueness table. Alignment runs in two passes; the second uses splice junctions discovered in the first.
+  \item \textbf{Blocks and paths.} Annotated splice blocks provide the annotated paths. Unannotated splice junctions, with support counted over all cells and therefore blind to cell-type labels, add novel paths (alternative splice sites, new exons, novel first and last exons) and new blocks.
+  \item \textbf{Molecule classes.} Each UMI molecule that overlaps a block is assigned the set of paths it is compatible with, using only the parts of its reads inside the block window. Counts are tabulated by subject, cell type, primer (poly(dT) or random hexamer) and compatibility class.
+  \item \textbf{Read opportunities.} For each path and class, the number of read start positions on the path that would produce that class gives the class probabilities as a function of path usage.
+  \item \textbf{Test.} A Beta--logit-normal model with a subject random intercept and a primer offset is fitted to the class counts, each path is tested against the others by a likelihood-ratio test, and the path tests are combined by Simes' method.
+\end{enumerate}
+Blocks are split by their annotated structure. \emph{Internal} blocks, where all annotated paths share the first and last exon, use all reads that overlap the block. \emph{Terminal} blocks, which have alternative first or last exons or transcript ends, use only molecules that span a junction distinguishing the paths, because their exon-body coverage is dominated by the positional capture bias of the primers.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  stage/.style={draw=tealeafNavy,rounded corners,fill=tealeafLight,align=center,font=\footnotesize,text width=25mm,minimum height=15mm},
+  flow/.style={-{Stealth[length=2.2mm]},thick,draw=tealeafTeal},
+  node distance=6mm and 6mm]
+\node[stage,fill=tealeafLightTeal] (fastq) {\textbf{Paired FASTQ}\\read 1 cDNA\\read 2 UMI, barcodes};
+\node[stage,right=of fastq] (pass1) {\textbf{Alignment, pass 1}\\annotated junctions};
+\node[stage,right=of pass1] (junc) {\textbf{Junction support}\\summed over cells\\and libraries};
+\node[stage,right=of junc] (pass2) {\textbf{Alignment, pass 2}\\annotated + supported\\junctions};
+\node[stage,below=of pass2] (blocks) {\textbf{Blocks and paths}\\annotated + novel};
+\node[stage,left=of blocks] (classes) {\textbf{Molecule classes}\\UMI collapse,\\compatibility masks};
+\node[stage,left=of classes] (opps) {\textbf{Read}\\\textbf{opportunities}\\$n_{ks}$ per path and class};
+\node[stage,left=of opps,fill=tealeafLightTeal] (test) {\textbf{Block test}\\one vs rest LRT,\\Simes};
+\draw[flow] (fastq)--(pass1);
+\draw[flow] (pass1)--(junc);
+\draw[flow] (junc)--(pass2);
+\draw[flow] (pass2)--(blocks);
+\draw[flow] (junc.south) to[out=-90,in=150] (blocks.north west);
+\draw[flow] (blocks)--(classes);
+\draw[flow] (classes)--(opps);
+\draw[flow] (opps)--(test);
+\end{tikzpicture}
+\caption{Tealeaf from reads to block tests. Junction support from the first alignment pass defines the known junctions of the second pass; support from the second pass defines the novel paths. No step before the test uses cell-type labels.}
+\label{fig:pipeline}
+\end{figure}
+
+\section{Data and notation}
+
+The data are split-pool barcoded single-cell RNA-seq (Parse Biosciences) of mouse brain, 48 subjects in six genotype or treatment groups (8 subjects each), in 8 sublibraries sequenced in 16 runs (about 345 million read pairs per run, 5.6 billion in total). Read 1 (151 bases) is cDNA in the sense orientation of the RNA. Read 2 carries the UMI at bases $[0,10)$ and three 8-base barcode segments at $[10,18)$, $[48,56)$ and $[78,86)$. Each cell is barcoded in one first-round well primed with poly(dT) and in one primed with random hexamers, so each cell has two \emph{half-cell} barcodes, one per primer. After cell quality control, which requires at least 500 UMIs per half-cell, 30{,}224 cells (60{,}448 half-cell barcodes) assigned to 19 cell types remain. A half-cell barcode determines its subject $u$, cell type $c$ and primer $p\in\{\mathrm{dT},\mathrm{hex}\}$.
+
+Throughout, intervals are 0-based and half-open. A \emph{junction} $(d,a)$ is the intron $[d,a)$, where $d$ is the end of the donor exon and $a$ the start of the acceptor exon. For a block $b$ with $S_b$ mature paths, path $s\in\{1,\ldots,S_b\}$ is an exon chain $E_s=((x_{s1},y_{s1}),\ldots,(x_{sm_s},y_{sm_s}))$ with $m_s$ exons, and $J_s$ is its set of junctions $\{(y_{si},x_{s,i+1}):y_{si}<x_{s,i+1}\}$. The block window is $W_b=[\min_s x_{s1},\max_s y_{sm_s})$. A compatibility class $k$ is a non-empty subset of paths, encoded as a bit mask.
+
+\section{Targeted reference and index}
+
+\paragraph{Target loci.} The targets are the 1{,}163 genes with at least one candidate splice block under the coverage screen of the paired-primer analysis (at least 25 gene UMIs per pseudobulk and at least four subjects per represented cell type). Each gene span (GENCODE vM32 basic annotation, GRCm39) is padded by 1~kb on both sides, and overlapping spans are merged into a locus, giving 1{,}145 loci with 170.9~Mb of sequence. The reference is the concatenation of the locus sequences and the spliced sequences of the 4{,}187 annotated transcripts of the target genes, separated by runs of 300 N, in a 2-bit code with N as a fifth symbol.
+
+\paragraph{Index.} Every k-mer ($k=23$) without N that starts in a locus, and every transcript k-mer that spans an exon junction of its transcript, is indexed. The k-mer codes are sorted, and a table over the leading 24 bits of the code gives the range of each prefix. The index holds 172.0 million k-mers.
+
+\paragraph{Genome uniqueness.} The aligner sees only the target loci, so a read from a paralog or repeat elsewhere in the genome can align to a locus with a good score. Tealeaf replaces the genome-wide search for competing alignments by a uniqueness flag per indexed k-mer. The canonical code (the smaller of the code and the code of its reverse complement) of every k-mer of the genome is looked up in the index, and occurrences are counted. A locus k-mer is \emph{genome-unique} if its canonical code occurs exactly once in the genome; a transcript junction k-mer is genome-unique if it does not occur in the genome. 88.8\% of indexed k-mers are genome-unique. An alignment is accepted as unique only if one of its aligned blocks contains a k-mer that matches the read exactly and is genome-unique. A read from another genomic copy cannot contain such a k-mer unless a sequencing error creates it.
+
+\section{Read alignment}
+
+Each read $q\in\{0,1,2,3,4\}^L$ ($L=151$) is aligned in both orientations, $q$ and its reverse complement $\bar q$, and all candidate alignments of both orientations compete. Algorithm~\ref{alg:align} gives the procedure for one orientation. Scores follow STAR. For an alignment with $M$ matching and $X$ mismatching bases (read N bases are neutral), aligned blocks separated by junctions $j\in\mathcal J$ and indels $i\in\mathcal D$ of length $g_i$, and reference span $\ell$ (from the first to the last aligned base, introns included), \[\mathrm{score}=M-X+\sum_{j\in\mathcal J}\sigma(j)-\sum_{i\in\mathcal D}(2+2|g_i|)+\min\{0,\lceil-0.25\log_2\ell-0.5\rceil\},\] where the junction score is $\sigma(j)=+2$ for a known junction, $0$ for an unannotated GT/AG (or CT/AC) junction, $-4$ for GC/AG (CT/GC) and $-8$ for AT/AC (GT/AT). A gap of at least 21 bases between consecutive blocks is a junction; shorter gaps of at most 6 bases are deletions (positive gap) or insertions (negative gap).
+
+\begin{algorithm}[ht]
+\caption{Alignment candidates of one read orientation $q$ of length $L$.}
+\label{alg:align}
+\begin{algorithmic}[1]
+\State \textbf{Seeds.} For read positions $r=0,4,8,\ldots$ and $r=L-k$, look up the k-mer $q[r,r+k)$ unless it contains N; keep hits of k-mers with at most 32 index occurrences (at most 1{,}024 hits). Each hit at reference position $t$ has diagonal $\delta=t-r$.
+\State \textbf{Segments.} Merge hits with equal $\delta$ into segments $(\delta,r_{\rm start},r_{\rm end})$ spanning the read positions of their k-mers.
+\For{each segment on a transcript}
+  \State Extend ungapped along the transcript in both directions (X-drop, at most 10 mismatches in total); project the aligned read interval onto the transcript's exons to give genomic blocks; add as a candidate.
+\EndFor
+\State \textbf{Chaining.} Sort locus segments by $r_{\rm start}$. Dynamic programming, $D_j=r^{\rm end}_j-r^{\rm start}_j$, and for each predecessor $i$ in the same locus with $r^{\rm start}_i<r^{\rm start}_j$, $r^{\rm end}_i\le r^{\rm end}_j$ and diagonal gap $g=\delta_j-\delta_i\in[-6,-1]\cup[1,6]\cup[21,10^6]$, $D_j\gets\max\{D_j,D_i+r^{\rm end}_j-\max(r^{\rm start}_j,r^{\rm end}_i)\}$.
+\For{each chain end in decreasing $D$, not yet used, with $D\ge k$}
+  \State Trace the chain back; extend its first segment to the left (X-drop, at most 10 mismatches).
+  \For{consecutive segments $A,B$ of the chain}
+    \State Choose the split $s$ within 4 bases of the segment boundary that minimizes mismatches of $q[\cdot,s)$ on $\delta_A$ and $q[s,\cdot)$ on $\delta_B$; for a junction ($g\ge21$) require a known junction or a canonical motif, and break ties by known, then GT/AG, then other canonical motifs.
+  \EndFor
+  \State Extend the last segment to the right with the remaining mismatch budget.
+  \State \textbf{Rescue.} If the right end is soft-clipped by at least 3 bases, try junctions from split points $s$ within 6 bases of the clip to every known acceptor $a$ at intron length 21 to $10^6$; an unknown junction needs a canonical motif and a tail of at least 5 bases. Accept the best split whose tail has at most $\max(1,\lfloor (L-s)/10\rfloor)$ mismatches and whose score gain over clipping is positive. Do the same for a clipped left end and every known donor.
+  \State Add the alignment as a candidate.
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{X-drop extension.} An extension from a seed boundary scores $+1$ per match and $-1$ per mismatch, stops when the score falls 8 below its maximum, at an N in the reference, at the locus or transcript boundary, or at the mismatch budget, and ends at the position of the maximum. The unaligned remainder is soft-clipped.
+
+\paragraph{Overhang minimum and candidate scoring.} Before scoring, a terminal block shorter than the minimum overhang of its junction is removed, as with STAR's \texttt{alignSJDBoverhangMin} and \texttt{alignSJoverhangMin}, 3 bases for a known junction and 5 for an unannotated one. Candidates with identical reference start, end, block count and orientation are merged keeping the higher score. A table holds at most 24 candidates; when it is full, a new candidate replaces the lowest-scoring one if it scores higher.
+
+\paragraph{Read status.} Let $c^\star$ be the highest-scoring candidate over both orientations. The read is
+\begin{enumerate}[leftmargin=*]
+  \item \emph{too short} if $\mathrm{score}(c^\star)<\lfloor0.66(L-1)\rfloor$, $M(c^\star)<\lfloor0.66(L-1)\rfloor$, $X(c^\star)>10$ or $X(c^\star)>0.3(M+X)$;
+  \item \emph{multi-mapping} if another candidate scores at least $\mathrm{score}(c^\star)-1$ and does not overlap $c^\star$ on the reference, or lies on the other orientation;
+  \item \emph{not genome-unique} if no aligned block of $c^\star$ contains an exactly matching genome-unique k-mer;
+  \item \emph{unique} otherwise.
+\end{enumerate}
+Only unique alignments are used. The aligned blocks of $c^\star$ are mapped back to genomic coordinates.
+
+\paragraph{Two passes.} The first pass uses the annotated junctions of the target transcripts as known junctions. For each run, the junctions of unique alignments are counted with the largest overhang (shorter flanking block) among their reads. An annotated junction is kept; an unannotated one is kept if its largest overhang is at least 12 bases and it has at least 4 reads, or 3 reads and an intron of at most 200~kb, 2 reads and at most 100~kb, or 1 read and at most 50~kb (STAR's \texttt{outSJfilter} defaults for canonical motifs). The intron strand is the strand of the motif. Counts are summed over runs, and for each junction the number of sublibraries with reads is recorded. These counts use every uniquely aligned read, irrespective of its barcode, and never use cell-type labels. The second pass adds to the known junctions every first-pass junction with a canonical motif, at least 20 reads and at least 4 of the 8 sublibraries, the support required of a novel path (Section~\ref{sec:novel}); junction counts from the second pass then define the novel paths. Known junctions receive the $+2$ score, the 3-base overhang minimum and the rescue of clipped ends, as in STAR's two-pass mode.
+
+\section{Cell barcodes, UMIs and molecules}
+
+Each 8-base barcode segment of read 2 is corrected to its 96-entry whitelist, by replacing it with the unique nearest whitelist entry within Hamming distance 2 (N read as T); a segment without such an entry is uncorrectable. A read is assigned to a half-cell barcode if all three segments correct and the triple is a barcode that passed cell quality control in its sublibrary. Its UMI is valid if it contains no N and is not a homopolymer. Unique alignments with an assigned barcode and a valid UMI are kept.
+
+Within each (half-cell barcode, locus), UMIs at Hamming distance 1 are joined transitively and replaced by the smallest UMI of their component (STARsolo's \texttt{1MM\_All}). A \emph{molecule} is a (half-cell barcode, collapsed UMI, block) triple, over the reads of both sequencing runs of a sublibrary.
+
+\section{Splice blocks and paths}
+
+\subsection{Annotated blocks}
+
+Annotated splice blocks are local regions between constitutive exonic anchors in the annotation. Transcripts of a gene that take the same exon chain through the region are collapsed into one path, and a block has the paths of all annotated transcripts that traverse it. Each path is the chain left anchor exon, internal exons, right anchor exon. Blocks of the target genes with 2 to 30 annotated paths are used. Every block also carries a \emph{precursor} path, the single exon $W_b$, which is compatible with reads without a junction inside the window (intronic or exon-body reads).
+
+A block is \emph{internal} if all its annotated paths start with the same exon and end with the same exon, and \emph{terminal} otherwise (alternative first or last exons, transcript starts or ends). The structure is decided from the annotated paths only, so adding novel paths does not change it.
+
+\subsection{Novel paths}
+\label{sec:novel}
+
+Novel paths are built from the second-pass junction support. For a block $b$, let $\mathcal A_b=\bigcup_sJ_s$ be its annotated junctions, $R(j)$ and $\Lambda(j)$ the read count and number of sublibraries of junction $j$, and $R_b^\star=\max_{j\in\mathcal A_b}R(j)$. A junction $(d,a)\notin\mathcal A_b$ is a \emph{novel junction} of $b$ if $d,a\in W_b$, its intron strand is the gene's strand, and \[R(d,a)\ge\max\{20,\,0.02R_b^\star\},\qquad \Lambda(d,a)\ge4.\] For an annotated path $E$, the donor $d$ attaches to exon $i$ of $E$ if $x_i<d\le y_i$ (an earlier donor within the exon) or $y_i<d<x_{i+1}$ with $d-y_i\le300$ (an exon extension into the intron); the acceptor $a$ attaches to exon $j$ if $x_j\le a<y_j$ or $y_{j-1}<a<x_j$ with $x_j-a\le300$. Novel junctions modify one annotated path each, by the rules of Algorithm~\ref{alg:novel} and Figure~\ref{fig:novel}. At most 8 novel paths are kept per block, ordered by the smallest read count of their novel junctions, and a novel path identical to an annotated one is discarded.
+
+\begin{algorithm}[ht]
+\caption{Novel paths of block $b$ from its novel junctions $\mathcal N_b$; $T=151$ is the new terminal exon length.}
+\label{alg:novel}
+\begin{algorithmic}[1]
+\State \textbf{Pairs.} For novel junctions $(d,x),(y,a)\in\mathcal N_b$ with $d<x<y<a$ and $y-x\le1{,}000$, form the candidate $(d,a)$ with new exon $[x,y)$; mark both junctions as paired.
+\State \textbf{Singles.} Every $(d,a)\in\mathcal N_b$ is also a candidate without a new exon.
+\For{each candidate and each annotated path $E$}
+  \If{$d$ attaches to exon $i$ and $a$ to exon $j\ge i$ of $E$}
+    \State New chain: exons $1..i-1$ of $E$, $(x_i,d)$, the new exon if any, $(a,y_j)$, exons $j+1..m$ of $E$. A single that is paired may not use an exon extension.
+  \ElsIf{the candidate is an unpaired single, $d$ attaches to no exon of $E$ and $a$ attaches to exon $j$}
+    \State New first exon: $(\max\{d-T,\,y^-\},d)$, then $(a,y_j)$ and exons $j+1..m$, where $y^-$ is the largest exon end of $E$ before $d$ (or the window start).
+  \ElsIf{the candidate is an unpaired single, $d$ attaches to exon $i$ and $a$ to no exon of $E$}
+    \State New last exon: exons $1..i-1$, $(x_i,d)$, then $(a,\min\{a+T,\,x^+\})$, where $x^+$ is the smallest exon start of $E$ after $a$ (or the window end).
+  \EndIf
+\EndFor
+\State For each candidate, keep the chain from the path where it replaces a junction sharing its donor or acceptor, then with the least exon extension, then whose least supported junction has most reads.
+\end{algorithmic}
+\end{algorithm}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[x=0.95mm,y=6mm,
+  exon/.style={fill=tealeafTeal,draw=tealeafNavy},
+  novel/.style={fill=tealeafOrange,draw=tealeafNavy},
+  junction/.style={draw=tealeafNavy,thick}]
+\def\pathlabel#1#2{\node[anchor=east,font=\small] at (-3,#1) {#2};}
+% annotated paths
+\pathlabel{0}{annotated 1}
+\draw[exon] (0,-0.25) rectangle (15,0.25); \draw[exon] (60,-0.25) rectangle (75,0.25); \draw[exon] (120,-0.25) rectangle (135,0.25);
+\draw[junction] (15,0.25) -- (37.5,0.7) -- (60,0.25); \draw[junction] (75,0.25) -- (97.5,0.7) -- (120,0.25);
+\pathlabel{-1.3}{annotated 2}
+\draw[exon] (0,-1.55) rectangle (15,-1.05); \draw[exon] (120,-1.55) rectangle (135,-1.05);
+\draw[junction] (15,-1.05) -- (67.5,-0.6) -- (120,-1.05);
+% alternative acceptor
+\pathlabel{-2.6}{alt. 3$'$ site}
+\draw[exon] (0,-2.85) rectangle (15,-2.35); \draw[novel] (66,-2.85) rectangle (75,-2.35); \draw[exon] (120,-2.85) rectangle (135,-2.35);
+\draw[junction] (15,-2.35) -- (40.5,-1.9) -- (66,-2.35); \draw[junction] (75,-2.35) -- (97.5,-1.9) -- (120,-2.35);
+% new exon
+\pathlabel{-3.9}{new exon}
+\draw[exon] (0,-4.15) rectangle (15,-3.65); \draw[novel] (88,-4.15) rectangle (98,-3.65); \draw[exon] (120,-4.15) rectangle (135,-3.65);
+\draw[junction] (15,-3.65) -- (51.5,-3.2) -- (88,-3.65); \draw[junction] (98,-3.65) -- (109,-3.2) -- (120,-3.65);
+% novel first exon
+\pathlabel{-5.2}{novel first exon}
+\draw[novel] (92,-5.45) rectangle (104,-4.95); \draw[exon] (120,-5.45) rectangle (135,-4.95);
+\draw[junction] (104,-4.95) -- (112,-4.5) -- (120,-4.95);
+% window
+\draw[decorate,decoration={brace,mirror,amplitude=4pt}] (0,-6) -- (135,-6) node[midway,below=4pt,font=\small] {block window $W_b$};
+\end{tikzpicture}
+\caption{Novel paths in a block with two annotated paths (teal). Orange exons are created from novel junctions, an alternative acceptor in an existing exon, a new exon from a pair of novel junctions, and a novel first exon of length $T$ from a donor deep in an intron (more than 300 bases from any exon) whose junction pairs with no other.}
+\label{fig:novel}
+\end{figure}
+
+\paragraph{New blocks.} Novel junctions inside a gene that lie in no annotated block window, for example a junction that skips an exon constitutive in the annotation, define new blocks. Such a junction is used if it satisfies the support criteria above, with $R^\star$ the largest read count of the annotated junctions overlapping it. Used junctions with overlapping introns are clustered. For a cluster with first donor $d$ and last acceptor $a$, each annotated transcript gives the segment of its exon chain from the exon to which $d$ attaches to the exon to which $a$ attaches; if only one end attaches, the segment starts at the last exon ending before $d$ or ends at the first exon starting after $a$, which allows novel first and last exons. Segments are clipped to their shared extent, distinct clipped segments are the annotated paths of the new block, and Algorithm~\ref{alg:novel} adds its novel paths. A new block is kept if it has at least one novel path.
+
+\paragraph{Block set.} On the second pass the block set has 4{,}552 blocks, 3{,}100 annotated and 1{,}452 new, with 3{,}610 novel paths; 851 blocks have a path with a novel first or last exon.
+
+\section{Molecule classes}
+
+\paragraph{Read compatibility.} For a read with aligned blocks $\{[\alpha_r,\beta_r)\}$ and junctions $\mathcal J_{\rm read}$, and a block $b$ whose window it overlaps, the read's blocks are clipped to $W_b$ and its junctions restricted to those inside $W_b$. The read is compatible with path $s$ (or the precursor path) if every clipped block lies within one exon of $E_s$ and every junction inside the window belongs to $J_s$. The read's class in block $b$ is the mask of compatible paths. A molecule's class is the bitwise AND of the classes of its reads that overlap the window. Molecules of class 0, compatible with no path (for example reads with an unannotated junction not represented by a novel path), are discarded. A read enters every block of its locus whose window it overlaps.
+
+\paragraph{Junction-only classes.} A junction is \emph{variable} in block $b$ if it belongs to some but not all mature paths. The junction-only collection keeps a molecule only if at least one of its reads has a variable junction inside the window.
+
+\paragraph{Counts.} For each block, molecule counts are summed over the half-cell barcodes of each (subject, cell type, primer) and over sublibraries, giving $y_{ucpk}\in\mathbb N_0$ for subject $u$, cell type $c$, primer $p$ and class $k$. Internal blocks use the all-read counts and terminal blocks the junction-only counts.
+
+\section{Read opportunities}
+
+The probability of each class given the path composition is determined by read geometry. For path $s$ with spliced length $\lambda_s=\sum_i(y_{si}-x_{si})$, consider a read of length $L=151$ starting at every position $t\in\{1-L,\ldots,\lambda_s-1\}$ of the path's spliced sequence, so that it overlaps the path by at least one base, with the part outside the path clipped, as reads leaving the window are clipped in the data. The read's spliced interval is mapped to genomic blocks and junctions and classified with the same compatibility rule. The opportunity $n_{ks}\in\mathbb N_0$ is the number of start positions on path $s$ that give class $k$, and $L_s=\sum_kn_{ks}$ is the effective length of path $s$. For junction-only classes, only start positions whose read spans a variable junction count. Opportunities are computed for the $S_b$ mature paths and the precursor path.
+
+Under a model in which molecules of path $s$ arise in proportion to an abundance $\rho_s$ per position and start uniformly along it, $P(\text{class }k)=\sum_s\rho_sn_{ks}/\sum_s\rho_sL_s$. The molecule share of path $s$ is $\pi_s=\rho_sL_s/\sum_{s'}\rho_{s'}L_{s'}$.
+
+\section{Block test}
+
+\subsection{Projection and screens}
+
+A test is indexed by a block $b$ and an unordered pair of cell types $\{c_0,c_1\}$, with $c_0$ the first in alphabetical order; effects are reported as $c_1$ minus $c_0$. The data of a test are the counts $y_{ucpk}$ for $c\in\{c_0,c_1\}$.
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Eligibility.} At least 4 subjects have molecules in both cell types, and the block has at least 20 molecules in the two cell types.
+  \item \textbf{Same-junction groups (terminal blocks).} Paths with identical junction sets cannot be separated by junction-spanning reads and are merged into one group. A class is compatible with a group if it is compatible with any member, and the group opportunity is the mean of its members' opportunities. A block with fewer than two groups is not tested.
+  \item \textbf{Share screen.} Molecule shares $\widehat{\bm\pi}$ are estimated from the class counts pooled over both cell types, both primers and all subjects, by the EM algorithm for $P(k)=\sum_s\pi_sn_{ks}/L_s$, with a pseudocount of 0.5 molecules per path per iteration (tolerance $10^{-10}$, at most 1{,}000 iterations). For internal blocks the precursor path is a component of the EM and is removed afterwards, with the mature shares renormalized. Paths with $\widehat\pi_s<0.01$ are removed. A block with fewer than two remaining paths is not a hypothesis and leaves the family. The screen uses no cell-type labels within the pair.
+  \item \textbf{Projection.} Masks are restricted to the retained mature paths and the precursor bit is dropped. Molecules compatible only with the precursor or only with removed paths are discarded; classes that become identical are merged, with opportunities summed. The eligibility criteria are then applied again to the projected counts.
+\end{enumerate}
+After projection let $S$ be the number of retained paths and $K$ the number of classes.
+
+\subsection{Likelihood of one path against the rest}
+
+For target path $s$, the other paths are collapsed into one component with weights $w_j=\widehat\pi_j/\sum_{j'\ne s}\widehat\pi_{j'}$ for $j\neq s$. For class $k$ let \[\beta_k=n_{ks},\qquad \eta_k=\sum_{j\ne s}w_jn_{kj},\qquad B=\sum_k\beta_k,\qquad H=\sum_k\eta_k.\] All classes are kept, including the class compatible with all paths, whose relative frequency informs $\psi$ through coverage. For a subject--cell-type row $(u,c)$ with target usage $\psi\in(0,1)$, the class probabilities in primer $p$ are \[f_{pk}(\psi)=\frac{\psi_p\beta_k+(1-\psi_p)\eta_k}{\psi_pB+(1-\psi_p)H},\qquad \psi_p=\expit(\logit\psi+\gamma_p),\] with $\gamma_{\rm dT}=0$ and $\gamma_{\rm hex}=\gamma$, a primer offset that absorbs differences in positional capture between the primers. $\psi$ is the target's share of per-position abundance (the $\rho$ scale of the previous section), so its expected molecule share in primer $p$ is $\psi_pB/\{\psi_pB+(1-\psi_p)H\}$. Conditioning on the primer totals, the row log-likelihood is \[\ell_{uc}(\psi)=\sum_{p\in\{\mathrm{dT},\mathrm{hex}\}}\sum_{k=1}^Ky_{ucpk}\log f_{pk}(\psi).\] 
+\paragraph{Primer offset.} $\gamma$ is estimated before the test without cell-type labels, by maximizing the profile likelihood in which every row has its own usage, \[\widehat\gamma=\arg\max_{\gamma\in[-4,4]}\sum_{(u,c)}\max_{t\in\mathbb R}\left[\ell_{uc,\mathrm{dT}}(\expit t)+\ell_{uc,\mathrm{hex}}(\expit(t+\gamma))\right],\] over rows observed with both primers, where $\ell_{uc,p}$ is the primer-$p$ term of $\ell_{uc}$. The maximization uses a grid of step 0.05 in $\gamma$ and in $t\in[-22,22]$, refined by a parabola through the three best points. $\widehat\gamma$ is estimated for each target path and held fixed in both hypotheses.
+
+\subsection{Random-effects model}
+
+Let $z_c=\mathbf 1[c=c_1]$. Usage varies between subjects through a subject intercept and between rows through a Beta distribution, \[v_u\sim\mathcal N(0,\sigma^2),\qquad \mu_{uc}=\expit(\theta_0+\theta_1z_c+v_u),\qquad \psi_{uc}\mid v_u\sim\BetaDist\big(\kappa\mu_{uc},\kappa(1-\mu_{uc})\big),\] with fixed effects $\theta_0,\theta_1\in\mathbb R$, subject standard deviation $\sigma>0$ and row concentration $\kappa>0$. The subject intercept is shared by the subject's two cell types, which makes the test paired. Subjects observed in only one cell type contribute to $\theta_0$, $\sigma$ and $\kappa$. The marginal likelihood is \[\mathcal L(\theta_0,\theta_1,\kappa,\sigma)=\prod_u\int_{\mathbb R}\phi(v;0,\sigma^2)\prod_{c\in\mathcal C_u}\int_0^1e^{\ell_{uc}(\psi)}\,\BetaDist\big(\psi;\kappa\mu_{uc}(v),\kappa(1-\mu_{uc}(v))\big)\,d\psi\,dv,\] where $\mathcal C_u$ is the set of cell types observed for subject $u$.
+
+\paragraph{Numerical integration.} The inner integral is evaluated in $t=\logit\psi$ on $[-18,18]$ by the trapezoid rule, with the tails beyond $\pm18$ added analytically at the boundary value of $\ell_{uc}$. The grid spacing for row $(u,c)$ is $\min\{0.03,\,s_{uc}/1.5\}$, where $s_{uc}$ is a quarter of the width of the region where $\ell_{uc}(\expit t)$ is within 2 of its maximum. The outer integral uses adaptive Gauss--Hermite quadrature with 9 nodes, centred on each subject's posterior mode $\widehat v_u$ (damped Newton iterations) and scaled by the inverse square root of the negative second derivative of the log integrand at the mode.
+
+\paragraph{Estimation.} Maximum-likelihood estimates are found by the L-BFGS-B algorithm with analytic gradients in the coordinates $(\theta_0,\theta_1,\log\kappa,\log\sigma)$, within the bounds $-12\le\theta_0,\theta_1\le12$, $0.1\le\kappa\le2000$ and $0.01\le\sigma\le3$. The null fit ($\theta_1=0$) starts from least-squares coefficients on the rows' maximum-likelihood usages, $\kappa=20$ and $\sigma=0.5$; the alternative starts from the null solution, and is refitted from $\theta_1=0$ if it ends below the null log-likelihood.
+
+\paragraph{Test.} With $(\widehat\theta_0,\widehat\theta_1,\widehat\kappa,\widehat\sigma)$ the alternative and $(\widetilde\theta_0,0,\widetilde\kappa,\widetilde\sigma)$ the null estimates, the statistic is \[T_s=2\left\{\log\mathcal L(\widehat\theta_0,\widehat\theta_1,\widehat\kappa,\widehat\sigma)-\log\mathcal L(\widetilde\theta_0,0,\widetilde\kappa,\widetilde\sigma)\right\},\] and $p_s=P(\chi^2_1>T_s)$. Both optima are re-evaluated at half the $\psi$ grid spacing and 19 quadrature nodes; if the log-likelihoods or the statistic change by more than $10^{-3}$, the test is refitted at the finer setting and checked again at quarter spacing and 39 nodes. A test is converged if both fits succeed and the change is at most $10^{-3}$; the reported statistic is $\max(T_s,0)$ at the finer setting. A path test that does not converge has $p_s=1$.
+
+\subsection{Block p-value and effect}
+
+For $S=2$ there is one test, of path 1. For $S>2$, each of the $S$ paths is tested against the rest and the block p-value is the Simes combination \[p_b=\min\left\{1,\ \min_{i=1,\ldots,S}\frac{S\,p_{(i)}}{i}\right\},\] where $p_{(1)}\le\cdots\le p_{(S)}$ are the ordered path p-values. The effect for $S=2$ is $\bar m_{c_1}-\bar m_{c_0}$ for path 1 (and its negative for path 2), where $\bar m_c=\int\expit(\widehat\theta_0+\widehat\theta_1z_c+v)\phi(v;0,\widehat\sigma^2)\,dv$ is the marginal usage on the poly(dT) scale. For $S>2$, the molecule-share composition of each row is estimated by the EM algorithm of the share screen with primers pooled, compositions are averaged over the subjects observed in both cell types, and the effect is the difference of the averages.
+
+\subsection{Hypothesis family}
+
+Internal-block tests and terminal-block tests form one family, with BH applied over all tests of a cohort. A test that fails to converge, or has fewer than four subjects in its fit, enters with $p=1$; a block removed by a screen does not enter.
+
+\section{Calibration}
+
+Calibration is checked by count simulations under the null on real designs. For 200 randomly chosen blocks and cell-type pairs of the full data, the observed molecule totals per (subject, cell type, primer) are kept, and class counts are redrawn from compositions in which the two cell types share the same path usage. A subject composition is drawn from a Dirichlet distribution with concentration 20 around the pooled shares, the row composition from a Dirichlet with concentration $\varsigma\in\{5,20,\infty\}$ around the subject composition, and class counts from the multinomial implied by the opportunities, two draws per test. Restricted to blocks with novel paths, internal tests reject at most 2.9\% of converged fits at nominal 0.05, and junction-only terminal tests 2.9--5.8\%, at most 1.8\% at nominal 0.01 and none at 0.001.
+
+\section{Evaluation}
+
+\subsection{Subject-split replication}
+
+The 48 subjects are divided into two halves of 24 with 4 subjects of each group in each half (subjects shuffled within group and assigned alternately). Tealeaf and every comparator are fitted separately on each half. Comparisons are made on a fixed matched universe $\mathcal U_m$ for each comparator $m$, the (gene, cell-type pair) keys with a finite p-value both for $m$ and for the reference Tealeaf analysis in both halves, over 30 cell-type pairs of nine cell types. In each half $h$, block p-values of a (gene, pair) key are combined by Simes, keys in $\mathcal U_m$ without a test receive $p=1$, and the key p-values of a gene are combined by Simes into $p_{gh}$. Comparator feature p-values (LeafCutter intron clusters, MAJIQ Heterogen edges, scQuint intron groups, SUPPA2 and rMATS events) are aggregated in the same way. The conjunction p-value $p_g^{\rm rep}=\max(p_{g1},p_{g2})$ tests for signal in both halves, and a gene is \emph{replicated} if its BH-adjusted conjunction p-value over the genes of $\mathcal U_m$ is at most 0.05. Replication does not require agreement of direction.
+
+\subsection{Long-read direction}
+
+Directions of full-data tests are compared with the P56 mouse brain single-cell long-read data of Joglekar et al.\ (ScISOr-Seq2), using its UMI-filtered annotated-transcript count matrix. Eight cell types have a prespecified correspondence, astrocytes (with Bergmann glia), mature oligodendrocytes, cerebellar granule neurons, cortical excitatory neurons, dentate gyrus and CA excitatory neurons, thalamic excitatory neurons and medium spiny neurons; glial samples are pooled over regions within replicate. The full data are tested on all pairs of these eight cell types in addition to the split universe. A test is evaluable if every tested path has at least one long-read transcript, both cell types have at least 20 long-read UMIs over the block's transcripts, and both effects are finite and non-zero. Novel paths have no long-read transcript, so tests that retain a novel path are not evaluable; 5{,}424 tests are evaluable. With long-read counts $\bm n_c\in\mathbb N_0^S$ of the paths in cell type $c$ (summed over replicates and over the transcripts of each path), the long-read effect is $\bm\Delta^{\rm L}=\bm n_{c_1}/\|\bm n_{c_1}\|_1-\bm n_{c_0}/\|\bm n_{c_0}\|_1$, and the test agrees if $(\bm\Delta^{\rm T})^{\mathsf T}\bm\Delta^{\rm L}>0$ for the Tealeaf effect $\bm\Delta^{\rm T}$. Evaluable tests are ranked by p-value, then by decreasing statistic. With $a_j\in\{0,1\}$ the agreement of the test at rank $j$ and $c_r=r^{-1}\sum_{j\le r}a_j$ the cumulative agreement, the endpoint is the normalized area $A_{100}=\frac{1}{100}\sum_{r=1}^{100}c_r$, the mean cumulative agreement over the 100 top-ranked tests; comparators are ranked and scored in the same way.
+
+\subsection{Results of the current model}
+
+\begin{table}[ht]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccccccc}
+\toprule
+ & LeafCutter & MAJIQ & SUPPA2 & SUPPA2-PA & Hybrid & rMATS & scQuint\\
+\midrule
+Matched genes & 139 & 479 & 457 & 431 & 354 & 597 & 506\\
+Tealeaf replicated & 39 & 74 & 63 & 60 & 33 & 70 & 74\\
+Comparator replicated & 26 & 38 & 21 & 5 & 49 & 12 & 56\\
+\midrule
+Comparator $A_{100}$ & .865 & .819 & .907 & .654 & .637 & .542 & .825\\
+\bottomrule
+\end{tabular}
+\caption{Replicated genes on each comparator's matched universe, and long-read direction. SUPPA2-PA is primer-aware SUPPA2 and Hybrid the SUPPA2/Tealeaf hybrid. Tealeaf has $A_{100}=0.952$ (93 of its 100 top-ranked evaluable tests agree with long reads).}
+\label{tab:results}
+\end{table}
+
+Table~\ref{tab:results} gives both endpoints. Tealeaf replicates more genes than every comparator except the SUPPA2/Tealeaf hybrid, which replicates 49; its additional genes agree with long-read directions at chance (49\% of its full-data tests in those genes).
+
+\section{Implementation}
+
+The alignment kernel exists in two implementations with identical output, a numba implementation in the Python package and a Rust library called through a C interface. The Rust library also reads the paired gzipped FASTQ files. Each mate is decompressed and parsed on its own thread ahead of alignment, read 1 is converted to 2-bit codes, and read 2 is reduced to the corrected barcode and UMI. A run of 345 million read pairs aligns in 45~min with 16 threads in the first pass and about 70~min in the second, compared with 67~min for STARsolo on 12 threads over the whole genome. Read opportunities, the row integrals and the subject quadrature are compiled numba kernels. Against STARsolo alignments of 2 million reads, the targeted aligner reports 97.6\% of STAR's unique alignments in the target loci as unique, with identical junctions for 99.5\% of reads aligned uniquely by both, and gives the same block class for 99.7\% of reads entering a block. Molecule counts per block, class, subject, cell type and primer agree with those from STARsolo alignments to within 5\% (overlap of 0.95 of STAR's counts), and the class distributions within blocks differ by a mean total-variation distance of 0.005.
+
+\end{document}
