@@ -1,0 +1,8 @@
+comparison	pairs	genes	cell_type_pairs
+LeafCutter	2732	279	167
+MAJIQ Heterogen	73984	3003	190
+SUPPA2	361839	5068	190
+SUPPA2 primer-aware	149301	3901	190
+SUPPA2/Tealeaf hybrid	1793	357	30
+rMATS (paired)	434915	6838	190
+scQuint	132419	4220	190
