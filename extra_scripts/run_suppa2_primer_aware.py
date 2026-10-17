@@ -39,16 +39,16 @@ def canonical(value):
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--alevin-dir", required=True, type=Path)
-    parser.add_argument("--salmon-ref", required=True, type=Path)
-    parser.add_argument("--primer-pairs", required=True, type=Path)
+    parser.add_argument("--alevin-dir", type=Path)
+    parser.add_argument("--salmon-ref", type=Path)
+    parser.add_argument("--primer-pairs", type=Path)
     parser.add_argument("--probability-file", type=Path)
-    parser.add_argument("--barcode-groups", required=True, type=Path)
-    parser.add_argument("--event-catalog", required=True, type=Path)
+    parser.add_argument("--barcode-groups", type=Path)
+    parser.add_argument("--event-catalog", type=Path)
     parser.add_argument("--contrasts", action="append", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--event-output", required=True, type=Path)
-    parser.add_argument("--work-dir", required=True, type=Path)
+    parser.add_argument("--event-output", type=Path)
+    parser.add_argument("--work-dir", type=Path)
     parser.add_argument("--fold", default="full_data")
     parser.add_argument("--minimum-pairs", type=int, default=8)
     parser.add_argument("--min-half-umis", type=float, default=500)
@@ -59,6 +59,7 @@ def parse_args():
     parser.add_argument("--max-events", type=int, help="limit the catalogue for a smoke test")
     parser.add_argument("--psi-cache-dir", type=Path, help="Save event PSI and sample identifiers for statistical audits.")
     parser.add_argument("--prepare-only", action="store_true", help="Prepare PSI without running event tests; requires --psi-cache-dir.")
+    parser.add_argument("--psi-input-dir", type=Path, help="Test event PSI saved by --psi-cache-dir instead of preparing it; the preparation inputs are then not needed.")
     parser.add_argument("--test-method", action="append", choices=TEST_METHODS, help="Paired event statistic; repeat to evaluate several methods. Defaults to exact signed-rank tails, including ties.")
     return parser.parse_args()
 
@@ -206,11 +207,11 @@ def main():
     args = parse_args()
     if args.prepare_only and args.psi_cache_dir is None:
         raise ValueError("--prepare-only requires --psi-cache-dir")
+    if args.psi_input_dir is None:
+        missing = [name for name in ("alevin_dir", "salmon_ref", "primer_pairs", "barcode_groups", "event_catalog", "event_output", "work_dir") if getattr(args, name) is None]
+        if missing:
+            raise ValueError(f"PSI preparation requires {', '.join('--' + name.replace('_', '-') for name in missing)}")
     test_methods = args.test_method or ["wilcoxon_exact"]
-    catalog = load_catalog(args.event_catalog)
-    if args.max_events is not None:
-        catalog = catalog.head(args.max_events).copy()
-    sample_levels, catalog, counts_by_primer = prepare_event_counts(args, catalog)
     contrast_sets = []
     for path in args.contrasts:
         path_text = str(path)
@@ -221,6 +222,20 @@ def main():
         else:
             fold = "full_data"
         contrast_sets.extend((fold, record) for record in json.loads(path.read_text()))
+    if args.psi_input_dir is not None:
+        sample_levels = json.loads((args.psi_input_dir / "samples.json").read_text())
+        catalog = load_catalog(args.psi_input_dir / "event_catalog.tsv.gz")
+        folds = sorted({fold for fold, _ in contrast_sets}, key=str)
+        psi_by_fold = {fold: np.load(args.psi_input_dir / f"psi_fold{fold}.npz")["psi"] for fold in folds}
+        for fold, psi in psi_by_fold.items():
+            if psi.shape != (len(catalog), len(sample_levels)):
+                raise ValueError(f"cached PSI for fold {fold} has shape {psi.shape}, expected {(len(catalog), len(sample_levels))}")
+        run_event_tests(args, test_methods, contrast_sets, sample_levels, catalog, psi_by_fold)
+        return
+    catalog = load_catalog(args.event_catalog)
+    if args.max_events is not None:
+        catalog = catalog.head(args.max_events).copy()
+    sample_levels, catalog, counts_by_primer = prepare_event_counts(args, catalog)
     row_lookup = {name: index for index, name in enumerate(sample_levels)}
     fold_sample_indices = {}
     for fold, contrast in contrast_sets:
@@ -265,6 +280,11 @@ def main():
             np.savez_compressed(args.psi_cache_dir / f"psi_fold{fold}.npz", psi=psi)
     if args.prepare_only:
         return
+    run_event_tests(args, test_methods, contrast_sets, sample_levels, catalog, psi_by_fold)
+
+
+def run_event_tests(args, test_methods, contrast_sets, sample_levels, catalog, psi_by_fold):
+    row_lookup = {name: index for index, name in enumerate(sample_levels)}
     output_rows = []
     for fold, contrast in contrast_sets:
         pairs = [(row_lookup.get(a), row_lookup.get(b)) for a, b in zip(contrast["samples_a"], contrast["samples_b"])]
