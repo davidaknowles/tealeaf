@@ -319,6 +319,9 @@ def stage_collect(args):
     antisense = (orientation[read] == 0) != (tables["strand"][block] == 1)
     if args.sense_only:
         read, block, mask, informative = read[~antisense], block[~antisense], mask[~antisense], informative[~antisense]
+    if args.drop_unfit_reads:
+        fit = mask != 0
+        read, block, mask, informative = read[fit], block[fit], mask[fit], informative[fit]
     molecule = (cell[read] << 44) | (umi[read] << 24) | block
     order = np.argsort(molecule, kind="stable")
     molecule, mask, informative = molecule[order], mask[order], informative[order]
@@ -401,6 +404,7 @@ def main():
     parser.add_argument("--blocks", type=Path, help="blocks.json.gz written by the junctions stage and classified into by collect and collate (default: <output-dir>/blocks.json.gz, blocks_pass2.json.gz with --known-junctions)")
     parser.add_argument("--collection-dir", type=Path, help="collection root; all/ and junction/ hold the two read-class collections")
     parser.add_argument("--sense-only", action="store_true", help="collect: drop reads antisense to the block's gene")
+    parser.add_argument("--drop-unfit-reads", action="store_true", help="collect: leave reads compatible with no path out of the molecule's class (AND) and junction flag instead of discarding the molecule")
     parser.add_argument("--simulated-opportunities", action="store_true", help="collate: read opportunities from error-free reads passed through the aligner (tealeaf.sc.native_align.simulated_opportunities)")
     parser.add_argument("--rust-library", type=Path, help="use the Rust alignment kernel and FASTQ reader (rust/native_align) instead of numba and numpy")
     parser.add_argument("--numpy-reader", action="store_true", help="align: read FASTQ with zcat and numpy even with --rust-library")

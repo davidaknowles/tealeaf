@@ -9,7 +9,9 @@ coordinate-sorted BAM over the target loci. For reads STAR places uniquely
 also reports a unique alignment, with identical aligned blocks and identical
 junctions; for native unique alignments, what STAR reported; and for every
 read entering a block of --blocks, agreement of its path class (compatibility
-mask) between the two aligners. Writes summary.json and per-read tables.
+mask) between the two aligners. Writes summary.json, per-read tables and
+per (read, block) classes (block_entries.tsv.gz; -1 where an aligner's read
+does not enter the block).
 """
 
 import argparse
@@ -109,7 +111,7 @@ def main():
     rows = []
     for number in sorted(set(star) | {n for n, value in native.items() if value[0] == na.UNIQUE}):
         s, v = star.get(number), native.get(number)
-        rows.append({"read": number, "star_nh": s[0] if s else 0, "star_gx": s[4] if s else "", "native_status": names[v[0]] if v else "unmapped",
+        rows.append({"read": number, "star_nh": s[0] if s else 0, "star_gx": s[4] if s else "", "native_status": names[v[0]] if v else "unmapped", "star_chromosome": s[1] if s else "", "native_chromosome": v[1] if v else "",
                      "same_blocks": bool(s and v and s[1] == v[1] and tuple(map(tuple, s[2])) == v[2]), "same_junctions": bool(s and v and s[1] == v[1] and s[3] == v[3]),
                      "star_spliced": bool(s and s[3]), "native_spliced": bool(v and v[3]), "star_blocks": json.dumps(s[2]) if s else "", "native_blocks": json.dumps(v[2]) if v else ""})
     table = pd.DataFrame(rows)
@@ -129,12 +131,14 @@ def main():
     }
     # block classes
     block_set = json.load(gzip.open(args.blocks, "rt"))
-    by_chromosome = {}
+    by_chromosome, keys_by_chromosome = {}, {}
     for key, block in block_set.items():
         structures = path_structures(block["paths"])
         by_chromosome.setdefault(block["chromosome"], []).append(structures)
+        keys_by_chromosome.setdefault(block["chromosome"], []).append(key)
     windows = {chromosome: (np.array([x[2][0] for x in values]), np.array([x[2][1] for x in values])) for chromosome, values in by_chromosome.items()}
     agree = total = only_star = only_native = 0
+    entries = []
     for number in table.read.tolist():
         s, v = star.get(number), native.get(number)
         s = s if s and s[0] == 1 else None
@@ -153,6 +157,7 @@ def main():
             masks = [None if value is None or value[1] != chromosome or not any(a < end and b > start for a, b in value[2]) else compatibility_mask(value[2], value[3], structures) for value in (s, v)]
             if masks == [None, None]:
                 continue
+            entries.append((number, keys_by_chromosome[chromosome][j], -1 if masks[0] is None else masks[0], -1 if masks[1] is None else masks[1]))
             if masks[0] is None:
                 only_native += 1
             elif masks[1] is None:
@@ -160,6 +165,7 @@ def main():
             else:
                 total += 1
                 agree += masks[0] == masks[1]
+    pd.DataFrame(entries, columns=["read", "path_key", "star_mask", "native_mask"]).to_csv(args.output_dir / "block_entries.tsv.gz", sep="\t", index=False)
     summary.update(block_class_pairs=total, block_class_agreement=float(agree / max(total, 1)), block_entries_star_only=only_star, block_entries_native_only=only_native)
     (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps(summary, indent=2), flush=True)

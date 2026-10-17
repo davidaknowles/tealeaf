@@ -1,0 +1,15 @@
+structure	outcome	native_status	entries	fraction_of_structure
+internal	different class	unique	410	0.003306931651368747
+internal	no native entry	multi	31	0.0002500362955912955
+internal	no native entry	not_genome_unique	1052	0.008485102676194931
+internal	no native entry	too_short	702	0.005662112242099659
+internal	no native entry	unique	113	0.000911422625865045
+internal	no native entry	unmapped	164	0.001322772660547499
+internal	same class	unique	121510	0.9800616218483328
+terminal	different class	unique	898	0.0031852894959935583
+terminal	no native entry	multi	115	0.0004079156926940526
+terminal	no native entry	not_genome_unique	3034	0.010761880101163092
+terminal	no native entry	too_short	1645	0.005834967952014926
+terminal	no native entry	unique	55	0.00019509011389715557
+terminal	no native entry	unmapped	420	0.001489779051578279
+terminal	same class	unique	275754	0.978125077592659

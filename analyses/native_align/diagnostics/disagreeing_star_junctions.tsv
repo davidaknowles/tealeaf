@@ -1,0 +1,83 @@
+outcome	native_status	junction_type	overhang_bin	junctions
+different class	unique	annotated	<=7	83
+different class	unique	annotated	8-12	68
+different class	unique	annotated	13-20	87
+different class	unique	annotated	21-40	90
+different class	unique	annotated	>40	55
+different class	unique	known pass 2	<=7	4
+different class	unique	known pass 2	8-12	1
+different class	unique	known pass 2	13-20	13
+different class	unique	known pass 2	21-40	27
+different class	unique	known pass 2	>40	9
+different class	unique	novel	<=7	3
+different class	unique	novel	8-12	27
+different class	unique	novel	13-20	77
+different class	unique	novel	21-40	45
+different class	unique	novel	>40	7
+no native entry	multi	annotated	<=7	5
+no native entry	multi	annotated	8-12	1
+no native entry	multi	annotated	13-20	12
+no native entry	multi	annotated	21-40	13
+no native entry	multi	annotated	>40	3
+no native entry	multi	known pass 2	8-12	2
+no native entry	multi	known pass 2	13-20	1
+no native entry	multi	known pass 2	21-40	1
+no native entry	multi	known pass 2	>40	2
+no native entry	multi	novel	8-12	5
+no native entry	multi	novel	13-20	13
+no native entry	multi	novel	21-40	3
+no native entry	multi	novel	>40	4
+no native entry	not_genome_unique	annotated	<=7	18
+no native entry	not_genome_unique	annotated	8-12	17
+no native entry	not_genome_unique	annotated	13-20	52
+no native entry	not_genome_unique	annotated	21-40	93
+no native entry	not_genome_unique	annotated	>40	86
+no native entry	not_genome_unique	known pass 2	13-20	1
+no native entry	not_genome_unique	known pass 2	21-40	2
+no native entry	not_genome_unique	known pass 2	>40	7
+no native entry	not_genome_unique	novel	<=7	1
+no native entry	not_genome_unique	novel	8-12	5
+no native entry	not_genome_unique	novel	13-20	33
+no native entry	not_genome_unique	novel	21-40	18
+no native entry	not_genome_unique	novel	>40	11
+no native entry	too_short	annotated	<=7	50
+no native entry	too_short	annotated	8-12	44
+no native entry	too_short	annotated	13-20	62
+no native entry	too_short	annotated	21-40	73
+no native entry	too_short	annotated	>40	20
+no native entry	too_short	known pass 2	<=7	1
+no native entry	too_short	known pass 2	8-12	1
+no native entry	too_short	known pass 2	13-20	9
+no native entry	too_short	known pass 2	21-40	15
+no native entry	too_short	known pass 2	>40	1
+no native entry	too_short	novel	<=7	4
+no native entry	too_short	novel	8-12	13
+no native entry	too_short	novel	13-20	34
+no native entry	too_short	novel	21-40	65
+no native entry	too_short	novel	>40	98
+no native entry	unique	annotated	<=7	26
+no native entry	unique	annotated	8-12	22
+no native entry	unique	annotated	13-20	14
+no native entry	unique	annotated	21-40	9
+no native entry	unique	annotated	>40	8
+no native entry	unique	known pass 2	13-20	3
+no native entry	unique	known pass 2	21-40	6
+no native entry	unique	known pass 2	>40	1
+no native entry	unique	novel	<=7	2
+no native entry	unique	novel	8-12	17
+no native entry	unique	novel	13-20	41
+no native entry	unique	novel	21-40	13
+no native entry	unique	novel	>40	2
+no native entry	unmapped	annotated	<=7	7
+no native entry	unmapped	annotated	8-12	1
+no native entry	unmapped	annotated	13-20	1
+no native entry	unmapped	annotated	21-40	2
+no native entry	unmapped	annotated	>40	6
+no native entry	unmapped	known pass 2	13-20	1
+no native entry	unmapped	known pass 2	21-40	2
+no native entry	unmapped	known pass 2	>40	2
+no native entry	unmapped	novel	<=7	1
+no native entry	unmapped	novel	8-12	11
+no native entry	unmapped	novel	13-20	25
+no native entry	unmapped	novel	21-40	33
+no native entry	unmapped	novel	>40	24

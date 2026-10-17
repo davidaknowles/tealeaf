@@ -1,0 +1,5 @@
+structure	collection	molecules	kept	multi_read	conflict	zero_read_with_others	single_read_no_path	recoverable_by_dropping_one_read	recoverable_fraction_of_kept
+internal	all	1685558	1666665	1050994	2489	11512	4892	6755	0.004053004053004053
+internal	junction	101861	91020	70695	2489	5996	2356	4247	0.0466600747088552
+terminal	all	3833077	3789735	2413950	5032	26698	11612	15972	0.0042145427054926
+terminal	junction	147981	132679	100561	5032	7944	2326	7576	0.057100219326344036
