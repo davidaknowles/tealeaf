@@ -26,7 +26,7 @@ def eligible_reference(path):
     return normalize_pairs(table)
 
 
-def load_comparators(repro, repo, fold, reference=None):
+def load_comparators(repro, repo, fold, reference=None, suppa2_split="split_data_matched_exact"):
     table = pd.read_csv(repro / f"fold{fold}/comparison_majiq_min3_cov3/all_tests.tsv.gz", sep="\t", low_memory=False)
     table = table.loc[table.effect.eq("cell_type")].copy()
     mapping = pd.read_csv(repro / "leafcutter_cluster_gene.tsv.gz", sep="\t").set_index("feature_id").gene_id
@@ -35,8 +35,8 @@ def load_comparators(repro, repo, fold, reference=None):
     print(f"external methods fold={fold}: {table.method.unique().tolist()}", flush=True)
     result = {method: normalize_pairs(local) for method, local in table.groupby("method") if method in ("LeafCutter", "MAJIQ Heterogen", "scQuint", "rMATS")}
     base = repo / "analyses/comparator_suppa_rmats"
-    for label, path in (("SUPPA2", base / f"suppa2/split_data_matched_exact_fold{fold}_tests.tsv.gz"),
-                        ("SUPPA2 primer-aware", base / f"suppa2_primer_aware/split_data_matched_exact_fold{fold}_tests.tsv.gz"),
+    for label, path in (("SUPPA2", base / f"suppa2/{suppa2_split}_fold{fold}_tests.tsv.gz"),
+                        ("SUPPA2 primer-aware", base / f"suppa2_primer_aware/{suppa2_split}_fold{fold}_tests.tsv.gz"),
                         ("SUPPA2/Tealeaf hybrid", base / f"suppa2_tealeaf_hybrid/split_data/fold{fold}_tests.tsv.gz")):
         result[label] = normalize_pairs(pd.read_csv(path, sep="\t", low_memory=False))
     rmats_path = base / f"rmats/split_data_fold{fold}_tests.tsv.gz"

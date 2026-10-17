@@ -146,15 +146,22 @@ def local_read_likelihood(lookup, block, opportunities, subjects, labels, levels
     Opportunity vectors have n_paths mature entries, plus a final precursor
     entry when precursor is set. The compatibility of class k with the target
     is n[k][target]; with the collapsed rest it is sum_j w_j n[k][j] over the
-    other mature paths, w their label-blind pooled shares renormalized; with
-    the precursor it is n[k][precursor], scaled by a profiled per-row factor.
+    other mature paths, w_j proportional to share_j / L_j, with share the
+    label-blind pooled molecule shares (pooled_path_shares) and L_j = sum_k
+    n[k][j] over the chosen classes; w is then a per-position abundance on
+    the scale of the target's psi, and the rest's molecules split as the
+    pooled shares. With the precursor it is n[k][precursor], scaled by a profiled per-row factor.
     For two mature paths without precursor this is the plain binary model.
     With primer_opportunities ({primer: opportunities}), each primer's
     components use its own opportunities over the classes of opportunities.
     """
     n_paths = len(next(iter(opportunities.values()))) - int(precursor) if n_paths is None else n_paths
     masks = local_class_masks(opportunities, n_paths, anchors)
-    rest = np.ones(n_paths) if shares is None else np.array(shares[:n_paths], dtype=float)
+    if shares is None:
+        rest = np.ones(n_paths)
+    else:
+        lengths = np.sum([np.asarray(opportunities[mask][:n_paths], dtype=float) for mask in masks], axis=0)
+        rest = np.array(shares[:n_paths], dtype=float) / lengths
     rest[target] = 0.
     rest /= rest.sum()
     def build(values):

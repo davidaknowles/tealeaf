@@ -381,6 +381,15 @@ def _motif(ref, donor, acceptor):
 
 
 @njit(cache=True)
+def junction_motifs(ref, donors, acceptors):
+    """STAR motif codes (_motif) of introns [donors[i], acceptors[i])."""
+    out = np.zeros(len(donors), dtype=np.int8)
+    for i in range(len(donors)):
+        out[i] = _motif(ref, donors[i], acceptors[i])
+    return out
+
+
+@njit(cache=True)
 def _junction_score(motif, annotated):
     if annotated:
         return 2

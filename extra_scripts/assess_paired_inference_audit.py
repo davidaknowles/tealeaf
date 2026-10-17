@@ -29,7 +29,45 @@ def fit_table(path):
     return table
 
 
-def split_assessment(folds, repo, output, model):
+def split_universe_assessment(folds, universe, output, model):
+    """Split benchmark on comparator-defined universes (extra_scripts/build_split_universe.py).
+
+    For comparator m with keys K_m (gene, cell-type pair tested by m in both
+    halves) and T_h the keys with a Tealeaf test in half h, the "matched"
+    universe is K_m with T_0 and T_1 and the "comparator" universe is K_m
+    alone; on each, both methods are scored (keys without a test have p = 1).
+    """
+    tests = pd.read_csv(universe, sep="\t", dtype={"gene_id": str})
+    tealeaf_keys = [set(zip(fold.gene_id, fold.pair_id)) for fold in folds]
+    metrics, directions, genes = [], [], []
+    for comparison, comparator in tests.groupby("comparison"):
+        comparator_keys = set(zip(comparator.gene_id, comparator.pair_id))
+        for scope, keys in (("matched", comparator_keys & tealeaf_keys[0] & tealeaf_keys[1]), ("comparator", comparator_keys)):
+            frame = pd.DataFrame(sorted(keys), columns=["gene_id", "pair_id"])
+            for method, sources in ((model, folds), (comparison, [comparator.loc[comparator.fold.eq(k)] for k in (0, 1)])):
+                tables = [source.merge(frame, on=["gene_id", "pair_id"], validate="many_to_one") for source in sources]
+                pairs = [frame.merge(grouped_pvalues(table, ["gene_id", "pair_id"], "simes"), on=["gene_id", "pair_id"], how="left", validate="one_to_one").fillna({"p_value": 1.}) for table in tables]
+                metric, detail = metric_row(comparison, method, "simes", "simes", pairs)
+                metric["universe"] = scope
+                if method == model and scope == "matched":
+                    records, status = direction_rows(tables, [grouped_pvalues(pair, ["gene_id"], "simes") for pair in pairs], comparison, model)
+                    record_table = pd.DataFrame(records)
+                    selected = record_table.loc[record_table.event_BH_union] if len(record_table) else pd.DataFrame()
+                    evaluable = selected.loc[selected.direction_agrees.notna()] if len(selected) else pd.DataFrame()
+                    metric.update({"direction_selected": len(selected), "direction_evaluable": len(evaluable), "direction_agreement": evaluable.direction_agrees.mean() if len(evaluable) else np.nan, "failed_tests_fold0": int((tables[0].p_value.eq(1.) & ~tables[0].converged).sum()), "failed_tests_fold1": int((tables[1].p_value.eq(1.) & ~tables[1].converged).sum())})
+                    directions.extend(records)
+                metrics.append(metric)
+                genes.append(detail.assign(universe=scope, method=method))
+    metrics = pd.DataFrame(metrics)
+    metrics.to_csv(output / "split_metrics.tsv", sep="\t", index=False, na_rep="NA")
+    pd.DataFrame(directions).to_csv(output / "split_directions.tsv.gz", sep="\t", index=False, na_rep="NA")
+    pd.concat(genes, ignore_index=True).to_csv(output / "split_gene_tests.tsv.gz", sep="\t", index=False, na_rep="NA")
+    print(metrics[["comparison", "method", "universe", "shared_gene_pairs", "shared_genes", "replicated_bh"]].to_string(index=False), flush=True)
+
+
+def split_assessment(folds, repo, output, model, universe=None):
+    if universe is not None:
+        return split_universe_assessment(folds, universe, output, model)
     archived = pd.read_csv(repo / "analyses/split_coverage_direction/event_coverage_pvalues.tsv.gz", sep="\t")
     archived = archived.loc[archived.method.eq("Tealeaf")]
     metrics, directions, genes = [], [], []

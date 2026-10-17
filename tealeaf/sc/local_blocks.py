@@ -79,8 +79,18 @@ def local_support(junctions, chromosome, strand, start, end):
     return {key: values[key] for key in keys[bisect_left(keys, (start,)):bisect_right(keys, (end, float("inf")))] if values[key][2] in (strand, ".")}
 
 
-def annotated_blocks(candidate_caches, block_cache, max_paths=10, junctions=None, novel_options=None, gene_transcripts=None):
-    """Every annotated block (2..max_paths paths) in the candidate caches' genes.
+def block_genes(block_cache, max_paths=30):
+    """Genes with at least one annotated splice block of 2..max_paths paths."""
+    genes = set()
+    for block in json.load(gzip.open(block_cache, "rt")):
+        signatures = json.loads(block["path_signatures"]) if isinstance(block["path_signatures"], str) else block["path_signatures"]
+        if 2 <= len(signatures) <= max_paths:
+            genes.add(block["gene_id"])
+    return genes
+
+
+def annotated_blocks(candidate_caches, block_cache, max_paths=10, junctions=None, novel_options=None, gene_transcripts=None, genes=None):
+    """Every annotated block (2..max_paths paths) in the target genes.
 
     Paths are all annotated paths of the block, independent of EC support. A
     final precursor path, one exon spanning the block window, marks reads with
@@ -89,10 +99,13 @@ def annotated_blocks(candidate_caches, block_cache, max_paths=10, junctions=None
     paths after the annotated ones (their chains serve as their signatures),
     and with gene_transcripts (read_gtf_exons) novel_junction_blocks adds
     blocks "<gene>:N<k>" for novel junctions outside the annotated blocks.
+    genes (a set of gene ids, e.g. block_genes) replaces the candidate
+    caches' genes.
     """
-    genes = set()
-    for cache in candidate_caches:
-        genes.update(candidate[2] for candidate in pickle.load(open(cache, "rb"))["candidates"])
+    if genes is None:
+        genes = set()
+        for cache in candidate_caches:
+            genes.update(candidate[2] for candidate in pickle.load(open(cache, "rb"))["candidates"])
     blocks, windows = {}, defaultdict(list)
     for block in json.load(gzip.open(block_cache, "rt")):
         signatures = json.loads(block["path_signatures"]) if isinstance(block["path_signatures"], str) else block["path_signatures"]

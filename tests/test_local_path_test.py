@@ -111,3 +111,19 @@ def test_identical_primer_opportunities_match_shared():
     split = local_read_likelihood(lookup, "b", mature, subjects, labels, ("a", "b"), True, n_paths=2, primer_opportunities={primer: mature for primer in PRIMERS})
     for row in range(len(shared.counts[0])):
         assert np.allclose(shared.row_log_likelihood(row, np.array([.3, .6])), split.row_log_likelihood(row, np.array([.3, .6])))
+
+
+def test_rest_component_splits_molecules_as_pooled_shares():
+    # paths of different effective lengths; the collapsed rest must give each
+    # non-target path its pooled molecule share, so weights are share / length
+    paths = [SKIP, INCLUDE, [(100, 200), (250, 450), (500, 600)]]
+    opportunities = path_read_opportunities(paths, 50)
+    lookup = {("b", "s0", level, primer, mask): 1. for level in ("a", "b") for primer in PRIMERS for mask in opportunities}
+    shares = np.array([.2, .3, .5])
+    likelihood = local_read_likelihood(lookup, "b", opportunities, np.array(["s0", "s0"]), np.array([0, 1]), ("a", "b"), True, target=0, shares=shares, n_paths=3)
+    masks = local_class_masks(opportunities, 3, True)
+    n = np.array([opportunities[mask] for mask in masks], dtype=float)
+    weights = np.linalg.lstsq(n[:, 1:], likelihood.components[0][:, 2], rcond=None)[0]
+    molecules = weights * n[:, 1:].sum(axis=0)
+    assert np.allclose(molecules / molecules.sum(), shares[1:] / shares[1:].sum())
+    assert not np.isclose(n[:, 1].sum(), n[:, 2].sum())

@@ -52,7 +52,7 @@ import pandas as pd
 
 from tealeaf.sc import native_align as na
 from tealeaf.sc.differential import read_gtf_exons
-from tealeaf.sc.local_blocks import annotated_blocks, block_opportunities, junction_block_opportunities, junction_support
+from tealeaf.sc.local_blocks import annotated_blocks, block_genes, block_opportunities, junction_block_opportunities, junction_support
 
 READ_LENGTH = 151
 UMI = (0, 10)
@@ -169,12 +169,17 @@ def barcode_tools(whitelist_dir, barcodes):
     return tables, lookup, size
 
 
+def target_genes(args):
+    """Candidate-cache genes, or with --all-block-genes every gene with an annotated block of 2..--max-paths paths."""
+    return block_genes(args.block_cache, args.max_paths) if args.all_block_genes else candidate_genes(args.candidate_cache)
+
+
 def stage_reference(args):
     import pysam
 
     start = time.time()
     genome = pysam.FastaFile(str(args.genome))
-    genes = {gene: record for gene, record in read_gtf_exons(args.gtf).items() if gene in candidate_genes(args.candidate_cache)}
+    genes = {gene: record for gene, record in read_gtf_exons(args.gtf).items() if gene in target_genes(args)}
     reference = na.build_reference(genome, genes, pad=args.pad)
     index = na.build_index(reference)
     built = time.time()
@@ -254,15 +259,13 @@ def run_junctions(path, reference, annotated):
     is_annotated = np.isin(keys, annotated)
     passes = (overhang >= 12) & ((reads >= 4) | ((reads == 3) & (intron <= 200000)) | ((reads == 2) & (intron <= 100000)) | ((reads == 1) & (intron <= 50000)))
     keep = is_annotated | passes
-    out = {}
-    ref = reference["ref"]
-    for d, a, n in zip(donor[keep].tolist(), acceptor[keep].tolist(), reads[keep].tolist()):
-        locus = int(np.searchsorted(reference["locus_ref_start"], d, side="right") - 1)
-        shift = int(reference["locus_genome_start"][locus] - reference["locus_ref_start"][locus])
-        motif = na._motif(ref, d, a)
-        strand = "." if motif == 0 else ("+" if motif % 2 else "-")
-        out[(str(reference["locus_chromosome"][locus]), d + shift, a + shift)] = (n, strand)
-    return out
+    donor, acceptor, reads = donor[keep], acceptor[keep], reads[keep]
+    locus = np.searchsorted(reference["locus_ref_start"], donor, side="right") - 1
+    shift = reference["locus_genome_start"][locus] - reference["locus_ref_start"][locus]
+    motif = na.junction_motifs(reference["ref"], donor, acceptor)
+    strand = np.where(motif == 0, ".", np.where(motif % 2 == 1, "+", "-"))
+    chromosome = reference["locus_chromosome"][locus].astype(str)
+    return {(c, d, a): (n, s) for c, d, a, n, s in zip(chromosome.tolist(), (donor + shift).tolist(), (acceptor + shift).tolist(), reads.tolist(), strand.tolist())}
 
 
 def stage_junctions(args):
@@ -279,7 +282,7 @@ def stage_junctions(args):
     pd.DataFrame([(c, d, a, *value) for (c, d, a), value in sorted(support.items())], columns=["chromosome", "donor", "acceptor", "reads", "libraries", "strand"]).to_csv(args.output_dir / f"junctions{suffix(args)}.tsv.gz", sep="\t", index=False)
     genes = read_gtf_exons(args.gtf)
     options = {"min_reads": args.novel_min_reads, "min_libraries": args.novel_min_libraries, "max_novel": args.novel_max, "terminal_length": args.novel_terminal_length}
-    blocks = annotated_blocks(args.candidate_cache, args.block_cache, args.max_paths, junction_support(support), options, genes)
+    blocks = annotated_blocks(args.candidate_cache, args.block_cache, args.max_paths, junction_support(support), options, genes, genes=target_genes(args))
     with gzip.open(args.blocks, "wt") as handle:
         json.dump(blocks, handle)
     novel = sum(len(block["signatures"]) - block["n_annotated"] for block in blocks.values())
@@ -306,7 +309,9 @@ def stage_collect(args):
     cell, umi, locus, orientation = (np.concatenate(parts[name]) for name in ("cell", "umi", "locus", "orientation"))
     offsets = np.r_[np.concatenate(parts["offsets"]), total].astype(np.int64)
     starts, ends = np.concatenate(parts["starts"]), np.concatenate(parts["ends"])
-    triple = (cell << 31) | (locus << 20) | umi
+    if cell.max(initial=0) >= 1 << 19 or locus.max(initial=0) >= 1 << 24 or len(keys) >= 1 << 24:
+        raise ValueError("cell, locus or block index exceeds the molecule key fields")
+    triple = (cell << 44) | (locus << 20) | umi
     unique, inverse = np.unique(triple, return_inverse=True)
     representative = na.collapse_umis(unique >> 20, unique & ((1 << 20) - 1), UMI[1] - UMI[0])
     umi = representative[inverse]
@@ -314,14 +319,14 @@ def stage_collect(args):
     antisense = (orientation[read] == 0) != (tables["strand"][block] == 1)
     if args.sense_only:
         read, block, mask, informative = read[~antisense], block[~antisense], mask[~antisense], informative[~antisense]
-    molecule = (cell[read] << 33) | (umi[read] << 13) | block
+    molecule = (cell[read] << 44) | (umi[read] << 24) | block
     order = np.argsort(molecule, kind="stable")
     molecule, mask, informative = molecule[order], mask[order], informative[order]
     first = np.r_[0, np.flatnonzero(np.diff(molecule)) + 1]
     molecule_mask = np.bitwise_and.reduceat(mask, first)
     molecule_informative = np.logical_or.reduceat(informative, first)
-    molecule_cell = molecule[first] >> 33
-    molecule_block = molecule[first] & ((1 << 13) - 1)
+    molecule_cell = molecule[first] >> 44
+    molecule_block = molecule[first] & ((1 << 24) - 1)
     for name, selected in (("all", np.ones(len(first), dtype=bool)), ("junction", molecule_informative)):
         frame = pd.DataFrame({"block": molecule_block[selected], "cell": molecule_cell[selected], "mask": molecule_mask[selected]})
         filters = {"molecules": int(len(frame)), "incompatible_molecules": int((frame["mask"] == 0).sum()), "reads": int(len(cell)), "blocks": len(keys), "antisense_read_entries": int(antisense.sum()), "sense_only": bool(args.sense_only)}
@@ -405,6 +410,7 @@ def main():
     parser.add_argument("--novel-min-reads", type=int, default=20)
     parser.add_argument("--novel-min-libraries", type=int, default=4)
     parser.add_argument("--novel-max", type=int, default=8)
+    parser.add_argument("--all-block-genes", action="store_true", help="reference and junctions: target every gene with an annotated block of 2..--max-paths paths (--block-cache) instead of the candidate caches' genes")
     parser.add_argument("--novel-terminal-length", type=int, default=0, help="length of unannotated first or last exons from deep intronic novel splice sites (tealeaf.sc.novel_paths); 0 skips them")
     args = parser.parse_args()
     if args.blocks is None:
