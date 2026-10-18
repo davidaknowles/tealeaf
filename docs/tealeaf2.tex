@@ -23,7 +23,7 @@
 \newcommand{\logit}{\operatorname{logit}}
 \newcommand{\BetaDist}{\operatorname{Beta}}
 
-\title{Tealeaf: Block-Local Splice-Path Tests from Targeted Spliced Alignment}
+\title{Tealeaf: Testing Exon Alternatives Locally in Exon-Anchored Frames}
 \author{}
 \date{}
 
@@ -32,7 +32,7 @@
 
 \section{Overview}
 
-Tealeaf tests whether the usage of local splice paths differs between two cell types measured in the same subjects. The unit of analysis is a \emph{splice block}, a genomic window of one gene in which transcripts take two or more alternative exon chains, the \emph{paths}. For every block and pair of cell types, Tealeaf asks whether the probability that a molecule from the block originates from a given path differs between the cell types, with subjects as biological replicates.
+Tealeaf (Testing Exon Alternatives Locally in Exon-Anchored Frames) tests whether the usage of local splice paths differs between two cell types measured in the same subjects. The unit of analysis is a \emph{splice block}, a genomic window of one gene bounded by constitutive exons, the exon-anchored frame, in which transcripts take two or more alternative exon chains, the \emph{paths}. For every block and pair of cell types, Tealeaf asks whether the probability that a molecule from the block originates from a given path differs between the cell types, with subjects as biological replicates.
 
 The method works from sequencing reads to tests in five steps (Figure~\ref{fig:pipeline}).
 \begin{enumerate}[leftmargin=*]

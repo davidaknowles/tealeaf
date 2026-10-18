@@ -1,8 +1,24 @@
-# tealeaf - Transcript Expression Augmented LEAFcutter
+# tealeaf - Testing Exon Alternatives Locally in Exon-Anchored Frames
 
-tealeaf combines ideas from [SUPPA](https://doi.org/10.1261/rna.051557.115) and LeafCutter to analyze alternative splicing events by first performing isoform abundance estimation and then collapsing to individual splice events/junctions. This is particularly useful for low coverage samples, e.g. single-cell RNA-seq. 
+tealeaf tests differential splicing between cell types in single-cell RNA-seq at the level of local splice paths. A splice block is a region of a gene between constitutive exons, the exon-anchored frame, and its paths are the alternative exon chains through it: annotated paths, and paths built from unannotated junctions whose support is counted over all cells (alternative splice sites, new exons, novel first and last exons). Reads are aligned to the target genes by a built-in spliced aligner, UMI molecules are classified by the paths they are compatible with, read opportunities give the class probabilities of each path, and a Beta-logit-normal model with a subject random intercept and a primer offset tests each path against the others between two cell types of the same subjects. The methods are described in `docs/tealeaf2.tex`.
 
-tealeaf can be installed as a command line tool with `pip install tealeaf`
+tealeaf can be installed with `pip install tealeaf`. The optional Rust alignment kernel and FASTQ reader are built with `cargo build --release` in `rust/native_align`.
+
+### Block-local path tests
+
+The pipeline runs in stages of `extra_scripts/native_collect.py`:
+
+1. `--stage reference`: target loci, the k-mer index and genome-uniqueness flags (`--all-block-genes` targets every gene with an annotated block of 2 to 30 paths).
+2. `--stage align`: align one sequencing run (`--rust-library` for the Rust kernel and FASTQ reader). Run it twice; the second pass uses `--known-junctions` from the first.
+3. `--stage junctions`: junction support and the block set with novel paths (`--novel-terminal-length 151` adds novel first and last exons).
+4. `--stage collect`: molecule classes per library (`--drop-unfit-reads` leaves reads compatible with no path out of a molecule's class).
+5. `--stage collate`: pooled counts and read opportunities.
+
+Tests are fitted by `extra_scripts/run_local_path_tests.py`, internal blocks on all reads (`--primer-offset --structure internal --min-share .01`) and terminal blocks on junction-spanning molecules (`--primer-offset --structure terminal --group-same-junctions --min-share .01`).
+
+### Original workflow
+
+The original tealeaf workflow (from which the earlier name, Transcript Expression Augmented LeafCutter, came) combined ideas from [SUPPA](https://doi.org/10.1261/rna.051557.115) and LeafCutter, estimating isoform abundance and then collapsing it to individual splice events and junctions. It is documented below.
 
 ![tealeaf_Workflow](figures/tealeaf_workflow.png)
 
