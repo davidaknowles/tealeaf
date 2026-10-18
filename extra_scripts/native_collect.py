@@ -394,7 +394,7 @@ def main():
     parser.add_argument("--block-cache", type=Path)
     parser.add_argument("--gtf", type=Path)
     parser.add_argument("--genome", type=Path)
-    parser.add_argument("--pad", type=int, default=1000)
+    parser.add_argument("--pad", type=int, default=0, help="reference: bases added to each side of a target gene span (1 kb changed under 0.2%% of block molecules)")
     parser.add_argument("--fastq-dir", type=Path)
     parser.add_argument("--whitelist-dir", type=Path)
     parser.add_argument("--run")

@@ -6,7 +6,8 @@ the aligner reports, for each read, a genomic alignment (aligned blocks and
 splice junctions) at most at one target position, together with the same
 uniqueness and quality filters that the genome alignments provide.
 
-Reference. Each target gene span, padded by `pad` bases, is merged with
+Reference. Each target gene span (optionally padded by `pad` bases; padding
+by 1 kb changed under 0.2% of block molecules) is merged with
 overlapping spans into a locus; loci and the spliced sequences of the genes'
 annotated transcripts are concatenated, separated by runs of N, into one
 2-bit coded reference. Every k-mer of the loci and every transcript k-mer
@@ -86,7 +87,7 @@ def encode(sequence):
 # ---------------------------------------------------------------- reference
 
 
-def target_loci(genes, pad=1000):
+def target_loci(genes, pad=0):
     """Merged padded gene spans: list of (chromosome, start, end, [gene ids])."""
     spans = defaultdict(list)
     for gene, record in genes.items():
@@ -105,7 +106,7 @@ def target_loci(genes, pad=1000):
     return [tuple(locus) for locus in loci]
 
 
-def build_reference(genome, genes, pad=1000):
+def build_reference(genome, genes, pad=0):
     """Concatenated 2-bit reference of target loci and annotated transcripts.
 
     genome is a pysam.FastaFile (or any object with fetch(chromosome, start,
