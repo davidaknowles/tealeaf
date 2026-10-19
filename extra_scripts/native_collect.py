@@ -170,7 +170,9 @@ def barcode_tools(whitelist_dir, barcodes):
 
 
 def target_genes(args):
-    """Candidate-cache genes, or with --all-block-genes every gene with an annotated block of 2..--max-paths paths."""
+    """Target genes: with --all-multiexon-genes every gene of --gtf with a multi-exon transcript, with --all-block-genes every gene with an annotated block of 2..--max-paths paths, otherwise the candidate caches' genes."""
+    if args.all_multiexon_genes:
+        return {gene for gene, record in read_gtf_exons(args.gtf).items() if any(len(chain) > 1 for chain in record["transcripts"].values())}
     return block_genes(args.block_cache, args.max_paths) if args.all_block_genes else candidate_genes(args.candidate_cache)
 
 
@@ -414,6 +416,7 @@ def main():
     parser.add_argument("--novel-min-reads", type=int, default=20)
     parser.add_argument("--novel-min-libraries", type=int, default=4)
     parser.add_argument("--novel-max", type=int, default=8)
+    parser.add_argument("--all-multiexon-genes", action="store_true", help="reference and junctions: target every gene of --gtf with a multi-exon transcript (genes without an annotated multi-path block can still get new blocks)")
     parser.add_argument("--all-block-genes", action="store_true", help="reference and junctions: target every gene with an annotated block of 2..--max-paths paths (--block-cache) instead of the candidate caches' genes")
     parser.add_argument("--novel-terminal-length", type=int, default=0, help="length of unannotated first or last exons from deep intronic novel splice sites (tealeaf.sc.novel_paths); 0 skips them")
     args = parser.parse_args()
