@@ -1,0 +1,12 @@
+{
+  "model": "internal_native_all_du",
+  "terminal_model": "tj_native_all_du",
+  "filter": "internal",
+  "blocks_by_structure": {
+    "terminal, same junctions": 17794,
+    "internal": 15470,
+    "terminal, distinct junctions": 7953
+  },
+  "retained_blocks": 15470,
+  "selection": "annotation-only block structure; fits and p-values unchanged"
+}

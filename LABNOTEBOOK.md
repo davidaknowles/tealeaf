@@ -4661,3 +4661,20 @@ Read-level agreement with STAR per block (2M reads, pass-2 blocks, `benchmark_na
 Unfit reads. A molecule's class is the AND of its reads' classes, so one read compatible with no path (an unrepresented junction, a block reaching into an intron) discarded the molecule. In one library this lost 6.6% (internal) and 6.0% (terminal) of junction-spanning molecules, and 2.7% / 3.8% to reads compatible with disjoint paths. With `--drop-unfit-reads` such reads leave the molecule's class and junction flag; molecules with disjoint fitting reads are still discarded. Kept junction-spanning molecules rise 1.4% (the unfit read was often the only junction-spanning one) and all-read molecules 0.3%. Split rises to 39/77/69/66/33/74/77 with LR AUC100 .952 (A100 .94). Count null over all blocks (200 tests x 2 draws): internal rejection at .05 at most .029; terminal multi-path .024–.041; terminal two-path .039–.087 (9/104 without row variation), rerun with 800 tests pending.
 
 Locus padding. Padding gene spans by 1 kb adds 3% of locus sequence; 0.93% of stored reads would fall below the length minimum without it, but only 0.05–0.19% of block molecules (all reads) and 0.09–0.11% of junction-spanning molecules would be lost, and under 0.02% change class. Novel junctions are used only inside annotated gene spans, so the padding contributes no paths. The default is now no padding; the all-block-gene run in progress used 1 kb.
+
+### 2026-10-19 All annotated block genes on comparator-defined split universes
+
+Targets. Every gene with an annotated splice block of 2 to 30 paths (14,115 genes, 11,593 loci, 811 Mb, 815M indexed k-mers, 85% genome-unique; 1 kb padding as built). Two passes over all 16 runs (52% of reads now align uniquely, about 55 min per run on 18 threads); the second-pass block set has 41,217 blocks (6,066 new) and 14,063 novel paths, with novel first and last exons. Molecules leave unfit reads out (`--drop-unfit-reads`); rest weights are molecule shares over effective length.
+
+Split universes (`extra_scripts/build_split_universe.py`, `analyses/split_universe`). For each comparator, the (gene, cell-type pair) keys it tests in both halves, from its own outputs, over up to 190 cell-type pairs; SUPPA2 and primer-aware SUPPA2 use exact paired signed-rank tests on the full event catalogue (`split_data_exact_fold*`), the SUPPA2/Tealeaf hybrid keeps its own keys (34 cell-type pairs, built on the earlier Tealeaf quantification). Tealeaf is fitted on all keys of these universes (internal blocks 352k/300k tests per half, terminal 43k/39k; full data 582k/79k). "Matched" scores both methods on the comparator's keys tested by Tealeaf in both halves, "comparator" on all the comparator's keys (Tealeaf p = 1 where untested).
+
+| Universe | LeafCutter | MAJIQ | SUPPA2 | SUPPA2-PA | Hybrid | rMATS | scQuint |
+|---|---|---|---|---|---|---|---|
+| Matched genes | 236 | 2,503 | 3,793 | 3,330 | 322 | 4,081 | 2,846 |
+| Tealeaf / comparator replicated | 62 / 33 | 158 / 27 | 100 / 13 | 107 / 0 | 39 / 46 | 127 / 4 | 140 / 96 |
+| Comparator genes | 279 | 3,003 | 5,068 | 3,901 | 357 | 6,838 | 4,220 |
+| Tealeaf / comparator replicated | 60 / 36 | 143 / 28 | 60 / 0 | 78 / 0 | 34 / 49 | 74 / 4 | 98 / 124 |
+
+Long reads: 19,445 evaluable full-data tests; cumulative agreement 39/40, 91/100, 183/200; AUC40 .991, AUC100 .960, AUC200 .937 (comparator AUC100 .865/.819/.907/.654/.637/.542/.825).
+
+On matched universes Tealeaf replicates more genes than every comparator except the hybrid (39 vs 46). On scQuint's full universe scQuint replicates more (124 vs 98): its universe includes keys where Tealeaf has no test (genes without a 2–30-path block, or blocks screened out).

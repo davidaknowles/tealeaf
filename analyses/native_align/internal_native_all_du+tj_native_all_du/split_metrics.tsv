@@ -1,0 +1,29 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	universe	direction_selected	direction_evaluable	direction_agreement	failed_tests_fold0	failed_tests_fold1
+LeafCutter	internal_native_all_du, internal blocks + tj_native_all_du terminal blocks	simes	simes	1797	236	81	71	62	0.8774995652929924	0.6899908337187741	matched	536.0	452.0	0.9668141592920354	131.0	168.0
+LeafCutter	LeafCutter	simes	simes	1797	236	58	56	33	0.6754926108374384	0.4473892392328965	matched	NA	NA	NA	NA	NA
+LeafCutter	internal_native_all_du, internal blocks + tj_native_all_du terminal blocks	simes	simes	2732	279	78	71	60	0.8744131455399061	0.7939885307464916	comparator	NA	NA	NA	NA	NA
+LeafCutter	LeafCutter	simes	simes	2732	279	64	58	36	0.7058189655172413	0.41628530498217037	comparator	NA	NA	NA	NA	NA
+MAJIQ Heterogen	internal_native_all_du, internal blocks + tj_native_all_du terminal blocks	simes	simes	31571	2503	265	234	158	0.8460812772133527	0.492504324370388	matched	2173.0	1748.0	0.9702517162471396	2404.0	2682.0
+MAJIQ Heterogen	MAJIQ Heterogen	simes	simes	31571	2503	49	120	27	0.744812925170068	0.228659395535728	matched	NA	NA	NA	NA	NA
+MAJIQ Heterogen	internal_native_all_du, internal blocks + tj_native_all_du terminal blocks	simes	simes	73984	3003	242	204	143	0.8382555501539459	0.581658395195701	comparator	NA	NA	NA	NA	NA
+MAJIQ Heterogen	MAJIQ Heterogen	simes	simes	73984	3003	51	130	28	0.7838612368024133	0.23800147866322244	comparator	NA	NA	NA	NA	NA
+SUPPA2	internal_native_all_du, internal blocks + tj_native_all_du terminal blocks	simes	simes	61959	3793	211	163	100	0.8251824499171343	0.4376568035031665	matched	1757.0	1416.0	0.9717514124293786	4250.0	4851.0
+SUPPA2	SUPPA2	simes	simes	61959	3793	55	46	13	0.7476284584980237	0.18126744547905177	matched	NA	NA	NA	NA	NA
+SUPPA2	internal_native_all_du, internal blocks + tj_native_all_du terminal blocks	simes	simes	361839	5068	131	108	60	0.865917444161719	0.49178117014874273	comparator	NA	NA	NA	NA	NA
+SUPPA2	SUPPA2	simes	simes	361839	5068	16	22	0	0.9090909090909092	0.2617191247966799	comparator	NA	NA	NA	NA	NA
+SUPPA2 primer-aware	internal_native_all_du, internal blocks + tj_native_all_du terminal blocks	simes	simes	50202	3330	214	174	107	0.823020732624342	0.4429116894764426	matched	1835.0	1480.0	0.9743243243243244	3809.0	4300.0
+SUPPA2 primer-aware	SUPPA2 primer-aware	simes	simes	50202	3330	23	2	0	0.7826086956521738	0.26350416663620413	matched	NA	NA	NA	NA	NA
+SUPPA2 primer-aware	internal_native_all_du, internal blocks + tj_native_all_du terminal blocks	simes	simes	149301	3901	160	122	78	0.862141393442623	0.49007424919713016	comparator	NA	NA	NA	NA	NA
+SUPPA2 primer-aware	SUPPA2 primer-aware	simes	simes	149301	3901	9	0	0	0.7777777777777778	0.2542639058294081	comparator	NA	NA	NA	NA	NA
+SUPPA2/Tealeaf hybrid	internal_native_all_du, internal blocks + tj_native_all_du terminal blocks	simes	simes	1612	322	57	47	39	0.8628219484882419	0.5576392578900948	matched	276.0	225.0	0.9466666666666667	170.0	204.0
+SUPPA2/Tealeaf hybrid	SUPPA2/Tealeaf hybrid	simes	simes	1612	322	83	79	46	0.876467896904072	0.6597548557630869	matched	NA	NA	NA	NA	NA
+SUPPA2/Tealeaf hybrid	internal_native_all_du, internal blocks + tj_native_all_du terminal blocks	simes	simes	1793	357	55	46	34	0.8673913043478261	0.6095104700754855	comparator	NA	NA	NA	NA	NA
+SUPPA2/Tealeaf hybrid	SUPPA2/Tealeaf hybrid	simes	simes	1793	357	86	81	49	0.8804909560723514	0.6422555173993961	comparator	NA	NA	NA	NA	NA
+rMATS (paired)	internal_native_all_du, internal blocks + tj_native_all_du terminal blocks	simes	simes	63050	4081	249	209	127	0.8166349608962165	0.4245976816602154	matched	2068.0	1675.0	0.9737313432835821	4716.0	5389.0
+rMATS (paired)	rMATS (paired)	simes	simes	63050	4081	11	32	4	0.6747159090909092	0.471520237392718	matched	NA	NA	NA	NA	NA
+rMATS (paired)	internal_native_all_du, internal blocks + tj_native_all_du terminal blocks	simes	simes	434915	6838	156	127	74	0.8662174439733494	0.5082981535333695	comparator	NA	NA	NA	NA	NA
+rMATS (paired)	rMATS (paired)	simes	simes	434915	6838	24	24	4	0.7708333333333334	0.5528534908941778	comparator	NA	NA	NA	NA	NA
+scQuint	internal_native_all_du, internal blocks + tj_native_all_du terminal blocks	simes	simes	38163	2846	272	235	140	0.8101142052565706	0.4239889638227606	matched	2209.0	1782.0	0.968013468013468	3145.0	3536.0
+scQuint	scQuint	simes	simes	38163	2846	227	200	96	0.778557268722467	0.33508736576363013	matched	NA	NA	NA	NA	NA
+scQuint	internal_native_all_du, internal blocks + tj_native_all_du terminal blocks	simes	simes	132419	4220	204	161	98	0.8356016319571307	0.5489748868351626	comparator	NA	NA	NA	NA	NA
+scQuint	scQuint	simes	simes	132419	4220	259	284	124	0.7861969111969112	0.31471490916695144	comparator	NA	NA	NA	NA	NA
