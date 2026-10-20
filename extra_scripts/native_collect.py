@@ -181,7 +181,8 @@ def stage_reference(args):
 
     start = time.time()
     genome = pysam.FastaFile(str(args.genome))
-    genes = {gene: record for gene, record in read_gtf_exons(args.gtf).items() if gene in target_genes(args)}
+    targets = target_genes(args)
+    genes = {gene: record for gene, record in read_gtf_exons(args.gtf).items() if gene in targets}
     reference = na.build_reference(genome, genes, pad=args.pad)
     index = na.build_index(reference)
     built = time.time()
