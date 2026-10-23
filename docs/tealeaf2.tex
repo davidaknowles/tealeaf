@@ -10,6 +10,7 @@
 \usepackage{hyperref}
 \usepackage{xcolor}
 \usepackage{tikz}
+\usepackage{graphicx}
 \usetikzlibrary{arrows.meta,positioning,decorations.pathreplacing}
 \emergencystretch=1em
 
@@ -29,6 +30,19 @@
 
 \begin{document}
 \maketitle
+
+\section{Introduction}
+
+Differential splicing between cell types in single-cell RNA-seq is usually tested at one of three levels. Event methods (SUPPA2, rMATS) test predefined event types such as a skipped exon or an alternative 3' site. Junction methods (LeafCutter, scQuint, MAJIQ) test the relative use of junctions that share a splice site or exon, using junction-spanning reads (MAJIQ also intron-retention reads). Isoform methods estimate full-length transcript abundances, which short reads with strong positional bias identify poorly when transcripts differ at several distant sites. Tealeaf tests a different unit, the \emph{local splice path}, and adds the following.
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Local splice paths.} A splice block is a region of a gene between two constitutive exons, and its paths are all exon chains that transcripts take through it. A path set represents any local pattern, including several adjacent alternative exons, mutually exclusive exons, combinations of alternative splice sites and alternative first or last exons, in one test, without classifying it into event types. Because the rest of each transcript does not enter, a block has few paths that differ within a short window, so path usage is identifiable from short reads where full isoforms are not.
+  \item \textbf{All reads in the block.} Every molecule overlapping the block contributes through the set of paths it is compatible with, including exon-body and unspliced reads, weighted by the number of read positions on each path that produce its class. Junction counts alone discard these reads. Where positional capture bias dominates exon-body coverage, at alternative transcript ends, the test uses junction-spanning molecules only.
+  \item \textbf{Both primers.} Parse libraries prime each cell with poly(dT) and random hexamers, which sample transcripts with different positional bias. Both primers enter one likelihood with a primer offset estimated without cell-type labels, instead of pooling the primers or using one.
+  \item \textbf{Unannotated paths.} Junction support counted over all cells, and therefore blind to cell-type labels, adds novel paths (alternative splice sites, new exons, novel first and last exons) and new blocks, which are tested with the same model as annotated paths.
+  \item \textbf{Subjects as replicates.} A Beta--logit-normal model with a subject random intercept pairs the two cell types of each subject and allows extra variation between subject--cell-type rows. Count simulations under the null on the real designs show the tests are calibrated.
+  \item \textbf{A self-contained implementation.} A targeted two-pass spliced aligner, with a compiled Rust kernel and FASTQ reader, reproduces STAR's alignment scoring and filters on the target genes and replaces whole-genome search for competing alignments by a genome-wide k-mer uniqueness table. Tealeaf runs from FASTQ files to tests without an external aligner or pseudoaligner; a run of 345 million read pairs aligns in about the time STARsolo takes, and the stored alignments of a run take about 1~GB instead of a 46~GB BAM file.
+\end{enumerate}
+On a mouse brain dataset of 48 subjects, Tealeaf replicates more genes across independent halves of the subjects than LeafCutter, MAJIQ, SUPPA2, primer-aware SUPPA2, rMATS and scQuint, on each method's own set of testable genes, and its top-ranked directions agree with independent single-cell long-read data more often than any of these methods (Section~\ref{sec:evaluation}).
 
 \section{Overview}
 
@@ -257,6 +271,7 @@ Internal-block tests and terminal-block tests form one family, with BH applied o
 Calibration is checked by count simulations under the null on real designs. For randomly chosen blocks and cell-type pairs of the full data (200 for internal and 800 for terminal blocks, on the 1{,}163-gene block set of an earlier target list), the observed molecule totals per (subject, cell type, primer) are kept, and class counts are redrawn from compositions in which the two cell types share the same path usage. A subject composition is drawn from a Dirichlet distribution with concentration 20 around the pooled shares, the row composition from a Dirichlet with concentration $\varsigma\in\{5,20,\infty\}$ around the subject composition, and class counts from the multinomial implied by the opportunities, two draws per test. Internal tests reject at most 2.9\% of converged fits at nominal 0.05 and at most 1.0\% at 0.01. Junction-only terminal tests reject 3.4--4.3\% (two-path) and 2.7--4.1\% (multi-path) at 0.05, at most 1.1\% at 0.01 and at most 0.5\% at 0.001.
 
 \section{Evaluation}
+\label{sec:evaluation}
 
 \subsection{Subject-split replication}
 
@@ -294,6 +309,44 @@ Comparator $A_{100}$ & .865 & .819 & .907 & .654 & .637 & .542 & .825\\
 \end{table}
 
 Table~\ref{tab:results} gives both endpoints. On both the matched and the comparator universes Tealeaf replicates more genes than every comparator except the SUPPA2/Tealeaf hybrid (38 versus 46 and 49). In an earlier comparison on the hybrid's universe, the genes it replicated and Tealeaf did not agreed with long-read directions at chance.
+
+\subsection{Examples}
+
+Figures~\ref{fig:pkn2}--\ref{fig:mctp1} show the full-data tests with the largest effect among those evaluable in the long-read data, selected without regard to long-read agreement: tests with $p<10^{-8}$, at least 50 long-read UMIs per cell type and at most four paths, one per gene, ranked by the norm of the fitted path-usage difference, with at least one internal and one terminal block. Each figure shows the block's paths, the molecule-share composition of every subject--cell-type row in the Parse data (the per-row EM estimate of the share screen), and the transcript share of each path in the two long-read replicates. All four agree with the long reads in direction.
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Pkn2} (Figure~\ref{fig:pkn2}). Path 2 includes an alternative exon. Astrocytes include it in 68\% of molecules and cortical excitatory neurons in 27\% (means over 13 subjects with both cell types); the long reads show inclusion in 100\% and 85\% of transcripts.
+  \item \textbf{Nfasc} (Figure~\ref{fig:nfasc}). Path 2 includes a short alternative exon. Cortical excitatory neurons include it in 89\% of molecules and oligodendrocytes in 16\% (47 subjects). The long reads agree in direction (19\% and 1\% of transcripts) but put most cortical neuron transcripts on the skipping path.
+  \item \textbf{Kif21a} (Figure~\ref{fig:kif21a}). Path 2 includes a short alternative exon, used in 71\% of cortical neuron and 41\% of oligodendrocyte molecules (29 subjects); the long-read shares are 73\% and 47\%.
+  \item \textbf{Mctp1} (Figure~\ref{fig:mctp1}), a terminal block with alternative first exons. Dentate gyrus granule neurons use the upstream first exon (path 1) in 74\% of junction-spanning molecules and medium spiny neurons in 15\% (8 subjects); the long-read shares are 33\% and 18\%.
+\end{enumerate}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.82\textwidth]{figures/example_Pkn2_B3.pdf}
+\caption{Pkn2 block 3, astrocytes against cortical excitatory neurons. Top, the block's paths (introns longer than 300 bases shortened, 5' end on the left). Bottom left, path usage of each subject in the Parse data with the mean over subjects (bars). Bottom right, transcript share of each path in the two long-read replicates.}
+\label{fig:pkn2}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.82\textwidth]{figures/example_Nfasc_B2.pdf}
+\caption{Nfasc block 2, cortical excitatory neurons against oligodendrocytes. Panels as in Figure~\ref{fig:pkn2}.}
+\label{fig:nfasc}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.82\textwidth]{figures/example_Kif21a_B3.pdf}
+\caption{Kif21a block 3, cortical excitatory neurons against oligodendrocytes. Panels as in Figure~\ref{fig:pkn2}.}
+\label{fig:kif21a}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.82\textwidth]{figures/example_Mctp1_B1.pdf}
+\caption{Mctp1 block 1, dentate gyrus granule neurons against medium spiny neurons, a terminal block tested on junction-spanning molecules. Panels as in Figure~\ref{fig:pkn2}.}
+\label{fig:mctp1}
+\end{figure}
 
 \section{Implementation}
 

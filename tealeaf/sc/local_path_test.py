@@ -186,13 +186,12 @@ def local_read_likelihood(lookup, block, opportunities, subjects, labels, levels
     return model(counts, components, np.asarray([key[0] for key in keys]), np.asarray([key[1] for key in keys]), np.ones((n, 2)), np.zeros(n))
 
 
-def row_compositions(lookup, block, opportunities, subjects, labels, levels, masks, n_paths):
-    """Equal-subject mean mature S-path compositions per level, by row EM.
+def row_path_compositions(lookup, block, opportunities, subjects, labels, levels, masks, n_paths):
+    """(subject, label) -> (mature S-path molecule-share composition, molecules) by row EM.
 
     Each subject/type row (both primers pooled) gets its own effective-length
     EM composition over all supplied paths (precursor included when present,
-    then removed and renormalized). Returns a 2 x n_paths array, level a then
-    b, averaged over subjects observed in both levels.
+    then removed and renormalized).
     """
     compositions = {}
     for subject in np.unique(subjects):
@@ -200,7 +199,17 @@ def row_compositions(lookup, block, opportunities, subjects, labels, levels, mas
             counts = {mask: sum(lookup.get((block, subject, levels[int(label)], primer, mask), 0.) for primer in PRIMERS) for mask in masks}
             if sum(counts.values()) > 0:
                 shares = pooled_path_shares(counts, {mask: opportunities[mask] for mask in masks})[:n_paths]
-                compositions[(subject, int(label))] = shares / shares.sum()
+                compositions[(subject, int(label))] = (shares / shares.sum(), sum(counts.values()))
+    return compositions
+
+
+def row_compositions(lookup, block, opportunities, subjects, labels, levels, masks, n_paths):
+    """Equal-subject mean mature S-path compositions per level (row_path_compositions).
+
+    Returns a 2 x n_paths array, level a then b, averaged over subjects
+    observed in both levels.
+    """
+    compositions = {key: value[0] for key, value in row_path_compositions(lookup, block, opportunities, subjects, labels, levels, masks, n_paths).items()}
     paired = [subject for subject in np.unique(subjects) if (subject, 0) in compositions and (subject, 1) in compositions]
     if not paired:
         raise ValueError("no subject observed in both levels")
