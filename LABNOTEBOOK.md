@@ -4678,3 +4678,18 @@ Split universes (`extra_scripts/build_split_universe.py`, `analyses/split_univer
 Long reads: 19,445 evaluable full-data tests; cumulative agreement 39/40, 91/100, 183/200; AUC40 .991, AUC100 .960, AUC200 .937 (comparator AUC100 .865/.819/.907/.654/.637/.542/.825).
 
 On matched universes Tealeaf replicates more genes than every comparator except the hybrid (39 vs 46). On scQuint's full universe scQuint replicates more (124 vs 98): its universe includes keys where Tealeaf has no test (genes without a 2–30-path block, or blocks screened out).
+
+### 2026-10-22 Annotation-defined cells, all multi-exon genes, no padding
+
+scQuint gap on its own universe (previous run, 98 vs 124 replicated genes; `analyses/native_align/diagnostics/scquint_gap_all_genes.tsv`). Of 69 genes replicated by scQuint only, 52 were tested with scQuint's site at a path exon boundary (an apparent 21 "unrepresented" sites were a one-base coordinate offset in the check), 14 were not target genes (no annotated multi-path block) and 3 had no test. In these genes only 46% of scQuint's (gene, cell-type pair) keys passed Tealeaf's eligibility, and for a third of them Tealeaf had no test of scQuint's strongest pair. The comparators used 88,920 half-cell barcodes and Tealeaf 60,448, from the earlier EC pipeline's cell QC (both primer halves, at least 500 UMIs per half); 14,916 of the comparators' barcodes belong to barcode pairs used by cells in several sublibraries, whose reads the comparators pool under one label.
+
+Changes. Cells are the annotated cells whose barcode pair belongs to one cell (37,002 cells, both halves, 74,004 half-cell barcodes), with the comparators' subject and cell-type labels and no count threshold (`extra_scripts/build_native_cell_recipe.py`); no step depends on the earlier EC pipeline. Targets are all 33,755 genes with a multi-exon transcript (26,612 unpadded loci, 1.19 Gb, 1.19 billion indexed k-mers, 83.7% genome-unique), so genes without an annotated multi-path block can get new blocks. 67% of reads align uniquely. The second-pass block set has 46,980 blocks (12,060 new) with 22,075 novel paths; 167M molecules (5.7M junction-spanning). Fits: internal 429k/432k tests per half and 695k full, terminal 72k/73k and 109k.
+
+| Universe | LeafCutter | MAJIQ | SUPPA2 | SUPPA2-PA | Hybrid | rMATS | scQuint |
+|---|---|---|---|---|---|---|---|
+| Matched genes | 267 | 2,810 | 3,883 | 3,385 | 322 | 5,344 | 3,704 |
+| Tealeaf / comparator replicated | 64 / 35 | 203 / 27 | 121 / 8 | 128 / 0 | 38 / 46 | 159 / 4 | 181 / 127 |
+| Comparator genes | 279 | 3,003 | 5,068 | 3,901 | 357 | 6,838 | 4,220 |
+| Tealeaf / comparator replicated | 64 / 36 | 196 / 28 | 102 / 0 | 117 / 0 | 38 / 49 | 141 / 4 | 171 / 124 |
+
+Long reads: 21,575 evaluable tests; agreement 38/40, 91/100, 177/200; AUC40 .989, AUC100 .964, AUC200 .937. Tealeaf now replicates more genes than every comparator on both universes except the SUPPA2/Tealeaf hybrid (38 vs 46 matched, 38 vs 49 on its own keys), including scQuint on scQuint's universe (171 vs 124). One terminal full-data shard stalled on a node and was rerun as ten sub-shards of the same tests.
