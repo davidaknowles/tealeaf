@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Sashimi plots of example blocks: Parse coverage by primer and long-read coverage, under the gene's isoforms.
 
-For each example of export_block_examples.py, the plotted region is the
-block window. Parse tracks are UMI-deduplicated native alignments
+For each example of export_block_examples.py, two regions are plotted, the
+whole gene (span of its annotated transcripts) and the block window. Parse tracks are UMI-deduplicated native alignments
 (native_collect.py align chunks) of the two cell types, by primer, per 1,000
 half-cells. Long-read tracks are the coverage and junctions implied by the
 full-length annotated-transcript UMI counts of the long-read data, summed
@@ -68,11 +68,14 @@ def main():
     parser.add_argument("--ggsashimi", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--long-read-scale", type=float, default=1e6)
+    parser.add_argument("--track-height", type=float, default=0.9, help="ggsashimi height per track (inches)")
+    parser.add_argument("--width", type=float, default=8.0, help="ggsashimi width (inches)")
     parser.add_argument("--min-junction", type=int, default=1, help="ggsashimi minimum normalized junction coverage")
     parser.add_argument("--plot-setup", default="", help="shell commands run before ggsashimi (making Rscript with ggplot2, data.table and gridExtra, and a python with pandas, available)")
     args = parser.parse_args()
     examples = pd.read_csv(args.examples, sep="\t")
     blocks = {block["block_id"]: block for block in json.load(gzip.open(args.blocks, "rt")).values()}
+    annotation = {gene.split(".")[0]: record for gene, record in read_gtf_exons(args.gtf).items() if gene.split(".")[0] in set(examples.gene_id)}
     events, info = [], {}
     for example in examples.itertuples():
         block = blocks[example.block_id]
@@ -80,6 +83,9 @@ def main():
         event_id = f"{example.gene_name}_{example.block_id.split(':')[-1]}"
         events.append(SashimiEvent(event_id, block["chromosome"], min(a for path in mature for a, _ in path), max(b for path in mature for _, b in path), block["strand"]))
         info[event_id] = (example, mature)
+        gene_chains = list(annotation[example.gene_id]["transcripts"].values())
+        events.append(SashimiEvent(f"{event_id}_gene", block["chromosome"], min(chain[0][0] for chain in gene_chains), max(chain[-1][1] for chain in gene_chains), block["strand"]))
+        info[f"{event_id}_gene"] = (example, mature)
     reference = np.load(args.native_dir / "reference.npz")
     locus_chromosome = reference["locus_chromosome"].astype(str)
     locus_shift = (reference["locus_genome_start"] - reference["locus_ref_start"]).astype(np.int64)
@@ -90,10 +96,7 @@ def main():
     cells = pd.DataFrame([group for library in recipe["bams"] for group in library["barcode_groups"].values()], columns=["subject", "cell_type", "primer"])
     cell_sizes = cells.groupby(["subject", "cell_type", "primer"]).size().rename("cells").reset_index()
     matrix, features, columns = read_tilgner_matrix(args.long_read_matrix, args.gtf)
-    chains = {}
-    for gene, record in read_gtf_exons(args.gtf).items():
-        if gene.split(".")[0] in set(examples.gene_id):
-            chains.update({stable_identifier(transcript): sorted(chain) for transcript, chain in record["transcripts"].items()})
+    chains = {stable_identifier(transcript): sorted(chain) for record in annotation.values() for transcript, chain in record["transcripts"].items()}
     long_sizes = []
     lines = gene_gtf_lines(args.gtf, set(examples.gene_id))
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -122,7 +125,7 @@ def main():
         palette.write_text("".join(f"{color}\n" for color in COLORS for _ in range(3)))
         prefix = event_dir / f"{event.event_id}_sashimi"
         coordinates = f"{event.chromosome}:{event.start + 1}-{event.end}"
-        command = ["python3", str(args.ggsashimi), "--intron", str(intron), "--exon", str(exon), "--strand_info", str(strand), "--data_type", "sc", "--aggregation", "False", "-c", coordinates, "-g", str(gtf), "-o", str(prefix), "-M", str(args.min_junction), "--shrink", "--height", "1.0", "--ann-height", "2.5", "--width", "9", "--base-size", "10", "-P", str(palette), "-F", "pdf"]
+        command = ["python3", str(args.ggsashimi), "--intron", str(intron), "--exon", str(exon), "--strand_info", str(strand), "--data_type", "sc", "--aggregation", "False", "-c", coordinates, "-g", str(gtf), "-o", str(prefix), "-M", str(args.min_junction), "--shrink", "--height", str(args.track_height), "--ann-height", f"{max(1.2, 0.16 * (len(mature) + len(annotation[example.gene_id]['transcripts']))):.2f}", "--width", str(args.width), "--base-size", "11", "-P", str(palette), "-F", "pdf"]
         subprocess.run(["bash", "-lc", f"{args.plot_setup}; {shlex.join(command)}" if args.plot_setup else shlex.join(command)], check=True)
         print(event.event_id, prefix.with_suffix(".pdf"), flush=True)
 
