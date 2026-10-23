@@ -195,9 +195,8 @@ def summarize_subject_feature_evidence(event, paths, anchors, exon_blocks, junct
     return pd.DataFrame(rows)
 
 
-def coverage_group_columns(cell_types):
-    """Map cell-type and primer labels to ggsashimi coverage columns."""
-    primers = ("poly(dT)", "random hexamer")
+def coverage_group_columns(cell_types, primers=("poly(dT)", "random hexamer")):
+    """Map cell-type and primer (or other source) labels to ggsashimi coverage columns."""
 
     def compact(value):
         return value.translate(str.maketrans("", "", "_ ()"))
@@ -440,6 +439,71 @@ def collect_bam_event_support(bam_path, barcode_groups, events, deduplicate=Fals
     return exon_blocks, junctions, event_umis
 
 
+def collect_native_event_support(chunk_paths, groups, locus_chromosome, locus_shift, events, deduplicate=True, min_intron=21):
+    """Aligned blocks and junctions of native alignments overlapping events.
+
+    chunk_paths are align-stage chunks of one library (extra_scripts/
+    native_collect.py: cell, umi, locus, offsets, starts, ends in reference
+    coordinates), groups maps a chunk cell index to (subject, cell type,
+    primer), and locus_shift is each locus' genome start minus its reference
+    start. Gaps of at least min_intron between aligned blocks are junctions.
+    Returns Counters keyed as collect_bam_event_support, with molecules
+    deduplicated by cell, UMI and aligned blocks.
+    """
+    exon_blocks, junctions, event_umis = Counter(), Counter(), Counter()
+    seen = set()
+    for path in chunk_paths:
+        data = np.load(path)
+        cell, umi, locus, offsets = data["cell"], data["umi"], data["locus"], data["offsets"]
+        starts, ends = data["starts"].astype(np.int64), data["ends"].astype(np.int64)
+        shift = locus_shift[locus]
+        first = starts[offsets[:-1]] + shift
+        last = ends[offsets[1:] - 1] + shift
+        chromosome = locus_chromosome[locus]
+        for event in events:
+            for read in np.flatnonzero((chromosome == event.chromosome) & (first < event.end) & (last > event.start)):
+                blocks = [(int(a) + int(shift[read]), int(b) + int(shift[read])) for a, b in zip(starts[offsets[read]:offsets[read + 1]], ends[offsets[read]:offsets[read + 1]])]
+                if deduplicate:
+                    key = (event.event_id, int(cell[read]), int(umi[read]), tuple(blocks))
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                subject, cell_type, primer = groups[int(cell[read])]
+                event_umis[(event.event_id, subject, cell_type, primer)] += 1
+                for start, end in blocks:
+                    start, end = max(start, event.start), min(end, event.end)
+                    if start < end:
+                        exon_blocks[(event.event_id, subject, cell_type, primer, start, end)] += 1
+                for (_, donor), (acceptor, _) in zip(blocks, blocks[1:]):
+                    if acceptor - donor >= min_intron and event.start <= donor and acceptor <= event.end:
+                        junctions[(event.event_id, subject, cell_type, primer, donor, acceptor)] += 1
+    return exon_blocks, junctions, event_umis
+
+
+def long_read_event_support(event, transcript_counts, transcript_chains, source="long reads"):
+    """Coverage and junction support implied by full-length transcript counts.
+
+    transcript_counts maps (cell type, transcript id) to UMI counts of
+    full-length long-read transcripts and transcript_chains maps transcript id
+    to its genomic exon chain; each counted transcript covers its exons and
+    supports its junctions. Keys follow collect_bam_event_support with source
+    as both subject and primer.
+    """
+    exon_blocks, junctions = Counter(), Counter()
+    for (cell_type, transcript), count in transcript_counts.items():
+        chain = transcript_chains.get(transcript)
+        if not chain or count <= 0:
+            continue
+        for start, end in chain:
+            start, end = max(start, event.start), min(end, event.end)
+            if start < end:
+                exon_blocks[(event.event_id, source, cell_type, source, start, end)] += count
+        for (_, donor), (acceptor, _) in zip(chain, chain[1:]):
+            if event.start <= donor and acceptor <= event.end:
+                junctions[(event.event_id, source, cell_type, source, donor, acceptor)] += count
+    return exon_blocks, junctions
+
+
 def merge_support(results):
     """Add support counters returned for independent BAMs."""
     merged = Counter(), Counter(), Counter()
@@ -458,11 +522,17 @@ def _constant_segments(values):
             yield int(start), int(end), value
 
 
-def write_ggsashimi_inputs(output_dir, event, exon_blocks, junctions, cell_sizes, cell_types, scale=1000.0):
-    """Write ggsashimi tables normalized per scale primer-specific half-cells."""
+def write_ggsashimi_inputs(output_dir, event, exon_blocks, junctions, cell_sizes, cell_types, scale=1000.0, primers=("poly(dT)", "random hexamer"), scales=None):
+    """Write ggsashimi tables normalized per scale primer-specific half-cells.
+
+    primers lists the sources per cell type, in track order; scales maps a
+    source to its own scale (e.g. long-read tracks normalized per 10,000
+    long-read UMIs, with cell_sizes holding the UMI totals as "cells").
+    """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    group_names = coverage_group_columns(cell_types)
+    group_names = coverage_group_columns(cell_types, primers)
+    scales = scales or {}
     denominators = cell_sizes.groupby(["cell_type", "primer"])["cells"].sum().to_dict()
     missing = [group for group in group_names if denominators.get(group, 0) == 0]
     if missing:
@@ -470,7 +540,7 @@ def write_ggsashimi_inputs(output_dir, event, exon_blocks, junctions, cell_sizes
     exon_rows, junction_rows = {}, {}
     for group, name in group_names.items():
         cell_type, primer = group
-        denominator = denominators[group]
+        denominator = denominators[group] / scales.get(primer, scale) * scale
         coverage = np.zeros(event.end - event.start, dtype=float)
         for key, count in exon_blocks.items():
             event_id, _, local_cell_type, local_primer, start, end = key

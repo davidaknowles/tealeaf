@@ -213,3 +213,23 @@ def test_summarize_subject_feature_evidence_uses_endpoint_depth_and_splice_sites
     assert polydt.loc["J:150-200", "observed_inclusion"] == 0.8
     assert polydt.loc["J:150-200", "evidence_denominator"] == 10
     assert polydt.loc["J:150-200", "endpoint_normalized_signal"] == 0.8
+
+
+def test_native_and_long_read_event_support(tmp_path):
+    import numpy as np
+    from tealeaf.sc.sashimi import SashimiEvent, collect_native_event_support, long_read_event_support
+
+    # one locus on chr1 starting at genome 1000, reference offset 300: shift 700
+    chunk = tmp_path / "chunk_0000.npz"
+    np.savez(chunk, cell=np.array([0, 0, 1]), umi=np.array([5, 5, 7]), locus=np.array([0, 0, 0]),
+             offsets=np.array([0, 2, 4, 5]), starts=np.array([400, 600, 400, 600, 900]), ends=np.array([450, 650, 450, 650, 950]))
+    event = SashimiEvent("g", "chr1", 1050, 1400, "+")
+    groups = {0: ("s1", "A", "poly(dT)"), 1: ("s1", "B", "random hexamer")}
+    exon_blocks, junctions, umis = collect_native_event_support([chunk], groups, np.array(["chr1"]), np.array([700]), [event])
+    # the first two reads are one molecule (same cell, UMI and blocks); the third lies outside the event
+    assert umis == {("g", "s1", "A", "poly(dT)"): 1}
+    assert junctions == {("g", "s1", "A", "poly(dT)", 1150, 1300): 1}
+    assert exon_blocks[("g", "s1", "A", "poly(dT)", 1100, 1150)] == 1 and exon_blocks[("g", "s1", "A", "poly(dT)", 1300, 1350)] == 1
+    long_blocks, long_junctions = long_read_event_support(event, {("A", "t1"): 3, ("B", "t2"): 2}, {"t1": [(1000, 1150), (1300, 1500)], "t2": [(1000, 1500)]})
+    assert long_junctions == {("g", "long reads", "A", "long reads", 1150, 1300): 3}
+    assert long_blocks[("g", "long reads", "A", "long reads", 1050, 1150)] == 3 and long_blocks[("g", "long reads", "B", "long reads", 1050, 1400)] == 2

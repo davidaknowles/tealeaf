@@ -312,38 +312,50 @@ Table~\ref{tab:results} gives both endpoints. On both the matched and the compar
 
 \subsection{Examples}
 
-Figures~\ref{fig:pkn2}--\ref{fig:mctp1} show the full-data tests with the largest effect among those evaluable in the long-read data, selected without regard to long-read agreement: tests with $p<10^{-8}$, at least 50 long-read UMIs per cell type and at most four paths, one per gene, ranked by the norm of the fitted path-usage difference, with at least one internal and one terminal block. Each figure shows the block's paths, the molecule-share composition of every subject--cell-type row in the Parse data (the per-row EM estimate of the share screen), and the transcript share of each path in the two long-read replicates. All four agree with the long reads in direction.
+Figures~\ref{fig:pkn2}--\ref{fig:mctp1} show the full-data tests with the largest effect among those evaluable in the long-read data, selected without regard to long-read agreement: tests with $p<10^{-8}$, at least 50 long-read UMIs per cell type and at most four paths, one per gene, ranked by the norm of the fitted path-usage difference, with at least one internal and one terminal block. Each figure shows sashimi plots of Parse coverage by primer and of the coverage implied by the long-read transcript counts, under the gene's annotated transcripts and the block's paths, followed by the molecule-share composition of every subject--cell-type row in the Parse data (the per-row EM estimate of the share screen) and the transcript share of each path in the two long-read replicates. All four agree with the long reads in direction.
 \begin{enumerate}[leftmargin=*]
   \item \textbf{Pkn2} (Figure~\ref{fig:pkn2}). Path 2 includes an alternative exon. Astrocytes include it in 68\% of molecules and cortical excitatory neurons in 27\% (means over 13 subjects with both cell types); the long reads show inclusion in 100\% and 85\% of transcripts.
   \item \textbf{Nfasc} (Figure~\ref{fig:nfasc}). Path 2 includes a short alternative exon. Cortical excitatory neurons include it in 89\% of molecules and oligodendrocytes in 16\% (47 subjects). The long reads agree in direction (19\% and 1\% of transcripts) but put most cortical neuron transcripts on the skipping path.
   \item \textbf{Kif21a} (Figure~\ref{fig:kif21a}). Path 2 includes a short alternative exon, used in 71\% of cortical neuron and 41\% of oligodendrocyte molecules (29 subjects); the long-read shares are 73\% and 47\%.
-  \item \textbf{Mctp1} (Figure~\ref{fig:mctp1}), a terminal block with alternative first exons. Dentate gyrus granule neurons use the upstream first exon (path 1) in 74\% of junction-spanning molecules and medium spiny neurons in 15\% (8 subjects); the long-read shares are 33\% and 18\%.
+  \item \textbf{Mctp1} (Figure~\ref{fig:mctp1}), a terminal block with alternative first exons tens of kilobases apart, so the sashimi view is dominated by intronic coverage and the exons are narrow; the junction arcs carry the comparison. Dentate gyrus granule neurons use the upstream first exon (path 1) in 74\% of junction-spanning molecules and medium spiny neurons in 15\% (8 subjects); the long-read shares are 33\% and 18\%.
 \end{enumerate}
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=0.82\textwidth]{figures/example_Pkn2_B3.pdf}
-\caption{Pkn2 block 3, astrocytes against cortical excitatory neurons. Top, the block's paths (introns longer than 300 bases shortened, 5' end on the left). Bottom left, path usage of each subject in the Parse data with the mean over subjects (bars). Bottom right, transcript share of each path in the two long-read replicates.}
+\includegraphics[width=0.95\textwidth,height=0.47\textheight,keepaspectratio]{figures/sashimi_Pkn2_B3.pdf}\\[2pt]
+(a)\\[4pt]
+\includegraphics[width=0.72\textwidth,height=0.27\textheight,keepaspectratio]{figures/example_Pkn2_B3.pdf}\\
+(b)
+\caption{Pkn2 block 3, astrocytes against cortical excitatory neurons. Panel (a) shows sashimi tracks of the two cell types: Parse coverage from UMI-deduplicated native alignments by primer, per 1,000 half-cells of the primer, and long-read coverage implied by the UMI counts of full-length annotated transcripts (summed over the two replicates), per million long-read UMIs of the cell type; arc labels are junction coverage in the same units, and long introns are shortened. Below the tracks are the block's paths (Path $k$) and the gene's annotated transcripts in the region. Panel (b) shows the path usage of each subject in the Parse data with the mean over subjects (bars), and the transcript share of each path in the two long-read replicates.}
 \label{fig:pkn2}
 \end{figure}
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=0.82\textwidth]{figures/example_Nfasc_B2.pdf}
+\includegraphics[width=0.95\textwidth,height=0.5\textheight,keepaspectratio]{figures/sashimi_Nfasc_B2.pdf}\\[2pt]
+(a)\\[4pt]
+\includegraphics[width=0.72\textwidth,height=0.27\textheight,keepaspectratio]{figures/example_Nfasc_B2.pdf}\\
+(b)
 \caption{Nfasc block 2, cortical excitatory neurons against oligodendrocytes. Panels as in Figure~\ref{fig:pkn2}.}
 \label{fig:nfasc}
 \end{figure}
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=0.82\textwidth]{figures/example_Kif21a_B3.pdf}
+\includegraphics[width=0.95\textwidth,height=0.5\textheight,keepaspectratio]{figures/sashimi_Kif21a_B3.pdf}\\[2pt]
+(a)\\[4pt]
+\includegraphics[width=0.72\textwidth,height=0.27\textheight,keepaspectratio]{figures/example_Kif21a_B3.pdf}\\
+(b)
 \caption{Kif21a block 3, cortical excitatory neurons against oligodendrocytes. Panels as in Figure~\ref{fig:pkn2}.}
 \label{fig:kif21a}
 \end{figure}
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=0.82\textwidth]{figures/example_Mctp1_B1.pdf}
+\includegraphics[width=0.95\textwidth,height=0.5\textheight,keepaspectratio]{figures/sashimi_Mctp1_B1.pdf}\\[2pt]
+(a)\\[4pt]
+\includegraphics[width=0.72\textwidth,height=0.27\textheight,keepaspectratio]{figures/example_Mctp1_B1.pdf}\\
+(b)
 \caption{Mctp1 block 1, dentate gyrus granule neurons against medium spiny neurons, a terminal block tested on junction-spanning molecules. Panels as in Figure~\ref{fig:pkn2}.}
 \label{fig:mctp1}
 \end{figure}
