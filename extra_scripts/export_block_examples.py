@@ -21,6 +21,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from tealeaf.sc.differential import classify_path_chains
 from tealeaf.sc.local_path_reads import block_structure, same_junction_groups
 from tealeaf.sc.local_path_test import local_class_masks, prepare_block_test, row_path_compositions
 
@@ -109,6 +110,7 @@ def main():
                 for path, value in enumerate(vector / vector.sum() if vector.sum() > 0 else vector):
                     long_rows.append({"test_id": row.test_id, "replicate": replicate, "cell_type": levels[level], "path": path + 1, "proportion": value, "umis": vector.sum()})
         chains = [block["paths"][(prepared["groups"][position] if prepared["groups"] is not None else [position])[0]] for position in kept]
+        examples[-1]["event"] = classify_path_chains(chains, block["strand"])[0]
         coordinates = compressed([tuple(exon) for chain in chains for exon in chain])
         for path, chain in enumerate(chains):
             for start, end in chain:
@@ -116,7 +118,7 @@ def main():
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for name, rows in (("examples", examples), ("parse_usage", parse_rows), ("long_read_usage", long_rows), ("exons", exon_rows)):
         pd.DataFrame(rows).to_csv(args.output_dir / f"{name}.tsv", sep="\t", index=False)
-    print(pd.DataFrame(examples)[["label", "structure", "level_a", "level_b", "n_paths", "p_value", "effect_norm", "long_read_agrees", "novel_paths"]].to_string(index=False), flush=True)
+    print(pd.DataFrame(examples)[["label", "structure", "level_a", "level_b", "n_paths", "p_value", "effect_norm", "long_read_agrees", "novel_paths", "event"]].to_string(index=False), flush=True)
 
 
 if __name__ == "__main__":

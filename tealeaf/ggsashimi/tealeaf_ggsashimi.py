@@ -481,7 +481,7 @@ def gtf_for_ggplot(annotation, start, end, arrow_bins):
         return s
 
 
-def setup_R_script(h, w, b, label_dict):
+def setup_R_script(h, w, b, label_dict, vmargin=15):
         s = """
         library(ggplot2)
         library(grid)
@@ -500,7 +500,7 @@ def setup_R_script(h, w, b, label_dict):
         width = %(w)s
         theme_set(theme_bw(base_size=base_size))
         theme_update(
-                plot.margin = unit(c(15,15,15,15), "pt"),
+                plot.margin = unit(c(%(vmargin)s,15,%(vmargin)s,15), "pt"),
                 panel.grid = element_blank(),
                 panel.border = element_blank(),
                 axis.line = element_line(size=0.5),
@@ -517,6 +517,7 @@ def setup_R_script(h, w, b, label_dict):
                 'h': h,
                 'w': w,
                 'b': b,
+                'vmargin': vmargin,
                 'labels': ",".join(('"%s"="%s"' %(id,lab) for id,lab in label_dict.items())),
         })
         return s
@@ -760,6 +761,10 @@ def define_options():
         
 
         
+        parser.add_argument("--compact", default=False, action="store_true",
+                help="Small vertical margins between tracks, with arcs below a track kept inside its panel")
+        parser.add_argument("--no-junction-labels", default=False, action="store_true", dest="no_junction_labels",
+                help="Do not label junction arcs with their counts")
         parser.add_argument("--fix-y-scale", default=False, action="store_true", dest = "fix_y_scale",
                 help="Fix y-scale across individual signal plots [default=%(default)s]")
         parser.add_argument("--height", type=float, default=2,
@@ -919,7 +924,7 @@ if __name__ == "__main__":
                         bam_height += args.ann_height
 
                 # *** PLOT *** Start R script by loading libraries, initializing variables, etc...
-                R_script = setup_R_script(bam_height, args.width, args.base_size, label_dict)
+                R_script = setup_R_script(bam_height, args.width, args.base_size, label_dict, 3 if args.compact else 15)
 
                 R_script += colorize(color_dict, palette)
 
@@ -1064,6 +1069,10 @@ if __name__ == "__main__":
 
                         # Aggregate junction counts
                         row_i = c()
+                        if (%(compact)s && nrow(junctions) > 1) {
+                                # keep arcs drawn below the track inside its panel
+                                gp = gp + expand_limits(y = -0.45 * max(d[['y']]))
+                        }
                         if (nrow(junctions) >0 ) {
 
                                 junctions$jlabel = as.character(junctions$count)
@@ -1123,7 +1132,7 @@ if __name__ == "__main__":
                                 }
 
                                 # Add junction labels
-                                gp = gp + annotate("label", x = xmid, y = ymid, label = as.character(junctions[i,6]),
+                                if (%(junction_labels)s) gp = gp + annotate("label", x = xmid, y = ymid, label = as.character(junctions[i,6]),
                                         vjust=0.5, hjust=0.5, label.padding=unit(0.01, "lines"),
                                         label.size=NA, size=(base_size*0.352777778)*0.6
                                 )
@@ -1205,7 +1214,9 @@ if __name__ == "__main__":
                         "signal_height": args.height,
                         "ann_height": args.ann_height,
                         "alpha": args.alpha,
-                        "fix_y_scale": ("TRUE" if args.fix_y_scale else "FALSE")
+                        "fix_y_scale": ("TRUE" if args.fix_y_scale else "FALSE"),
+                        "compact": ("TRUE" if args.compact else "FALSE"),
+                        "junction_labels": ("FALSE" if args.no_junction_labels else "TRUE")
                         })
                 if os.getenv('GGSASHIMI_DEBUG') is not None:
                         with open("R_script", 'w') as r:

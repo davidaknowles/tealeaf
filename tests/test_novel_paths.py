@@ -70,3 +70,18 @@ def test_new_block_for_novel_first_exon():
     assert novel_junction_blocks(transcripts, support, windows=[]) == []
     blocks = novel_junction_blocks(transcripts, support, windows=[], terminal_length=151)
     assert blocks == [([[[0, 100], [2000, 2100]]], [([[1349, 1500], [2000, 2100]], 80)])]
+
+
+def test_classify_path_chains():
+    from tealeaf.sc.differential import classify_path_chains
+
+    a, b, c, d = (0, 100), (200, 300), (400, 500), (600, 700)
+    assert classify_path_chains([[a, c], [a, b, c]], "+") == ("cassette exon", ())
+    assert classify_path_chains([[a, c], [(0, 150), c]], "+") == ("alternative donor", ())
+    assert classify_path_chains([[a, c], [(0, 150), c]], "-") == ("alternative acceptor", ())
+    assert classify_path_chains([[a, b, d], [a, c, d]], "+") == ("mutually exclusive exons", ())
+    assert classify_path_chains([[a, d], [a, b, d], [a, b, c, d]], "+") == ("compound internal", ("cassette exon", "multi-exon skipping"))
+    assert classify_path_chains([[a, d], [b, d]], "+") == ("alternative first exon", ())
+    assert classify_path_chains([[a, d], [b, d]], "-") == ("alternative last exon", ())
+    assert classify_path_chains([[a, d], [(50, 100), d]], "+") == ("alternative transcript start", ())
+    assert classify_path_chains([[a, c], [b, d]], "+")[0] == "alternative first and last exons"

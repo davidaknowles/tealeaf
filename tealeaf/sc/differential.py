@@ -94,6 +94,42 @@ def classify_splice_block(block, path_signatures=None):
     return "compound internal"
 
 
+def classify_path_chains(paths, strand):
+    """(event class, pairwise components) of a block's full exon chains.
+
+    paths are the chains of the tested paths, flanking exons included. If all
+    chains start at the same base and end at the same base the block is
+    internal (an alternative splice site may still move the inner end of a
+    flanking exon): two
+    chains are classified by their differing exons (_path_pair_event), more
+    chains are "compound internal" with the sorted set of pairwise classes as
+    components. Otherwise the chains differ at a transcript end: "alternative
+    first exon" or "alternative last exon" (by strand) when only one end
+    differs, "alternative first and last exons" when both do, and
+    "alternative transcript start" or "alternative transcript end" when the
+    differing terminal exons share their splice site, so only the transcript
+    end moves.
+    """
+    chains = [tuple(sorted(tuple(int(x) for x in exon) for exon in path)) for path in paths]
+    left = {chain[0] for chain in chains}
+    right = {chain[-1] for chain in chains}
+    if len({exon[0] for exon in left}) == 1 and len({exon[1] for exon in right}) == 1:
+        if len(chains) == 2:
+            return _path_pair_event(chains[0], chains[1], strand), ()
+        components = {_path_pair_event(chains[i], chains[j], strand) for i in range(len(chains)) for j in range(i + 1, len(chains))}
+        return "compound internal", tuple(sorted(components))
+    names = {}
+    if len({exon[0] for exon in left}) > 1:
+        same_site = len({exon[1] for exon in left}) == 1 and all(len(chain) > 1 for chain in chains)
+        names["left"] = ("alternative transcript start" if strand == "+" else "alternative transcript end") if same_site else ("alternative first exon" if strand == "+" else "alternative last exon")
+    if len({exon[1] for exon in right}) > 1:
+        same_site = len({exon[0] for exon in right}) == 1 and all(len(chain) > 1 for chain in chains)
+        names["right"] = ("alternative transcript end" if strand == "+" else "alternative transcript start") if same_site else ("alternative last exon" if strand == "+" else "alternative first exon")
+    if len(names) == 2:
+        return "alternative first and last exons", tuple(sorted(names.values()))
+    return next(iter(names.values())), ()
+
+
 def splice_block_event_components(block, path_signatures=None):
     """Return canonical event components found among a block's path pairs."""
     signatures = _block_value(block, "path_signatures") if path_signatures is None else path_signatures

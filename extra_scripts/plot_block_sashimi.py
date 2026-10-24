@@ -8,6 +8,7 @@ half-cells. Long-read tracks are the coverage and junctions implied by the
 full-length annotated-transcript UMI counts of the long-read data, summed
 over replicates, per --long-read-scale long-read UMIs of the cell type (default one million). The annotation
 track shows the gene's annotated transcripts and the block's tested paths.
+Junction counts label the arcs in the block view only.
 """
 
 import argparse
@@ -68,8 +69,8 @@ def main():
     parser.add_argument("--ggsashimi", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--long-read-scale", type=float, default=1e6)
-    parser.add_argument("--track-height", type=float, default=0.9, help="ggsashimi height per track (inches)")
-    parser.add_argument("--width", type=float, default=8.0, help="ggsashimi width (inches)")
+    parser.add_argument("--track-height", type=float, default=0.75, help="ggsashimi height per track (inches)")
+    parser.add_argument("--width", type=float, default=12.0, help="ggsashimi width (inches)")
     parser.add_argument("--min-junction", type=int, default=1, help="ggsashimi minimum normalized junction coverage")
     parser.add_argument("--plot-setup", default="", help="shell commands run before ggsashimi (making Rscript with ggplot2, data.table and gridExtra, and a python with pandas, available)")
     args = parser.parse_args()
@@ -125,7 +126,7 @@ def main():
         palette.write_text("".join(f"{color}\n" for color in COLORS for _ in range(3)))
         prefix = event_dir / f"{event.event_id}_sashimi"
         coordinates = f"{event.chromosome}:{event.start + 1}-{event.end}"
-        command = ["python3", str(args.ggsashimi), "--intron", str(intron), "--exon", str(exon), "--strand_info", str(strand), "--data_type", "sc", "--aggregation", "False", "-c", coordinates, "-g", str(gtf), "-o", str(prefix), "-M", str(args.min_junction), "--shrink", "--height", str(args.track_height), "--ann-height", f"{max(1.2, 0.16 * (len(mature) + len(annotation[example.gene_id]['transcripts']))):.2f}", "--width", str(args.width), "--base-size", "11", "-P", str(palette), "-F", "pdf"]
+        command = ["python3", str(args.ggsashimi), "--intron", str(intron), "--exon", str(exon), "--strand_info", str(strand), "--data_type", "sc", "--aggregation", "False", "-c", coordinates, "-g", str(gtf), "-o", str(prefix), "-M", str(args.min_junction), "--shrink", "--height", str(args.track_height), "--ann-height", f"{max(1.2, 0.16 * (len(mature) + len(annotation[example.gene_id]['transcripts']))):.2f}", "--width", str(args.width), "--base-size", "11", "-P", str(palette), "-F", "pdf", "--compact"] + (["--no-junction-labels"] if event.event_id.endswith("_gene") else [])
         subprocess.run(["bash", "-lc", f"{args.plot_setup}; {shlex.join(command)}" if args.plot_setup else shlex.join(command)], check=True)
         print(event.event_id, prefix.with_suffix(".pdf"), flush=True)
 
