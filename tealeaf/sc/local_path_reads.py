@@ -81,6 +81,32 @@ def compatibility_mask(blocks, junctions, structures):
     return mask
 
 
+def transcript_path_assignments(path_groups, transcripts):
+    """transcript id -> tested path index, for transcripts that fit exactly one tested path.
+
+    path_groups lists, per tested path, the exon chains of its member paths
+    (one chain unless same-junction paths were merged); transcripts maps a
+    transcript id to its genomic exon chain. A transcript is classified like
+    a read covering the block window (compatibility_mask): its exons clipped
+    to the window must lie within exons of a path and its junctions inside the
+    window must be junctions of that path. Transcripts fitting several tested
+    paths (not informative about the block) or none (another local structure)
+    are left out.
+    """
+    chains = [chain for group in path_groups for chain in group]
+    owner = [index for index, group in enumerate(path_groups) for _ in group]
+    structures = path_structures(chains)
+    assignments = {}
+    for transcript, exons in transcripts.items():
+        exons = sorted(tuple(exon) for exon in exons)
+        junctions = [(a[1], b[0]) for a, b in zip(exons, exons[1:]) if a[1] < b[0]]
+        mask = compatibility_mask(exons, junctions, structures)
+        tested = {owner[index] for index in range(len(chains)) if mask >> index & 1}
+        if len(tested) == 1:
+            assignments[transcript] = tested.pop()
+    return assignments
+
+
 def path_read_opportunities(paths, read_length, variable=None):
     """n[mask] -> length-S vector of start positions per path yielding mask.
 

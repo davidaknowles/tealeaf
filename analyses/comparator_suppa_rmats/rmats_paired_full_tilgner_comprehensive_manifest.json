@@ -1,0 +1,16 @@
+{
+  "input_tests": 95000,
+  "mapped_tests": 7136,
+  "top_per_contrast": 500,
+  "minimum_pooled_depth": 20.0,
+  "minimum_replicate_depth": 10.0,
+  "tests": [
+    "analyses/comparator_suppa_rmats/rmats_paired_full_tests.tsv.gz"
+  ],
+  "events": "None",
+  "rmats_events": "/gpfs/commons/home/daknowles/rmats_paired_data/rmats_base_single/output",
+  "gtf": ".cache/reference/gencode.vM32.annotation.gtf.gz",
+  "lr_classification": "exon-chain",
+  "selection": "method-specific significance ranking per contrast",
+  "source_mapping": "at least one source annotated transcript in each event class; classes from each transcript's own exon chain"
+}

@@ -13,19 +13,50 @@ import pandas as pd
 from scipy import sparse
 
 from extra_scripts.assess_tilgner_long_read_replication import read_tilgner_matrix, stable_identifier, wilson_interval
+from tealeaf.sc.long_read_events import event_transcript_classes, rmats_event, suppa2_event, transcript_exon_chains
+
+RMATS_EVENT_TYPES = ("SE", "A3SS", "A5SS", "MXE", "RI")
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tests", action="append", required=True, type=Path)
-    parser.add_argument("--events", required=True, type=Path)
+    parser.add_argument("--events", type=Path, help="Event catalogue with feature_id, event_id and catalogue included/excluded transcript lists.")
     parser.add_argument("--tilgner-matrix", required=True, type=Path)
     parser.add_argument("--gtf", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--summary", required=True, type=Path)
     parser.add_argument("--top-per-contrast", type=int, default=500, help="Maximum tests per method and contrast before mapping; 0 maps every test.")
     parser.add_argument("--minimum-depth", type=float, default=20.0)
-    return parser.parse_args()
+    parser.add_argument("--lr-classification", choices=["catalogue", "exon-chain"], default="catalogue", help="catalogue uses the event catalogue's included/excluded transcript lists; exon-chain classifies every source transcript by its own exon chain against the event coordinates (SUPPA2 event_id, or rMATS fromGTF rows).")
+    parser.add_argument("--rmats-events", type=Path, help="rMATS fromGTF directory; with --lr-classification exon-chain, rMATS features are classified from these coordinates.")
+    args = parser.parse_args()
+    if args.events is None and args.rmats_events is None:
+        parser.error("--events or --rmats-events is required")
+    if args.rmats_events is not None and args.lr_classification != "exon-chain":
+        parser.error("--rmats-events requires --lr-classification exon-chain")
+    return args
+
+
+def catalogue_classes(event_table):
+    """Event keys with catalogue inclusion and exclusion transcript lists."""
+    return [(str(event.feature_id), str(event.included).split(","), str(event.excluded).split(",")) for event in event_table.itertuples(index=False)]
+
+
+def exon_chain_classes(event_table, rmats_dir, gtf_path, transcript_rows):
+    """Event keys with source transcripts classified by their own exon chains."""
+    keys, events = [], []
+    if event_table is not None:
+        for event in event_table.itertuples(index=False):
+            keys.append(str(event.feature_id))
+            events.append(suppa2_event(event.event_id))
+    if rmats_dir is not None:
+        for event_type in RMATS_EVENT_TYPES:
+            for row in pd.read_csv(Path(rmats_dir) / f"fromGTF.{event_type}.txt", sep="\t", dtype=str).to_dict("records"):
+                keys.append(f"rMATS:{event_type}:{row['ID']}")
+                events.append(rmats_event(event_type, row))
+    chains = transcript_exon_chains(gtf_path, transcripts=transcript_rows)
+    return [(key, included, excluded) for key, (included, excluded) in zip(keys, event_transcript_classes(events, chains))]
 
 
 def summarize(table, minimum_depth, scope="top-ranked calls per contrast"):
@@ -44,22 +75,26 @@ def summarize(table, minimum_depth, scope="top-ranked calls per contrast"):
 def main():
     args = parse_args()
     source, features, columns = read_tilgner_matrix(args.tilgner_matrix, args.gtf)
-    event_table = pd.read_csv(args.events, sep="\t", compression="infer")
+    event_table = pd.read_csv(args.events, sep="\t", compression="infer") if args.events is not None else None
     transcript_rows = defaultdict(list)
     for index, transcript in features.transcript_id.items():
         if pd.notna(transcript):
             transcript_rows[stable_identifier(transcript)].append(index)
+    if args.lr_classification == "exon-chain":
+        classes = exon_chain_classes(event_table, args.rmats_events, args.gtf, transcript_rows)
+    else:
+        classes = catalogue_classes(event_table)
     event_rows = []
     event_indices = {}
-    for event_index, event in event_table.iterrows():
-        included = [row for transcript in str(event.included).split(",") if transcript for row in transcript_rows.get(stable_identifier(transcript), [])]
-        excluded = [row for transcript in str(event.excluded).split(",") if transcript for row in transcript_rows.get(stable_identifier(transcript), [])]
+    for event_index, (key, included, excluded) in enumerate(classes):
+        included = [row for transcript in included if transcript for row in transcript_rows.get(stable_identifier(transcript), [])]
+        excluded = [row for transcript in excluded if transcript for row in transcript_rows.get(stable_identifier(transcript), [])]
         if included and excluded:
-            event_indices[str(event.feature_id)] = event_index
+            event_indices[key] = event_index
             event_rows.extend((event_index, row, 1) for row in included)
             event_rows.extend((event_index, row, 0) for row in excluded)
-    inc_map = sparse.csr_matrix((np.ones(sum(kind == 1 for _, _, kind in event_rows)), ([event for event, _, kind in event_rows if kind == 1], [row for _, row, kind in event_rows if kind == 1])), shape=(len(event_table), len(features)))
-    exc_map = sparse.csr_matrix((np.ones(sum(kind == 0 for _, _, kind in event_rows)), ([event for event, _, kind in event_rows if kind == 0], [row for _, row, kind in event_rows if kind == 0])), shape=(len(event_table), len(features)))
+    inc_map = sparse.csr_matrix((np.ones(sum(kind == 1 for _, _, kind in event_rows)), ([event for event, _, kind in event_rows if kind == 1], [row for _, row, kind in event_rows if kind == 1])), shape=(len(classes), len(features)))
+    exc_map = sparse.csr_matrix((np.ones(sum(kind == 0 for _, _, kind in event_rows)), ([event for event, _, kind in event_rows if kind == 0], [row for _, row, kind in event_rows if kind == 0])), shape=(len(classes), len(features)))
     event_counts = (inc_map @ source).toarray(), (exc_map @ source).toarray()
     groups = {(cell_type, int(rep)): values["column"].to_numpy(dtype=int) for (cell_type, rep), values in columns.dropna(subset=["tealeaf_cell_type", "replicate"]).groupby(["tealeaf_cell_type", "replicate"])}
     tests = pd.concat((pd.read_csv(path, sep="\t", compression="infer", low_memory=False) for path in args.tests), ignore_index=True)
@@ -80,7 +115,7 @@ def main():
     for record in tests.itertuples(index=False):
         feature_id = str(record.feature_id)
         if record.method == "rMATS" or feature_id.startswith("rMATS:"):
-            event_key = feature_id if feature_id.startswith("SUPPA2:") else "SUPPA:" + feature_id.split(":", 1)[1]
+            event_key = feature_id if feature_id.startswith("SUPPA2:") or args.rmats_events is not None else "SUPPA:" + feature_id.split(":", 1)[1]
             short_effect = -float(record.effect_size)
         else:
             event_key = feature_id
@@ -109,7 +144,7 @@ def main():
     summary = summarize(result, args.minimum_depth, scope="all converged tests" if args.top_per_contrast == 0 else "top-ranked calls per contrast")
     args.summary.parent.mkdir(parents=True, exist_ok=True)
     summary.to_csv(args.summary, sep="\t", index=False)
-    manifest = {"input_tests": len(tests), "mapped_tests": len(result), "top_per_contrast": args.top_per_contrast, "minimum_pooled_depth": args.minimum_depth, "minimum_replicate_depth": args.minimum_depth / 2, "tests": [str(path) for path in args.tests], "events": str(args.events), "selection": "all converged tests" if args.top_per_contrast == 0 else "method-specific significance ranking per contrast", "source_mapping": "at least one source annotated transcript in each event class"}
+    manifest = {"input_tests": len(tests), "mapped_tests": len(result), "top_per_contrast": args.top_per_contrast, "minimum_pooled_depth": args.minimum_depth, "minimum_replicate_depth": args.minimum_depth / 2, "tests": [str(path) for path in args.tests], "events": str(args.events), "rmats_events": None if args.rmats_events is None else str(args.rmats_events), "gtf": str(args.gtf), "lr_classification": args.lr_classification, "selection": "all converged tests" if args.top_per_contrast == 0 else "method-specific significance ranking per contrast", "source_mapping": "at least one source annotated transcript in each event class" + ("; classes from each transcript's own exon chain" if args.lr_classification == "exon-chain" else "; classes from the catalogue transcript lists")}
     args.output.with_name(args.output.name.removesuffix(".tsv.gz") + "_manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(summary.to_string(index=False))
     print(f"Mapped {len(result):,} of {len(tests):,} tested associations before depth filtering")

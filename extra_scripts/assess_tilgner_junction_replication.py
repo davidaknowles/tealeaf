@@ -19,6 +19,7 @@ from scipy.stats import binomtest
 from extra_scripts.assess_tilgner_long_read_replication import bh_adjust, read_tilgner_matrix, stable_identifier, vector_agreement, wilson_interval
 from tealeaf.sc.differential import paired_mean_test
 from tealeaf.sc.junction_benchmark import JunctionBundle
+from tealeaf.sc.long_read_events import chain_junction_rows, transcript_exon_chains
 
 
 TRANSCRIPT_ID = re.compile(r'transcript_id "([^"]+)"')
@@ -266,10 +267,19 @@ def transcript_junction_rows(gtf_path, features, wanted):
     return {junction: np.asarray(sorted(set(rows)), dtype=int) for junction, rows in result.items()}
 
 
-def source_junction_counts(groups, matrix, features, columns, gtf_path):
+def exon_chain_junction_rows(gtf_path, features, wanted):
+    """Junctions from each source transcript's sorted exon chain, on both strands."""
+    feature_rows = defaultdict(list)
+    for row in features[features["transcript_id"].notna()].itertuples(index=False):
+        feature_rows[stable_identifier(row.transcript_id)].append(int(row.row))
+    chains = transcript_exon_chains(gtf_path, transcripts=feature_rows)
+    return chain_junction_rows(chains, feature_rows, wanted)
+
+
+def source_junction_counts(groups, matrix, features, columns, gtf_path, lr_junctions="legacy"):
     wanted = {coordinate for group in groups.values() for coordinate in group["coordinates"]}
-    print(f"Mapping {len(wanted):,} selected junctions to annotated source transcripts", file=sys.stderr, flush=True)
-    rows = transcript_junction_rows(gtf_path, features, wanted)
+    print(f"Mapping {len(wanted):,} selected junctions to annotated source transcripts ({lr_junctions})", file=sys.stderr, flush=True)
+    rows = exon_chain_junction_rows(gtf_path, features, wanted) if lr_junctions == "exon-chain" else transcript_junction_rows(gtf_path, features, wanted)
     column_groups = {(cell_type, int(replicate)): group["column"].to_numpy(dtype=int) for (cell_type, replicate), group in columns.dropna(subset=["tealeaf_cell_type", "replicate"]).groupby(["tealeaf_cell_type", "replicate"])}
     feature_counts = {key: np.asarray(matrix[:, selected_columns].sum(axis=1)).ravel() for key, selected_columns in column_groups.items()}
     counts = {}
@@ -351,6 +361,7 @@ def main():
     parser.add_argument("--all-tested", action="store_true", help="Map all finite tested features, without a significance cutoff, for a separate rank audit.")
     parser.add_argument("--methods", nargs="+", choices=["LeafCutter", "MAJIQ Heterogen", "scQuint"], help="Limit the external methods in this audit.")
     parser.add_argument("--skip-paired-clr", action="store_true", help="Do not rerun the exploratory paired CLR baseline.")
+    parser.add_argument("--lr-junctions", choices=["legacy", "exon-chain"], default="legacy", help="legacy reads consecutive GTF exon lines, which yields no minus-strand junctions for GENCODE (exons listed 5' to 3'); exon-chain uses each transcript's sorted exon chain on both strands.")
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     matrix, features, columns = read_tilgner_matrix(args.tilgner_matrix, args.gtf)
@@ -386,7 +397,7 @@ def main():
     coordinates = [(str(row.chromosome), int(row.start), int(row.end), str(row.strand)) for row in bundle.junctions.itertuples(index=False)]
     for group in groups.values():
         group["coordinates"] = [coordinates[index] for index in group["indices"]]
-    results = assess_groups(groups, source_junction_counts(groups, matrix, features, columns, args.gtf))
+    results = assess_groups(groups, source_junction_counts(groups, matrix, features, columns, args.gtf, args.lr_junctions))
     results.to_csv(args.output_dir / "junction_replication.tsv.gz", sep="\t", index=False, na_rep="NA")
     summary = pd.concat([summarize(results), summarize(results, one_per_gene_contrast=True)], ignore_index=True)
     if args.all_tested:
@@ -414,6 +425,8 @@ def main():
         "majiq_psi_minimum_reads": args.majiq_psi_minimum_reads,
         "majiq_psi_minimum_bins": args.majiq_psi_minimum_bins,
         "majiq_heterogen_minimum_experiment_fraction": args.majiq_heterogen_minimum_experiment_fraction,
+        "gtf": str(args.gtf),
+        "lr_junctions": args.lr_junctions,
     }
     (args.output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 

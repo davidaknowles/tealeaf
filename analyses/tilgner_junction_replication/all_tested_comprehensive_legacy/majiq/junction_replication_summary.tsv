@@ -1,0 +1,5 @@
+method	endpoint	scope	minimum_depth	n_tests	n_replicated	replication_rate	ci_low	ci_high	conditional_null_rate	orientation_p_value
+MAJIQ Heterogen	pooled direction	all tested LR-evaluable calls	20	752	454	0.6037234042553191	0.5683223397316722	0.6380701493008821	0.5	7.058771691297965e-09
+MAJIQ Heterogen	both biological replicates	all tested LR-evaluable calls	20	601	259	0.43094841930116473	0.39191920828002597	0.4708547487800085	0.3336106489184692	2.718842821936316e-09
+MAJIQ Heterogen	pooled direction	one call per gene and contrast	20	516	309	0.5988372093023255	0.5559670231941263	0.6402466459337572	0.5	4.099034663663328e-06
+MAJIQ Heterogen	both biological replicates	one call per gene and contrast	20	424	179	0.4221698113207547	0.37606292247893247	0.46967432752502236	0.33254716981132076	3.530294517947417e-06

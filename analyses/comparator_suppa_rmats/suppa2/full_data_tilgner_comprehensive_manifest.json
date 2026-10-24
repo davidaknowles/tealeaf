@@ -1,0 +1,16 @@
+{
+  "input_tests": 67500,
+  "mapped_tests": 13363,
+  "top_per_contrast": 500,
+  "minimum_pooled_depth": 20.0,
+  "minimum_replicate_depth": 10.0,
+  "tests": [
+    "analyses/comparator_suppa_rmats/suppa2/full_data_tests.tsv.gz"
+  ],
+  "events": "analyses/comparator_suppa_rmats/suppa2/event_catalog.tsv.gz",
+  "rmats_events": null,
+  "gtf": ".cache/reference/gencode.vM32.annotation.gtf.gz",
+  "lr_classification": "exon-chain",
+  "selection": "method-specific significance ranking per contrast",
+  "source_mapping": "at least one source annotated transcript in each event class; classes from each transcript's own exon chain"
+}

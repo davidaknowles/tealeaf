@@ -1,0 +1,16 @@
+{
+  "input_tests": 7182,
+  "mapped_tests": 2776,
+  "top_per_contrast": 0,
+  "minimum_pooled_depth": 20.0,
+  "minimum_replicate_depth": 10.0,
+  "tests": [
+    "analyses/comparator_suppa_rmats/suppa2_tealeaf_hybrid/full_data/full_data_tests.tsv.gz"
+  ],
+  "events": "analyses/comparator_suppa_rmats/suppa2_tealeaf_hybrid/full_data/event_catalog.tsv.gz",
+  "rmats_events": null,
+  "gtf": ".cache/reference/gencode.vM32.annotation.gtf.gz",
+  "lr_classification": "exon-chain",
+  "selection": "all converged tests",
+  "source_mapping": "at least one source annotated transcript in each event class; classes from each transcript's own exon chain"
+}

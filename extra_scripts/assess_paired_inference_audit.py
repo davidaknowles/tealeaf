@@ -97,9 +97,33 @@ def split_assessment(folds, repo, output, model, universe=None):
     print(pd.DataFrame(metrics).to_string(index=False), flush=True)
 
 
-def long_read_assessment(tests, root, matrix_dir, gtf, block_path, output, model, usage=None, effect_vectors=None):
+def chain_feature_rows(block, row, features, transcript_chains):
+    """Long-read feature rows of a test's paths, assigned by each transcript's exon chain (transcript_path_assignments)."""
+    from tealeaf.sc.local_path_reads import same_junction_groups, transcript_path_assignments
+
+    n_paths = len(block["signatures"])
+    members = getattr(row, "path_members", None)
+    groups = same_junction_groups(block["paths"][:n_paths]) if isinstance(members, str) else [[index] for index in range(n_paths)]
+    path_groups = [[block["paths"][index] for index in groups[position]] for position in json.loads(row.kept_paths)]
+    local = features.loc[features["transcript_id"].notna()].copy()
+    chains = {transcript: transcript_chains[transcript] for transcript in local["transcript_id"] if transcript in transcript_chains}
+    assignments = transcript_path_assignments(path_groups, chains)
+    local["path_number"] = local["transcript_id"].map(lambda transcript: assignments[transcript] + 1 if transcript in assignments else np.nan)
+    return local[local["path_number"].notna()].astype({"path_number": int})
+
+
+def long_read_assessment(tests, root, matrix_dir, gtf, block_path, output, model, usage=None, effect_vectors=None, native_blocks=None, transcript_chains=None):
+    """Long-read direction agreement of full-data tests.
+
+    By default long-read transcripts reach a test's paths through the
+    annotated splice-block cache (block_path). With native_blocks (block_id ->
+    block with exon chains "paths") and transcript_chains (stable transcript
+    id -> exon chain, e.g. from the comprehensive annotation), each long-read
+    transcript is assigned to the tested path its own exon chain fits
+    (chain_feature_rows), which also covers unannotated paths and new blocks.
+    """
     matrix, features, columns = read_tilgner_matrix(matrix_dir, gtf)
-    blocks = load_blocks(block_path)
+    blocks = native_blocks if native_blocks is not None else load_blocks(block_path)
     groups = {(level, int(rep)): frame.column.to_numpy(int) for (level, rep), frame in columns.dropna(subset=["tealeaf_cell_type", "replicate"]).groupby(["tealeaf_cell_type", "replicate"])}
     represented = set(level for level, rep in groups)
     tests = tests.loc[tests.converged & tests.n_subjects.ge(4) & tests.level_a.isin(represented) & tests.level_b.isin(represented)].copy()
@@ -119,7 +143,10 @@ def long_read_assessment(tests, root, matrix_dir, gtf, block_path, output, model
         key = (row.block_id, row.path_signatures, json.dumps(members))
         if key not in count_cache:
             gene = row.gene_id.split(".")[0]
-            local = block_feature_rows(blocks[row.block_id], signatures, feature_groups.get(gene, features.iloc[:0]), members)
+            if native_blocks is not None:
+                local = chain_feature_rows(blocks[row.block_id], row, feature_groups.get(gene, features.iloc[:0]), transcript_chains)
+            else:
+                local = block_feature_rows(blocks[row.block_id], signatures, feature_groups.get(gene, features.iloc[:0]), members)
             path_rows = {path: frame.row.to_numpy(int) for path, frame in local.groupby("path_number")}
             complete = set(path_rows) == set(range(1, len(signatures) + 1))
             counts = {group: np.asarray([matrix[path_rows.get(path, np.empty(0, int))][:, indices].sum() for path in range(1, len(signatures) + 1)], dtype=float) for group, indices in groups.items()}

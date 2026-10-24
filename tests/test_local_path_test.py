@@ -127,3 +127,13 @@ def test_rest_component_splits_molecules_as_pooled_shares():
     molecules = weights * n[:, 1:].sum(axis=0)
     assert np.allclose(molecules / molecules.sum(), shares[1:] / shares[1:].sum())
     assert not np.isclose(n[:, 1].sum(), n[:, 2].sum())
+
+
+def test_transcript_path_assignments():
+    from tealeaf.sc.local_path_reads import transcript_path_assignments
+
+    transcripts = {"skip": [(0, 200), (500, 700)], "include": [(50, 200), (300, 400), (500, 900)], "outside": [(0, 200), (250, 280), (500, 700)], "partial": [(0, 150)]}
+    assignments = transcript_path_assignments([[SKIP], [INCLUDE]], transcripts)
+    # "partial" fits both paths and "outside" has an exon in no path
+    assert assignments == {"skip": 0, "include": 1}
+    assert transcript_path_assignments([[SKIP, INCLUDE]], transcripts) == {"skip": 0, "include": 0, "partial": 0}
