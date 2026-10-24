@@ -66,6 +66,7 @@ def main():
     parser.add_argument("--recipe", type=Path, required=True)
     parser.add_argument("--gtf", type=Path, required=True)
     parser.add_argument("--long-read-matrix", type=Path, required=True)
+    parser.add_argument("--long-read-gtf", type=Path, help="annotation for long-read transcript names and exon chains (e.g. comprehensive GENCODE); default --gtf, which is also drawn")
     parser.add_argument("--ggsashimi", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--long-read-scale", type=float, default=1e6)
@@ -96,8 +97,9 @@ def main():
     exon_blocks, junctions, _ = merge_support(results)
     cells = pd.DataFrame([group for library in recipe["bams"] for group in library["barcode_groups"].values()], columns=["subject", "cell_type", "primer"])
     cell_sizes = cells.groupby(["subject", "cell_type", "primer"]).size().rename("cells").reset_index()
-    matrix, features, columns = read_tilgner_matrix(args.long_read_matrix, args.gtf)
-    chains = {stable_identifier(transcript): sorted(chain) for record in annotation.values() for transcript, chain in record["transcripts"].items()}
+    matrix, features, columns = read_tilgner_matrix(args.long_read_matrix, args.long_read_gtf or args.gtf)
+    long_annotation = annotation if args.long_read_gtf is None else {gene.split(".")[0]: record for gene, record in read_gtf_exons(args.long_read_gtf).items() if gene.split(".")[0] in set(examples.gene_id)}
+    chains = {stable_identifier(transcript): sorted(chain) for record in long_annotation.values() for transcript, chain in record["transcripts"].items()}
     long_sizes = []
     lines = gene_gtf_lines(args.gtf, set(examples.gene_id))
     args.output_dir.mkdir(parents=True, exist_ok=True)

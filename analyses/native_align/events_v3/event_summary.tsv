@@ -1,14 +1,14 @@
 event	tests	discoveries	discoveries_with_novel_path	long_read_evaluable_discoveries	long_read_agreement	top100	top100_agreeing
-cassette exon	293308	3685	1487	323	0.8173374613003096	40	36
-alternative first exon	104182	2684	1993	96	0.875	29	27
-compound internal	131040	1753	1277	78	0.6538461538461539	6	5
-alternative last exon	70824	1015	611	55	0.9090909090909091	18	18
-alternative first and last exons	24373	841	682	39	0.7948717948717948	7	5
-alternative acceptor	87652	265	232	2	0.5	0	0
-multi-exon skipping	10390	98	59	3	1.0	0	0
-alternative transcript end	4424	95	12	2	1.0	0	0
+cassette exon	293308	3685	1487	434	0.8847926267281107	41	40
+alternative first exon	104182	2684	1993	115	0.9130434782608695	19	18
+compound internal	131040	1753	1277	56	0.8214285714285714	2	2
+alternative last exon	70824	1015	611	72	0.8611111111111112	26	22
+alternative first and last exons	24373	841	682	39	0.7948717948717948	3	2
+alternative acceptor	87652	265	232	30	0.7666666666666667	4	3
+multi-exon skipping	10390	98	59	17	0.8823529411764706	4	4
+alternative transcript end	4424	95	12	7	1.0	0	0
 mutually exclusive exons	4307	79	11	8	0.875	0	0
-alternative donor	50312	78	76	1	0.0	0	0
-complex internal	4642	59	55	1	1.0	0	0
-alternative transcript start	1983	49	1	0		0	0
-retained intron	16389	18	18	0		0	0
+alternative donor	50312	78	76	5	0.4	1	1
+complex internal	4642	59	55	3	1.0	0	0
+alternative transcript start	1983	49	1	2	1.0	0	0
+retained intron	16389	18	18	2	1.0	0	0

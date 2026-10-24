@@ -42,7 +42,7 @@ Differential splicing between cell types in single-cell RNA-seq is usually teste
   \item \textbf{Subjects as replicates.} A Beta--logit-normal model with a subject random intercept pairs the two cell types of each subject and allows extra variation between subject--cell-type rows. Count simulations under the null on the real designs show the tests are calibrated.
   \item \textbf{A self-contained implementation.} A targeted two-pass spliced aligner, with a compiled Rust kernel and FASTQ reader, reproduces STAR's alignment scoring and filters on the target genes and replaces whole-genome search for competing alignments by a genome-wide k-mer uniqueness table. Tealeaf runs from FASTQ files to tests without an external aligner or pseudoaligner; a run of 345 million read pairs aligns in about the time STARsolo takes, and the stored alignments of a run take about 1~GB instead of a 46~GB BAM file.
 \end{enumerate}
-On a mouse brain dataset of 48 subjects, Tealeaf replicates more genes across independent halves of the subjects than LeafCutter, MAJIQ, SUPPA2, primer-aware SUPPA2, rMATS and scQuint, on each method's own set of testable genes, and its top-ranked directions agree with independent single-cell long-read data more often than any of these methods (Section~\ref{sec:evaluation}).
+On a mouse brain dataset of 48 subjects, Tealeaf replicates more genes across independent halves of the subjects than LeafCutter, MAJIQ, SUPPA2, primer-aware SUPPA2, rMATS and scQuint, on each method's own set of testable genes, and its top-ranked directions agree with independent single-cell long-read data as often as those of the best of these methods, over many more evaluable tests (Section~\ref{sec:evaluation}).
 
 \section{Overview}
 
@@ -217,6 +217,7 @@ Novel paths are built from the second-pass junction support. For a block $b$, le
 \paragraph{Block set.} On the second pass the block set has 46{,}980 blocks, 34{,}920 annotated and 12{,}060 new, with 22{,}075 novel paths.
 
 \section{Molecule classes}
+\label{sec:classes}
 
 \paragraph{Read compatibility.} For a read with aligned blocks $\{[\alpha_r,\beta_r)\}$ and junctions $\mathcal J_{\rm read}$, and a block $b$ whose window it overlaps, the read's blocks are clipped to $W_b$ and its junctions restricted to those inside $W_b$. The read is compatible with path $s$ (or the precursor path) if every clipped block lies within one exon of $E_s$ and every junction inside the window belongs to $J_s$. The read's class in block $b$ is the mask of compatible paths. A read of class 0, compatible with no path (for example a read with an unannotated junction not represented by a novel path, or a block reaching into an intron), is left out of the block. A molecule's class is the bitwise AND of the classes of its remaining reads that overlap the window; a molecule whose reads are compatible with disjoint sets of paths has class 0 and is discarded. A read enters every block of its locus whose window it overlaps.
 
@@ -279,7 +280,7 @@ The 48 subjects are divided into two halves of 24 with 4 subjects of each group 
 
 \subsection{Long-read direction}
 
-Directions of full-data tests are compared with the P56 mouse brain single-cell long-read data of Joglekar et al.\ (ScISOr-Seq2), using its UMI-filtered annotated-transcript count matrix. Eight cell types have a prespecified correspondence, astrocytes (with Bergmann glia), mature oligodendrocytes, cerebellar granule neurons, cortical excitatory neurons, dentate gyrus and CA excitatory neurons, thalamic excitatory neurons and medium spiny neurons; glial samples are pooled over regions within replicate. The full data are tested on all pairs of these eight cell types in addition to the split universe. A test is evaluable if every tested path has at least one long-read transcript, both cell types have at least 20 long-read UMIs over the block's transcripts, and both effects are finite and non-zero. Novel paths have no long-read transcript, so tests that retain a novel path are not evaluable; 21{,}575 tests are evaluable. With long-read counts $\bm n_c\in\mathbb N_0^S$ of the paths in cell type $c$ (summed over replicates and over the transcripts of each path), the long-read effect is $\bm\Delta^{\rm L}=\bm n_{c_1}/\|\bm n_{c_1}\|_1-\bm n_{c_0}/\|\bm n_{c_0}\|_1$, and the test agrees if $(\bm\Delta^{\rm T})^{\mathsf T}\bm\Delta^{\rm L}>0$ for the Tealeaf effect $\bm\Delta^{\rm T}$. Evaluable tests are ranked by p-value, then by decreasing statistic. With $a_j\in\{0,1\}$ the agreement of the test at rank $j$ and $c_r=r^{-1}\sum_{j\le r}a_j$ the cumulative agreement, the endpoint is the normalized area $A_{100}=\frac{1}{100}\sum_{r=1}^{100}c_r$, the mean cumulative agreement over the 100 top-ranked tests; comparators are ranked and scored in the same way.
+Directions of full-data tests are compared with the P56 mouse brain single-cell long-read data of Joglekar et al.\ (ScISOr-Seq2), using its UMI-filtered annotated-transcript count matrix. Transcript names are matched to the comprehensive GENCODE vM32 annotation, which gives each counted transcript an exon chain. Eight cell types have a prespecified correspondence, astrocytes (with Bergmann glia), mature oligodendrocytes, cerebellar granule neurons, cortical excitatory neurons, dentate gyrus and CA excitatory neurons, thalamic excitatory neurons and medium spiny neurons; glial samples are pooled over regions within replicate. The full data are tested on all pairs of these eight cell types in addition to the split universe. A transcript counts for a tested path if its exon chain is compatible with that path and no other, by the rule used for reads (Section~\ref{sec:classes}): its exons clipped to the block window lie within exons of the path and its junctions inside the window are junctions of the path. Transcripts compatible with several paths, which do not cover the region where the paths differ, and transcripts compatible with none are not counted. A novel path is evaluable when an annotated transcript of the comprehensive annotation has its structure. A test is evaluable if every tested path has at least one counted transcript, both cell types have at least 20 counted long-read UMIs, and both effects are finite and non-zero; 29{,}323 tests are evaluable. With long-read counts $\bm n_c\in\mathbb N_0^S$ of the paths in cell type $c$ (summed over replicates and over the transcripts of each path), the long-read effect is $\bm\Delta^{\rm L}=\bm n_{c_1}/\|\bm n_{c_1}\|_1-\bm n_{c_0}/\|\bm n_{c_0}\|_1$, and the test agrees if $(\bm\Delta^{\rm T})^{\mathsf T}\bm\Delta^{\rm L}>0$ for the Tealeaf effect $\bm\Delta^{\rm T}$. Evaluable tests are ranked by p-value, then by decreasing statistic. With $a_j\in\{0,1\}$ the agreement of the test at rank $j$ and $c_r=r^{-1}\sum_{j\le r}a_j$ the cumulative agreement, the endpoint is the normalized area $A_{100}=\frac{1}{100}\sum_{r=1}^{100}c_r$, the mean cumulative agreement over the 100 top-ranked tests. Comparators are ranked and scored in the same way, with long-read counts assigned by the same annotation and the same use of exon chains: junction usage of LeafCutter, MAJIQ and scQuint features is computed from the junctions of each counted transcript's exon chain on both strands, and each event of SUPPA2 and rMATS is scored from transcripts whose exon chain has its inclusion or its exclusion form.
 
 \subsection{Results of the current model}
 
@@ -301,18 +302,18 @@ Genes & 279 & 3{,}003 & 5{,}068 & 3{,}901 & 357 & 6{,}838 & 4{,}220\\
 Tealeaf replicated & 64 & 196 & 102 & 117 & 38 & 141 & 171\\
 Comparator replicated & 36 & 28 & 0 & 0 & 49 & 4 & 124\\
 \midrule
-Comparator $A_{100}$ & .865 & .819 & .907 & .654 & .637 & .542 & .825\\
+Comparator $A_{100}$ & .918 & .938 & .870 & .625 & .567 & .898 & .914\\
 \bottomrule
 \end{tabular}
-\caption{Replicated genes on each comparator's matched and comparator universes, and long-read direction. SUPPA2-PA is primer-aware SUPPA2 and Hybrid the SUPPA2/Tealeaf hybrid. Tealeaf has $A_{100}=0.964$ (91 of its 100 top-ranked evaluable tests agree with long reads; $A_{40}=0.989$, $A_{200}=0.937$).}
+\caption{Replicated genes on each comparator's matched and comparator universes, and long-read direction. SUPPA2-PA is primer-aware SUPPA2 and Hybrid the SUPPA2/Tealeaf hybrid. Tealeaf has $A_{100}=0.937$ (92 of its 100 top-ranked evaluable tests agree with long reads; $A_{40}=0.958$, $A_{200}=0.936$).}
 \label{tab:results}
 \end{table}
 
-Table~\ref{tab:results} gives both endpoints. On both the matched and the comparator universes Tealeaf replicates more genes than every comparator except the SUPPA2/Tealeaf hybrid (38 versus 46 and 49). In an earlier comparison on the hybrid's universe, the genes it replicated and Tealeaf did not agreed with long-read directions at chance.
+Table~\ref{tab:results} gives both endpoints. On both the matched and the comparator universes Tealeaf replicates more genes than every comparator except the SUPPA2/Tealeaf hybrid (38 versus 46 and 49). In an earlier comparison on the hybrid's universe, the genes it replicated and Tealeaf did not agreed with long-read directions at chance. On long-read direction Tealeaf ($A_{100}=0.937$) is level with MAJIQ (0.938) and above LeafCutter, scQuint, rMATS and the SUPPA2 variants, with 29{,}323 evaluable tests against 1{,}562 to 8{,}497 features for the junction methods. The SUPPA2 and rMATS values are computed on their 500 top-ranked events per contrast.
 
 \subsection{Event classes}
 
-Each test is assigned an event class from the exon chains of its retained paths. If all chains start and end at the same bases the block is internal, and two chains are classified by the exons in which they differ as a cassette exon, multi-exon skipping, an alternative donor or acceptor, mutually exclusive exons or a retained intron (a differing pattern outside these is complex internal); more than two chains are compound internal. Otherwise the paths differ at a transcript end, an alternative first exon, an alternative last exon, or both, oriented by the strand; when the differing terminal exons share their splice site, only the transcript start or end moves. Table~\ref{tab:events} gives the full-data tests, BH discoveries at 0.05 (one family over internal and terminal blocks) and their long-read agreement by class. Discoveries that retain a novel path have no long-read counterpart. Long-read agreement is highest for alternative first and last exons and cassette exons, and lowest for compound internal blocks.
+Each test is assigned an event class from the exon chains of its retained paths. If all chains start and end at the same bases the block is internal, and two chains are classified by the exons in which they differ as a cassette exon, multi-exon skipping, an alternative donor or acceptor, mutually exclusive exons or a retained intron (a differing pattern outside these is complex internal); more than two chains are compound internal. Otherwise the paths differ at a transcript end, an alternative first exon, an alternative last exon, or both, oriented by the strand; when the differing terminal exons share their splice site, only the transcript start or end moves. Table~\ref{tab:events} gives the full-data tests, BH discoveries at 0.05 (one family over internal and terminal blocks) and their long-read agreement by class. Most discoveries that retain a novel path have no long-read counterpart. Long-read agreement of discoveries is 0.77 to 0.91 for the common classes, highest for alternative first exons and cassette exons.
 
 \begin{table}[ht]
 \centering
@@ -322,19 +323,19 @@ Each test is assigned an event class from the exon chains of its retained paths.
 \toprule
 Event class & Tests & Discoveries & Novel path & LR agreement & Top 100\\
 \midrule
-cassette exon & 293{,}308 & 3{,}685 & 1{,}487 & 0.82 (323) & 36/40\\
-alternative first exon & 104{,}182 & 2{,}684 & 1{,}993 & 0.88 (96) & 27/29\\
-compound internal & 131{,}040 & 1{,}753 & 1{,}277 & 0.65 (78) & 5/6\\
-alternative last exon & 70{,}824 & 1{,}015 & 611 & 0.91 (55) & 18/18\\
-alternative first and last exons & 24{,}373 & 841 & 682 & 0.79 (39) & 5/7\\
-alternative acceptor & 87{,}652 & 265 & 232 & 0.50 (2) & 0/0\\
-multi-exon skipping & 10{,}390 & 98 & 59 & 1.00 (3) & 0/0\\
-alternative transcript end & 4{,}424 & 95 & 12 & 1.00 (2) & 0/0\\
+cassette exon & 293{,}308 & 3{,}685 & 1{,}487 & 0.88 (434) & 40/41\\
+alternative first exon & 104{,}182 & 2{,}684 & 1{,}993 & 0.91 (115) & 18/19\\
+compound internal & 131{,}040 & 1{,}753 & 1{,}277 & 0.82 (56) & 2/2\\
+alternative last exon & 70{,}824 & 1{,}015 & 611 & 0.86 (72) & 22/26\\
+alternative first and last exons & 24{,}373 & 841 & 682 & 0.79 (39) & 2/3\\
+alternative acceptor & 87{,}652 & 265 & 232 & 0.77 (30) & 3/4\\
+multi-exon skipping & 10{,}390 & 98 & 59 & 0.88 (17) & 4/4\\
+alternative transcript end & 4{,}424 & 95 & 12 & 1.00 (7) & 0/0\\
 mutually exclusive exons & 4{,}307 & 79 & 11 & 0.88 (8) & 0/0\\
-alternative donor & 50{,}312 & 78 & 76 & 0.00 (1) & 0/0\\
-complex internal & 4{,}642 & 59 & 55 & 1.00 (1) & 0/0\\
-alternative transcript start & 1{,}983 & 49 & 1 & -- & 0/0\\
-retained intron & 16{,}389 & 18 & 18 & -- & 0/0\\
+alternative donor & 50{,}312 & 78 & 76 & 0.40 (5) & 1/1\\
+complex internal & 4{,}642 & 59 & 55 & 1.00 (3) & 0/0\\
+alternative transcript start & 1{,}983 & 49 & 1 & 1.00 (2) & 0/0\\
+retained intron & 16{,}389 & 18 & 18 & 1.00 (2) & 0/0\\
 \bottomrule
 \end{tabular}
 \caption{Full-data tests by event class. Novel path counts discoveries that retain an unannotated path. LR agreement is the fraction of long-read-evaluable discoveries whose direction agrees with the long reads (number evaluable in parentheses); Top 100 gives agreeing over all tests of the class among the 100 top-ranked long-read-evaluable tests.}
@@ -345,9 +346,9 @@ retained intron & 16{,}389 & 18 & 18 & -- & 0/0\\
 
 Figures~\ref{fig:pkn2}--\ref{fig:mctp1} show the full-data tests with the largest effect among those evaluable in the long-read data, selected without regard to long-read agreement: tests with $p<10^{-8}$, at least 50 long-read UMIs per cell type and at most four paths, one per gene, ranked by the norm of the fitted path-usage difference, with at least one internal and one terminal block. Each figure shows sashimi plots of Parse coverage by primer and of the coverage implied by the long-read transcript counts, over the whole gene with all its annotated transcripts and zoomed in on the block with its paths, and Figure~\ref{fig:usage} shows the molecule-share composition of every subject--cell-type row in the Parse data (the per-row EM estimate of the share screen) and the transcript share of each path in the two long-read replicates. All four agree with the long reads in direction.
 \begin{enumerate}[leftmargin=*]
-  \item \textbf{Pkn2} (Figure~\ref{fig:pkn2}), a cassette exon. Path 2 includes the exon. Astrocytes include it in 68\% of molecules and cortical excitatory neurons in 27\% (means over 13 subjects with both cell types); the long reads show inclusion in 100\% and 85\% of transcripts.
+  \item \textbf{Pkn2} (Figure~\ref{fig:pkn2}), a cassette exon. Path 2 includes the exon. Astrocytes include it in 68\% of molecules and cortical excitatory neurons in 27\% (means over 13 subjects with both cell types); the long reads show inclusion in 100\% and 87\% of the transcripts that span the block (229 and 276 UMIs). The direction agrees, but the levels differ in cortical neurons, which skip the exon in 73\% of Parse molecules and 13\% of long-read transcripts.
   \item \textbf{Nfasc} (Figure~\ref{fig:nfasc}), a short cassette exon included by path 2. Cortical excitatory neurons include it in 89\% of molecules and oligodendrocytes in 16\% (47 subjects). The long reads agree in direction (19\% and 1\% of transcripts) but put most cortical neuron transcripts on the skipping path.
-  \item \textbf{Kif21a} (Figure~\ref{fig:kif21a}), a short cassette exon included by path 2, used in 71\% of cortical neuron and 41\% of oligodendrocyte molecules (29 subjects); the long-read shares are 73\% and 47\%.
+  \item \textbf{Kif21a} (Figure~\ref{fig:kif21a}), a short cassette exon included by path 2, used in 71\% of cortical neuron and 41\% of oligodendrocyte molecules (29 subjects); the long-read shares are 72\% and 46\%.
   \item \textbf{Mctp1} (Figure~\ref{fig:mctp1}), an alternative first exon in a terminal block, with the two first exons tens of kilobases apart, so the sashimi view is dominated by intronic coverage and the exons are narrow; the junction arcs carry the comparison. Dentate gyrus granule neurons use the upstream first exon (path 1) in 74\% of junction-spanning molecules and medium spiny neurons in 15\% (8 subjects); the long-read shares are 33\% and 18\%.
 \end{enumerate}
 

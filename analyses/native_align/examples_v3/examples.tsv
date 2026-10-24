@@ -1,5 +1,5 @@
 test_id	label	gene_id	gene_name	block_id	structure	level_a	level_b	n_paths	p_value	effect_norm	long_read_agrees	minimum_long_read_depth	chromosome	strand	novel_paths	event
-ENSMUSG00000004591.17:B3|cell_type|ASC|EX_cortical	Pkn2 B3	ENSMUSG00000004591	Pkn2	ENSMUSG00000004591.17:B3	internal	ASC	EX_cortical	2	2.0033295193986616e-10	1.3902069510479669	True	135.45	chr3	-	0	cassette exon
+ENSMUSG00000004591.17:B3|cell_type|ASC|EX_cortical	Pkn2 B3	ENSMUSG00000004591	Pkn2	ENSMUSG00000004591.17:B3	internal	ASC	EX_cortical	2	2.0033295193986616e-10	1.3902069510479669	True	228.65	chr3	-	0	cassette exon
 ENSMUSG00000026442.15:B2|cell_type|EX_cortical|ODC	Nfasc B2	ENSMUSG00000026442	Nfasc	ENSMUSG00000026442.15:B2	internal	EX_cortical	ODC	2	3.6409389822403584e-34	1.3213375263658067	True	120.92	chr1	-	0	cassette exon
-ENSMUSG00000022629.18:B3|cell_type|EX_cortical|ODC	Kif21a B3	ENSMUSG00000022629	Kif21a	ENSMUSG00000022629.18:B3	internal	EX_cortical	ODC	2	1.7813928956980728e-10	1.2130971981250172	True	424.84	chr15	-	0	cassette exon
+ENSMUSG00000022629.18:B3|cell_type|EX_cortical|ODC	Kif21a B3	ENSMUSG00000022629	Kif21a	ENSMUSG00000022629.18:B3	internal	EX_cortical	ODC	2	1.7813928956980728e-10	1.2130971981250172	True	429.34	chr15	-	0	cassette exon
 ENSMUSG00000021596.18:B1|cell_type|EX_hippocampus_granule|INH_medium_spiny	Mctp1 B1	ENSMUSG00000021596	Mctp1	ENSMUSG00000021596.18:B1	terminal	EX_hippocampus_granule	INH_medium_spiny	2	5.1065774792765465e-09	1.208060127014937	True	126.67	chr13	+	0	alternative first exon

@@ -4699,3 +4699,22 @@ Long reads: 21,575 evaluable tests; agreement 38/40, 91/100, 177/200; AUC40 .989
 `tealeaf.sc.differential.classify_path_chains` classifies a test from the exon chains of its retained paths: internal (same outer bases) pairs as cassette exon, multi-exon skipping, alternative donor/acceptor, mutually exclusive exons, retained intron or complex internal, more paths as compound internal; otherwise alternative first exon, last exon, both, or alternative transcript start/end when the terminal exons share their splice site (`extra_scripts/categorize_block_tests.py`, `analyses/native_align/events_v3`). Among 10,721 full-data BH discoveries (v3 run): cassette exon 3,685 (long-read agreement .82 on 323 evaluable), alternative first exon 2,684 (.88 on 96), compound internal 1,753 (.65 on 78), alternative last exon 1,015 (.91 on 55), alternative first and last exons 841 (.79 on 39), alternative acceptor 265, multi-exon skipping 98, alternative transcript end 95, mutually exclusive exons 79, alternative donor 78, complex internal 59, alternative transcript start 49, retained intron 18. 6,514 discoveries retain a novel path and have no long-read counterpart. The 100 top-ranked long-read-evaluable tests are 40 cassette exons (36 agree), 29 alternative first exons (27), 18 alternative last exons (18), 7 alternative first and last exons (5) and 6 compound internal (5).
 
 Example figures show sashimi plots over the whole gene with all annotated isoforms (junction labels omitted) and over the block (with junction coverage), for Parse by primer and long reads (coverage implied by transcript counts); ggsashimi gained `--compact` and `--no-junction-labels`.
+
+### 2026-10-23 Long-read evaluation with the comprehensive annotation and exon-chain assignment
+
+Long-read transcript names were matched only to GENCODE vM32 basic, so 41% of long-read UMIs were dropped (59% mapped; for a quarter of evaluable genes under 24% of their UMIs), and transcripts reached Tealeaf paths only through the annotated splice-block cache (no novel paths or new blocks). Pkn2 B3 illustrates the effect: 95% of its long-read UMIs are on Pkn2-204, a retained-intron fragment 10–60 kb from the block (correctly irrelevant), and the block's comparison rests on 229/276 UMIs; directions agree but levels differ (cortical neurons skip the exon in 73% of Parse molecules and 13% of long-read transcripts).
+
+Now names are matched to the comprehensive vM32 annotation (67% of long-read UMIs map; the rest are names absent from vM32) and each transcript is assigned by its exon chain. Tealeaf: a transcript counts for a tested path if it fits that path and no other under the read compatibility rule (`tealeaf.sc.local_path_reads.transcript_path_assignments`, `assess_block_structure_filter.py --chain-mapping --long-read-gtf`). Comparators (`tealeaf/sc/long_read_events.py`): junction usage from each transcript's sorted exon chain, and events classified by inclusion or exclusion form. Two errors in the earlier comparator values were found: the junction builder paired consecutive GTF exon lines, so minus-strand junctions (listed 5' to 3') were never counted for LeafCutter, MAJIQ and scQuint; and the rMATS value scored agreement as long-read dPSI < 0 without using the rMATS effect sign.
+
+| AUC100 (agreement at 100, evaluable) | Before | Comprehensive, exon-chain |
+|---|---|---|
+| Tealeaf | .964 (91, 21,575) | .937 (92, 29,323) |
+| LeafCutter | .865 (76, 372) | .918 (88, 1,562) |
+| MAJIQ Heterogen | .819 (67, 385) | .938 (85, 1,565) |
+| scQuint | .825 (77, 1,830) | .914 (90, 8,497) |
+| SUPPA2 | .907 (78, 3,871) | .870 (77, 4,409) |
+| SUPPA2 primer-aware | .654 (71, 3,873) | .625 (69, 4,444) |
+| SUPPA2/Tealeaf hybrid | .637 (55, 1,194) | .567 (49, 1,399) |
+| rMATS paired | .542 (51, 3,370) | .898 (83, 2,804) |
+
+Tealeaf is level with MAJIQ and above the other methods on long-read top-rank agreement, with far more evaluable tests; its agreement at 200 is 188/200. SUPPA2 and rMATS use their 500 top-ranked events per contrast. Event-class long-read agreement of discoveries is now .77–.91 for the common classes (`analyses/native_align/events_v3`). Comparator outputs: `analyses/tilgner_junction_replication/*comprehensive*`, `analyses/comparator_suppa_rmats/**/*comprehensive*`.
