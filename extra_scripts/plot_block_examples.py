@@ -19,8 +19,8 @@ TYPES = ["#2C7FB8", "#D95F0E"]
 
 def figure(example, parse, long_read, exons):
     levels = [example.level_a, example.level_b]
-    paths = [f"Path {k}" for k in sorted(exons.path.unique())]
-    exons = exons.assign(path_label=pd.Categorical([f"Path {k}" for k in exons.path], categories=paths[::-1]))
+    paths = list(exons.sort_values("path").drop_duplicates("path").path_label)
+    exons = exons.assign(path_label=pd.Categorical(exons.path_label, categories=paths[::-1]))
     exons["y"] = exons.path_label.cat.codes
     structure = (p9.ggplot(exons)
                  + p9.geom_rect(p9.aes(xmin="x0", xmax="x1", ymin="y - 0.3", ymax="y + 0.3", fill="factor(path)"))
@@ -30,7 +30,7 @@ def figure(example, parse, long_read, exons):
                  + p9.theme_bw() + p9.theme(axis_text_x=p9.element_blank(), axis_ticks_major_x=p9.element_blank(), panel_grid=p9.element_blank(), plot_title=p9.element_text(size=11)))
     if example.strand == "-":
         structure += p9.scale_x_reverse()
-    parse = parse.assign(cell_type=pd.Categorical(parse.cell_type, categories=levels), path_label=pd.Categorical([f"Path {k}" for k in parse.path], categories=paths))
+    parse = parse.assign(cell_type=pd.Categorical(parse.cell_type, categories=levels), path_label=pd.Categorical(parse.path_label, categories=paths))
     means = parse.groupby(["cell_type", "path_label"], observed=True).proportion.mean().reset_index()
     dodge = p9.position_dodge(width=0.6)
     parse_plot = (p9.ggplot(parse, p9.aes("path_label", "proportion", color="cell_type"))
@@ -40,7 +40,7 @@ def figure(example, parse, long_read, exons):
                   + p9.scale_y_continuous(limits=(0, 1))
                   + p9.labs(x="", y="Path usage", title="Parse, per subject (bar: mean)")
                   + p9.theme_bw() + p9.theme(legend_position="bottom", legend_direction="vertical", plot_title=p9.element_text(size=10)))
-    long_read = long_read.assign(cell_type=pd.Categorical(long_read.cell_type, categories=levels), path_label=pd.Categorical([f"Path {k}" for k in long_read.path], categories=paths), replicate=long_read.replicate.astype(str))
+    long_read = long_read.assign(cell_type=pd.Categorical(long_read.cell_type, categories=levels), path_label=pd.Categorical(long_read.path_label, categories=paths), replicate=long_read.replicate.astype(str))
     long_plot = (p9.ggplot(long_read, p9.aes("path_label", "proportion", color="cell_type", shape="replicate"))
                  + p9.geom_point(position=dodge, size=3)
                  + p9.scale_color_manual(values=TYPES, guide=None)

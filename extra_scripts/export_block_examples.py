@@ -9,7 +9,9 @@ Selection does not use long-read agreement. For each example the test's
 projected classes are rebuilt (prepare_block_test, the fitting code path) and
 every subject/cell-type row gets its molecule-share composition
 (row_path_compositions); long-read proportions are per source replicate.
-Writes examples.tsv, parse_usage.tsv, long_read_usage.tsv and exons.tsv.
+Writes examples.tsv, parse_usage.tsv, long_read_usage.tsv and exons.tsv;
+tested paths are labelled by their block path numbers (the share screen may
+remove paths, and same-junction paths are merged in terminal blocks).
 """
 
 import argparse
@@ -96,6 +98,8 @@ def main():
         groups = same_junction_groups(block["paths"][:n_paths]) if row.structure == "terminal" else None
         prepared = prepare_block_test(key, entries, opportunities, n_paths, levels, args.min_share, False, groups)
         kept = prepared["kept"]
+        members = [prepared["groups"][position] if prepared["groups"] is not None else [position] for position in kept]
+        labels = [f"Path {group[0] + 1}" if len(group) == 1 else "Paths " + "+".join(str(index + 1) for index in group) for group in members]
         masks = local_class_masks(prepared["opportunities"], len(kept), True)
         compositions = row_path_compositions(prepared["lookup"], key, prepared["opportunities"], prepared["subjects"], prepared["labels"], levels, masks, len(kept))
         gene = row.gene_id.split(".")[0]
@@ -103,18 +107,18 @@ def main():
         examples.append({"test_id": row.test_id, "label": label, "gene_id": gene, "gene_name": names.get(gene, gene), "block_id": row.block_id, "structure": row.structure, "level_a": row.level_a, "level_b": row.level_b, "n_paths": len(kept), "p_value": row.p_value, "effect_norm": row.mean_difference_norm, "long_read_agrees": bool(row.pooled_replicated), "minimum_long_read_depth": row.minimum_pooled_depth, "chromosome": block["chromosome"], "strand": block["strand"], "novel_paths": int(sum(index >= block.get("n_annotated", n_paths) for position in kept for index in (prepared["groups"][position] if prepared["groups"] is not None else [position])))})
         for (subject, level), (composition, molecules) in compositions.items():
             for path, value in enumerate(composition):
-                parse_rows.append({"test_id": row.test_id, "subject": subject, "cell_type": levels[level], "path": path + 1, "proportion": value, "molecules": molecules})
+                parse_rows.append({"test_id": row.test_id, "subject": subject, "cell_type": levels[level], "path": path + 1, "path_label": labels[path], "proportion": value, "molecules": molecules})
         for level, prefix in ((0, "counts_a"), (1, "counts_b")):
             for replicate in (1, 2):
                 vector = np.asarray(json.loads(getattr(row, f"{prefix}_rep{replicate}")), dtype=float)
                 for path, value in enumerate(vector / vector.sum() if vector.sum() > 0 else vector):
-                    long_rows.append({"test_id": row.test_id, "replicate": replicate, "cell_type": levels[level], "path": path + 1, "proportion": value, "umis": vector.sum()})
+                    long_rows.append({"test_id": row.test_id, "replicate": replicate, "cell_type": levels[level], "path": path + 1, "path_label": labels[path], "proportion": value, "umis": vector.sum()})
         chains = [block["paths"][(prepared["groups"][position] if prepared["groups"] is not None else [position])[0]] for position in kept]
         examples[-1]["event"] = classify_path_chains(chains, block["strand"])[0]
         coordinates = compressed([tuple(exon) for chain in chains for exon in chain])
         for path, chain in enumerate(chains):
             for start, end in chain:
-                exon_rows.append({"test_id": row.test_id, "path": path + 1, "start": start, "end": end, "x0": coordinates[start], "x1": coordinates[end]})
+                exon_rows.append({"test_id": row.test_id, "path": path + 1, "path_label": labels[path], "start": start, "end": end, "x0": coordinates[start], "x1": coordinates[end]})
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for name, rows in (("examples", examples), ("parse_usage", parse_rows), ("long_read_usage", long_rows), ("exons", exon_rows)):
         pd.DataFrame(rows).to_csv(args.output_dir / f"{name}.tsv", sep="\t", index=False)

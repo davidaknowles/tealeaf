@@ -18,13 +18,13 @@ from .sashimi import variable_path_features
 
 
 def block_path_exons(left_anchor, signature, right_anchor):
-    """Full local exon chain of one path: anchors plus its internal exons."""
+    """Full local exon chain of one path, anchors plus its internal exons, in genomic order."""
     exons = [tuple(exon) for exon in signature]
     if left_anchor is not None:
         exons.append(tuple(left_anchor))
     if right_anchor is not None:
         exons.append(tuple(right_anchor))
-    return exons
+    return sorted(exons)
 
 
 def path_junction_map(paths, strand):

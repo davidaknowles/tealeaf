@@ -355,8 +355,8 @@ Figures~\ref{fig:pkn2}--\ref{fig:mctp1} show the full-data tests with the larges
 \begin{enumerate}[leftmargin=*]
   \item \textbf{Pkn2} (Figure~\ref{fig:pkn2}), a cassette exon. Path 2 includes the exon. Astrocytes include it in 68\% of molecules and cortical excitatory neurons in 27\% (means over 13 subjects with both cell types); the long reads show inclusion in 100\% and 87\% of the transcripts that span the block (229 and 276 UMIs). The direction agrees, but the levels differ in cortical neurons, which skip the exon in 73\% of Parse molecules and 13\% of long-read transcripts.
   \item \textbf{Nfasc} (Figure~\ref{fig:nfasc}), a short cassette exon included by path 2. Cortical excitatory neurons include it in 89\% of molecules and oligodendrocytes in 16\% (47 subjects). The long reads agree in direction (19\% and 1\% of transcripts) but put most cortical neuron transcripts on the skipping path.
-  \item \textbf{Kif21a} (Figure~\ref{fig:kif21a}), a short cassette exon included by path 2, used in 71\% of cortical neuron and 41\% of oligodendrocyte molecules (29 subjects); the long-read shares are 72\% and 46\%.
-  \item \textbf{Mctp1} (Figure~\ref{fig:mctp1}), an alternative first exon in a terminal block, with the two first exons tens of kilobases apart, so the sashimi view is dominated by intronic coverage and the exons are narrow; the junction arcs carry the comparison. Dentate gyrus granule neurons use the upstream first exon (path 1) in 74\% of junction-spanning molecules and medium spiny neurons in 15\% (8 subjects); the long-read shares are 33\% and 18\%.
+  \item \textbf{Kif21a} (Figure~\ref{fig:kif21a}), a 21-base cassette exon included by path 3. The block has a second 21-base exon (path 2), which carries 0.4\% of molecules and is removed by the share screen, so the test compares paths 1 and 3. Path 3 is used in 71\% of cortical neuron and 41\% of oligodendrocyte molecules (29 subjects); the long-read shares are 72\% and 46\%.
+  \item \textbf{Mctp1} (Figure~\ref{fig:mctp1}), an alternative first exon in a terminal block, with the two first exons tens of kilobases apart, so the sashimi view is dominated by intronic coverage and the exons are narrow; the junction arcs carry the comparison. Paths 2 and 3 share their junctions and differ only in where their first exon starts, so the junction-only test merges them. Dentate gyrus granule neurons use the upstream first exon (path 1) in 74\% of junction-spanning molecules and medium spiny neurons in 15\% (8 subjects); the long-read shares are 33\% and 18\%.
 \end{enumerate}
 
 \begin{figure}[p]
@@ -405,7 +405,7 @@ Figures~\ref{fig:pkn2}--\ref{fig:mctp1} show the full-data tests with the larges
 \begin{minipage}[t]{0.49\textwidth}\centering\includegraphics[width=\textwidth]{figures/example_Nfasc_B2.pdf}\\(b)\end{minipage}\\[6pt]
 \begin{minipage}[t]{0.49\textwidth}\centering\includegraphics[width=\textwidth]{figures/example_Kif21a_B3.pdf}\\(c)\end{minipage}\hfill
 \begin{minipage}[t]{0.49\textwidth}\centering\includegraphics[width=\textwidth]{figures/example_Mctp1_B1.pdf}\\(d)\end{minipage}\\[6pt]
-\caption{Path usage in the four examples: (a) Pkn2, (b) Nfasc, (c) Kif21a, (d) Mctp1. In each panel, top, the tested paths (introns longer than 300 bases shortened); bottom left, the path usage of each subject in the Parse data with the mean over subjects (bars); bottom right, the transcript share of each path in the two long-read replicates.}
+\caption{Path usage in the four examples: (a) Pkn2, (b) Nfasc, (c) Kif21a, (d) Mctp1. In each panel, top, the tested paths, numbered as in the sashimi plots (introns longer than 300 bases shortened; merged paths are drawn by their first member); bottom left, the path usage of each subject in the Parse data with the mean over subjects (bars); bottom right, the transcript share of each path in the two long-read replicates.}
 \label{fig:usage}
 \end{figure}
 

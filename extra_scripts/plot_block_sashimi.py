@@ -81,7 +81,7 @@ def main():
     events, info = [], {}
     for example in examples.itertuples():
         block = blocks[example.block_id]
-        mature = block["paths"][:len(block["signatures"])]
+        mature = [sorted(tuple(exon) for exon in path) for path in block["paths"][:len(block["signatures"])]]
         event_id = f"{example.gene_name}_{example.block_id.split(':')[-1]}"
         events.append(SashimiEvent(event_id, block["chromosome"], min(a for path in mature for a, _ in path), max(b for path in mature for _, b in path), block["strand"]))
         info[event_id] = (example, mature)
