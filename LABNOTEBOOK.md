@@ -4718,3 +4718,7 @@ Now names are matched to the comprehensive vM32 annotation (67% of long-read UMI
 | rMATS paired | .542 (51, 3,370) | .898 (83, 2,804) |
 
 Tealeaf is level with MAJIQ and above the other methods on long-read top-rank agreement, with far more evaluable tests; its agreement at 200 is 188/200. SUPPA2 and rMATS use their 500 top-ranked events per contrast. Event-class long-read agreement of discoveries is now .77–.91 for the common classes (`analyses/native_align/events_v3`). Comparator outputs: `analyses/tilgner_junction_replication/*comprehensive*`, `analyses/comparator_suppa_rmats/**/*comprehensive*`.
+
+### 2026-10-24 SUPPA2/Tealeaf hybrid deprecated; long-read agreement curves
+
+The SUPPA2/Tealeaf hybrid comparator (SUPPA2 events quantified with an earlier Tealeaf transcript model) is removed from the benchmark: with the comprehensive exon-chain long-read evaluation its directions agree with long reads at chance (AUC100 .567, 49/100, 93/200), so its replicated genes are not supported by an independent measurement. `build_split_universe.py` omits it unless `--include-hybrid`. Without it Tealeaf replicates more genes than every comparator on matched and comparator universes. Cumulative long-read agreement at ranks 40/100/200 (`extra_scripts/plot_lr_agreement_curves.py`, `docs/figures/lr_agreement.pdf`): Tealeaf .925/.92/.94, MAJIQ .975/.85/.75, LeafCutter .90/.88/.795, scQuint .95/.90/.84, rMATS .925/.83/.80, SUPPA2 .875/.77/.715, primer-aware SUPPA2 .60/.69/.665.

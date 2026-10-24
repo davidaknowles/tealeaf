@@ -2,7 +2,7 @@
 """Comparator-defined split universes for the subject-split benchmark.
 
 For each comparator (LeafCutter, MAJIQ Heterogen, scQuint, SUPPA2, primer-aware
-SUPPA2, the SUPPA2/Tealeaf hybrid and paired rMATS), the universe is the set of
+SUPPA2 and paired rMATS), the universe is the set of
 (gene, cell-type pair) keys with at least one finite feature p-value in both
 subject halves, taken from the comparator's own fold outputs. No Tealeaf result
 enters. The output holds every comparator feature test on its universe, one
@@ -24,6 +24,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run-root", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--include-hybrid", action="store_true", help="keep the deprecated SUPPA2/Tealeaf hybrid comparator (its directions agree with long reads at chance, AUC100 .567)")
     parser.add_argument("--suppa2-split", default="split_data_exact", help="SUPPA2 fold outputs <name>_fold{k}_tests.tsv.gz in analyses/comparator_suppa_rmats/{suppa2,suppa2_primer_aware}; split_data_exact holds exact paired signed-rank tests on the full catalogue")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
@@ -31,6 +32,8 @@ def main():
     folds = [load_comparators(repro, repo, fold, suppa2_split=args.suppa2_split) for fold in (0, 1)]
     rows, summary = [], []
     for comparison in sorted(set(folds[0]) & set(folds[1])):
+        if comparison == "SUPPA2/Tealeaf hybrid" and not args.include_hybrid:
+            continue
         tables = [fold[comparison].loc[lambda t: t.gene_id.notna() & t.gene_id.ne("nan")] for fold in folds]
         keys = set(zip(tables[0].gene_id, tables[0].pair_id)) & set(zip(tables[1].gene_id, tables[1].pair_id))
         for fold, table in enumerate(tables):
