@@ -349,6 +349,15 @@ retained intron & 16{,}389 & 18 & 18 & 1.00 (2) & 0/0\\
 \label{tab:events}
 \end{table}
 
+Figure~\ref{fig:discoveries} compares full-data discoveries with the comparators on the 28 pairs of the eight long-read cell types, the contrasts every method tests on the full data. Each method's finite p-values on these contrasts form one BH family, and a discovery has adjusted p at most 0.05. Methods test different units, a block for Tealeaf, an intron cluster for LeafCutter, an intron group for scQuint, a local splice variant for MAJIQ and an event for SUPPA2 and rMATS, so discoveries are also counted as gene--cell-type pairs with at least one discovery. Tealeaf has 3{,}735 discoveries in 3{,}138 gene--cell-type pairs, scQuint 2{,}234 pairs, MAJIQ 769, LeafCutter 354, SUPPA2 350, primer-aware SUPPA2 233 and rMATS 164. SUPPA2 and rMATS events are mapped to the Tealeaf classes (skipped exon to cassette exon, alternative 5$'$ and 3$'$ splice sites to alternative donor and acceptor, and mutually exclusive exons and retained introns to themselves); their event sets contain no alternative first or last exons, which make up 1{,}452 of the Tealeaf discoveries. Tealeaf discovers 1{,}132 cassette exons against 321 for SUPPA2 and 166 for rMATS.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{figures/discoveries_by_event.pdf}
+\caption{Full-data discoveries (BH 0.05 within method) on the 28 cell-type pairs tested by every method, counted as tests (left) and as gene--cell-type pairs with at least one discovery (right), by event class. A gene--cell-type pair takes the class of its smallest-p discovery. Other collects the Tealeaf classes without a comparator counterpart, compound and complex internal, multi-exon skipping, alternative first and last exons together, and alternative transcript start or end. LeafCutter, scQuint and MAJIQ test junction clusters, which have no event type.}
+\label{fig:discoveries}
+\end{figure}
+
 \subsection{Examples}
 
 Figures~\ref{fig:pkn2}--\ref{fig:mctp1} show the full-data tests with the largest effect among those evaluable in the long-read data, selected without regard to long-read agreement: tests with $p<10^{-8}$, at least 50 long-read UMIs per cell type and at most four paths, one per gene, ranked by the norm of the fitted path-usage difference, with at least one internal and one terminal block. Each figure shows sashimi plots of Parse coverage by primer and of the coverage implied by the long-read transcript counts, over the whole gene with all its annotated transcripts and zoomed in on the block with its paths, and Figure~\ref{fig:usage} shows the molecule-share composition of every subject--cell-type row in the Parse data (the per-row EM estimate of the share screen) and the transcript share of each path in the two long-read replicates. All four agree with the long reads in direction.

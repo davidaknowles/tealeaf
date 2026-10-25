@@ -4722,3 +4722,19 @@ Tealeaf is level with MAJIQ and above the other methods on long-read top-rank ag
 ### 2026-10-24 SUPPA2/Tealeaf hybrid deprecated; long-read agreement curves
 
 The SUPPA2/Tealeaf hybrid comparator (SUPPA2 events quantified with an earlier Tealeaf transcript model) is removed from the benchmark: with the comprehensive exon-chain long-read evaluation its directions agree with long reads at chance (AUC100 .567, 49/100, 93/200), so its replicated genes are not supported by an independent measurement. `build_split_universe.py` omits it unless `--include-hybrid`. Without it Tealeaf replicates more genes than every comparator on matched and comparator universes. Cumulative long-read agreement at ranks 40/100/200 (`extra_scripts/plot_lr_agreement_curves.py`, `docs/figures/lr_agreement.pdf`): Tealeaf .925/.92/.94, MAJIQ .975/.85/.75, LeafCutter .90/.88/.795, scQuint .95/.90/.84, rMATS .925/.83/.80, SUPPA2 .875/.77/.715, primer-aware SUPPA2 .60/.69/.665.
+
+### 2026-10-24 Full-data discoveries by method and event class
+
+`extra_scripts/plot_discoveries_by_event.py` (`docs/figures/discoveries_by_event.pdf`, counts in `.tsv` beside it). Common contrasts are the 28 pairs of the eight long-read cell types, the only full-data contrasts with relaxed-MAJIQ, LeafCutter and scQuint all-tested outputs (`analyses/tilgner_junction_replication/all_tested_comprehensive`); SUPPA2 (135 contrasts), primer-aware SUPPA2, paired rMATS and Tealeaf (190) are restricted to them. One BH family per method over finite p-values, discoveries at 0.05; tests, then gene--cell-type pairs (class of the smallest-p discovery). SUPPA2 and rMATS types map SE→cassette, A5SS→donor, A3SS→acceptor, MXE, RI; their full-data catalogues hold no AF/AL events. Block path ordering fix (de68bc6): `block_path_exons` returns chains in genomic order, which only affected sashimi path lines.
+
+| Method | Tests | Discoveries | Gene–pair discoveries |
+|---|---|---|---|
+| Tealeaf | 254,827 | 3,735 | 3,138 |
+| scQuint | 157,510 | 2,634 | 2,234 |
+| MAJIQ | 3,507 | 1,225 | 769 |
+| LeafCutter | 5,507 | 403 | 354 |
+| SUPPA2 | 176,613 | 447 | 350 |
+| SUPPA2 primer-aware | 128,571 | 305 | 233 |
+| rMATS | 445,659 | 197 | 164 |
+
+Tealeaf discoveries: cassette 1,132, alternative first exon 1,059, alternative last exon 393, other 988 (mostly compound internal and alternative first and last), acceptor 96, donor 35, MXE 18, RI 14. SUPPA2 cassette 321, rMATS 166.
