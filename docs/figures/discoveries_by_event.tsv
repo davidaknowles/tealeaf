@@ -24,10 +24,10 @@ rMATS	alternative donor	1	Tests	445659	28
 rMATS	cassette exon	166	Tests	445659	28
 rMATS	mutually exclusive exons	23	Tests	445659	28
 scQuint	no event type	2634	Tests	157510	28
-LeafCutter	no event type	354	Gene–cell-type pairs	5507	28
+LeafCutter	no event type	351	Gene–cell-type pairs	5507	28
 MAJIQ	no event type	769	Gene–cell-type pairs	3507	28
-SUPPA2	alternative acceptor	52	Gene–cell-type pairs	176613	28
-SUPPA2	alternative donor	32	Gene–cell-type pairs	176613	28
+SUPPA2	alternative acceptor	51	Gene–cell-type pairs	176613	28
+SUPPA2	alternative donor	33	Gene–cell-type pairs	176613	28
 SUPPA2	cassette exon	237	Gene–cell-type pairs	176613	28
 SUPPA2	mutually exclusive exons	20	Gene–cell-type pairs	176613	28
 SUPPA2	retained intron	9	Gene–cell-type pairs	176613	28

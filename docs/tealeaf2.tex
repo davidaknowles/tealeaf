@@ -349,13 +349,20 @@ retained intron & 16{,}389 & 18 & 18 & 1.00 (2) & 0/0\\
 \label{tab:events}
 \end{table}
 
-Figure~\ref{fig:discoveries} compares full-data discoveries with the comparators on the 28 pairs of the eight long-read cell types, the contrasts every method tests on the full data. Each method's finite p-values on these contrasts form one BH family, and a discovery has adjusted p at most 0.05. Methods test different units, a block for Tealeaf, an intron cluster for LeafCutter, an intron group for scQuint, a local splice variant for MAJIQ and an event for SUPPA2 and rMATS, so discoveries are also counted as gene--cell-type pairs with at least one discovery. Tealeaf has 3{,}735 discoveries in 3{,}138 gene--cell-type pairs, scQuint 2{,}234 pairs, MAJIQ 769, LeafCutter 354, SUPPA2 350, primer-aware SUPPA2 233 and rMATS 164. SUPPA2 and rMATS events are mapped to the Tealeaf classes (skipped exon to cassette exon, alternative 5$'$ and 3$'$ splice sites to alternative donor and acceptor, and mutually exclusive exons and retained introns to themselves); their event sets contain no alternative first or last exons, which make up 1{,}452 of the Tealeaf discoveries. Tealeaf discovers 1{,}132 cassette exons against 321 for SUPPA2 and 166 for rMATS.
+Figure~\ref{fig:discoveries} compares full-data discoveries with the comparators on the 28 pairs of the eight long-read cell types, the contrasts every method tests on the full data. Each method's finite p-values on these contrasts form one BH family, and a discovery has adjusted p at most 0.05. Methods test different units, a block for Tealeaf, an intron cluster for LeafCutter, an intron group for scQuint, a local splice variant for MAJIQ and an event for SUPPA2 and rMATS, so discoveries are also counted as gene--cell-type pairs with at least one discovery. Tealeaf has 3{,}735 discoveries in 3{,}138 gene--cell-type pairs, scQuint 2{,}234 pairs, MAJIQ 769, LeafCutter 354, SUPPA2 350, primer-aware SUPPA2 233 and rMATS 164. SUPPA2 and rMATS events are mapped to the Tealeaf classes (skipped exon to cassette exon, alternative 5$'$ and 3$'$ splice sites to alternative donor and acceptor, and mutually exclusive exons and retained introns to themselves); their event sets contain no alternative first or last exons, which make up 1{,}452 of the Tealeaf discoveries. Tealeaf discovers 1{,}132 cassette exons against 321 for SUPPA2 and 166 for rMATS. Over all 190 cell-type pairs (Figure~\ref{fig:discoveries-all}), with LeafCutter tested on 171 and SUPPA2 on 135 of them and MAJIQ, whose full-data tests cover only the long-read pairs, left out, Tealeaf has 10{,}719 discoveries in 9{,}072 gene--cell-type pairs, scQuint 8{,}835 pairs, LeafCutter 890, rMATS 570, primer-aware SUPPA2 533 and SUPPA2 280. Tealeaf discovers 3{,}685 cassette exons against 495 for rMATS and 493 for primer-aware SUPPA2.
 
 \begin{figure}[ht]
 \centering
 \includegraphics[width=\textwidth]{figures/discoveries_by_event.pdf}
 \caption{Full-data discoveries (BH 0.05 within method) on the 28 cell-type pairs tested by every method, counted as tests (left) and as gene--cell-type pairs with at least one discovery (right), by event class. A gene--cell-type pair takes the class of its smallest-p discovery. Other collects the Tealeaf classes without a comparator counterpart, compound and complex internal, multi-exon skipping, alternative first and last exons together, and alternative transcript start or end. LeafCutter, scQuint and MAJIQ test junction clusters, which have no event type.}
 \label{fig:discoveries}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{figures/discoveries_by_event_all.pdf}
+\caption{Full-data discoveries as in Figure~\ref{fig:discoveries}, on all 190 cell-type pairs each method tests; methods tested on fewer pairs give their number of pairs. MAJIQ is not shown because its full-data tests cover only the 28 long-read pairs.}
+\label{fig:discoveries-all}
 \end{figure}
 
 \subsection{Examples}
