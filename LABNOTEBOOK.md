@@ -4768,3 +4768,26 @@ Detection (all 8 libraries, clean introns in genes with at least 3 evaluable int
 On one library a 300 bp mask was slightly better on GENCODE and worse on long reads than 1 kb. Unspliced splice-site reads over spliced reads (boundary ratio) score short (<300 bp) clean introns, which have little body coverage: AUROC .693 GENCODE, .783 LR, .749 LR novel; long introns .641, .772, .728. Within a gene, short introns are the retained ones (length alone AUROC .69–.72), and coverage adds beyond length.
 
 Differential prototype (`.cache/adhoc/ir/diff_eval.py`): x = log((r+.5)/(n+.5)) − log((R+.5)/(N+.5)) per intron, subject and cell type (r retained, n spliced molecules of the intron, R and N the gene's other clean introns), d = x_b − x_a per subject, DerSimonian–Laird random-effects mean over subjects with the Hartung–Knapp variance floored at DL, t with k−1 df. On the 28 long-read pairs with masked body counts: 222,081 full-data tests, 4,986 BH discoveries; split replication is weak (14 BH genes per half, 3 replicated). Long-read direction agreement is at chance when LR ties and tiny differences count (top 100 .33 with ties as disagreement, .55 with ties dropped), but among tests whose LR retained fraction differs by at least 0.05 between the cell types (977 tests) agreement is .91 in the top 100 and .84 in the top 500. Most LR-evaluable introns have no retained long reads, so an IR long-read endpoint needs an LR retention criterion. Top short-read tests are dominated by EX_cortical contrasts with large gene-relative changes and no LR retention, possibly unannotated intronic transcription starts.
+
+### 2026-10-25 Differential intron retention: gene baseline and comparators
+
+Gene baseline for the differential IR prototype (masked intron-body counts, 28 long-read pairs). Long-read agreement at rank 100 (A_100 in brackets) under two long-read eligibility rules, at least 20 molecules per cell type plus either at least 5 retained molecules or a retained-fraction difference of at least 0.05:
+
+| Baseline | Replicated genes (BH per half) | LR retained >= 5 | abs(LR diff) >= .05 |
+|---|---|---|---|
+| Pooled other introns of the gene | 3 (14, 14) | .69 (.72), 8,145 tests | .91 (.93), 977 |
+| Median intron of the gene | 15 (34, 56) | .61 (.65), 5,900 | .82 (.86), 733 |
+| None | 178 (370, 266) | .37 (.35), 9,352 | .51 (.57), 1,088 |
+
+Without a gene baseline more genes replicate but directions disagree with long reads: gene-wide changes in unspliced RNA between cell types dominate the intron-body counts. Adding unspliced splice-site reads to the retained count (body+boundary) gives similar agreement with more evaluable tests (.70, 11,422; .85, 1,794).
+
+Comparators. MAJIQ (min-experiments 3, min-reads 3) was rebuilt with `--all-introns` (`run_majiq_build.sbatch` now takes `MAJIQ_INTRONS`; the earlier builds used `--no-introns`) and heterogen run on the 28 pairs for each half and the full data. SUPPA2 and primer-aware SUPPA2 RI events come from the existing full-data and exact split runs. Comparator tests are mapped to clean introns (SUPPA2 RI:chr:s1:e1-s2:e2 gives [e1, s2 - 1), MAJIQ intron edges [start - 1, end)) because long-read calls exist for clean introns only (`.cache/adhoc/ir/ir_comparators.py`).
+
+| Method | Clean introns tested | Replicated genes (own keys) | LR retained >= 5: agreement at 100 (tests) | abs(LR diff) >= .05: agreement at 100 (tests) |
+|---|---|---|---|---|
+| Tealeaf IR (pooled) | 36,816 | 3 | .69 (8,145) | .91 (977) |
+| SUPPA2 | 180 | 0 | .45 (866) | .53 (316) |
+| SUPPA2 primer-aware | 152 | 0 | .40 (644) | .50 (248) |
+| MAJIQ | 38 (83 introns in all) | 6 | .47 (103) | n/a (35) |
+
+SUPPA2 RI effects are uncorrelated with long-read retention differences (Spearman .004 over 316 tests), although the same effect sign gives SUPPA2 AUC100 .87 on cassette exons: its RI PSI is the abundance of retained_intron transcripts, not intron-level retention. On the intron–pair tests shared with each comparator (14–63 LR-evaluable tests) neither method separates from the other. Split replication is low for all methods on retained introns; the comparators test too few introns for a replicated-gene comparison.

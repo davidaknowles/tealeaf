@@ -18,6 +18,8 @@ sj_dir=${MAJIQ_SJ_DIR:-${OUTPUT_DIR}/sj}
 min_experiments=${MAJIQ_BUILD_MIN_EXPERIMENTS:-0.5}
 quantify_minreads=${MAJIQ_QUANTIFY_MINREADS:-10}
 quantify_minbins=${MAJIQ_QUANTIFY_MINBINS:-3}
+# --no-introns (default), --annotated-introns or --all-introns
+introns=${MAJIQ_INTRONS:---no-introns}
 sjs=()
 prefixes=()
 while IFS=$'\t' read -r sample bam; do
@@ -25,7 +27,7 @@ while IFS=$'\t' read -r sample bam; do
   prefixes+=("${sample}")
 done < "${BAM_MANIFEST}"
 majiq-v3 build "${ANNOTATED_SPLICEGRAPH}" "${OUTPUT_DIR}/combined.splicegraph" \
-  --sjs "${sjs[@]}" --no-introns \
+  --sjs "${sjs[@]}" "${introns}" \
   --min-experiments "${min_experiments}" \
   --nthreads "${SLURM_CPUS_PER_TASK:-8}" \
   --license "${MAJIQ_LICENSE_FILE}" --overwrite
