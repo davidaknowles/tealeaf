@@ -19,7 +19,7 @@ import pandas as pd
 
 from tealeaf.sc.differential import classify_path_chains
 from tealeaf.sc.junction_benchmark import benjamini_hochberg
-from tealeaf.sc.local_path_reads import block_structure, same_junction_groups
+from tealeaf.sc.local_path_reads import block_structure, structure_paths, same_junction_groups
 
 
 def main():
@@ -32,7 +32,7 @@ def main():
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
     blocks = {block["block_id"]: block for block in json.load(gzip.open(args.blocks, "rt")).values()}
-    structure = {key: block_structure(block["paths"][:block.get("n_annotated", len(block["signatures"]))])["structure"] for key, block in blocks.items()}
+    structure = {key: block_structure(structure_paths(block))["structure"] for key, block in blocks.items()}
     tests = []
     for model, kind in ((args.internal_model, "internal"), (args.terminal_model, "terminal")):
         table = pd.read_csv(args.cache / f"{model}_full/merged/paired_path.tsv", sep="\t")

@@ -1,6 +1,6 @@
 import numpy as np
 
-from tealeaf.sc.local_path_reads import block_structure, compatibility_mask, group_paths, path_read_opportunities, path_structures, same_junction_groups, variable_junctions
+from tealeaf.sc.local_path_reads import block_structure, compatibility_mask, group_paths, path_read_opportunities, path_structures, same_junction_groups, structure_paths, variable_junctions
 
 SKIP = [(100, 200), (500, 600)]
 INCLUDE = [(100, 200), (300, 400), (500, 600)]
@@ -65,6 +65,15 @@ def test_block_structure():
     assert block_structure(first_exons) == {"structure": "terminal", "same_junctions": False}
     ends = [[[0, 100], [400, 500]], [[0, 100], [400, 800]]]
     assert block_structure(ends) == {"structure": "terminal", "same_junctions": True}
+
+
+def test_structure_paths_fall_back_to_novel_paths():
+    window = [[0, 500]]
+    cassette = [[[0, 100], [200, 300], [400, 500]], [[0, 100], [400, 500]]]
+    block = {"signatures": cassette, "n_annotated": 1, "paths": cassette + [window]}
+    assert structure_paths(block) == cassette[:1]
+    block["n_annotated"] = 0
+    assert structure_paths(block) == cassette
 
 
 def test_junction_only_opportunities_and_groups():

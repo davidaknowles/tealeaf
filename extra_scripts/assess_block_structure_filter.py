@@ -23,7 +23,7 @@ import pandas as pd
 from extra_scripts.assess_paired_inference_audit import fit_table, split_assessment, long_read_assessment
 from extra_scripts.assess_tilgner_long_read_replication import load_path_usage
 from tealeaf.sc.junction_benchmark import benjamini_hochberg
-from tealeaf.sc.local_path_reads import block_structure
+from tealeaf.sc.local_path_reads import block_structure, structure_paths
 
 FILTERS = {"internal": lambda s: s["structure"] == "internal", "distinct_junctions": lambda s: s["structure"] == "internal" or not s["same_junctions"]}
 
@@ -46,7 +46,7 @@ def main():
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
     blocks = json.load(gzip.open(args.local_reads / "blocks.json.gz", "rt"))
-    structure = {block["block_id"]: block_structure(block["paths"][:block.get("n_annotated", len(block["signatures"]))]) for block in blocks.values()}
+    structure = {block["block_id"]: block_structure(structure_paths(block)) for block in blocks.values()}
     keep = {block for block, value in structure.items() if FILTERS[args.filter](value)}
     output = args.output_dir
     output.mkdir(parents=True, exist_ok=True)

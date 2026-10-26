@@ -97,7 +97,8 @@ def classify_splice_block(block, path_signatures=None):
 def classify_path_chains(paths, strand):
     """(event class, pairwise components) of a block's full exon chains.
 
-    paths are the chains of the tested paths, flanking exons included. If all
+    paths are the chains of the tested paths, flanking exons included
+    (touching intervals are merged into one exon). If all
     chains start at the same base and end at the same base the block is
     internal (an alternative splice site may still move the inner end of a
     flanking exon): two
@@ -110,7 +111,7 @@ def classify_path_chains(paths, strand):
     differing terminal exons share their splice site, so only the transcript
     end moves.
     """
-    chains = [tuple(sorted(tuple(int(x) for x in exon) for exon in path)) for path in paths]
+    chains = [_merge_intervals([tuple(int(x) for x in exon) for exon in path]) for path in paths]
     left = {chain[0] for chain in chains}
     right = {chain[-1] for chain in chains}
     if len({exon[0] for exon in left}) == 1 and len({exon[1] for exon in right}) == 1:

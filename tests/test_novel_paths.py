@@ -77,6 +77,9 @@ def test_classify_path_chains():
 
     a, b, c, d = (0, 100), (200, 300), (400, 500), (600, 700)
     assert classify_path_chains([[a, c], [a, b, c]], "+") == ("cassette exon", ())
+    # touching intervals are one exon: an anchor extension or a retained intron
+    assert classify_path_chains([[a, c], [a, (350, 400), c]], "+") == ("alternative acceptor", ())
+    assert classify_path_chains([[a, c], [a, (100, 400), c]], "+") == ("retained intron", ())
     assert classify_path_chains([[a, c], [(0, 150), c]], "+") == ("alternative donor", ())
     assert classify_path_chains([[a, c], [(0, 150), c]], "-") == ("alternative acceptor", ())
     assert classify_path_chains([[a, b, d], [a, c, d]], "+") == ("mutually exclusive exons", ())

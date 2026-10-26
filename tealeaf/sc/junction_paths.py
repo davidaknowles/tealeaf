@@ -14,17 +14,24 @@ import numpy as np
 from scipy.optimize import minimize
 from scipy.special import softmax
 
+from .differential import _merge_intervals
 from .sashimi import variable_path_features
 
 
 def block_path_exons(left_anchor, signature, right_anchor):
-    """Full local exon chain of one path, anchors plus its internal exons, in genomic order."""
+    """Full local exon chain of one path, anchors plus its internal exons, in genomic order.
+
+    Touching intervals are merged into one exon: a signature interval that
+    extends an anchor (alternative splice site) or spans the whole window
+    between anchors (retained intron) is part of the anchor's exon, so a read
+    crossing the anchor boundary lies inside one exon of the path.
+    """
     exons = [tuple(exon) for exon in signature]
     if left_anchor is not None:
         exons.append(tuple(left_anchor))
     if right_anchor is not None:
         exons.append(tuple(right_anchor))
-    return sorted(exons)
+    return list(_merge_intervals(exons))
 
 
 def path_junction_map(paths, strand):

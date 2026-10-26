@@ -3,7 +3,8 @@
 
 Junction-cluster methods (LeafCutter, scQuint, MAJIQ Heterogen) are read from
 --junction-table, either all-tested long-read source mappings or a comparison
-all_tests table (cell-type effects are kept); LeafCutter clusters without a
+all_tests table (cell-type effects are kept), and MAJIQ also from
+--majiq-tests (edges collapsed to LSVs by their smallest p-value); LeafCutter clusters without a
 gene take the unique gene of their junctions (--leafcutter-counts with
 --junction-annotation). With --contrasts common only the cell-type pairs
 tested by every method are kept; with all, each method keeps every pair it
@@ -49,10 +50,19 @@ def read_junction_table(path):
     return table.loc[table.effect.eq("cell_type")] if "effect" in table else table
 
 
+def read_majiq_tests(directory):
+    """MAJIQ Heterogen normalized edge tests (one file per contrast) collapsed to LSVs, each with its smallest edge p-value."""
+    edges = pd.concat([pd.read_csv(path, sep="\t", usecols=["method", "effect", "level_a", "level_b", "feature_id", "gene_id", "p_value"]) for path in sorted(Path(directory).glob("*.tsv"))], ignore_index=True)
+    edges = edges.loc[edges.effect.eq("cell_type")]
+    edges["feature_id"] = edges.feature_id.str.split(":").str[:6].str.join(":")
+    return edges.groupby(["method", "effect", "level_a", "level_b", "feature_id", "gene_id"], as_index=False).p_value.min()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tealeaf-events", type=Path, required=True, help="test_events.tsv.gz of categorize_block_tests.py")
-    parser.add_argument("--junction-table", type=Path, action="append", required=True)
+    parser.add_argument("--junction-table", type=Path, action="append", default=[])
+    parser.add_argument("--majiq-tests", type=Path, help="directory of MAJIQ Heterogen normalized per-contrast edge tests, collapsed to LSVs; replaces MAJIQ rows of --junction-table")
     parser.add_argument("--suppa2", type=Path, required=True, help="SUPPA2 full-data tests")
     parser.add_argument("--suppa2-primer-aware", type=Path, required=True)
     parser.add_argument("--rmats", type=Path, required=True, help="paired rMATS full-data tests")
@@ -63,7 +73,10 @@ def main():
     parser.add_argument("--fdr", type=float, default=0.05)
     parser.add_argument("--output", type=Path, required=True, help="figure; the counts are written next to it as .tsv")
     args = parser.parse_args()
-    junctions = pd.concat([read_junction_table(path) for path in args.junction_table], ignore_index=True).astype({"gene_id": "object"})
+    junctions = [read_junction_table(path) for path in args.junction_table]
+    if args.majiq_tests:
+        junctions = [table.loc[table.method.ne("MAJIQ Heterogen")] for table in junctions] + [read_majiq_tests(args.majiq_tests)]
+    junctions = pd.concat(junctions, ignore_index=True).astype({"gene_id": "object"})
     leaf = junctions.method.eq("LeafCutter") & junctions.gene_id.isna()
     if leaf.any() and args.leafcutter_counts:
         genes = leafcutter_cluster_gene_map(args.junction_annotation, args.leafcutter_counts).set_index("feature_id").gene_id

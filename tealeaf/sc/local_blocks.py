@@ -89,12 +89,24 @@ def block_genes(block_cache, max_paths=30):
     return genes
 
 
+def drop_precursor_copies(signatures, paths, window):
+    """(signatures, paths) without mature paths equal to the precursor, one exon spanning window.
+
+    Such a path (a retained intron over the whole window) cannot be told from
+    unspliced precursor reads inside the block, so its reads stay precursor.
+    """
+    keep = [index for index, path in enumerate(paths) if [tuple(exon) for exon in path] != [tuple(window)]]
+    return [signatures[index] for index in keep], [paths[index] for index in keep]
+
+
 def annotated_blocks(candidate_caches, block_cache, max_paths=10, junctions=None, novel_options=None, gene_transcripts=None, genes=None):
     """Every annotated block (2..max_paths paths) in the target genes.
 
-    Paths are all annotated paths of the block, independent of EC support. A
-    final precursor path, one exon spanning the block window, marks reads with
-    no junction inside the window (intronic and exon-body reads). With
+    Paths are all annotated paths of the block, independent of EC support, as
+    merged exon chains (block_path_exons). A final precursor path, one exon
+    spanning the block window, marks reads with no junction inside the window
+    (intronic and exon-body reads); an annotated path equal to it is dropped
+    (drop_precursor_copies). With
     junctions (star_junction_support), novel_block_paths adds unannotated
     paths after the annotated ones (their chains serve as their signatures),
     and with gene_transcripts (read_gtf_exons) novel_junction_blocks adds
@@ -114,6 +126,7 @@ def annotated_blocks(candidate_caches, block_cache, max_paths=10, junctions=None
         paths = [block_path_exons(anchor(block["left_anchor"]), signature, anchor(block["right_anchor"])) for signature in signatures]
         window = (min(a for path in paths for a, _ in path), max(b for path in paths for _, b in path))
         windows[block["gene_id"]].append(window)
+        signatures, paths = drop_precursor_copies(signatures, paths, window)
         if not 2 <= len(signatures) <= max_paths:
             continue
         novel = []
@@ -131,8 +144,11 @@ def annotated_blocks(candidate_caches, block_cache, max_paths=10, junctions=None
             start, end = min(chain[0][0] for chain in chains), max(chain[-1][1] for chain in chains)
             support = local_support(junctions, record["chromosome"], record["strand"], start, end)
             for index, (annotated, novel) in enumerate(novel_junction_blocks(chains, support, windows[gene], **(novel_options or {}))):
+                window = (min(path[0][0] for path in annotated + [chain for chain, _ in novel]), max(path[-1][1] for path in annotated + [chain for chain, _ in novel]))
+                annotated, _ = drop_precursor_copies(annotated, annotated, window)
                 signatures = annotated + [chain for chain, _ in novel]
-                window = (min(path[0][0] for path in signatures), max(path[-1][1] for path in signatures))
+                if len(signatures) < 2:
+                    continue
                 block_id = f"{gene}:N{index + 1}"
                 blocks[path_key(block_id, signatures)] = {"block_id": block_id, "gene_id": gene, "chromosome": record["chromosome"], "strand": record["strand"], "signatures": signatures, "n_annotated": len(annotated), "novel_reads": [reads for _, reads in novel], "paths": signatures + [[window]], "precursor": True}
     return blocks

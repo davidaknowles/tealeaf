@@ -47,6 +47,16 @@ def block_structure(paths):
     return {"structure": "internal" if internal else "terminal", "same_junctions": same}
 
 
+def structure_paths(block):
+    """Mature paths that set a block's anchor structure (block_structure).
+
+    These are the annotated paths, or all mature paths when no annotated path
+    is left (its only annotated path equalled the precursor and was dropped).
+    """
+    n_mature = len(block["signatures"])
+    return block["paths"][:block.get("n_annotated", n_mature) or n_mature]
+
+
 def variable_junctions(paths):
     """Junctions in some but not all of the mature exon chains paths."""
     _, junctions, _ = path_structures(paths)

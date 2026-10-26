@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 
 from tealeaf.sc.differential import classify_path_chains
-from tealeaf.sc.local_path_reads import block_structure, same_junction_groups
+from tealeaf.sc.local_path_reads import block_structure, structure_paths, same_junction_groups
 from tealeaf.sc.local_path_test import local_class_masks, prepare_block_test, row_path_compositions
 
 
@@ -70,7 +70,7 @@ def main():
     args = parser.parse_args()
     blocks = json.load(gzip.open(args.internal_reads / "blocks.json.gz", "rt"))
     by_id = {block["block_id"]: key for key, block in blocks.items()}
-    structure = {block["block_id"]: block_structure(block["paths"][:block.get("n_annotated", len(block["signatures"]))])["structure"] for block in blocks.values()}
+    structure = {block["block_id"]: block_structure(structure_paths(block))["structure"] for block in blocks.values()}
     fits = pd.concat([pd.read_csv(args.cache / f"{model}_full/merged/paired_path.tsv", sep="\t").assign(structure=kind) for model, kind in ((args.internal_model, "internal"), (args.terminal_model, "terminal"))], ignore_index=True)
     fits = fits.loc[fits.block_id.map(structure).eq(fits.structure) & fits.converged.astype(bool)]
     mapping = pd.read_csv(args.assessment / "lr_mapping.tsv.gz", sep="\t")

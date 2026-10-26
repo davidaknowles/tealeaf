@@ -27,7 +27,7 @@ import numpy as np
 import pandas as pd
 
 from extra_scripts.run_local_path_tests import declared_tests
-from tealeaf.sc.local_path_reads import block_structure, path_read_opportunities, same_junction_groups, pooled_path_shares, project_mask, project_opportunities, simulate_null_class_counts
+from tealeaf.sc.local_path_reads import block_structure, structure_paths, path_read_opportunities, same_junction_groups, pooled_path_shares, project_mask, project_opportunities, simulate_null_class_counts
 from tealeaf.sc.local_path_test import PRIMERS, fit_local_block, prepare_block_test
 
 READ_LENGTH = 151
@@ -69,7 +69,7 @@ def main():
     blocks = json.load(gzip.open(args.local_reads / "blocks.json.gz", "rt"))
     structure = args.structure or ("terminal" if args.junction_only else "all")
     if structure != "all":
-        blocks = {key: block for key, block in blocks.items() if block_structure(block["paths"][:block.get("n_annotated", len(block["signatures"]))])["structure"] == structure}
+        blocks = {key: block for key, block in blocks.items() if block_structure(structure_paths(block))["structure"] == structure}
         counts = counts.loc[counts.path_key.isin(set(blocks))]
     if args.novel_only:
         blocks = {key: block for key, block in blocks.items() if block.get("n_annotated", len(block["signatures"])) < len(block["signatures"])}

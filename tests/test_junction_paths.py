@@ -35,3 +35,21 @@ def test_prior_keeps_unobserved_path_positive():
     psi = junction_path_usage([0., 10., 0.], weights, concentration=1.)
     assert psi[1] > 0 and psi[0] > psi[1]
     assert np.isclose(psi.sum(), 1.)
+
+
+def test_touching_intervals_merge_into_one_exon():
+    left, right = (100, 200), (500, 600)
+    assert block_path_exons(left, [(450, 500)], right) == [(100, 200), (450, 600)]
+    assert block_path_exons(left, [(200, 500)], right) == [(100, 600)]
+    assert block_path_exons(left, [(300, 400)], right) == [(100, 200), (300, 400), (500, 600)]
+
+
+def test_precursor_copies_are_dropped():
+    from tealeaf.sc.local_blocks import drop_precursor_copies
+
+    left, right = (100, 200), (500, 600)
+    signatures = [[], [[200, 500]], [[450, 500]]]
+    paths = [block_path_exons(left, signature, right) for signature in signatures]
+    kept, kept_paths = drop_precursor_copies(signatures, paths, (100, 600))
+    assert kept == [[], [[450, 500]]]
+    assert kept_paths == [[(100, 200), (500, 600)], [(100, 200), (450, 600)]]

@@ -29,7 +29,7 @@ import numpy as np
 import pandas as pd
 
 from tealeaf.sc.junction_benchmark import benjamini_hochberg
-from tealeaf.sc.local_path_reads import block_structure, path_read_opportunities, same_junction_groups
+from tealeaf.sc.local_path_reads import block_structure, structure_paths, path_read_opportunities, same_junction_groups
 from tealeaf.sc.local_path_test import fit_local_block, prepare_block_test
 
 READ_LENGTH = 151
@@ -105,7 +105,7 @@ def main():
     counts = pd.read_csv(args.local_reads / "counts.tsv.gz", sep="\t")
     blocks = json.load(gzip.open(args.local_reads / "blocks.json.gz", "rt"))
     if args.structure != "all":
-        blocks = {key: block for key, block in blocks.items() if block_structure(block["paths"][:block.get("n_annotated", len(block["signatures"]))])["structure"] == args.structure}
+        blocks = {key: block for key, block in blocks.items() if block_structure(structure_paths(block))["structure"] == args.structure}
         counts = counts.loc[counts.path_key.isin(set(blocks))]
     stored_path = args.local_reads / "opportunities.json.gz"
     if args.stored_opportunities and not stored_path.exists():
