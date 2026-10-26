@@ -151,7 +151,7 @@ Within each (half-cell barcode, locus), UMIs at Hamming distance 1 are joined tr
 \subsection{Annotated blocks}
 \label{sec:blocks}
 
-Annotated splice blocks are local regions between constitutive exonic anchors in the annotation. Transcripts of a gene that take the same exon chain through the region are collapsed into one path, and a block has the paths of all annotated transcripts that traverse it. Each path is the chain left anchor exon, internal exons, right anchor exon. Blocks of the target genes with 2 to 30 annotated paths are used. Every block also carries a \emph{precursor} path, the single exon $W_b$, which is compatible with reads without a junction inside the window (intronic or exon-body reads).
+Annotated splice blocks are local regions between constitutive exonic anchors in the annotation. Transcripts of a gene that take the same exon chain through the region are collapsed into one path, and a block has the paths of all annotated transcripts that traverse it. Each path is the chain left anchor exon, internal exons, right anchor exon, with exons that touch merged into one, so transcripts whose chains differ only by an exon boundary inside a continuous exonic interval share a path. A path whose chain is the whole window duplicates the precursor path below and is removed. Blocks of the target genes with 2 to 30 annotated paths are used. Every block also carries a \emph{precursor} path, the single exon $W_b$, which is compatible with reads without a junction inside the window (intronic or exon-body reads).
 
 A block is \emph{internal} if all its annotated paths start with the same exon and end with the same exon, and \emph{terminal} otherwise (alternative first or last exons, transcript starts or ends). The structure is decided from the annotated paths only, so adding novel paths does not change it.
 
@@ -214,7 +214,7 @@ Novel paths are built from the second-pass junction support. For a block $b$, le
 
 \paragraph{New blocks.} Novel junctions inside a gene that lie in no annotated block window, for example a junction that skips an exon constitutive in the annotation, define new blocks. Such a junction is used if it satisfies the support criteria above, with $R^\star$ the largest read count of the annotated junctions overlapping it. Used junctions with overlapping introns are clustered. For a cluster with first donor $d$ and last acceptor $a$, each annotated transcript gives the segment of its exon chain from the exon to which $d$ attaches to the exon to which $a$ attaches; if only one end attaches, the segment starts at the last exon ending before $d$ or ends at the first exon starting after $a$, which allows novel first and last exons. Segments are clipped to their shared extent, distinct clipped segments are the annotated paths of the new block, and Algorithm~\ref{alg:novel} adds its novel paths. A new block is kept if it has at least one novel path.
 
-\paragraph{Block set.} On the second pass the block set has 46{,}980 blocks, 34{,}920 annotated and 12{,}060 new, with 22{,}075 novel paths.
+\paragraph{Block set.} On the second pass the block set has 34{,}677 blocks, 22{,}898 annotated and 11{,}779 new, with 21{,}509 novel paths.
 
 \section{Molecule classes}
 \label{sec:classes}
@@ -280,7 +280,7 @@ The 48 subjects are divided into two halves of 24 with 4 subjects of each group 
 
 \subsection{Long-read direction}
 
-Directions of full-data tests are compared with the P56 mouse brain single-cell long-read data of Joglekar et al.\ (ScISOr-Seq2), using its UMI-filtered annotated-transcript count matrix. Transcript names are matched to the comprehensive GENCODE vM32 annotation, which gives each counted transcript an exon chain. Eight cell types have a prespecified correspondence, astrocytes (with Bergmann glia), mature oligodendrocytes, cerebellar granule neurons, cortical excitatory neurons, dentate gyrus and CA excitatory neurons, thalamic excitatory neurons and medium spiny neurons; glial samples are pooled over regions within replicate. The full data are tested on all pairs of these eight cell types in addition to the split universe. A transcript counts for a tested path if its exon chain is compatible with that path and no other, by the rule used for reads (Section~\ref{sec:classes}): its exons clipped to the block window lie within exons of the path and its junctions inside the window are junctions of the path. Transcripts compatible with several paths, which do not cover the region where the paths differ, and transcripts compatible with none are not counted. A novel path is evaluable when an annotated transcript of the comprehensive annotation has its structure. A test is evaluable if every tested path has at least one counted transcript, both cell types have at least 20 counted long-read UMIs, and both effects are finite and non-zero; 29{,}323 tests are evaluable. With long-read counts $\bm n_c\in\mathbb N_0^S$ of the paths in cell type $c$ (summed over replicates and over the transcripts of each path), the long-read effect is $\bm\Delta^{\rm L}=\bm n_{c_1}/\|\bm n_{c_1}\|_1-\bm n_{c_0}/\|\bm n_{c_0}\|_1$, and the test agrees if $(\bm\Delta^{\rm T})^{\mathsf T}\bm\Delta^{\rm L}>0$ for the Tealeaf effect $\bm\Delta^{\rm T}$. Evaluable tests are ranked by p-value, then by decreasing statistic. With $a_j\in\{0,1\}$ the agreement of the test at rank $j$ and $c_r=r^{-1}\sum_{j\le r}a_j$ the cumulative agreement, the endpoint is the normalized area $A_{100}=\frac{1}{100}\sum_{r=1}^{100}c_r$, the mean cumulative agreement over the 100 top-ranked tests. Comparators are ranked and scored in the same way, with long-read counts assigned by the same annotation and the same use of exon chains: junction usage of LeafCutter, MAJIQ and scQuint features is computed from the junctions of each counted transcript's exon chain on both strands, and each event of SUPPA2 and rMATS is scored from transcripts whose exon chain has its inclusion or its exclusion form.
+Directions of full-data tests are compared with the P56 mouse brain single-cell long-read data of Joglekar et al.\ (ScISOr-Seq2), using its UMI-filtered annotated-transcript count matrix. Transcript names are matched to the comprehensive GENCODE vM32 annotation, which gives each counted transcript an exon chain. Eight cell types have a prespecified correspondence, astrocytes (with Bergmann glia), mature oligodendrocytes, cerebellar granule neurons, cortical excitatory neurons, dentate gyrus and CA excitatory neurons, thalamic excitatory neurons and medium spiny neurons; glial samples are pooled over regions within replicate. The full data are tested on all pairs of these eight cell types in addition to the split universe. A transcript counts for a tested path if its exon chain is compatible with that path and no other, by the rule used for reads (Section~\ref{sec:classes}): its exons clipped to the block window lie within exons of the path and its junctions inside the window are junctions of the path. Transcripts compatible with several paths, which do not cover the region where the paths differ, and transcripts compatible with none are not counted. A novel path is evaluable when an annotated transcript of the comprehensive annotation has its structure. A test is evaluable if every tested path has at least one counted transcript, both cell types have at least 20 counted long-read UMIs, and both effects are finite and non-zero; 34{,}634 tests are evaluable. With long-read counts $\bm n_c\in\mathbb N_0^S$ of the paths in cell type $c$ (summed over replicates and over the transcripts of each path), the long-read effect is $\bm\Delta^{\rm L}=\bm n_{c_1}/\|\bm n_{c_1}\|_1-\bm n_{c_0}/\|\bm n_{c_0}\|_1$, and the test agrees if $(\bm\Delta^{\rm T})^{\mathsf T}\bm\Delta^{\rm L}>0$ for the Tealeaf effect $\bm\Delta^{\rm T}$. Evaluable tests are ranked by p-value, then by decreasing statistic. With $a_j\in\{0,1\}$ the agreement of the test at rank $j$ and $c_r=r^{-1}\sum_{j\le r}a_j$ the cumulative agreement, the endpoint is the normalized area $A_{100}=\frac{1}{100}\sum_{r=1}^{100}c_r$, the mean cumulative agreement over the 100 top-ranked tests. Comparators are ranked and scored in the same way, with long-read counts assigned by the same annotation and the same use of exon chains: junction usage of LeafCutter, MAJIQ and scQuint features is computed from the junctions of each counted transcript's exon chain on both strands, and each event of SUPPA2 and rMATS is scored from transcripts whose exon chain has its inclusion or its exclusion form.
 
 \subsection{Results of the current model}
 
@@ -293,23 +293,23 @@ Directions of full-data tests are compared with the P56 mouse brain single-cell 
  & LeafCutter & MAJIQ & SUPPA2 & SUPPA2-PA & rMATS & scQuint\\
 \midrule
 \multicolumn{7}{l}{\emph{Matched universe}}\\
-Genes & 267 & 2{,}810 & 3{,}883 & 3{,}385 & 5{,}344 & 3{,}704\\
-Tealeaf replicated & 64 & 203 & 121 & 128 & 159 & 181\\
-Comparator replicated & 35 & 27 & 8 & 0 & 4 & 127\\
+Genes & 263 & 2{,}764 & 3{,}411 & 3{,}072 & 5{,}070 & 3{,}603\\
+Tealeaf replicated & 64 & 201 & 124 & 130 & 158 & 179\\
+Comparator replicated & 35 & 27 & 8 & 0 & 4 & 135\\
 \midrule
 \multicolumn{7}{l}{\emph{Comparator universe}}\\
 Genes & 279 & 3{,}003 & 5{,}068 & 3{,}901 & 6{,}838 & 4{,}220\\
-Tealeaf replicated & 64 & 196 & 102 & 117 & 141 & 171\\
+Tealeaf replicated & 64 & 196 & 101 & 115 & 136 & 172\\
 Comparator replicated & 36 & 28 & 0 & 0 & 4 & 124\\
 \midrule
 Comparator $A_{100}$ & .918 & .938 & .870 & .625 & .898 & .914\\
 \bottomrule
 \end{tabular}
-\caption{Replicated genes on each comparator's matched and comparator universes, and long-read direction. SUPPA2-PA is primer-aware SUPPA2. Tealeaf has $A_{100}=0.937$ (92 of its 100 top-ranked evaluable tests agree with long reads; $A_{40}=0.958$, $A_{200}=0.936$).}
+\caption{Replicated genes on each comparator's matched and comparator universes, and long-read direction. SUPPA2-PA is primer-aware SUPPA2. Tealeaf has $A_{100}=0.940$ (93 of its 100 top-ranked evaluable tests agree with long reads; $A_{40}=0.959$, $A_{200}=0.936$).}
 \label{tab:results}
 \end{table}
 
-Table~\ref{tab:results} gives both endpoints. On both the matched and the comparator universes Tealeaf replicates more genes than every comparator. Figure~\ref{fig:lr} shows cumulative long-read agreement by rank. Over the first 40 ranks MAJIQ and scQuint agree slightly more often than Tealeaf; at rank 100 Tealeaf ($A_{100}=0.937$, 92 agreeing) is level with MAJIQ (0.938, 85 agreeing), and by rank 200 Tealeaf still agrees for 94\% of its tests against 75--84\% for the junction methods and 80\% for rMATS. Tealeaf has 29{,}323 evaluable tests against 1{,}562 to 8{,}497 features for the junction methods. The SUPPA2 and rMATS values are computed on their 500 top-ranked events per contrast.
+Table~\ref{tab:results} gives both endpoints. On both the matched and the comparator universes Tealeaf replicates more genes than every comparator. Figure~\ref{fig:lr} shows cumulative long-read agreement by rank. Over the first 40 ranks MAJIQ and scQuint agree slightly more often than Tealeaf; at rank 100 Tealeaf ($A_{100}=0.940$, 93 agreeing) is level with MAJIQ (0.938, 85 agreeing), and by rank 200 Tealeaf still agrees for 94\% of its tests against 75--84\% for the junction methods and 80\% for rMATS. Tealeaf has 34{,}634 evaluable tests against 1{,}562 to 8{,}497 features for the junction methods. The SUPPA2 and rMATS values are computed on their 500 top-ranked events per contrast.
 
 \begin{figure}[ht]
 \centering
@@ -320,7 +320,7 @@ Table~\ref{tab:results} gives both endpoints. On both the matched and the compar
 
 \subsection{Event classes}
 
-Each test is assigned an event class from the exon chains of its retained paths. If all chains start and end at the same bases the block is internal, and two chains are classified by the exons in which they differ as a cassette exon, multi-exon skipping, an alternative donor or acceptor, mutually exclusive exons or a retained intron (a differing pattern outside these is complex internal); more than two chains are compound internal. Otherwise the paths differ at a transcript end, an alternative first exon, an alternative last exon, or both, oriented by the strand; when the differing terminal exons share their splice site, only the transcript start or end moves. Table~\ref{tab:events} gives the full-data tests, BH discoveries at 0.05 (one family over internal and terminal blocks) and their long-read agreement by class. Most discoveries that retain a novel path have no long-read counterpart. Long-read agreement of discoveries is 0.77 to 0.91 for the common classes, highest for alternative first exons and cassette exons.
+Each test is assigned an event class from the exon chains of its retained paths. If all chains start and end at the same bases the block is internal, and two chains are classified by the exons in which they differ as a cassette exon, multi-exon skipping, an alternative donor or acceptor, mutually exclusive exons or a retained intron (a differing pattern outside these is complex internal); more than two chains are compound internal. Otherwise the paths differ at a transcript end, an alternative first exon, an alternative last exon, or both, oriented by the strand; when the differing terminal exons share their splice site, only the transcript start or end moves. Table~\ref{tab:events} gives the full-data tests, BH discoveries at 0.05 (one family over internal and terminal blocks) and their long-read agreement by class. Most discoveries that retain a novel path have no long-read counterpart. Long-read agreement of discoveries is 0.79 to 0.91 for the common classes, highest for alternative first exons and cassette exons.
 
 \begin{table}[ht]
 \centering
@@ -330,26 +330,26 @@ Each test is assigned an event class from the exon chains of its retained paths.
 \toprule
 Event class & Tests & Discoveries & Novel path & LR agreement & Top 100\\
 \midrule
-cassette exon & 293{,}308 & 3{,}685 & 1{,}487 & 0.88 (434) & 40/41\\
-alternative first exon & 104{,}182 & 2{,}684 & 1{,}993 & 0.91 (115) & 18/19\\
-compound internal & 131{,}040 & 1{,}753 & 1{,}277 & 0.82 (56) & 2/2\\
-alternative last exon & 70{,}824 & 1{,}015 & 611 & 0.86 (72) & 22/26\\
-alternative first and last exons & 24{,}373 & 841 & 682 & 0.79 (39) & 2/3\\
-alternative acceptor & 87{,}652 & 265 & 232 & 0.77 (30) & 3/4\\
-multi-exon skipping & 10{,}390 & 98 & 59 & 0.88 (17) & 4/4\\
-alternative transcript end & 4{,}424 & 95 & 12 & 1.00 (7) & 0/0\\
-mutually exclusive exons & 4{,}307 & 79 & 11 & 0.88 (8) & 0/0\\
-alternative donor & 50{,}312 & 78 & 76 & 0.40 (5) & 1/1\\
-complex internal & 4{,}642 & 59 & 55 & 1.00 (3) & 0/0\\
-alternative transcript start & 1{,}983 & 49 & 1 & 1.00 (2) & 0/0\\
-retained intron & 16{,}389 & 18 & 18 & 1.00 (2) & 0/0\\
+cassette exon & 215{,}456 & 3{,}549 & 1{,}551 & 0.88 (449) & 38/39\\
+alternative first exon & 104{,}601 & 2{,}837 & 2{,}115 & 0.91 (139) & 22/23\\
+compound internal & 101{,}871 & 1{,}614 & 1{,}208 & 0.84 (77) & 3/3\\
+alternative last exon & 69{,}974 & 1{,}060 & 628 & 0.86 (85) & 21/25\\
+alternative first and last exons & 24{,}167 & 851 & 689 & 0.79 (39) & 2/3\\
+alternative acceptor & 99{,}219 & 313 & 249 & 0.83 (41) & 3/3\\
+alternative donor & 55{,}749 & 113 & 89 & 0.53 (15) & 1/1\\
+alternative transcript end & 4{,}415 & 100 & 13 & 1.00 (7) & 0/0\\
+multi-exon skipping & 8{,}885 & 99 & 57 & 0.90 (21) & 3/3\\
+mutually exclusive exons & 2{,}701 & 82 & 11 & 0.88 (8) & 0/0\\
+complex internal & 4{,}867 & 59 & 57 & 1.00 (3) & 0/0\\
+alternative transcript start & 2{,}113 & 52 & 1 & 1.00 (3) & 0/0\\
+retained intron & 935 & 13 & 13 & -- (0) & 0/0\\
 \bottomrule
 \end{tabular}
 \caption{Full-data tests by event class. Novel path counts discoveries that retain an unannotated path. LR agreement is the fraction of long-read-evaluable discoveries whose direction agrees with the long reads (number evaluable in parentheses); Top 100 gives agreeing over all tests of the class among the 100 top-ranked long-read-evaluable tests.}
 \label{tab:events}
 \end{table}
 
-Figure~\ref{fig:discoveries} compares full-data discoveries with the comparators on the 28 pairs of the eight long-read cell types, the contrasts every method tests on the full data. Each method's finite p-values on these contrasts form one BH family, and a discovery has adjusted p at most 0.05. Methods test different units, a block for Tealeaf, an intron cluster for LeafCutter, an intron group for scQuint, a local splice variant for MAJIQ and an event for SUPPA2 and rMATS, so discoveries are also counted as gene--cell-type pairs with at least one discovery. Tealeaf has 3{,}735 discoveries in 3{,}138 gene--cell-type pairs, scQuint 2{,}234 pairs, MAJIQ 873, LeafCutter 354, SUPPA2 350, primer-aware SUPPA2 233 and rMATS 164. SUPPA2 and rMATS events are mapped to the Tealeaf classes (skipped exon to cassette exon, alternative 5$'$ and 3$'$ splice sites to alternative donor and acceptor, and mutually exclusive exons and retained introns to themselves); their event sets contain no alternative first or last exons, which make up 1{,}452 of the Tealeaf discoveries. Tealeaf discovers 1{,}132 cassette exons against 321 for SUPPA2 and 166 for rMATS. Over all 190 cell-type pairs (Figure~\ref{fig:discoveries-all}), with LeafCutter tested on 171, MAJIQ on 170 and SUPPA2 on 135 of them, Tealeaf has 10{,}719 discoveries in 9{,}072 gene--cell-type pairs, scQuint 8{,}835 pairs, MAJIQ 2{,}189, LeafCutter 890, rMATS 570, primer-aware SUPPA2 533 and SUPPA2 280. Tealeaf discovers 3{,}685 cassette exons against 495 for rMATS and 493 for primer-aware SUPPA2.
+Figure~\ref{fig:discoveries} compares full-data discoveries with the comparators on the 28 pairs of the eight long-read cell types, the contrasts every method tests on the full data. Each method's finite p-values on these contrasts form one BH family, and a discovery has adjusted p at most 0.05. Methods test different units, a block for Tealeaf, an intron cluster for LeafCutter, an intron group for scQuint, a local splice variant for MAJIQ and an event for SUPPA2 and rMATS, so discoveries are also counted as gene--cell-type pairs with at least one discovery. Tealeaf has 3{,}631 discoveries in 3{,}020 gene--cell-type pairs, scQuint 2{,}234 pairs, MAJIQ 873, LeafCutter 351, SUPPA2 350, primer-aware SUPPA2 233 and rMATS 164. SUPPA2 and rMATS events are mapped to the Tealeaf classes (skipped exon to cassette exon, alternative 5$'$ and 3$'$ splice sites to alternative donor and acceptor, and mutually exclusive exons and retained introns to themselves); their event sets contain no alternative first or last exons, which make up 1{,}508 of the Tealeaf discoveries. Tealeaf discovers 1{,}024 cassette exons against 321 for SUPPA2 and 166 for rMATS. Over all 190 cell-type pairs (Figure~\ref{fig:discoveries-all}), with LeafCutter tested on 171, MAJIQ on 170 and SUPPA2 on 135 of them, Tealeaf has 10{,}742 discoveries in 9{,}037 gene--cell-type pairs, scQuint 8{,}835 pairs, MAJIQ 2{,}189, LeafCutter 890, rMATS 570, primer-aware SUPPA2 533 and SUPPA2 280. Tealeaf discovers 3{,}549 cassette exons against 495 for rMATS and 493 for primer-aware SUPPA2.
 
 \begin{figure}[ht]
 \centering
