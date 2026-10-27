@@ -38,6 +38,7 @@ kernel (rust/native_align) in place of numba; both give identical output.
 """
 
 import argparse
+from functools import partial
 import gzip
 import json
 from multiprocessing import Pool
@@ -359,7 +360,7 @@ def stage_collate(args):
         tables = [reference[name] for name in ("ref", "index_codes", "index_positions", "buckets", "unique")] + [na.K] + [reference[name] for name in ("locus_ref_start", "locus_ref_end", "tx_space_start", "tx_ref_start", "tx_length", "exon_offsets", "exon_tx_start", "exon_ref_start", "exon_length", "junctions")]
         kernel = na.rust_aligner(args.rust_library) if args.rust_library else na.align_reads
         clock = time.time()
-        simulated = na.simulated_opportunities(blocks, reference, lambda reads: kernel(reads, *tables), READ_LENGTH)
+        simulated = na.simulated_opportunities(blocks, reference, lambda reads: kernel(reads, *tables), args.read_length)
         print(f"simulated opportunities for {len(simulated)} blocks in {time.time() - clock:.0f} s", flush=True)
     for variant, (name, function) in enumerate((("all", block_opportunities), ("junction", junction_block_opportunities))):
         source = args.collection_dir / name
@@ -377,7 +378,7 @@ def stage_collate(args):
             opportunities = {key: {str(mask): vector.tolist() for mask, vector in simulated[key][variant].items()} for key in blocks if key in simulated}
         else:
             with Pool(len(os.sched_getaffinity(0))) as pool:
-                opportunities = dict(zip(blocks, pool.map(function, list(blocks.values()), chunksize=8)))
+                opportunities = dict(zip(blocks, pool.map(partial(function, read_length=args.read_length), list(blocks.values()), chunksize=8)))
         with gzip.open(out / "opportunities.json.gz", "wt") as handle:
             json.dump(opportunities, handle)
         filters = {}
@@ -413,6 +414,7 @@ def main():
     parser.add_argument("--numpy-reader", action="store_true", help="align: read FASTQ with zcat and numpy even with --rust-library")
     parser.add_argument("--known-junctions", type=Path, help="second pass: junctions.tsv.gz of the first pass; junctions passing --novel-min-reads and --novel-min-libraries become known junctions")
     parser.add_argument("--collate-dir", type=Path, help="collate: write the collated collections here instead of --collection-dir")
+    parser.add_argument("--read-length", type=int, default=READ_LENGTH, help="collate: read 1 length for read opportunities (151 for the microglia data)")
     parser.add_argument("--max-paths", type=int, default=30)
     parser.add_argument("--novel-min-reads", type=int, default=20)
     parser.add_argument("--novel-min-libraries", type=int, default=4)

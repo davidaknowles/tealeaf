@@ -23,13 +23,13 @@ from .novel_paths import novel_block_paths, novel_junction_blocks, read_star_jun
 READ_LENGTH = 151
 
 
-def block_opportunities(block, junction_only=False):
+def block_opportunities(block, junction_only=False, read_length=READ_LENGTH):
     variable = variable_junctions(block["paths"][:len(block["signatures"])]) if junction_only else None
-    return {str(mask): vector.tolist() for mask, vector in path_read_opportunities(block["paths"], READ_LENGTH, variable).items()}
+    return {str(mask): vector.tolist() for mask, vector in path_read_opportunities(block["paths"], read_length, variable).items()}
 
 
-def junction_block_opportunities(block):
-    return block_opportunities(block, True)
+def junction_block_opportunities(block, read_length=READ_LENGTH):
+    return block_opportunities(block, True, read_length)
 
 
 def anchor(value):
