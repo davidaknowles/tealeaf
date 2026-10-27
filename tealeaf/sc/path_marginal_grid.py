@@ -203,7 +203,8 @@ def row_integral(grid, means, kappa):
 class GridModel:
     """Binary EC random-subject model on precomputed row grids.
 
-    design is N x C (rows in likelihood order), subjects length N. Mode
+    design is N x C (rows in likelihood order), subjects length N, and
+    offset an optional fixed length-N logit added to every row's mean. Mode
     caches hold each subject's last posterior mode of b_u for warm starts.
     objective runs the compiled kernels (path_marginal_kernels);
     objective_reference is the numpy implementation of the same formulas.
@@ -213,9 +214,11 @@ class GridModel:
     subjects: np.ndarray
     nodes: int = 9
     modes: dict = field(default_factory=dict)
+    offset: np.ndarray = None
 
     def __post_init__(self):
         self.design = np.asarray(self.design, dtype=float)
+        self.offset = np.zeros(len(self.design)) if self.offset is None else np.asarray(self.offset, dtype=float)
         self.groups = [np.flatnonzero(self.subjects == subject) for subject in np.unique(self.subjects)]
         self.hermite = roots_hermite(self.nodes)
         self.group_start = np.cumsum([0] + [len(rows) for rows in self.groups]).astype(np.int64)
@@ -258,13 +261,13 @@ class GridModel:
         """Negative marginal log-likelihood and its gradient (compiled)."""
         coefficients, kappa, sigma = parameters[:-2], np.exp(parameters[-2]), np.exp(parameters[-1])
         roots, weights = self.hermite
-        total, row_score, kappa_score, sigma_score = kernels.objective(self.design @ coefficients, kappa, sigma, self.group_start, self.group_rows, self.mode_array, roots, np.log(weights), *self.packed)
+        total, row_score, kappa_score, sigma_score = kernels.objective(self.design @ coefficients + self.offset, kappa, sigma, self.group_start, self.group_rows, self.mode_array, roots, np.log(weights), *self.packed)
         return -total, -np.r_[self.design.T @ row_score, kappa_score, sigma_score]
 
     def objective_reference(self, parameters):
         """Negative marginal log-likelihood and its gradient (numpy)."""
         coefficients, kappa, sigma = parameters[:-2], np.exp(parameters[-2]), np.exp(parameters[-1])
-        eta = self.design @ coefficients
+        eta = self.design @ coefficients + self.offset
         roots, weights = self.hermite
         total, gradient = 0., np.zeros_like(parameters)
         for index, rows in enumerate(self.groups):
@@ -329,8 +332,8 @@ def prepare_grid_likelihood(data, path_index, labels, subjects, baseline):
     return BinaryECPathLikelihood(aggregated, components, np.asarray([key[0] for key in keys]), np.asarray([key[1] for key in keys]), np.ones((n, 2)), np.zeros(n))
 
 
-def _initial(grids, design):
-    """Least-squares logits from each row's grid maximum, clipped to +/-4."""
+def _initial(grids, design, offset=0.):
+    """Least-squares logits from each row's grid maximum minus its offset, clipped to +/-4."""
     peaks = []
     for grid in grids:
         if grid.exact is not None:
@@ -338,7 +341,7 @@ def _initial(grids, design):
             peaks.append(np.log((first + .5) / (second + .5)))
         else:
             peaks.append(grid.t[np.argmax(grid.ell)])
-    peaks = np.clip(peaks, -4., 4.)
+    peaks = np.clip(np.asarray(peaks) - offset, -4., 4.)
     return np.linalg.lstsq(design, peaks, rcond=None)[0]
 
 
@@ -347,16 +350,19 @@ def _fit(model, initial, max_iter):
     return minimize(model.objective, initial, jac=True, method="L-BFGS-B", bounds=bounds, options={"maxiter": max_iter, "ftol": 1e-10, "gtol": 1e-6})
 
 
-def binary_grid_test(likelihood, *, nodes=9, max_iter=200, tolerance=1e-3, refine=1., retries=1):
+def binary_grid_test(likelihood, *, nodes=9, max_iter=200, tolerance=1e-3, refine=1., retries=1, offset=None):
     """Random-subject binary EC likelihood-ratio test on two or more types.
 
     Null and alternative refit kappa and sigma. Accuracy is checked by
     re-evaluating both optima with halved grid spacing and 2 * nodes + 1
     subject nodes. A fit failing only that check is refitted at the finer
     setting (up to retries times); remaining failures return p = 1 with
-    converged False.
+    converged False. offset (length N logits, default 0) is a fixed row
+    term of the mean logit in both models; standardized means are at
+    offset 0.
     """
     labels, subjects = likelihood.labels, likelihood.subjects
+    offset = np.zeros(len(labels)) if offset is None else np.asarray(offset, dtype=float)
     levels = np.unique(labels)
     if len(levels) < 2:
         raise ValueError("two type levels required")
@@ -365,21 +371,21 @@ def binary_grid_test(likelihood, *, nodes=9, max_iter=200, tolerance=1e-3, refin
         raise ValueError("at least four subjects with repeated types required")
     design = np.column_stack([np.ones(len(labels)), *[labels == level for level in levels[1:]]]).astype(float)
     grids = row_grids(likelihood, refine=refine)
-    start = _initial(grids, design)
-    alternative_model = GridModel(grids, design, subjects, nodes)
-    null_model = GridModel(grids, design[:, :1], subjects, nodes)
-    null = _fit(null_model, np.r_[_initial(grids, design[:, :1]), np.log(20.), np.log(.5)], max_iter)
+    start = _initial(grids, design, offset)
+    alternative_model = GridModel(grids, design, subjects, nodes, offset=offset)
+    null_model = GridModel(grids, design[:, :1], subjects, nodes, offset=offset)
+    null = _fit(null_model, np.r_[_initial(grids, design[:, :1], offset), np.log(20.), np.log(.5)], max_iter)
     alternative = _fit(alternative_model, np.r_[null.x[:1], start[1:], null.x[-2:]], max_iter)
     if alternative.fun > null.fun:
         alternative = _fit(alternative_model, np.r_[null.x[:1], np.zeros(len(levels) - 1), null.x[-2:]], max_iter)
     fine_grids = row_grids(likelihood, refine=2 * refine)
-    fine_null = GridModel(fine_grids, design[:, :1], subjects, 2 * nodes + 1).objective(null.x)[0]
-    fine_alternative = GridModel(fine_grids, design, subjects, 2 * nodes + 1).objective(alternative.x)[0]
+    fine_null = GridModel(fine_grids, design[:, :1], subjects, 2 * nodes + 1, offset=offset).objective(null.x)[0]
+    fine_alternative = GridModel(fine_grids, design, subjects, 2 * nodes + 1, offset=offset).objective(alternative.x)[0]
     statistic, fine_statistic = 2 * (null.fun - alternative.fun), 2 * (fine_null - fine_alternative)
     error = max(abs(fine_null - null.fun), abs(fine_alternative - alternative.fun), abs(statistic - fine_statistic))
     optimized = bool(null.success and alternative.success and np.isfinite([fine_null, fine_alternative]).all() and min(statistic, fine_statistic) >= -1e-6)
     if optimized and error > tolerance and retries > 0:
-        return binary_grid_test(likelihood, nodes=2 * nodes + 1, max_iter=max_iter, tolerance=tolerance, refine=2 * refine, retries=retries - 1)
+        return binary_grid_test(likelihood, nodes=2 * nodes + 1, max_iter=max_iter, tolerance=tolerance, refine=2 * refine, retries=retries - 1, offset=offset)
     converged = optimized and error <= tolerance
     statistic = max(float(fine_statistic), 0.) if converged else 0.
     roots, weights = roots_hermite(64)

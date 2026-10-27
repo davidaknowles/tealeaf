@@ -14,14 +14,29 @@ RNA, so poly(dT) reads pile up upstream (5', in transcript orientation) of
 genomic A-runs on the sense strand, intronic ones included. a_run_positions
 finds the runs and downstream_run_distance gives, for a position, the distance
 to the next run downstream on the sense strand.
+
+Differential retention. retention_test fits, for one intron and two cell
+types, the random-subject Beta-binomial model of the block path tests
+(path_marginal_grid) to retained r and spliced n molecules per subject and
+cell type, with the retained fraction as the path proportion and a fixed
+row offset, typically the logit of the gene's retained fraction over its
+other introns in the same row, so that a gene-wide change in unspliced RNA
+is not read as retention of the intron. The likelihood-ratio statistic is
+calibrated against fits with cell-type labels swapped at random within
+subjects: above its lower tail that null is a chi-square on one degree of
+freedom scaled by a constant (null_inflation), and calibrated_p_value divides
+the statistic by it.
 """
 
 import gzip
 
 import numpy as np
 import pandas as pd
+from scipy.stats import chi2
 
 from .differential import _ATTRIBUTE
+from .path_marginal import BinaryECPathLikelihood
+from .path_marginal_grid import binary_grid_test
 
 
 def read_gtf_transcripts(path):
@@ -109,3 +124,34 @@ def contained_introns(starts, ends, intron_starts, intron_ends, overhang=0):
     block = np.repeat(np.arange(len(starts)), n)
     intron = np.repeat(first, n) + np.arange(n.sum()) - np.repeat(np.cumsum(n) - n, n)
     return block, intron
+
+
+def gene_baseline_offset(retained_other, spliced_other, pseudocount=.5):
+    """Logit of the retained fraction over a row's other introns."""
+    return np.log((np.asarray(retained_other, float) + pseudocount) / (np.asarray(spliced_other, float) + pseudocount))
+
+
+def retention_test(retained, spliced, subjects, labels, offset=None, nodes=9):
+    """Random-subject Beta-binomial test of retention between two labels.
+
+    Rows are (subject, label) aggregates with retained and spliced molecule
+    counts; logit of the mean retained fraction is intercept + effect of the
+    second label (sorted) + subject effect + offset. Returns binary_grid_test's
+    fields; coefficients[1] is the label effect on the logit scale.
+    """
+    retained, spliced = np.asarray(retained, float), np.asarray(spliced, float)
+    components = (np.array([[0., 1., 0.], [0., 0., 1.]]),)
+    n = len(retained)
+    likelihood = BinaryECPathLikelihood((np.column_stack([retained, spliced]),), components, np.asarray(subjects), np.asarray(labels), np.ones((n, 2)), np.zeros(n))
+    return binary_grid_test(likelihood, nodes=nodes, offset=offset)
+
+
+def null_inflation(null_statistics, levels=(.05, .01, .001)):
+    """Scale c of a chi2_1 fitted to null statistics: mean ratio of their upper quantiles to chi2_1's at the given levels."""
+    null_statistics = np.asarray(null_statistics, float)
+    return float(np.mean([np.quantile(null_statistics, 1 - a) / chi2.isf(a, 1) for a in levels]))
+
+
+def calibrated_p_value(statistic, inflation):
+    """P-value of a likelihood-ratio statistic against the scaled chi2_1 null."""
+    return chi2.sf(np.asarray(statistic, float) / inflation, 1)

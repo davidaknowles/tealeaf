@@ -1,6 +1,6 @@
 import numpy as np
 
-from tealeaf.sc.intron_retention import a_run_positions, contained_introns, downstream_run_distance, intron_catalogue
+from tealeaf.sc.intron_retention import a_run_positions, contained_introns, downstream_run_distance, calibrated_p_value, intron_catalogue, null_inflation, retention_test
 
 
 def test_catalogue_clean_and_retained_labels():
@@ -33,3 +33,28 @@ def test_contained_introns_with_overhang():
     intron_starts, intron_ends = np.array([100, 300, 600]), np.array([200, 400, 700])
     block, intron = contained_introns([90, 50, 250, 0], [210, 450, 420, 800], intron_starts, intron_ends, overhang=10)
     assert list(zip(block.tolist(), intron.tolist())) == [(0, 0), (1, 0), (1, 1), (2, 1), (3, 0), (3, 1), (3, 2)]
+
+
+def test_retention_test_offset_shifts_intercept_only():
+    rng = np.random.default_rng(3)
+    subjects, labels = np.repeat(np.arange(8), 2), np.tile([0, 1], 8)
+    offset = rng.normal(-2, .5, 16)
+    probability = 1 / (1 + np.exp(-(-1 + offset + 1.5 * labels)))
+    total = rng.poisson(40, 16) + 5
+    retained = rng.binomial(total, probability)
+    base = retention_test(retained, total - retained, subjects, labels, offset=offset)
+    shifted = retention_test(retained, total - retained, subjects, labels, offset=offset + 1.)
+    assert base["converged"] and base["p_value"] < 1e-3 and base["coefficients"][1] > .5
+    assert np.isclose(shifted["statistic"], base["statistic"], atol=1e-3)
+    assert np.isclose(shifted["coefficients"][0], base["coefficients"][0] - 1., atol=1e-2)
+    # a gene-wide change carried by the offset is not a retention effect
+    gene_wide = retention_test(retained, total - retained, subjects, labels, offset=offset + 1.5 * labels)
+    assert np.isclose(gene_wide["coefficients"][1], base["coefficients"][1] - 1.5, atol=1e-2)
+
+
+def test_null_inflation_recovers_scale():
+    rng = np.random.default_rng(0)
+    statistics = 1.3 * rng.chisquare(1, 200000)
+    inflation = null_inflation(statistics)
+    assert abs(inflation - 1.3) < .05
+    assert np.isclose(calibrated_p_value(1.3 * 3.841, 1.3), .05, atol=1e-3)

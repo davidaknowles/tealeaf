@@ -4799,3 +4799,35 @@ The v4 rerun (`.cache/native_v4`, models `internal_native_v4`, `tj_native_v4`) r
 Split (Tealeaf / comparator replicated genes), v3 → v4. Matched universe: LeafCutter 64/35 → 64/35, MAJIQ 203/27 → 201/27, SUPPA2 121/8 → 124/8, SUPPA2-PA 128/0 → 130/0, rMATS 159/4 → 158/4, scQuint 181/127 → 179/135 (matched gene sets shrink with the block set, e.g. scQuint 3,704 → 3,603). Comparator universe: 64/36, 196/28, 102/0 → 101/0, 117/0 → 115/0, 141/4 → 136/4, 171/124 → 172/124. LR (exon-chain, comprehensive): AUC100 .937 → .940 (93/100 agree), A40 .958 → .959, A200 .936 → .936, evaluable tests 29,323 → 34,634.
 
 Event classes (`analyses/native_align/events_v4`): retained-intron tests 16,389 → 935 (most v3 RI tests compared a mature copy of the precursor with a spliced path), cassette 293,308 → 215,456, acceptor 87,652 → 99,219, donor 50,312 → 55,749 (reclassified chains). Discoveries 3,685 → 3,549 cassette, 2,684 → 2,837 first exon; LR agreement of discoveries .79–.91 over the common classes. Discovery figures: 28 pairs Tealeaf 3,631 discoveries in 3,020 gene–pairs (cassette 1,024, first/last exon 1,508); 190 pairs 10,742 in 9,037 (cassette 3,549). LeafCutter 28-pair gene–pairs corrected to 351 in the text (the figure already had 351). The four examples (Pkn2, Nfasc, Kif21a, Mctp1) are selected again with identical p-values, usages and path labels (`analyses/native_align/examples_v4`). Methods text now says touching exons are merged and paths equal to the window are removed.
+
+### 2026-10-26 Differential intron retention: random-subject Beta-binomial test with a gene offset
+
+Model (`intron_retention.retention_test`). For one intron and one cell-type pair, rows are (subject, cell type) with r retained and n spliced molecules. r given r + n is Beta-binomial with concentration κ, logit of the mean = intercept + effect of the second cell type + subject effect u_s ~ N(0, σ²) + offset, where the offset is the gene baseline log((R + .5) / (N + .5)), with R and N the same row's retained and spliced molecules over the gene's other clean introns (`gene_baseline_offset`). It reuses the block path test (`binary_grid_test`, one path pair, exact rows), which now takes a fixed per-row logit offset (`GridModel.offset`). The likelihood-ratio statistic compares fits with and without the cell-type effect. Same eligibility as the DL/HK prototype (rows with r + n ≥ 3 and R + N ≥ 3, at least 4 subjects with both cell types, 28 long-read pairs, masked poly(dT) body counts).
+
+Calibration. Simulation (k subjects 4–20) showed the χ²₁ reference rejects .10–.12 at .05 for k ≤ 6, and t on k − 1 df is conservative. On the data, a label-swapped null (15% of tests, each subject's cell-type labels swapped with probability ½) rejects .08–.10 at .05, .02–.03 at .01 and .002–.006 at .001 regardless of k (4 to ≥ 18). Above its 80th percentile this null is χ²₁ scaled by c = 1.30 (fold 0), 1.35 (fold 1), 1.34 (full data); 15–27% of null statistics are 0. A scaled t fit by maximum likelihood (ν ≈ 10–40) matches the bulk but extrapolates a heavier tail and removes every discovery. Calibrated p-values use statistic / c on χ²₁ (`null_inflation`, `calibrated_p_value`). Rows split by primer (subject, cell type, primer, each with its own primer's gene baseline) lower c to 1.24–1.27 but leave fewer eligible tests, and replicate the same number of genes (8 at no filter, 10 at pooled retained ≥ 50).
+
+Split replication (Simes within gene–pair then across pairs, BH .05 on max fold p). The filter is label-blind pooled retained molecules.
+
+| Test | BH genes per half | Replicated genes |
+|---|---|---|
+| DL/HK, current prototype | 14, 14 | 3 |
+| Beta-binomial, χ²₁ (uncalibrated) | 230, 236 | 29 |
+| Beta-binomial, t(k − 1) | 1, 0 | 0 |
+| Beta-binomial, scaled χ²₁ | 48, 25 | 9 |
+| Beta-binomial, scaled χ²₁, retained ≥ 50 | 60, 38 | 10 |
+| Beta-binomial, scaled χ²₁, primer rows, retained ≥ 50 | 35, 31 | 10 |
+
+Long-read benchmark confound. EX_cerebellum_granule's short-read gene baseline log(R/N) differs from every other type by about 2 logits, and ASC's by about 0.4. Of the 977 tests with a long-read retained-fraction difference ≥ .05, 461 have no short-read retained molecules; there a gene-offset test's sign is −(baseline shift), and that sign agrees with long reads 78% of the time. The DL/HK prototype's top long-read tests are mostly such cerebellum-granule tests with 0–5 retained molecules, which gives its .91 agreement at rank 100. Where short reads do contain retention (≥ 10 retained molecules, no granule pairs, 201 tests), pooled raw retained/spliced shifts, baseline-subtracted shifts, retained and spliced shares of the gene and the Beta-binomial effect all agree with long-read direction .50–.52, and DL/HK .61. The long-read criteria in `ir_comparators.py` are therefore also scored without the cerebellum-granule pairs.
+
+Comparators, long-read agreement at rank 100 (tests in brackets). The filter is pooled retained ≥ 50 for the Beta-binomial unless noted.
+
+| Method | Replicated genes (own keys) | LR retained ≥ 5 | LR retained ≥ 5, no granule | abs(LR diff) ≥ .05 | abs(LR diff) ≥ .05, no granule |
+|---|---|---|---|---|---|
+| Tealeaf IR Beta-binomial, no filter | 9 | .53 (8,145) | .61 (5,820) | .55 (977) | .58 (516) |
+| Tealeaf IR Beta-binomial, retained ≥ 50 | 10 | .53 (746) | .65 (637) | .53 (119) | n/a (95) |
+| Tealeaf IR DL/HK | 3 | .69 (8,145) | .45 (5,820) | .91 (977) | .81 (516) |
+| SUPPA2 | 0 | .45 (866) | .43 (657) | .53 (316) | .58 (224) |
+| SUPPA2 primer-aware | 0 | .40 (644) | .45 (494) | .50 (248) | .56 (184) |
+| MAJIQ (`--all-introns`) | 6 (32 genes tested) | .47 (103) | n/a (69) | n/a (35) | n/a (22) |
+
+The Beta-binomial test triples split replication over DL/HK. Long reads do not separate the two: after removing the cerebellum-granule pairs the Beta-binomial leads on the retained ≥ 5 criterion and DL/HK on the retained-fraction difference criterion. The common gene–pair universe across all five methods is 12 gene–pairs (3 genes), too small to compare. Adhoc scripts: `.cache/adhoc/ir/diff_glmm.py` (fits, `NULL_FRACTION` for the null), `glmm_eval.py` (p-value variants and filters), `glmm_tests.py` (calibrated tests in comparator format), `decomp.py`, `decomp2.py` (long-read confound).
