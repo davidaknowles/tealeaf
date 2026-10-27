@@ -4831,3 +4831,18 @@ Comparators, long-read agreement at rank 100 (tests in brackets). The filter is 
 | MAJIQ (`--all-introns`) | 6 (32 genes tested) | .47 (103) | n/a (69) | n/a (35) | n/a (22) |
 
 The Beta-binomial test triples split replication over DL/HK. Long reads do not separate the two: after removing the cerebellum-granule pairs the Beta-binomial leads on the retained ≥ 5 criterion and DL/HK on the retained-fraction difference criterion. The common gene–pair universe across all five methods is 12 gene–pairs (3 genes), too small to compare. Adhoc scripts: `.cache/adhoc/ir/diff_glmm.py` (fits, `NULL_FRACTION` for the null), `glmm_eval.py` (p-value variants and filters), `glmm_tests.py` (calibrated tests in comparator format), `decomp.py`, `decomp2.py` (long-read confound).
+
+Random hexamer only, and EX_cerebellum_granule dropped (2026-10-27). The cerebellum-granule baseline shift is not a priming artefact: centred on the median type, its gene-wide retained/spliced log ratio is −1.99 with poly(dT) and −2.07 with random hexamer (ASC −0.43, −0.49; other types within ±0.13), so the granule pairs are now left out of IR evaluation (21 pairs). The null inflation c is re-estimated on the remaining pairs. Scaled χ²₁ for the Beta-binomial. Long-read agreement at rank 100 (tests in brackets):
+
+| Reads, rows | Test | BH genes per half | Replicated genes | LR retained ≥ 5 | abs(LR diff) ≥ .05 |
+|---|---|---|---|---|---|
+| All primers, pooled | Beta-binomial (c 1.30–1.34) | 30, 26 | 10 | .61 (5,820) | .58 (516) |
+| All primers, pooled | Beta-binomial, retained ≥ 50 | 34, 31 | 10 | .65 (637) | n/a (95) |
+| All primers, pooled | DL/HK | 7, 9 | 2 | .45 (5,820) | .81 (516) |
+| All primers, primer rows | Beta-binomial (c 1.23–1.27) | 24, 14 | 8 | .54 (4,921) | .54 (423) |
+| Random hexamer only | Beta-binomial (c 1.26–1.30) | 15, 16 | 5 | .54 (2,279) | .57 (285) |
+| Random hexamer only | DL/HK | 2, 2 | 0 | .56 (2,279) | .76 (285) |
+| | SUPPA2 / SUPPA2 primer-aware | 0, 0 / 0, 1 | 0 / 0 | .43 / .45 | .57 / .56 |
+| | MAJIQ (31 genes tested) | 8, 20 | 6 | n/a (69) | n/a (22) |
+
+Random hexamer alone keeps about half of the tests and halves the replicated genes; long-read agreement does not improve. The pooled all-primer Beta-binomial stays the IR test.
