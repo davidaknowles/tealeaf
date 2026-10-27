@@ -4848,3 +4848,20 @@ Random hexamer only, and EX_cerebellum_granule dropped (2026-10-27). The cerebel
 Random hexamer alone keeps about half of the tests and halves the replicated genes; long-read agreement does not improve. The pooled all-primer Beta-binomial stays the IR test.
 
 Decision (2026-10-27): differential intron retention is too underpowered with Parse on this nuclei data to be worth pursuing further. The best test (pooled Beta-binomial, scaled χ²₁) replicates 10 genes across subject halves, and long-read direction agreement is .54–.65 once the cerebellum-granule pairs are dropped. IR results go in the supplement of the paper, not the main text; no further IR method development is planned.
+
+## 2026-10-27 Whole-cell Parse PBMC datasets
+
+Both datasets analysed so far (GSE189033 mouse brain, GSE233208 human brain) are nuclei, where precursor RNA dominates intronic reads. To test every endpoint, not only intron retention, on whole cells, we screened GEO for Parse/Evercode/SPLiT-seq series and kept the public human PBMC sets with raw reads. Stimulation effects can later be compared with disease effects (for example long COVID).
+
+| Series | Donors | Design | Kit | Read 1 / read 2 (nt) | FASTQ |
+|---|---|---|---|---|---|
+| GSE327907 | 12 (two batches of 6) | 12 in vitro stimuli including baseline, 48 h | WT v2 | 150 / 150 | 1.32 TB, 16 sublibraries |
+| GSE334840 | 8 | DMSO, cortisol, norepinephrine, 24 h | WT 100k | 66 / 86 | 202 GB, 8 sublibraries x 2 runs |
+| GSE320507 | 46 (8 healthy, 6 convalescent, 32 long COVID) | case/control | WT v2 | 136 / 86 | 199 GB, 9 sublibraries x 2 runs |
+| GSE285843 | 3 | healthy, Parse vs 10x benchmark | WT v2 | 101 / 101 | 113 GB, 2 sublibraries |
+| GSE246624 | 2 | healthy, Parse vs 10x benchmark | WT v2 | 150 / 150 | 57 GB, 8 replicates per donor |
+| GSE295527 | 2 (x 2 replicates) | healthy, platform benchmark | WT v3 | 64 / 58 | 182 GB |
+
+Excluded: GSE295359 (alloHSCT, 10 patients; SRA runs have no public reads), GSE330122 (BD Rhapsody targeted, not Parse WT), GSE329418 (one donor), and the Parse PBMC demo already on disk (one sample). The two organoid series on disk, GSE253230 (UBE3A) and GSE281535 (BrainSTEM), are also whole cells but come from cell lines rather than donors.
+
+GSE327907 and GSE334840 provide the sample-to-RT-well map, which primer pairing needs; for the others the map has to come from the processed objects. Several sublibraries are split over two sequencing runs, so runs must be grouped by GEO sample before cell calling. Read 2 of GSE295527 (WT v3) is 58 nt, so its barcode layout and lists differ from the Split-seq v2 geometry the pipeline assumes; the other sets carry the v2 layout in the first 86 nt of read 2. No public long-read data exist for these donors; the PacBio Kinnex 10x PBMC data are the candidate long-read reference.
