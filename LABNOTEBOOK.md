@@ -4867,3 +4867,13 @@ Excluded: GSE295359 (alloHSCT, 10 patients; SRA runs have no public reads), GSE3
 GSE327907 and GSE334840 provide the sample-to-RT-well map, which primer pairing needs; for the others the map has to come from the processed objects. Several sublibraries are split over two sequencing runs, so runs must be grouped by GEO sample before cell calling. Read 2 of GSE295527 (WT v3) is 58 nt, so its barcode layout and lists differ from the Split-seq v2 geometry the pipeline assumes; the other sets carry the v2 layout in the first 86 nt of read 2. No public long-read data exist for these donors; the PacBio Kinnex 10x PBMC data are the candidate long-read reference.
 
 PacBio's public Kinnex single-cell data provide the PBMC long-read reference (commercial PBMC from BioIVT, so donors differ from the short-read sets). Eight PBMC libraries are kept: one made from a Parse WT library (segmented S-reads only, no PacBio processing, so cell barcodes and primers must be called by us) and seven from 10x 3' and 5' kits (Revio and Vega, 10k–20k cells), each with S-reads, UMI-deduplicated tagged reads, Pigeon-classified collapsed isoforms and isoform-by-cell matrices. The raw CCS concatemers and FASTA/FASTQ copies of BAM files are not downloaded (1.50 TB kept of 3.0 TB). The Parse library is the only public long-read set with the same chemistry as the short reads, including the poly(dT)/random-hexamer RT split.
+
+### 2026-10-27 GSE334840 processing setup
+
+FASTQs come from NCBI SRA's AWS bucket (about 30–50 MB/s per connection, against 0.3–1 MB/s from ENA), converted with fasterq-dump and checked against ENA's spot counts.
+
+The kit is Parse WT v3 chemistry. Read 2 keeps the Split-seq v2 layout (UMI 1–10, bc3 11–18, bc2 49–56, bc1 79–86), but bc1 comes from split-pipe's `n99_v5` table (48 wells, a poly(dT) and a random-hexamer barcode per well, 3 unused TCR entries dropped) while bc2 and bc3 use the v1 table. Exact bc1 matches are 44% of reads (the NovaSeq X run has low base quality at the end of read 2; correction within two mismatches recovers more).
+
+The recipe takes cells and labels from the published object (62,975 cells, 20 cell types, 8 subjects x DMSO/cortisol/norepinephrine): cell `bc1well_bc2well_bc3well__s<k>` expands to its poly(dT) and random-hexamer barcodes in sublibrary k, with cell type recorded as `<type>|<treatment>`. Each sublibrary is one library with its two sequencing runs. Of read-2 barcodes in one run, 21% exactly match a labelled cell of its own sublibrary and 1.4% one of another sublibrary.
+
+Reference: GENCODE v49 basic on the GRCh38 primary assembly, every multi-exon gene, as in v4. Read 1 is 66 nt, so `--novel-terminal-length 66` and collate `--read-length 66` (new option; opportunities were fixed at 151 nt).
