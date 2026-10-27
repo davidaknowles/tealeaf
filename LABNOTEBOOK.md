@@ -4846,3 +4846,5 @@ Random hexamer only, and EX_cerebellum_granule dropped (2026-10-27). The cerebel
 | | MAJIQ (31 genes tested) | 8, 20 | 6 | n/a (69) | n/a (22) |
 
 Random hexamer alone keeps about half of the tests and halves the replicated genes; long-read agreement does not improve. The pooled all-primer Beta-binomial stays the IR test.
+
+Decision (2026-10-27): differential intron retention is too underpowered with Parse on this nuclei data to be worth pursuing further. The best test (pooled Beta-binomial, scaled χ²₁) replicates 10 genes across subject halves, and long-read direction agreement is .54–.65 once the cerebellum-granule pairs are dropped. IR results go in the supplement of the paper, not the main text; no further IR method development is planned.
