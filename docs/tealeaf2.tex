@@ -232,6 +232,7 @@ The probability of each class given the path composition is determined by read g
 Under a model in which molecules of path $s$ arise in proportion to an abundance $\rho_s$ per position and start uniformly along it, $P(\text{class }k)=\sum_s\rho_sn_{ks}/\sum_s\rho_sL_s$. The molecule share of path $s$ is $\pi_s=\rho_sL_s/\sum_{s'}\rho_{s'}L_{s'}$.
 
 \section{Block test}
+\label{sec:block}
 
 \subsection{Projection and screens}
 
@@ -320,7 +321,7 @@ Table~\ref{tab:results} gives both endpoints. On both the matched and the compar
 
 \subsection{Event classes}
 
-Each test is assigned an event class from the exon chains of its retained paths. If all chains start and end at the same bases the block is internal, and two chains are classified by the exons in which they differ as a cassette exon, multi-exon skipping, an alternative donor or acceptor, mutually exclusive exons or a retained intron (a differing pattern outside these is complex internal); more than two chains are compound internal. Otherwise the paths differ at a transcript end, an alternative first exon, an alternative last exon, or both, oriented by the strand; when the differing terminal exons share their splice site, only the transcript start or end moves. Table~\ref{tab:events} gives the full-data tests, BH discoveries at 0.05 (one family over internal and terminal blocks) and their long-read agreement by class. Most discoveries that retain a novel path have no long-read counterpart. Long-read agreement of discoveries is 0.79 to 0.91 for the common classes, highest for alternative first exons and cassette exons.
+Each test is assigned an event class from the exon chains of its retained paths. If all chains start and end at the same bases the block is internal, and two chains are classified by the exons in which they differ as a cassette exon, multi-exon skipping, an alternative donor or acceptor, mutually exclusive exons or a retained intron (a differing pattern outside these is complex internal); more than two chains are compound internal. Otherwise the paths differ at a transcript end, an alternative first exon, an alternative last exon, or both, oriented by the strand; when the differing terminal exons share their splice site, only the transcript start or end moves. Table~\ref{tab:events} gives the full-data tests, BH discoveries at 0.05 (one family over internal and terminal blocks) and their long-read agreement by class. Most discoveries that retain a novel path have no long-read counterpart. Long-read agreement of discoveries is 0.79 to 0.91 for the common classes, highest for alternative first exons and cassette exons. Retained introns are rare among block tests because a path whose chain is the whole window is removed; a per-intron test of differential retention is described in Appendix~\ref{sec:ir}.
 
 \begin{table}[ht]
 \centering
@@ -428,5 +429,54 @@ Figures~\ref{fig:pkn2}--\ref{fig:mctp1} show the full-data tests with the larges
 \section{Implementation}
 
 The alignment kernel exists in two implementations with identical output, a numba implementation in the Python package and a Rust library called through a C interface. The Rust library also reads the paired gzipped FASTQ files. Each mate is decompressed and parsed on its own thread ahead of alignment, read 1 is converted to 2-bit codes, and read 2 is reduced to the corrected barcode and UMI. A run of 345 million read pairs aligns to the 1{,}163 genes of an earlier target list in 45~min with 16 threads, and to all 33{,}755 multi-exon genes in 32--67~min with 18 threads, compared with 67~min for STARsolo on 12 threads over the whole genome. Read opportunities, the row integrals and the subject quadrature are compiled numba kernels. Against STARsolo alignments of 2 million reads (earlier target list), the targeted aligner reports 97.6\% of STAR's unique alignments in the target loci as unique, with identical junctions for 99.5\% of reads aligned uniquely by both, and gives the same block class for 99.7\% of reads entering a block. Molecule counts per block, class, subject, cell type and primer agree with those from STARsolo alignments to within 5\% (overlap of 0.95 of STAR's counts), and the class distributions within blocks differ by a mean total-variation distance of 0.005.
+
+\clearpage
+\appendix
+
+\section{Differential intron retention}
+\label{sec:ir}
+
+Block tests do not test retention of a whole intron, since a path whose chain is the block window duplicates the precursor path and is removed (935 retained-intron tests remain, Table~\ref{tab:events}). Retention is therefore tested per annotated intron. In nuclei most intronic molecules are precursor RNA, so the retained fraction of an intron is compared with that of the other introns of its gene.
+
+\subsection{Counts}
+
+Introns are the junctions of the comprehensive GENCODE vM32 transcripts of the target genes. An intron is \emph{clean} if no exon boundary of any transcript, of any gene and on either strand, lies strictly inside it; clean introns are disjoint. For clean intron $i$, subject $u$ and cell type $c$, $r_{iuc}\in\mathbb N_0$ is the number of retained molecules, sense molecules with an unspliced read inside the intron at least 5 bases from both ends, and $n_{iuc}\in\mathbb N_0$ the number of spliced molecules, those with a junction equal to the intron. Molecules are distinct half-cell barcode and UMI pairs, and both primers are pooled. Poly(dT) priming at genomic A-runs inflates intronic coverage, intron-body poly(dT) molecules per position being 27.5-fold higher within 100 bases upstream of a sense A-run (at least 8 A in 10 bases) than more than 3 kb away, 3.4-fold at 200--300 bases and 2- to 2.7-fold up to 3 kb, against 1.2- to 1.9-fold for random-hexamer molecules. Poly(dT) intron-body molecules within 1 kb upstream of a sense A-run are removed. The gene baseline of row $(u,c)$ is $R_{iuc}=\sum_{j\neq i}r_{juc}$ and $N_{iuc}=\sum_{j\neq i}n_{juc}$, with $j$ over the other clean introns of the gene.
+
+\subsection{Model and test}
+
+A test is indexed by a clean intron $i$ and a cell-type pair $\{c_0,c_1\}$, with rows $(u,c)$, $c\in\{c_0,c_1\}$, that have $r_{iuc}+n_{iuc}\ge3$ and $R_{iuc}+N_{iuc}\ge3$; at least 4 subjects must have rows in both cell types. Dropping the index $i$, the model is the random-effects model of the block test (Section~\ref{sec:block}) with one path against the rest and exact rows, \[r_{uc}\mid\psi_{uc}\sim\operatorname{Binomial}(r_{uc}+n_{uc},\psi_{uc}),\qquad \psi_{uc}\mid v_u\sim\BetaDist\big(\kappa\mu_{uc},\kappa(1-\mu_{uc})\big),\qquad v_u\sim\mathcal N(0,\sigma^2),\] with \[\logit\mu_{uc}=\theta_0+\theta_1z_c+v_u+o_{uc},\qquad o_{uc}=\log\frac{R_{uc}+0.5}{N_{uc}+0.5},\] where $\psi_{uc}\in(0,1)$ is the retained fraction of the row, $z_c=\mathbf 1[c=c_1]$ and the offset $o_{uc}\in\mathbb R$ is fixed. $\theta_1$ is then the change in the intron's retention relative to its gene, and a change of the whole gene's unspliced fraction between cell types enters through $o_{uc}$. Integration, estimation, bounds and the convergence check are those of the block test, and the likelihood-ratio statistic $T$ compares fits with and without $\theta_1$.
+
+\paragraph{Calibration.} In simulations of this model with $k$ subjects, $P(\chi^2_1>T)$ rejects 10--12\% of null tests at 0.05 for $k\le6$, and the signed root of $T$ on $t_{k-1}$ is conservative. On the data, the null is generated by refitting 15\% of the tests, chosen at random, with each subject's two cell-type labels exchanged with probability $1/2$. This null rejects 8--10\% at 0.05, 2--3\% at 0.01 and 0.2--0.6\% at 0.001 under $\chi^2_1$, at every number of subjects from 4 to more than 18. 15--27\% of null statistics are below $10^{-3}$, and above their 80th percentile they follow $\chi^2_1$ scaled by a constant. With $q_\alpha$ the upper-$\alpha$ quantile of the null statistics and $\chi^2_{1,\alpha}$ that of $\chi^2_1$, the scale is $\varrho=\frac13\sum_{\alpha\in\{0.05,0.01,0.001\}}q_\alpha/\chi^2_{1,\alpha}$, estimated in each cohort, and the p-value is $P(\chi^2_1>T/\varrho)$. $\varrho$ is 1.30 and 1.34 in the two halves and 1.34 in the full data. A scaled $t$ distribution fitted by maximum likelihood to the null signed roots matches the bulk of the null but has a heavier tail and leaves no discoveries.
+
+\paragraph{Per-subject comparison.} As a simpler alternative, $x_{uc}=\log\{(r_{uc}+0.5)/(n_{uc}+0.5)\}-o_{uc}$ with variance $w_{uc}=\sum_{y\in\{r,n,R,N\}}(y_{uc}+0.5)^{-1}$ gives per-subject differences $d_u=x_{uc_1}-x_{uc_0}$ with variance $w_{uc_0}+w_{uc_1}$, combined over the $k$ subjects with both cell types by the DerSimonian--Laird random-effects mean, with the Hartung--Knapp variance (floored at the DerSimonian--Laird variance) and $t_{k-1}$.
+
+\subsection{Evaluation}
+
+Cerebellar granule neurons are left out of the evaluation. Relative to the median of the eight long-read cell types, their gene-wide log ratio of intron-body to spliced molecules is $-1.99$ with poly(dT) and $-2.07$ with random hexamers (astrocytes $-0.43$ and $-0.49$, other types within $\pm0.13$). At introns without retained short-read molecules a test with the gene offset takes the sign of this baseline difference, and in the 28 pairs these tests make up most of the top-ranked long-read-evaluable tests of the per-subject comparison below. The evaluation uses the 21 pairs of the other seven long-read cell types. Split replication is scored as in Section~\ref{sec:evaluation}, with intron p-values combined by Simes within a gene--cell-type pair and the pairs of a gene by Simes, on each method's own (gene, pair) keys. In the long-read data a molecule retains a clean intron when one of its exons contains the intron with 20 bases on each side, and splices it when one of its junctions equals the intron. The long-read effect is the difference of retained fractions between the cell types, and a test is evaluable if each cell type has at least 20 long-read molecules retaining or splicing the intron and either (i) at least 5 molecules in the two cell types retain it or (ii) the retained fractions differ by at least 0.05. Agreement is the fraction of the 100 top-ranked evaluable tests whose effect has the sign of the long-read effect. SUPPA2 retained-intron events $\mathrm{RI}{:}\mathrm{chr}{:}s_1{:}e_1\text{-}s_2{:}e_2$ (1-based) are mapped to the clean intron $[e_1,s_2-1)$, and MAJIQ, built with intron retention, to its intron edges; an intron in several local splice variants keeps its smallest p-value.
+
+\begin{table}[ht]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrr}
+\toprule
+Method & Genes & BH genes per half & Replicated & LR retained $\ge5$ & LR difference $\ge0.05$\\
+\midrule
+Beta-binomial, gene offset & 4{,}626 & 30, 26 & 10 & .61 (5{,}820) & .58 (516)\\
+\quad pooled retained $\ge50$ & 4{,}146 & 34, 31 & 10 & .65 (637) & -- (95)\\
+\quad rows by primer & 4{,}134 & 24, 14 & 8 & .54 (4{,}921) & .54 (423)\\
+\quad random hexamer only & 3{,}813 & 15, 16 & 5 & .54 (2{,}279) & .57 (285)\\
+Per-subject comparison & 4{,}626 & 7, 9 & 2 & .45 (5{,}820) & .81 (516)\\
+\quad random hexamer only & 3{,}813 & 2, 2 & 0 & .56 (2{,}279) & .76 (285)\\
+SUPPA2 & 198 & 0, 0 & 0 & .43 (657) & .57 (224)\\
+Primer-aware SUPPA2 & 119 & 0, 1 & 0 & .45 (494) & .56 (184)\\
+MAJIQ & 31 & 8, 20 & 6 & -- (69) & -- (22)\\
+\bottomrule
+\end{tabular}
+\caption{Differential intron retention on the 21 long-read cell-type pairs without cerebellar granule neurons. Genes is the number of genes with a test in both halves, BH genes per half the genes with BH-adjusted Simes p at most 0.05 in each half, and Replicated the genes with BH-adjusted conjunction p at most 0.05. The last two columns give the fraction of the 100 top-ranked long-read-evaluable tests that agree with the long-read direction under the two evaluability rules (number evaluable in parentheses; -- when fewer than 100). The pooled retained filter keeps tests with at least 50 retained molecules over both cell types, without labels. Rows by primer split each row by primer, each with that primer's gene offset.}
+\label{tab:ir}
+\end{table}
+
+Table~\ref{tab:ir} gives the results. The Beta-binomial test replicates 10 of 4{,}626 genes against 2 for the per-subject comparison, 0 for both forms of SUPPA2 and 6 of 31 for MAJIQ, which tests few introns. A label-blind filter on pooled retained molecules leaves replication unchanged, rows by primer lower $\varrho$ to 1.23--1.27 but leave fewer tests, and random-hexamer molecules alone halve replication. Long-read agreement of the top-ranked tests is between 0.54 and 0.65 for every Beta-binomial variant and does not favour one test, since the Beta-binomial leads under the retained-molecule rule and the per-subject comparison under the difference rule. Among tests with at least 10 retained short-read molecules and a long-read difference of at least 0.05 (201 tests), the pooled short-read changes in retained fraction, with or without the gene offset, agree with the long-read direction in 51--52\% of tests. With these data differential intron retention between cell types is underpowered, with few replicated genes and weak agreement between short-read and long-read retention changes of single introns.
 
 \end{document}
