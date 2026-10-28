@@ -240,3 +240,33 @@ def test_rust_fastq_reader_matches_numpy(tmp_path):
         handle.write("".join(records[1][:999]))
     with pytest.raises(ValueError, match="different record counts"):
         list(na.rust_fastq_pairs(RUST_LIBRARY, paths[0], paths[1], tables, lookup, size, UMI, SEGMENTS, batch=300))
+
+
+@pytest.mark.skipif(not RUST_LIBRARY.exists(), reason="Rust aligner not built (cargo build --release in rust/native_align)")
+def test_v3_barcode_layout(tmp_path):
+    import gzip
+    from extra_scripts.native_collect import BARCODE_LAYOUTS, UMI, numpy_batches
+
+    rng = np.random.default_rng(4)
+    words = ["".join(rng.choice(list("ACGT"), 8)) for _ in range(5)]
+    tables = [na.segment_table(words) for _ in range(3)]
+    size = len(words)
+    lookup = np.arange(size ** 3, dtype=np.int64)
+    triples, records = [], [[], []]
+    for i in range(200):
+        triple = rng.integers(size, size=3)
+        triples.append((triple[0] * size + triple[1]) * size + triple[2])
+        barcode = "".join(rng.choice(list("ACGT"), 10)) + words[triple[0]] + "ATGAGGGGTCAG" + words[triple[1]] + "TCCAACCACCTC" + words[triple[2]]
+        assert len(barcode) == 58
+        for mate, sequence in enumerate(("".join(rng.choice(list("ACGT"), 64)), barcode)):
+            records[mate].append(f"@r{i}\n{sequence}\n+\n{'F' * len(sequence)}\n")
+    paths = [tmp_path / f"x_{mate}.fastq.gz" for mate in (1, 2)]
+    for path, lines in zip(paths, records):
+        with gzip.open(path, "wt") as handle:
+            handle.write("".join(lines))
+    layout = BARCODE_LAYOUTS["v3"]
+    expected = list(numpy_batches(paths[0], paths[1], 1000, tables, lookup, size, layout))
+    observed = list(na.rust_fastq_pairs(RUST_LIBRARY, paths[0], paths[1], tables, lookup, size, UMI, layout, batch=1000))
+    np.testing.assert_array_equal(expected[0][1], triples)
+    for x, y in zip(expected[0], observed[0]):
+        np.testing.assert_array_equal(x, y)

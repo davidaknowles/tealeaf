@@ -57,7 +57,9 @@ from tealeaf.sc.local_blocks import annotated_blocks, block_genes, block_opportu
 
 READ_LENGTH = 151
 UMI = (0, 10)
-SEGMENTS = ((10, 18), (48, 56), (78, 86))
+# read-2 positions of bc3, bc2 and bc1: Split-seq/Parse WT v1-v2 (86 nt) and Parse WT v3 (58 nt, shorter linkers)
+BARCODE_LAYOUTS = {"v2": ((10, 18), (48, 56), (78, 86)), "v3": ((10, 18), (30, 38), (50, 58))}
+SEGMENTS = BARCODE_LAYOUTS["v2"]
 REFERENCE_KEYS = ("ref", "locus_ref_start", "locus_ref_end", "locus_genome_start", "locus_chromosome", "locus_genes", "tx_space_start", "tx_ref_start", "tx_length", "tx_gene", "exon_offsets", "exon_tx_start", "exon_ref_start", "exon_length", "junctions")
 
 
@@ -145,12 +147,12 @@ def paired_batches(read1, read2, batch):
         yield out[0], out[1]
 
 
-def numpy_batches(read1, read2, batch, tables, lookup, size):
+def numpy_batches(read1, read2, batch, tables, lookup, size, segments=SEGMENTS):
     """Yield (read-1 codes, cell, UMI code, UMI valid) per batch, as tealeaf.sc.native_align.rust_fastq_pairs."""
     homopolymers = [sum(base * 4 ** i for i in range(UMI[1] - UMI[0])) for base in range(4)]
     for first, second in paired_batches(read1, read2, batch):
         codes2 = na.CODE[second]
-        segment = [tables[i][na.pack(codes2[:, a:b])[0]] for i, (a, b) in enumerate(SEGMENTS)]
+        segment = [tables[i][na.pack(codes2[:, a:b])[0]] for i, (a, b) in enumerate(segments)]
         valid_cell = (segment[0] >= 0) & (segment[1] >= 0) & (segment[2] >= 0)
         cell = np.where(valid_cell, (segment[0] * size + segment[1]) * size + segment[2], 0)
         umi, umi_n = na.pack(codes2[:, UMI[0]:UMI[1]])
@@ -210,9 +212,9 @@ def stage_align(args):
     timing = {"read": 0., "align": 0., "total": time.time()}
     read1, read2 = (args.fastq_dir / f"{args.run}_{mate}.fastq.gz" for mate in (1, 2))
     if args.rust_library and not args.numpy_reader:
-        batches = na.rust_fastq_pairs(args.rust_library, read1, read2, tables, lookup, size, UMI, SEGMENTS, args.chunk_reads)
+        batches = na.rust_fastq_pairs(args.rust_library, read1, read2, tables, lookup, size, UMI, BARCODE_LAYOUTS[args.barcode_layout], args.chunk_reads)
     else:
-        batches = numpy_batches(read1, read2, args.chunk_reads, tables, lookup, size)
+        batches = numpy_batches(read1, read2, args.chunk_reads, tables, lookup, size, BARCODE_LAYOUTS[args.barcode_layout])
     chunk = 0
     while True:
         clock = time.time()
@@ -402,6 +404,7 @@ def main():
     parser.add_argument("--fastq-dir", type=Path)
     parser.add_argument("--whitelist-dir", type=Path)
     parser.add_argument("--run")
+    parser.add_argument("--barcode-layout", choices=sorted(BARCODE_LAYOUTS), default="v2", help="align: read-2 barcode positions (v3 for Parse WT v3 chemistry)")
     parser.add_argument("--chunk-reads", type=int, default=4_000_000)
     parser.add_argument("--max-reads", type=int, default=0)
     parser.add_argument("--library-index", type=int, default=0)
