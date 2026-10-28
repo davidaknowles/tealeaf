@@ -84,6 +84,31 @@ def encode(sequence):
     return CODE[np.frombuffer(sequence, dtype=np.uint8)]
 
 
+# template-switch oligo at the start of read 1 when the fragment begins at the cDNA 5' end (Parse WT; the
+# core is followed by 8 bases ending in the rGrGrG that pairs with the cDNA's untemplated C)
+TSO_CORE = "AGCAGTGGTATCAACGCAGAG"
+TSO_TAIL = 8
+
+
+def tso_prefix_length(codes, max_offset=4, max_mismatches=3):
+    """Leading read-1 bases (N) to drop as template-switch oligo, 0 for reads without one.
+
+    codes is N x L (CODE). The TSO core (TSO_CORE) is searched at offsets
+    0..max_offset with at most max_mismatches mismatches (N counts as a
+    mismatch); the prefix runs to the end of the oligo, TSO_TAIL bases past
+    the core.
+    """
+    core = encode(TSO_CORE)
+    n, length = codes.shape
+    best = np.full(n, len(core) + 1)
+    where = np.zeros(n, dtype=np.int64)
+    for offset in range(min(max_offset, length - len(core)) + 1):
+        mismatches = (codes[:, offset:offset + len(core)] != core[None, :]).sum(axis=1)
+        better = mismatches < best
+        best[better], where[better] = mismatches[better], offset
+    return np.where(best <= max_mismatches, where + len(core) + TSO_TAIL, 0)
+
+
 # ---------------------------------------------------------------- reference
 
 

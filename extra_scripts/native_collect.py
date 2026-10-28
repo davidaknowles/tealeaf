@@ -224,7 +224,15 @@ def stage_align(args):
             break
         codes1, local, umi, valid_umi = (part[:args.max_reads - stats["reads"]] for part in batch) if args.max_reads else batch
         clock = time.time()
-        status, orientation, _, _, _, n_blocks, blocks = kernel(np.ascontiguousarray(codes1), reference["ref"], reference["index_codes"], reference["index_positions"], reference["buckets"], reference["unique"], na.K, reference["locus_ref_start"], reference["locus_ref_end"], reference["tx_space_start"], reference["tx_ref_start"], reference["tx_length"], reference["exon_offsets"], reference["exon_tx_start"], reference["exon_ref_start"], reference["exon_length"], reference["junctions"])
+        align = lambda reads: kernel(np.ascontiguousarray(reads), reference["ref"], reference["index_codes"], reference["index_positions"], reference["buckets"], reference["unique"], na.K, reference["locus_ref_start"], reference["locus_ref_end"], reference["tx_space_start"], reference["tx_ref_start"], reference["tx_length"], reference["exon_offsets"], reference["exon_tx_start"], reference["exon_ref_start"], reference["exon_length"], reference["junctions"])
+        status, orientation, _, _, _, n_blocks, blocks = align(codes1)
+        if args.trim_tso:
+            # reads starting with the template-switch oligo are aligned again without it, so the minimum aligned length follows the cDNA part
+            trim = na.tso_prefix_length(codes1)
+            stats["tso_prefix"] = stats.get("tso_prefix", 0) + int((trim > 0).sum())
+            for t in np.unique(trim[(trim > 0) & (trim < codes1.shape[1] - na.K)]):
+                rows = np.flatnonzero(trim == t)
+                status[rows], orientation[rows], _, _, _, n_blocks[rows], blocks[rows] = align(codes1[rows, t:])
         timing["align"] += time.time() - clock
         status_counts += np.bincount(status, minlength=5)
         unique = status == na.UNIQUE
@@ -405,6 +413,7 @@ def main():
     parser.add_argument("--whitelist-dir", type=Path)
     parser.add_argument("--run")
     parser.add_argument("--barcode-layout", choices=sorted(BARCODE_LAYOUTS), default="v2", help="align: read-2 barcode positions (v3 for Parse WT v3 chemistry)")
+    parser.add_argument("--trim-tso", action="store_true", help="align: drop a leading template-switch oligo from read 1 before aligning (tealeaf.sc.native_align.tso_prefix_length); needed when read 1 minus the oligo falls below the minimum aligned length")
     parser.add_argument("--chunk-reads", type=int, default=4_000_000)
     parser.add_argument("--max-reads", type=int, default=0)
     parser.add_argument("--library-index", type=int, default=0)

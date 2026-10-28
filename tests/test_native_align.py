@@ -82,6 +82,21 @@ def test_unspliced_spliced_and_reverse(setup):
     assert list(mismatches) == [0, 0, 0, 0]
 
 
+def test_tso_prefix_is_found_and_trimmed_reads_align(setup):
+    chr1 = setup[0].sequences["chr1"]
+    oligo = "AAGCAGTGGTATCAACGCAGAGTGAATGGG"
+    cdna = spliced(chr1, [(1170, 1200), (3000, 3006)])  # 36 nt, below the minimum aligned length of a 66 nt read
+    damaged = "TTGCAGTGGTATCTACGCAGAGTGTTTGGG"  # two core mismatches
+    reads = [oligo + cdna, "CC" + oligo[1:] + cdna[:-1], damaged + cdna, chr1[8100:8166], cdna + oligo]
+    codes = np.stack([na.encode(r) for r in reads])
+    trim = na.tso_prefix_length(codes)
+    assert list(trim) == [30, 31, 30, 0, 0]
+    status = align(setup, reads)[0]
+    assert status[0] == na.TOO_SHORT and status[3] == na.UNIQUE
+    status, _, _, _, _, n_blocks, blocks = align(setup, [reads[0][30:]])
+    assert status[0] == na.UNIQUE and genomic(setup, n_blocks, blocks, 0) == [(1170, 1200), (3000, 3006)]
+
+
 def test_minimum_junction_overhang(setup):
     """Terminal blocks shorter than 3 bases (annotated junction) or 5 bases (novel) are clipped, as in STAR."""
     chr1 = setup[0].sequences["chr1"]
