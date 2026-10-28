@@ -92,6 +92,7 @@ def main():
     parser.add_argument("--count-only", action="store_true")
     parser.add_argument("--universe", type=Path, help="matched split universes (gene_id, pair_id 'A||B'); their contrasts are tested")
     parser.add_argument("--lr-cell-types", help="semicolon-separated cell types with a long-read mapping; all their pairs are tested")
+    parser.add_argument("--level-pairs", type=Path, help="tab-separated level_a, level_b: these cell-type pairs are tested in every gene")
     parser.add_argument("--structure", choices=("all", "internal", "terminal"), default="all")
     parser.add_argument("--group-same-junctions", action="store_true")
     parser.add_argument("--position-opportunities", action="store_true", help="primer-specific position-weighted opportunities (opportunities_position.json.gz in --local-reads, compute_position_opportunities.py)")
@@ -113,13 +114,17 @@ def main():
     stored = json.load(gzip.open(stored_path, "rt")) if stored_path.exists() else None
     positioned = json.load(gzip.open(args.local_reads / "opportunities_position.json.gz", "rt")) if args.position_opportunities else None
     allowed = None
-    if args.universe is not None or args.lr_cell_types:
+    if args.universe is not None or args.lr_cell_types or args.level_pairs is not None:
         pairs = set()
+        level_pairs = set()
+        if args.level_pairs is not None:
+            listed = pd.read_csv(args.level_pairs, sep="\t")
+            level_pairs = {tuple(sorted(pair)) for pair in zip(listed.level_a, listed.level_b)}
         if args.universe is not None:
             universe = pd.read_csv(args.universe, sep="\t", usecols=["gene_id", "pair_id"]).drop_duplicates()
             pairs = {(gene.split(".")[0], tuple(sorted(pair.split("||")))) for gene, pair in zip(universe.gene_id, universe.pair_id)}
         lr_types = set(args.lr_cell_types.split(";")) if args.lr_cell_types else set()
-        allowed = lambda gene, a, b: (gene.split(".")[0], (a, b)) in pairs or (a in lr_types and b in lr_types)
+        allowed = lambda gene, a, b: (gene.split(".")[0], (a, b)) in pairs or (a in lr_types and b in lr_types) or (a, b) in level_pairs
     tests = declared_tests(counts, blocks, subjects, args.min_subjects, args.min_molecules, allowed)
     if args.count_only:
         print(f"cohort {args.cohort}: {len(tests)} tests, {len({key for key, _, _ in tests})} blocks", flush=True)
