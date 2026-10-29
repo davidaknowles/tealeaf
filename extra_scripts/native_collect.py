@@ -379,7 +379,7 @@ def stage_collate(args):
         parts = sorted(source.glob("part_*/counts.tsv.gz"))
         if len(parts) != len(recipe["bams"]):
             raise ValueError(f"{name}: expected {len(recipe['bams'])} parts, found {len(parts)}")
-        table = pd.concat([pd.read_csv(path, sep="\t") for path in parts], ignore_index=True)
+        table = pd.concat([pd.read_csv(path, sep="\t", dtype={"subject": str}) for path in parts], ignore_index=True)
         table = table.groupby(["path_key", "subject", "cell_type", "primer", "mask"], as_index=False)["count"].sum()
         table.to_csv(out / "counts.tsv.gz", sep="\t", index=False)
         with gzip.open(out / "blocks.json.gz", "wt") as handle:
