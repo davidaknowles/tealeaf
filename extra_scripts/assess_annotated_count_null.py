@@ -64,7 +64,7 @@ def main():
         print(summary.to_string(index=False), flush=True)
         return
     folds = pd.read_csv(args.subject_folds, sep="\t", dtype={"subject": str})
-    counts = pd.read_csv(args.local_reads / "counts.tsv.gz", sep="\t")
+    counts = pd.read_csv(args.local_reads / "counts.tsv.gz", sep="\t", dtype={"subject": str})
     counts = counts.loc[counts.subject.astype(str).isin(set(folds.subject))]
     blocks = json.load(gzip.open(args.local_reads / "blocks.json.gz", "rt"))
     structure = args.structure or ("terminal" if args.junction_only else "all")

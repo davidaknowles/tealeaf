@@ -52,7 +52,7 @@ def main():
         print(summary.to_string(index=False), flush=True)
         return
     cached = pickle.load(args.candidate_cache.open("rb"))
-    counts = pd.read_csv(args.local_reads / "counts.tsv.gz", sep="\t")
+    counts = pd.read_csv(args.local_reads / "counts.tsv.gz", sep="\t", dtype={"subject": str})
     lookup = {(row.path_key, row.subject, row.cell_type, row.primer, int(row.mask)): float(row.count) for row in counts.itertuples(index=False)}
     blocks = json.load(gzip.open(args.local_reads / "blocks.json.gz", "rt"))
     observed_keys = set(counts.path_key)

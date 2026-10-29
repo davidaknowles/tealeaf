@@ -103,7 +103,7 @@ def main():
         return
     folds = pd.read_csv(args.subject_folds, sep="\t", dtype={"subject": str})
     subjects = set(folds.subject if args.cohort == "full" else folds.loc[folds.fold.eq(int(args.cohort)), "subject"])
-    counts = pd.read_csv(args.local_reads / "counts.tsv.gz", sep="\t")
+    counts = pd.read_csv(args.local_reads / "counts.tsv.gz", sep="\t", dtype={"subject": str})
     blocks = json.load(gzip.open(args.local_reads / "blocks.json.gz", "rt"))
     if args.structure != "all":
         blocks = {key: block for key, block in blocks.items() if block_structure(structure_paths(block))["structure"] == args.structure}
