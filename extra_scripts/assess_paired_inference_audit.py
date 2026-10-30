@@ -16,11 +16,11 @@ from tealeaf.sc.replication_audit import ranked_direction_summary
 from tealeaf.sc.path_score_mixed import score_contrast_proportions
 
 
-def fit_table(path):
+def fit_table(path, min_subjects=4):
     table = pd.read_csv(path, sep="\t", low_memory=False)
     # Preserve the original eligible family when a prototype cannot fit a
     # hypothesis: failed prototype tests contribute p=1, not a smaller family.
-    table.loc[~table.converged.astype(bool) | table.n_subjects.lt(4), "p_value"] = 1.
+    table.loc[~table.converged.astype(bool) | table.n_subjects.lt(min_subjects), "p_value"] = 1.
     table["feature_id"] = table.block_id
     table = normalize_pairs(table)
     table["coverage"] = table.median_gene_umis
