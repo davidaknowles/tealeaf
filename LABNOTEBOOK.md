@@ -4921,3 +4921,16 @@ The authors sent their loading sheet (48 wells, `name extern` per well). It agre
 GSE327907 and GSE334840 now use CellTypist's coarse level (`Immune_All_High`, majority voting), because the fine level assigns stimulated monocytes to different types by stimulus. CellTypist calls about half of blood monocytes "Macrophages" in every treatment (GSE334840 DMSO 3,741 Monocytes and 3,355 Macrophages), so the two are merged into Monocytes. Coarse types are stable across treatments except IL-4 in GSE327907, which moves cells into DC (1,698 against 780 at baseline), so DC contrasts with IL-4 compare different cell mixes. Labels are `<type>|<treatment>` (GSE334840 8 types x 3 treatments, GSE327907 10 types x 12 stimuli).
 
 Contrasts are listed with `run_local_path_tests.py --level-pairs`. Each treatment is compared with the control (DMSO, Baseline) within a type, and every pair of types is compared under the control: 44 pairs in GSE334840 and 146 in GSE327907. Subject folds are 4/4 donors (GSE334840) and 6/6 with three donors of each batch per fold (GSE327907).
+
+### 2026-10-30 First PBMC fits (stimulation series)
+
+v4 fit settings (internal blocks from all reads, terminal blocks from junction reads, `--min-share .01`, primer offset), tested on the `--level-pairs` contrasts. Subject IDs with leading zeros were lost in collate (fixed in a90f2a8, and run_local_path_tests now reads subjects as strings); the first GSE334840 and GSE327907 fits had declared no tests for that reason.
+
+| series | full-data block tests | BH .05 | (gene, pair) BH | split replicated genes (cell-type pairs) |
+|---|---|---|---|---|
+| GSE327907 | 882,141 | 551 | 455 | 5 of 8,640 shared genes |
+| GSE334840 | 171,027 | 6 | 7 | 0 of 5,211 |
+
+Most GSE327907 discoveries are Baseline cell-type pairs: monocytes vs T cells 122 genes (11 replicated in the split), monocytes vs B cells 39, monocytes vs ILC 30. Power per test is lower than in the brain series at the same coverage: among GSE327907 internal tests with median 20–50 molecules, 2.4% have p < .01, against 8.9% in brain v4; at more than 200 molecules, 6.8% against 19%. Large known events are found, e.g. PTPRC (CD45 isoforms) B cells vs T cells p = 5e-11 and B cells vs monocytes 1e-13. GSE334840 (8 donors, 66 nt read 1) has almost no power.
+
+Each GSE327907 stimulus was given to the 6 donors of one batch, so a fold holds 3 donors per stimulus and no treatment test reaches the 4-donor minimum. Treatment pairs are refitted on the folds with `--min-subjects 3` (models `pbmc_GSE327907_treat3_*`), and `fit_table` takes the donor minimum as a parameter. Full-data treatment tests (433,440, 6 donors each) give 70 internal BH.
