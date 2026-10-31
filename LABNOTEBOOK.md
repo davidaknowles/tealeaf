@@ -4949,3 +4949,9 @@ All 171 pairs of the 19 CellTypist Low types, 19/19 donor folds (C4 mixture excl
 | terminal fold 0 / 1 / full | 356,411 / 288,894 / 498,192 | 704 / 392 / 1,676 |
 
 Full data gives 1,847 (gene, pair) BH. The split replicates 65 genes of 10,079 shared (fold BH 133 and 96, held-out nominal replication .91), against 5 in GSE327907 with 6/6 donors. Classical monocytes vs Tcm/naive helper T cells contributes 87 replicated genes (273 full-data), then non-classical monocytes vs helper T 22, classical monocytes vs Tem/Trm cytotoxic T 17, CD16+ NK vs classical monocytes 16. Terminal blocks give more discoveries per test than internal blocks.
+
+### 2026-10-30 GSE320507 disease contrasts (unpaired)
+
+Disease groups (7 HC, 5 CONV, 26 LTCS) are carried by disjoint donors, so the cell-type model, which pairs donors across the two levels, does not apply. `run_local_path_tests.py --unpaired` (6a9df32) applies `--min-subjects` to each level instead of to donors seen in both, and `binary_grid_test(paired=False)` drops the requirement of four donors with both types (each level needs two donors). The model is unchanged: per-donor rows with a donor random intercept, which in the unpaired design carries between-donor variation within a group, and a likelihood-ratio test of the group effect.
+
+Levels are `<type>|<group>` within each of the 19 CellTypist Low types. Contrasts per type: LTCS vs HC, LTCS vs CONV, CONV vs HC, LTCS vs HC+CONV (pooled no long COVID), and a calibration contrast between two label-permuted donor sets of size 26 and 12 (seed 0). Minimum donors per level is 4 in the full data and 3 in each fold (folds hold 3–4 HC, 2–3 CONV, 13 LTCS, so CONV contrasts get few fold tests). With 6–7 healthy donors per contrast, the chi-square LRT may be anticonservative; the permuted contrast gives the empirical p-value distribution to compare against.
