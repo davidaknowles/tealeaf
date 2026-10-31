@@ -4938,3 +4938,14 @@ Each GSE327907 stimulus was given to the 6 donors of one batch, so a fold holds 
 With 3 donors per fold, the treatment refit gives 0 BH discoveries in either fold (225,419 shared (gene, pair) keys), so the split has nothing to replicate. In the full data (6 donors), treatment discoveries concentrate in T-cell activation: T cells Cytostim vs Baseline 71 genes and CD3 vs Baseline 60; then monocytes BCS 9, Cytostim 6, LPS 4; B cells BCS 5; T cells IL2 5. Cytokine stimuli other than IL2 give at most 3 genes.
 
 Decision (2026-10-30): treatment contrasts are dropped for now. With 6 donors per stimulus the split cannot assess them, so PBMC work continues on cell-type contrasts (and disease groups in GSE320507). The treat3 fits and `level_pairs_treatment.tsv` are kept for a later revisit, e.g. with a dataset that has more donors per stimulus.
+
+### 2026-10-30 GSE320507 cell-type split
+
+All 171 pairs of the 19 CellTypist Low types, 19/19 donor folds (C4 mixture excluded), no universe, v4 settings. Shards that hit the time limit were rerun as 8 sub-shards each and concatenated before the merge.
+
+| | block tests | BH .05 |
+|---|---|---|
+| internal fold 0 / 1 / full | 766,324 / 636,297 / 1,006,354 | 240 / 132 / 757 |
+| terminal fold 0 / 1 / full | 356,411 / 288,894 / 498,192 | 704 / 392 / 1,676 |
+
+Full data gives 1,847 (gene, pair) BH. The split replicates 65 genes of 10,079 shared (fold BH 133 and 96, held-out nominal replication .91), against 5 in GSE327907 with 6/6 donors. Classical monocytes vs Tcm/naive helper T cells contributes 87 replicated genes (273 full-data), then non-classical monocytes vs helper T 22, classical monocytes vs Tem/Trm cytotoxic T 17, CD16+ NK vs classical monocytes 16. Terminal blocks give more discoveries per test than internal blocks.
