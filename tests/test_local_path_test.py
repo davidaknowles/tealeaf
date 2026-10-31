@@ -150,3 +150,23 @@ def test_unpaired_eligibility_counts_subjects_per_level():
     assert sorted(prepared["labels"].tolist()) == [0] * 4 + [1] * 4
     with pytest.raises(ValueError):
         prepare_block_test("b", entries, opportunities, 2, ("a", "b"), min_subjects=5, unpaired=True)
+
+
+def test_unpaired_multipath_block_returns_effect():
+    paths = [SKIP, INCLUDE, [(100, 200), (300, 450), (500, 600)]]
+    opportunities = path_read_opportunities(paths, 50)
+    rng = np.random.default_rng(2)
+    lookup, subjects, labels = {}, [], []
+    for index in range(12):
+        label = int(index >= 6)
+        shares = np.array([.5, .3, .2]) if label == 0 else np.array([.2, .5, .3])
+        subjects.append(f"s{index}")
+        labels.append(label)
+        for primer in PRIMERS:
+            for mask, vector in opportunities.items():
+                if mask & 7:
+                    lookup[("b", f"s{index}", ("a", "b")[label], primer, mask)] = float(rng.poisson(.4 * vector[:3] @ shares))
+    mature = {mask: vector[:3] for mask, vector in opportunities.items() if mask & 7}
+    fields, usage = fit_local_block(lookup, "b", mature, 3, np.array(subjects), np.array(labels), ("a", "b"), unpaired=True)
+    assert fields["converged"] and fields["p_value"] < 1e-3
+    assert len(fields["mean_difference"]) == 2 and usage

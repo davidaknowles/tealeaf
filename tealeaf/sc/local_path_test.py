@@ -206,13 +206,18 @@ def row_path_compositions(lookup, block, opportunities, subjects, labels, levels
     return compositions
 
 
-def row_compositions(lookup, block, opportunities, subjects, labels, levels, masks, n_paths):
+def row_compositions(lookup, block, opportunities, subjects, labels, levels, masks, n_paths, unpaired=False):
     """Equal-subject mean mature S-path compositions per level (row_path_compositions).
 
     Returns a 2 x n_paths array, level a then b, averaged over subjects
-    observed in both levels.
+    observed in both levels, or with unpaired over each level's subjects.
     """
     compositions = {key: value[0] for key, value in row_path_compositions(lookup, block, opportunities, subjects, labels, levels, masks, n_paths).items()}
+    if unpaired:
+        rows = [[compositions[key] for key in compositions if key[1] == level] for level in (0, 1)]
+        if not all(rows):
+            raise ValueError("a level has no observed subject")
+        return np.asarray([np.mean(values, axis=0) for values in rows])
     paired = [subject for subject in np.unique(subjects) if (subject, 0) in compositions and (subject, 1) in compositions]
     if not paired:
         raise ValueError("no subject observed in both levels")
@@ -259,7 +264,7 @@ def fit_local_block(lookup, block, opportunities, n_paths, subjects, labels, lev
         means[1] = 1 - means[0]
         effects = np.array([means[0][1] - means[0][0], means[1][1] - means[1][0]])
     elif means:
-        joint = row_compositions(lookup, block, opportunities, subjects, labels, levels, masks, n_paths)
+        joint = row_compositions(lookup, block, opportunities, subjects, labels, levels, masks, n_paths, unpaired)
         effects = joint[1] - joint[0]
         means = {target: joint[:, target] for target in range(n_paths)}
     fields = {"p_value": simes(p_values), "statistic": max(statistics, default=0.), "converged": bool(means), "n_subjects": subject_count if means else 0, "n_path_tests": len(targets), "n_converged_path_tests": sum(target in means for target in targets), "path_shares": shares.tolist(), "primer_offsets": offsets, "mean_difference": (helmert_basis(n_paths).T @ effects).tolist() if means else [], "mean_difference_norm": float(np.linalg.norm(effects)) if means else np.nan}
