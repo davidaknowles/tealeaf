@@ -4955,3 +4955,15 @@ Full data gives 1,847 (gene, pair) BH. The split replicates 65 genes of 10,079 s
 Disease groups (7 HC, 5 CONV, 26 LTCS) are carried by disjoint donors, so the cell-type model, which pairs donors across the two levels, does not apply. `run_local_path_tests.py --unpaired` (6a9df32) applies `--min-subjects` to each level instead of to donors seen in both, and `binary_grid_test(paired=False)` drops the requirement of four donors with both types (each level needs two donors). The model is unchanged: per-donor rows with a donor random intercept, which in the unpaired design carries between-donor variation within a group, and a likelihood-ratio test of the group effect.
 
 Levels are `<type>|<group>` within each of the 19 CellTypist Low types. Contrasts per type: LTCS vs HC, LTCS vs CONV, CONV vs HC, LTCS vs HC+CONV (pooled no long COVID), and a calibration contrast between two label-permuted donor sets of size 26 and 12 (seed 0). Minimum donors per level is 4 in the full data and 3 in each fold (folds hold 3–4 HC, 2–3 CONV, 13 LTCS, so CONV contrasts get few fold tests). With 6–7 healthy donors per contrast, the chi-square LRT may be anticonservative; the permuted contrast gives the empirical p-value distribution to compare against.
+
+First run (2026-10-31): `row_compositions`, which gives the effect size of blocks with three or more paths after the test, averaged over donors seen in both levels and raised in the unpaired design, so those tests were recorded as failures (about a quarter of internal tests). Fixed in 8fbee5a (each level's donors are averaged) and all disease fits rerun. Among the tests that did complete in the first run (mostly two-path blocks), full data, converged tests only:
+
+| contrast | internal p < .01 | internal p < .001 | internal BH | terminal p < .01 |
+|---|---|---|---|---|
+| P26 vs P12 (permuted) | .0059 | .0006 | 0 | .0049 |
+| CONV vs HC | .0104 | .0011 | 0 | .0064 |
+| LTCS vs CONV | .0079 | .0006 | 0 | .0083 |
+| LTCS vs HC | .0195 | .0051 | 50 | .0131 |
+| LTCS vs HC+CONV | .0148 | .0033 | 5 | .0096 |
+
+The permuted contrast is conservative (below nominal), so the chi-square LRT is not anticonservative at these group sizes. LTCS vs HC is enriched over the permuted contrast, while LTCS vs CONV is not, which would fit either a COVID-exposure effect shared by LTCS and CONV or a processing difference of the HC samples; the sample sheet should be checked for HC batch structure.
