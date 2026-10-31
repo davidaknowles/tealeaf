@@ -78,7 +78,7 @@ class ProfiledPrecursorLikelihood(BinaryECPathLikelihood):
         return sum(self.primer_log_likelihood(row, t, primer) for primer in range(len(self.counts))) - self.offsets[row]
 
 
-def prepare_block_test(block, entries, opportunities, n_paths, levels, min_share=.02, precursor=False, groups=None, min_subjects=4, min_molecules=20., primer_opportunities=None):
+def prepare_block_test(block, entries, opportunities, n_paths, levels, min_share=.02, precursor=False, groups=None, min_subjects=4, min_molecules=20., primer_opportunities=None, unpaired=False):
     """Prune a block's paths for one contrast and project its read classes.
 
     entries are (subject, cell type, primer, mask, molecules) tuples for the
@@ -90,12 +90,12 @@ def prepare_block_test(block, entries, opportunities, n_paths, levels, min_share
     With groups (lists of mature path indices, for junction-only classes),
     paths are first merged by group_paths and kept indexes the retained
     groups, returned as "groups"; precursor must then be False. The
-    eligibility screen (min_subjects subjects observed in both levels,
-    min_molecules molecules) is repeated on the projected classes, since
-    molecules compatible only with a dropped precursor leave the fit.
-    primer_opportunities ({primer: opportunities}, e.g. position-weighted,
-    with opportunities their mean) are grouped and projected in the same
-    way and returned as "primer_opportunities".
+    eligibility screen (min_subjects subjects observed in both levels, or
+    with unpaired in each level, min_molecules molecules) is repeated on the
+    projected classes, since molecules compatible only with a dropped
+    precursor leave the fit. primer_opportunities ({primer: opportunities},
+    e.g. position-weighted, with opportunities their mean) are grouped and
+    projected in the same way and returned as "primer_opportunities".
     """
     if groups is not None:
         if precursor:
@@ -125,7 +125,10 @@ def prepare_block_test(block, entries, opportunities, n_paths, levels, min_share
             lookup[(block, subject, cell_type, primer, new)] = lookup.get((block, subject, cell_type, primer, new), 0.) + value
             totals[(subject, cell_type)] = totals.get((subject, cell_type), 0.) + value
     present = sorted((subject, levels.index(cell_type)) for subject, cell_type in totals if totals[(subject, cell_type)] > 0)
-    paired = sum((subject, levels[0]) in totals and (subject, levels[1]) in totals for subject in {subject for subject, _ in present})
+    if unpaired:
+        paired = min(sum(label == level for _, label in present) for level in (0, 1))
+    else:
+        paired = sum((subject, levels[0]) in totals and (subject, levels[1]) in totals for subject in {subject for subject, _ in present})
     if paired < min_subjects or sum(totals.values()) < min_molecules:
         raise ValueError("too few paired subjects or molecules in the projected classes")
     if primer_opportunities is not None:
@@ -222,7 +225,7 @@ def simes(p_values):
     return float(min(1., np.min(len(ordered) * ordered / np.arange(1, len(ordered) + 1))))
 
 
-def fit_local_block(lookup, block, opportunities, n_paths, subjects, labels, levels, *, anchors=True, primer_offset=True, nodes=9, precursor=False, primer_opportunities=None):
+def fit_local_block(lookup, block, opportunities, n_paths, subjects, labels, levels, *, anchors=True, primer_offset=True, nodes=9, precursor=False, primer_opportunities=None, unpaired=False):
     """Test one block contrast; returns summary fields and per-level path usage.
 
     lookup maps (block, subject, cell type, primer, mask) -> molecules, labels
@@ -242,7 +245,7 @@ def fit_local_block(lookup, block, opportunities, n_paths, subjects, labels, lev
             if primer_offset:
                 likelihood.primer_offsets = np.array([0., estimate_primer_offset(likelihood)])
                 offsets.append(float(likelihood.primer_offsets[1]))
-            fit = binary_grid_test(likelihood, nodes=nodes)
+            fit = binary_grid_test(likelihood, nodes=nodes, paired=not unpaired)
         except (ValueError, np.linalg.LinAlgError, FloatingPointError):
             p_values.append(1.)
             continue

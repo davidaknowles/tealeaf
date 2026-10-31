@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 from scipy.integrate import quad
 from scipy.special import betaln, expit
 from scipy.stats import beta
@@ -122,3 +123,26 @@ def test_compiled_special_functions():
     for x in (1e-12, 1e-3, .37, 1., 5.5, 9.99, 10., 47., 3e3, 1e7):
         assert np.isclose(kernels.digamma(x), digamma(x), rtol=1e-12, atol=1e-12)
         assert np.isclose(kernels.trigamma(x), polygamma(1, x), rtol=1e-12, atol=0)
+
+
+def test_unpaired_types_in_disjoint_subjects():
+    rng = np.random.default_rng(5)
+    def groups(effect):
+        counts, subjects, labels = [], [], []
+        for subject in range(16):
+            label, shift = ("a", 0.) if subject < 8 else ("b", effect)
+            psi = expit(.3 + shift + rng.normal(0, .4))
+            probabilities = np.array([.5 * psi, .4 * (1 - psi), .3 * psi + .6 * (1 - psi), .2 * .3])
+            first = rng.multinomial(60, probabilities / probabilities.sum())
+            probabilities = np.array([.2 * psi, .5 * (1 - psi), .1 * .3 + .4 * psi + .3 * (1 - psi), .3 * .3 + .1])
+            counts.append(np.r_[first, rng.multinomial(40, probabilities / probabilities.sum())])
+            subjects.append(f"s{subject}")
+            labels.append(label)
+        return mixed_likelihood(counts, subjects, labels)
+    with pytest.raises(ValueError):
+        binary_grid_test(groups(1.5))
+    effect = binary_grid_test(groups(1.5), paired=False)
+    null = binary_grid_test(groups(0.), paired=False)
+    assert effect["converged"] and null["converged"]
+    assert effect["p_value"] < 1e-3 and effect["coefficients"][1] > 0
+    assert null["p_value"] > .01

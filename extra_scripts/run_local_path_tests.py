@@ -35,11 +35,13 @@ from tealeaf.sc.local_path_test import fit_local_block, prepare_block_test
 READ_LENGTH = 151
 
 
-def declared_tests(counts, blocks, subjects, min_subjects, min_molecules, allowed=None):
+def declared_tests(counts, blocks, subjects, min_subjects, min_molecules, allowed=None, unpaired=False):
     """Sorted (path key, level a, level b) tests passing the label-blind screen.
 
-    allowed, if given, is a function (gene_id, level a, level b) -> bool that
-    restricts the contrasts that are evaluated by either endpoint.
+    min_subjects subjects must be observed in both levels, or with unpaired
+    (levels with disjoint subjects) in each level. allowed, if given, is a
+    function (gene_id, level a, level b) -> bool that restricts the contrasts
+    that are evaluated by either endpoint.
     """
     local = counts.loc[counts.subject.isin(subjects)]
     totals = local.groupby(["path_key", "subject", "cell_type"])["count"].sum()
@@ -52,7 +54,7 @@ def declared_tests(counts, blocks, subjects, min_subjects, min_molecules, allowe
                 a, b = types[first], types[second]
                 if allowed is not None and not allowed(blocks[key]["gene_id"], a, b):
                     continue
-                paired = ((table[a] > 0) & (table[b] > 0)).sum()
+                paired = min((table[a] > 0).sum(), (table[b] > 0).sum()) if unpaired else ((table[a] > 0) & (table[b] > 0)).sum()
                 if paired >= min_subjects and table[[a, b]].to_numpy().sum() >= min_molecules:
                     tests.append((key, a, b))
     return tests
@@ -93,6 +95,7 @@ def main():
     parser.add_argument("--universe", type=Path, help="matched split universes (gene_id, pair_id 'A||B'); their contrasts are tested")
     parser.add_argument("--lr-cell-types", help="semicolon-separated cell types with a long-read mapping; all their pairs are tested")
     parser.add_argument("--level-pairs", type=Path, help="tab-separated level_a, level_b: these cell-type pairs are tested in every gene")
+    parser.add_argument("--unpaired", action="store_true", help="levels observed in disjoint subjects (e.g. disease groups): --min-subjects applies to each level")
     parser.add_argument("--structure", choices=("all", "internal", "terminal"), default="all")
     parser.add_argument("--group-same-junctions", action="store_true")
     parser.add_argument("--position-opportunities", action="store_true", help="primer-specific position-weighted opportunities (opportunities_position.json.gz in --local-reads, compute_position_opportunities.py)")
@@ -125,7 +128,7 @@ def main():
             pairs = {(gene.split(".")[0], tuple(sorted(pair.split("||")))) for gene, pair in zip(universe.gene_id, universe.pair_id)}
         lr_types = set(args.lr_cell_types.split(";")) if args.lr_cell_types else set()
         allowed = lambda gene, a, b: (gene.split(".")[0], (a, b)) in pairs or (a in lr_types and b in lr_types) or (a, b) in level_pairs
-    tests = declared_tests(counts, blocks, subjects, args.min_subjects, args.min_molecules, allowed)
+    tests = declared_tests(counts, blocks, subjects, args.min_subjects, args.min_molecules, allowed, args.unpaired)
     if args.count_only:
         print(f"cohort {args.cohort}: {len(tests)} tests, {len({key for key, _, _ in tests})} blocks", flush=True)
         return
@@ -157,7 +160,7 @@ def main():
                 full_opportunities = {mask: np.mean([values.get(mask, np.zeros(width)) for values in primer_opportunities.values()], axis=0) for mask in set().union(*primer_opportunities.values())}
             try:
                 groups = same_junction_groups(block["paths"][:n_paths]) if args.group_same_junctions else None
-                prepared = prepare_block_test(key, entries, full_opportunities, n_paths, levels, args.min_share, args.precursor, groups, args.min_subjects, args.min_molecules, primer_opportunities)
+                prepared = prepare_block_test(key, entries, full_opportunities, n_paths, levels, args.min_share, args.precursor, groups, args.min_subjects, args.min_molecules, primer_opportunities, args.unpaired)
             except ValueError:
                 record["screened"] = False
                 raise
@@ -167,7 +170,7 @@ def main():
             if prepared["groups"] is not None:
                 record["path_members"] = json.dumps(members)
             record.update(n_paths=len(kept), path_signatures=json.dumps(signatures), median_gene_umis=prepared["median_molecules"], kept_paths=json.dumps(kept), annotated_path_shares=json.dumps(prepared["shares"].tolist()))
-            fields, usage = fit_local_block(prepared["lookup"], key, prepared["opportunities"], len(kept), prepared["subjects"], prepared["labels"], levels, anchors=not args.no_anchors, primer_offset=args.primer_offset, nodes=args.nodes, precursor=args.precursor, primer_opportunities=prepared["primer_opportunities"])
+            fields, usage = fit_local_block(prepared["lookup"], key, prepared["opportunities"], len(kept), prepared["subjects"], prepared["labels"], levels, anchors=not args.no_anchors, primer_offset=args.primer_offset, nodes=args.nodes, precursor=args.precursor, primer_opportunities=prepared["primer_opportunities"], unpaired=args.unpaired)
             record.update({name: json.dumps(value) if isinstance(value, list) else value for name, value in fields.items()})
             record["raw_p_value"] = record["p_value"]
             for target, level, proportion in usage:
@@ -179,7 +182,7 @@ def main():
     args.output_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows_out).to_csv(args.output_dir / "paired_path.tsv", sep="\t", index=False, na_rep="NA")
     pd.DataFrame(usage_out, columns=["test_id", "block_id", "gene_id", "subject", "cell_type", "path", "path_number", "path_signature", "proportion"]).to_csv(args.output_dir / "path_usage.tsv", sep="\t", index=False, na_rep="NA")
-    settings = {"subject_fold": None if args.cohort == "full" else int(args.cohort), "test_effect": "cell_type_pairwise", "min_subjects": args.min_subjects, "min_molecules": args.min_molecules, "min_share": args.min_share, "anchors": not args.no_anchors, "precursor": args.precursor, "primer_offset": args.primer_offset, "stored_opportunities": stored is not None, "structure": args.structure, "group_same_junctions": args.group_same_junctions, "position_opportunities": args.position_opportunities, "local_reads": str(args.local_reads), "read_length": READ_LENGTH}
+    settings = {"subject_fold": None if args.cohort == "full" else int(args.cohort), "test_effect": "cell_type_pairwise", "min_subjects": args.min_subjects, "unpaired": args.unpaired, "min_molecules": args.min_molecules, "min_share": args.min_share, "anchors": not args.no_anchors, "precursor": args.precursor, "primer_offset": args.primer_offset, "stored_opportunities": stored is not None, "structure": args.structure, "group_same_junctions": args.group_same_junctions, "position_opportunities": args.position_opportunities, "local_reads": str(args.local_reads), "read_length": READ_LENGTH}
     summary = {"candidates": len(rows_out), "converged": int(sum(row["converged"] for row in rows_out)), "elapsed_seconds": time.monotonic() - started, "candidate_settings": settings}
     (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps({key: value for key, value in summary.items() if key != "candidate_settings"}), flush=True)

@@ -137,3 +137,16 @@ def test_transcript_path_assignments():
     # "partial" fits both paths and "outside" has an exon in no path
     assert assignments == {"skip": 0, "include": 1}
     assert transcript_path_assignments([[SKIP, INCLUDE]], transcripts) == {"skip": 0, "include": 0, "partial": 0}
+
+
+def test_unpaired_eligibility_counts_subjects_per_level():
+    mature = 0b011
+    entries = [(f"s{index}", "a" if index < 4 else "b", PRIMERS[0], mask, 5.) for index in range(8) for mask in (mature, 0b001, 0b010)]
+    paths = [[(0, 100), (300, 400)], [(0, 100), (200, 250), (300, 400)]]
+    opportunities = path_read_opportunities(paths, 50)
+    with pytest.raises(ValueError):
+        prepare_block_test("b", entries, opportunities, 2, ("a", "b"))
+    prepared = prepare_block_test("b", entries, opportunities, 2, ("a", "b"), unpaired=True)
+    assert sorted(prepared["labels"].tolist()) == [0] * 4 + [1] * 4
+    with pytest.raises(ValueError):
+        prepare_block_test("b", entries, opportunities, 2, ("a", "b"), min_subjects=5, unpaired=True)

@@ -350,7 +350,7 @@ def _fit(model, initial, max_iter):
     return minimize(model.objective, initial, jac=True, method="L-BFGS-B", bounds=bounds, options={"maxiter": max_iter, "ftol": 1e-10, "gtol": 1e-6})
 
 
-def binary_grid_test(likelihood, *, nodes=9, max_iter=200, tolerance=1e-3, refine=1., retries=1, offset=None):
+def binary_grid_test(likelihood, *, nodes=9, max_iter=200, tolerance=1e-3, refine=1., retries=1, offset=None, paired=True):
     """Random-subject binary EC likelihood-ratio test on two or more types.
 
     Null and alternative refit kappa and sigma. Accuracy is checked by
@@ -359,16 +359,21 @@ def binary_grid_test(likelihood, *, nodes=9, max_iter=200, tolerance=1e-3, refin
     setting (up to retries times); remaining failures return p = 1 with
     converged False. offset (length N logits, default 0) is a fixed row
     term of the mean logit in both models; standardized means are at
-    offset 0.
+    offset 0. paired requires four subjects observed in two types; with
+    paired False (types observed in disjoint subjects, e.g. disease groups)
+    each type needs two subjects and the subject effect is between-row.
     """
     labels, subjects = likelihood.labels, likelihood.subjects
     offset = np.zeros(len(labels)) if offset is None else np.asarray(offset, dtype=float)
     levels = np.unique(labels)
     if len(levels) < 2:
         raise ValueError("two type levels required")
-    repeated = sum(len(np.unique(labels[subjects == subject])) >= 2 for subject in np.unique(subjects))
-    if repeated < 4:
-        raise ValueError("at least four subjects with repeated types required")
+    if paired:
+        repeated = sum(len(np.unique(labels[subjects == subject])) >= 2 for subject in np.unique(subjects))
+        if repeated < 4:
+            raise ValueError("at least four subjects with repeated types required")
+    elif min(len(np.unique(subjects[labels == level])) for level in levels) < 2:
+        raise ValueError("at least two subjects per type required")
     design = np.column_stack([np.ones(len(labels)), *[labels == level for level in levels[1:]]]).astype(float)
     grids = row_grids(likelihood, refine=refine)
     start = _initial(grids, design, offset)
@@ -385,7 +390,7 @@ def binary_grid_test(likelihood, *, nodes=9, max_iter=200, tolerance=1e-3, refin
     error = max(abs(fine_null - null.fun), abs(fine_alternative - alternative.fun), abs(statistic - fine_statistic))
     optimized = bool(null.success and alternative.success and np.isfinite([fine_null, fine_alternative]).all() and min(statistic, fine_statistic) >= -1e-6)
     if optimized and error > tolerance and retries > 0:
-        return binary_grid_test(likelihood, nodes=2 * nodes + 1, max_iter=max_iter, tolerance=tolerance, refine=2 * refine, retries=retries - 1, offset=offset)
+        return binary_grid_test(likelihood, nodes=2 * nodes + 1, max_iter=max_iter, tolerance=tolerance, refine=2 * refine, retries=retries - 1, offset=offset, paired=paired)
     converged = optimized and error <= tolerance
     statistic = max(float(fine_statistic), 0.) if converged else 0.
     roots, weights = roots_hermite(64)
