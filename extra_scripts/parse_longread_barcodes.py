@@ -61,7 +61,8 @@ def batches(bam, size, limit):
     batch, count = [], 0
     with pysam.AlignmentFile(bam, check_sq=False, threads=4) as handle:
         for read in handle.fetch(until_eof=True):
-            quality = read.query_qualities_str or "I" * read.query_length
+            values = read.query_qualities  # some S-reads have qualities above 93, which FASTQ cannot hold
+            quality = "I" * read.query_length if values is None else (np.minimum(np.frombuffer(values, dtype=np.uint8), 93) + 33).tobytes().decode()
             batch.append((read.query_name, read.query_sequence, quality))
             count += 1
             if len(batch) == size or count == limit:
