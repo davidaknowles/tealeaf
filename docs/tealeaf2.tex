@@ -42,7 +42,7 @@ Differential splicing between cell types in single-cell RNA-seq is usually teste
   \item \textbf{Subjects as replicates.} A Beta--logit-normal model with a subject random intercept pairs the two cell types of each subject and allows extra variation between subject--cell-type rows. Count simulations under the null on the real designs show the tests are calibrated.
   \item \textbf{A self-contained implementation.} A targeted two-pass spliced aligner, with a compiled Rust kernel and FASTQ reader, reproduces STAR's alignment scoring and filters on the target genes and replaces whole-genome search for competing alignments by a genome-wide k-mer uniqueness table. Tealeaf runs from FASTQ files to tests without an external aligner or pseudoaligner; a run of 345 million read pairs aligns in about the time STARsolo takes, and the stored alignments of a run take about 1~GB instead of a 46~GB BAM file.
 \end{enumerate}
-On a mouse brain dataset of 48 subjects, Tealeaf replicates more genes across independent halves of the subjects than LeafCutter, MAJIQ, SUPPA2, primer-aware SUPPA2, rMATS and scQuint, on each method's own set of testable genes, and its top-ranked directions agree with independent single-cell long-read data as often as those of the best of these methods, over many more evaluable tests (Section~\ref{sec:evaluation}).
+On a mouse brain dataset of 48 subjects, Tealeaf replicates more genes across independent halves of the subjects than LeafCutter, MAJIQ, SUPPA2, primer-aware SUPPA2, rMATS and scQuint, on each method's own set of testable genes, and its top-ranked directions agree with independent single-cell long-read data as often as those of the best of these methods, over many more evaluable tests (Section~\ref{sec:evaluation}). On three human PBMC datasets (Section~\ref{sec:pbmc}), differences between blood cell types replicate across halves of 19 donors, and a contrast between random groups of donors shows that tests between groups of different subjects are not anticonservative.
 
 \section{Overview}
 
@@ -254,6 +254,8 @@ For target path $s$, the other paths are collapsed into one component with weigh
 
 Let $z_c=\mathbf 1[c=c_1]$. Usage varies between subjects through a subject intercept and between rows through a Beta distribution, \[v_u\sim\mathcal N(0,\sigma^2),\qquad \mu_{uc}=\expit(\theta_0+\theta_1z_c+v_u),\qquad \psi_{uc}\mid v_u\sim\BetaDist\big(\kappa\mu_{uc},\kappa(1-\mu_{uc})\big),\] with fixed effects $\theta_0,\theta_1\in\mathbb R$, subject standard deviation $\sigma>0$ and row concentration $\kappa>0$. The subject intercept is shared by the subject's two cell types, which makes the test paired. Subjects observed in only one cell type contribute to $\theta_0$, $\sigma$ and $\kappa$. The marginal likelihood is \[\mathcal L(\theta_0,\theta_1,\kappa,\sigma)=\prod_u\int_{\mathbb R}\phi(v;0,\sigma^2)\prod_{c\in\mathcal C_u}\int_0^1e^{\ell_{uc}(\psi)}\,\BetaDist\big(\psi;\kappa\mu_{uc}(v),\kappa(1-\mu_{uc}(v))\big)\,d\psi\,dv,\] where $\mathcal C_u$ is the set of cell types observed for subject $u$.
 
+\paragraph{Levels in different subjects.} The two levels of a test can also be groups of different subjects within one cell type, such as disease groups (Section~\ref{sec:pbmc}). Each subject then has one row, and $z_u$ indicates the subject's group. The model and test are unchanged; the subject intercept and the row Beta distribution both describe variation between subjects of a group. Eligibility requires a minimum number of subjects with molecules in each level instead of in both.
+
 \paragraph{Numerical integration.} The inner integral is evaluated in $t=\logit\psi$ on $[-18,18]$ by the trapezoid rule, with the tails beyond $\pm18$ added analytically at the boundary value of $\ell_{uc}$. The grid spacing for row $(u,c)$ is $\min\{0.03,\,s_{uc}/1.5\}$, where $s_{uc}$ is a quarter of the width of the region where $\ell_{uc}(\expit t)$ is within 2 of its maximum. The outer integral uses adaptive Gauss--Hermite quadrature with 9 nodes, centred on each subject's posterior mode $\widehat v_u$ (damped Newton iterations) and scaled by the inverse square root of the negative second derivative of the log integrand at the mode.
 
 \paragraph{Estimation.} Maximum-likelihood estimates are found by the L-BFGS-B algorithm with analytic gradients in the coordinates $(\theta_0,\theta_1,\log\kappa,\log\sigma)$, within the bounds $-12\le\theta_0,\theta_1\le12$, $0.1\le\kappa\le2000$ and $0.01\le\sigma\le3$. The null fit ($\theta_1=0$) starts from least-squares coefficients on the rows' maximum-likelihood usages, $\kappa=20$ and $\sigma=0.5$; the alternative starts from the null solution, and is refitted from $\theta_1=0$ if it ends below the null log-likelihood.
@@ -262,7 +264,7 @@ Let $z_c=\mathbf 1[c=c_1]$. Usage varies between subjects through a subject inte
 
 \subsection{Block p-value and effect}
 
-For $S=2$ there is one test, of path 1. For $S>2$, each of the $S$ paths is tested against the rest and the block p-value is the Simes combination \[p_b=\min\left\{1,\ \min_{i=1,\ldots,S}\frac{S\,p_{(i)}}{i}\right\},\] where $p_{(1)}\le\cdots\le p_{(S)}$ are the ordered path p-values. The effect for $S=2$ is $\bar m_{c_1}-\bar m_{c_0}$ for path 1 (and its negative for path 2), where $\bar m_c=\int\expit(\widehat\theta_0+\widehat\theta_1z_c+v)\phi(v;0,\widehat\sigma^2)\,dv$ is the marginal usage on the poly(dT) scale. For $S>2$, the molecule-share composition of each row is estimated by the EM algorithm of the share screen with primers pooled, compositions are averaged over the subjects observed in both cell types, and the effect is the difference of the averages.
+For $S=2$ there is one test, of path 1. For $S>2$, each of the $S$ paths is tested against the rest and the block p-value is the Simes combination \[p_b=\min\left\{1,\ \min_{i=1,\ldots,S}\frac{S\,p_{(i)}}{i}\right\},\] where $p_{(1)}\le\cdots\le p_{(S)}$ are the ordered path p-values. The effect for $S=2$ is $\bar m_{c_1}-\bar m_{c_0}$ for path 1 (and its negative for path 2), where $\bar m_c=\int\expit(\widehat\theta_0+\widehat\theta_1z_c+v)\phi(v;0,\widehat\sigma^2)\,dv$ is the marginal usage on the poly(dT) scale. For $S>2$, the molecule-share composition of each row is estimated by the EM algorithm of the share screen with primers pooled, compositions are averaged over the subjects observed in both cell types (over the subjects of each level when the levels are groups of different subjects), and the effect is the difference of the averages.
 
 \subsection{Hypothesis family}
 
@@ -425,6 +427,76 @@ Figures~\ref{fig:pkn2}--\ref{fig:mctp1} show the full-data tests with the larges
 \caption{Path usage in the four examples: (a) Pkn2, (b) Nfasc, (c) Kif21a, (d) Mctp1. In each panel, top, the tested paths, numbered as in the sashimi plots (introns longer than 300 bases shortened; merged paths are drawn by their first member); bottom left, the path usage of each subject in the Parse data with the mean over subjects (bars); bottom right, the transcript share of each path in the two long-read replicates.}
 \label{fig:usage}
 \end{figure}
+
+\clearpage
+\section{Human blood}
+\label{sec:pbmc}
+
+\subsection{Data}
+
+Three public Parse datasets of human peripheral blood mononuclear cells (PBMCs) are processed by the same pipeline as the brain data, with the GRCh38 genome and the GENCODE v49 basic annotation, all multi-exon genes as targets, two alignment passes and novel paths. A leading template-switch oligo is removed from read 1 before alignment, since on short reads the remainder would fall below the minimum aligned length.
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{GSE320507} (Ray et al.\ 2026), PBMCs of donors with long COVID (LTCS), convalescent donors (CONV) and healthy controls (HC). Each sample occupies one first-round well. The well-to-donor map provided by the authors agrees with genotypes called from expressed variants in every well but one, which holds cells of two donors and is excluded. This leaves 38 donors (26 LTCS, 5 CONV, 7 HC).
+  \item \textbf{GSE327907}, PBMCs of 12 donors in two batches under 12 in-vitro conditions; only the unstimulated cells enter the cell-type contrasts.
+  \item \textbf{GSE334840}, PBMCs of 8 donors in two hormone treatments and a vehicle control (DMSO); only the control cells enter the cell-type contrasts.
+\end{enumerate}
+Cell types are CellTypist labels with majority voting, from the fine-grained immune model for GSE320507 (19 types) and from the coarse model for the stimulation series, with macrophages merged into monocytes (10 and 8 types), because fine-grained labels separate stimulated monocytes by stimulus. Every pair of cell types is tested, and BH is applied over the internal and terminal tests of the cell-type pairs of a cohort. Donors are split into halves stratified by group (GSE320507) or batch (GSE327907). With no comparator fitted, the split universe is the set of (gene, cell-type pair) keys with a Tealeaf test in both halves, and replication is scored as in Section~\ref{sec:evaluation}.
+
+\subsection{Cell-type contrasts}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lrrr}
+\toprule
+ & GSE320507 & GSE327907 & GSE334840\\
+\midrule
+Donors (per half) & 38 (19) & 12 (6) & 8 (4)\\
+Cells & 70{,}643 & 24{,}314 & 23{,}000\\
+Cell types & 19 & 10 & 8\\
+Read 1 length & 136 & 150 & 66\\
+Read pairs (billions) & 1.84 & 11.7 & 2.52\\
+\midrule
+Full-data tests & 1{,}504{,}546 & 200{,}346 & 80{,}470\\
+Discoveries & 2{,}340 & 472 & 15\\
+Gene--pair discoveries & 1{,}847 & 377 & 13\\
+\midrule
+Genes tested in both halves & 10{,}079 & 8{,}640 & 5{,}211\\
+Discoveries, half 1 / half 2 & 133 / 96 & 15 / 29 & 0 / 0\\
+Replicated genes & 65 & 5 & 0\\
+\bottomrule
+\end{tabular}
+\caption{Cell-type contrasts in three PBMC datasets. Cells are those of the contrasts (unstimulated or control cells for GSE327907 and GSE334840); read pairs are for all cells of the dataset. Discoveries are tests with BH-adjusted $p\le0.05$, and gene--pair discoveries (gene, cell-type pair) keys with Simes-combined adjusted $p\le0.05$. Half discoveries and replicated genes are gene-level, on the genes tested in both halves.}
+\label{tab:pbmc}
+\end{table}
+
+Table~\ref{tab:pbmc} gives the results. In GSE320507, with 19 donors per half, 65 genes replicate, and on average over the two directions 91\% of the genes discovered in one half have $p\le0.05$ in the other. Most replicated genes separate monocytes from lymphocytes. Classical monocytes against naive and central-memory helper T cells give 87 (273 gene discoveries in the full data), non-classical monocytes against the same T cells 22, classical monocytes against effector and resident-memory cytotoxic T cells 17, and CD16$^+$ NK cells against classical monocytes 16. With 6 donors per half, GSE327907 replicates 5 genes, and GSE334840, with 4 donors per half and 66-base reads, has almost no discoveries.
+
+Tests in blood reject less often than tests in brain at the same coverage. Among converged internal tests whose rows have a median of 20--50 molecules, 2.4\% (GSE320507), 2.6\% (GSE327907) and 1.4\% (GSE334840) have $p<0.01$, against 9.0\% in the brain data; with a median of at least 200 molecules, 6.3\% and 5.8\% against 19.4\%. This is consistent with smaller splicing differences between blood cell types than between neuronal and glial cell types.
+
+\subsection{Disease contrasts}
+
+In GSE320507 the disease groups are compared within each cell type, with the levels in different subjects (Section~\ref{sec:block}) and at least 4 donors in each level. Each cell type has four contrasts, LTCS against HC, LTCS against CONV, CONV against HC, and LTCS against HC and CONV pooled. A fifth contrast compares two sets of 26 and 12 donors drawn at random from the 38 without regard to group, the same draw in every cell type; it has no group effect and shows the calibration of the test with groups of this size.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Contrast & Tests & $p<0.01$ & $p<0.001$ & Discoveries\\
+\midrule
+Random 26 vs 12 & 182{,}434 & 0.44\% & 0.041\% & 0\\
+CONV vs HC & 62{,}155 & 0.70\% & 0.069\% & 0\\
+LTCS vs CONV & 66{,}481 & 0.57\% & 0.032\% & 0\\
+LTCS vs HC & 148{,}293 & 1.65\% & 0.460\% & 215\\
+LTCS vs HC and CONV & 182{,}408 & 1.18\% & 0.251\% & 23\\
+\bottomrule
+\end{tabular}
+\caption{Disease-group contrasts within cell types in GSE320507, full data. Tests that do not converge enter with $p=1$; discoveries are BH-adjusted $p\le0.05$ within each contrast.}
+\label{tab:disease}
+\end{table}
+
+Table~\ref{tab:disease} gives the results. The random contrast rejects below the nominal rate, so the test is not anticonservative with 12 donors in the smaller group, and CONV against HC and LTCS against CONV, with 5 donors in one group, are close to it. LTCS against HC gives 215 discoveries in 153 genes, mostly in naive and central-memory helper T cells (111) and classical monocytes (82). The CONV donors share these differences. Of the 215 tests, 205 are also tested between CONV and HC, 59\% of them with $p<0.05$ and 92\% with the same direction, while LTCS against CONV has $p<0.05$ for 9\% of them (3\% for the random contrast). The differences therefore separate the healthy donors from all donors after COVID-19, not long COVID from recovery, and may reflect differences between the donor groups other than disease, such as age or the time of sampling, which are not available.
 
 \section{Implementation}
 
