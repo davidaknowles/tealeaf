@@ -4967,3 +4967,17 @@ First run (2026-10-31): `row_compositions`, which gives the effect size of block
 | LTCS vs HC+CONV | .0148 | .0033 | 5 | .0096 |
 
 The permuted contrast is conservative (below nominal), so the chi-square LRT is not anticonservative at these group sizes. LTCS vs HC is enriched over the permuted contrast, while LTCS vs CONV is not, which would fit either a COVID-exposure effect shared by LTCS and CONV or a processing difference of the HC samples; the sample sheet should be checked for HC batch structure.
+
+Rerun results (2026-10-31, all tests completing). Full data, block p-values of converged and failed tests (failed as p = 1), BH within contrast class:
+
+| contrast | block tests | p < .01 | p < .001 | BH .05 |
+|---|---|---|---|---|
+| P26 vs P12 (permuted) | 182,434 | .0044 | .0004 | 0 |
+| CONV vs HC | 62,155 | .0070 | .0007 | 0 |
+| LTCS vs CONV | 66,481 | .0057 | .0003 | 0 |
+| LTCS vs HC | 148,293 | .0165 | .0046 | 215 |
+| LTCS vs HC+CONV | 182,408 | .0118 | .0025 | 23 |
+
+The 215 LTCS vs HC blocks fall in 153 genes, mainly Tcm/naive helper T cells (111) and classical monocytes (82). The top genes are long genes with splicing-regulator roles, recurring across cell types (VPS13C, KPNA1, ARID4B, ANKRD12, PDCD4, CUL5, LUC7L3, TCERG1, NIPBL, SRSF11). The split replicates none: fold 0 (4 HC) has 7 gene BH, fold 1 (3 HC) none; CONV contrasts have no fold tests (2–3 CONV donors per fold).
+
+The signal separates the healthy donors from all COVID-exposed donors, not long COVID from recovery. On the 215 LTCS vs HC blocks, CONV vs HC has p < .05 in 59% with the same effect sign in 92%, while LTCS vs CONV has p < .05 in 9% (permuted contrast 3%). The HC samples occupy wells A1–A7 and may have been collected or processed separately, so a sample-handling difference cannot be separated from a post-COVID effect with this design.
