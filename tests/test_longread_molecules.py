@@ -36,3 +36,14 @@ def test_collapse_molecules_merges_one_mismatch_umis():
     assert len(molecules) == 3
     first = molecules.loc[molecules.cell.eq("c1") & molecules.n_reads.eq(3)]
     assert len(first) == 1 and first.chain.iloc[0] == "1-5;8-9"
+
+
+def test_molecule_source_counts_chains_by_type_and_replicate():
+    molecules = pd.DataFrame({"gene": ["ENSG1.2"] * 4 + ["ENSG3.1"], "chain": ["1-5;8-9", "1-5;8-9", "1-9", "1-5;8-9", "20-30"], "cell": ["a", "b", "a", "c", "d"]})
+    labels = pd.DataFrame({"cell_type": ["X", "X", "Y", "Y"], "replicate": [1, 2, 1, 1]}, index=["a", "b", "c", "d"])
+    matrix, features, columns, chains = lm.molecule_source(molecules, labels)
+    assert matrix.shape == (3, 3) and matrix.sum() == 5
+    row = features.set_index("transcript_id").row["ENSG1|1-5;8-9"]
+    column = columns.set_index(["tealeaf_cell_type", "replicate"]).column
+    assert matrix[row, column[("X", 1)]] == 1 and matrix[row, column[("X", 2)]] == 1 and matrix[row, column[("Y", 1)]] == 1
+    assert chains["ENSG1|1-5;8-9"] == [(1, 5), (8, 9)]

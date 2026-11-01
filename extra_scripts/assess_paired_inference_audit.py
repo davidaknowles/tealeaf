@@ -112,7 +112,7 @@ def chain_feature_rows(block, row, features, transcript_chains):
     return local[local["path_number"].notna()].astype({"path_number": int})
 
 
-def long_read_assessment(tests, root, matrix_dir, gtf, block_path, output, model, usage=None, effect_vectors=None, native_blocks=None, transcript_chains=None):
+def long_read_assessment(tests, root, matrix_dir, gtf, block_path, output, model, usage=None, effect_vectors=None, native_blocks=None, transcript_chains=None, source=None):
     """Long-read direction agreement of full-data tests.
 
     By default long-read transcripts reach a test's paths through the
@@ -121,8 +121,10 @@ def long_read_assessment(tests, root, matrix_dir, gtf, block_path, output, model
     id -> exon chain, e.g. from the comprehensive annotation), each long-read
     transcript is assigned to the tested path its own exon chain fits
     (chain_feature_rows), which also covers unannotated paths and new blocks.
+    source (matrix, features, columns) replaces the Tilgner matrix, e.g. long-read molecules per exon chain
+    (longread_molecules.molecule_source).
     """
-    matrix, features, columns = read_tilgner_matrix(matrix_dir, gtf)
+    matrix, features, columns = source if source is not None else read_tilgner_matrix(matrix_dir, gtf)
     blocks = native_blocks if native_blocks is not None else load_blocks(block_path)
     groups = {(level, int(rep)): frame.column.to_numpy(int) for (level, rep), frame in columns.dropna(subset=["tealeaf_cell_type", "replicate"]).groupby(["tealeaf_cell_type", "replicate"])}
     represented = set(level for level, rep in groups)

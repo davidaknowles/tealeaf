@@ -100,3 +100,27 @@ def collapse_molecules(frame, umi_length=10):
     reads = frame.groupby(["group", "molecule_umi"]).size().rename("n_reads")
     molecules = frame.drop_duplicates(["group", "molecule_umi"]).merge(reads, left_on=["group", "molecule_umi"], right_index=True)
     return molecules.drop(columns=["group", "umi_code", "molecule_umi", "n_chain"]).reset_index(drop=True)
+
+
+def molecule_source(molecules, labels):
+    """Long-read source for `long_read_assessment`: molecules per distinct exon chain and (cell type, replicate).
+
+    molecules has gene, chain and cell columns; labels maps cell -> (cell type, replicate). Returns a features x columns
+    CSR matrix of molecule counts, the feature table (stable_gene_id, transcript_id = feature key, row), the column table
+    (tealeaf_cell_type, replicate, column) and the exon chain of each feature key.
+    """
+    from scipy import sparse
+
+    frame = molecules.loc[molecules.cell.isin(labels.index)]
+    frame = frame.assign(stable_gene_id=frame.gene.str.split(".").str[0], cell_type=frame.cell.map(labels.cell_type), replicate=frame.cell.map(labels.replicate))
+    frame["transcript_id"] = frame.stable_gene_id + "|" + frame.chain
+    counts = frame.groupby(["stable_gene_id", "transcript_id", "cell_type", "replicate"]).size().rename("molecules").reset_index()
+    features = counts[["stable_gene_id", "transcript_id"]].drop_duplicates().reset_index(drop=True)
+    features["row"] = range(len(features))
+    columns = counts[["cell_type", "replicate"]].drop_duplicates().sort_values(["cell_type", "replicate"]).reset_index(drop=True).rename(columns={"cell_type": "tealeaf_cell_type"})
+    columns["column"] = range(len(columns))
+    row = counts.transcript_id.map(features.set_index("transcript_id").row)
+    column = counts.set_index(["cell_type", "replicate"]).index.map(columns.set_index(["tealeaf_cell_type", "replicate"]).column)
+    matrix = sparse.csr_matrix((counts.molecules.to_numpy(float), (row.to_numpy(), np.asarray(column))), shape=(len(features), len(columns)))
+    chains = {key: parse_chain(key.split("|", 1)[1]) for key in features.transcript_id}
+    return matrix, features, columns, chains
