@@ -1,0 +1,38 @@
+import pandas as pd
+
+from tealeaf.sc import longread_molecules as lm
+
+
+def test_exon_chain_splits_on_introns_only():
+    # 5S 10M 2D 5M 100N 20M 1I 5M
+    cigar = [(4, 5), (0, 10), (2, 2), (0, 5), (3, 100), (0, 20), (1, 1), (0, 5)]
+    assert lm.exon_chain(1000, cigar) == [(1000, 1017), (1117, 1142)]
+    assert lm.parse_chain(lm.format_chain([(1, 2), (5, 9)])) == [(1, 2), (5, 9)]
+
+
+def test_gene_index_strand_and_overlap():
+    genes = {
+        "g1": {"chromosome": "chr1", "strand": "+", "transcripts": {"t1": [(100, 200), (300, 400)]}},
+        "g2": {"chromosome": "chr1", "strand": "+", "transcripts": {"t2": [(380, 600)]}},
+        "g3": {"chromosome": "chr1", "strand": "-", "transcripts": {"t3": [(100, 400)]}},
+    }
+    index = lm.GeneIndex(genes)
+    assert index.assign("chr1", "+", [(150, 200), (300, 390)]) == "g1"
+    assert index.assign("chr1", "+", [(390, 590)]) == "g2"
+    assert index.assign("chr1", "-", [(150, 200)]) == "g3"
+    assert index.assign("chr1", "+", [(210, 290)]) is None
+    assert index.assign("chr2", "+", [(150, 200)]) is None
+
+
+def test_collapse_molecules_merges_one_mismatch_umis():
+    frame = pd.DataFrame({
+        "cell": ["c1"] * 4 + ["c2"],
+        "gene": ["g"] * 5,
+        "umi": ["AAAAAAAAAA", "AAAAAAAAAC", "AAAAAAAAAC", "TTTTTTTTTT", "AAAAAAAAAA"],
+        "chain": ["1-5", "1-5;8-9", "1-5;8-9", "1-5", "1-5"],
+        "span": [4, 8, 8, 4, 4],
+    })
+    molecules = lm.collapse_molecules(frame)
+    assert len(molecules) == 3
+    first = molecules.loc[molecules.cell.eq("c1") & molecules.n_reads.eq(3)]
+    assert len(first) == 1 and first.chain.iloc[0] == "1-5;8-9"
