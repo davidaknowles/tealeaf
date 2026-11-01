@@ -14,6 +14,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 import pysam
 from scipy import io as sio
@@ -42,11 +43,11 @@ def reads(args):
 def collapse(args):
     cells = pd.read_csv(args.cells, sep="\t")
     keep = set(cells.loc[cells.reads >= args.min_cell_reads, "cell"])
-    dataset = pq.ParquetDataset(sorted(map(str, args.reads)))
+    dataset = ds.dataset(sorted(map(str, args.reads)), format="parquet")
     chromosomes = sorted(set(pq.read_table(args.reads[0], columns=["chromosome"]).column(0).to_pylist()) | {f"chr{c}" for c in [*range(1, 23), "X", "Y", "M"]})
     writer, counts = None, []
     for chromosome in chromosomes:
-        frame = dataset.read(columns=["cell", "umi", "primer", "chromosome", "strand", "start", "end", "chain", "gene", "mapq", "span"], filters=[("chromosome", "=", chromosome)]).to_pandas()
+        frame = dataset.to_table(columns=["cell", "umi", "primer", "chromosome", "strand", "start", "end", "chain", "gene", "mapq", "span"], filter=ds.field("chromosome") == chromosome).to_pandas()
         frame = frame.loc[frame.cell.isin(keep) & frame.gene.ne("") & frame.mapq.ge(args.min_mapq)]
         if not len(frame):
             continue
