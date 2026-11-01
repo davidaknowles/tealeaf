@@ -19,7 +19,7 @@ import pandas as pd
 
 from tealeaf.sc.differential import classify_path_chains
 from tealeaf.sc.junction_benchmark import benjamini_hochberg
-from tealeaf.sc.local_path_reads import block_structure, structure_paths, same_junction_groups
+from tealeaf.sc.local_path_reads import block_structure, structure_paths, tested_path_groups
 
 
 def main():
@@ -43,9 +43,7 @@ def main():
     for row in tests.itertuples():
         block = blocks[row.block_id]
         n_paths = len(block["signatures"])
-        kept = json.loads(row.kept_paths) if isinstance(row.kept_paths, str) else []
-        groups = same_junction_groups(block["paths"][:n_paths]) if row.structure == "terminal" else [[index] for index in range(n_paths)]
-        members = [groups[position] for position in kept]
+        members = tested_path_groups(block, row.kept_paths, getattr(row, "path_members", None)) if isinstance(row.kept_paths, str) else []
         if len(members) < 2:
             events.append("untested"), components.append(""), novel.append(False)
             continue

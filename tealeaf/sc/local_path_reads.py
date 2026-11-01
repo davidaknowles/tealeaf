@@ -17,6 +17,8 @@ length. Dropping the all-paths class gives the anchor-free variant.
 from collections import defaultdict
 from contextlib import ExitStack
 
+import json
+
 import numpy as np
 
 from .junction_benchmark import normalize_starsolo_barcode
@@ -61,6 +63,19 @@ def variable_junctions(paths):
     """Junctions in some but not all of the mature exon chains paths."""
     _, junctions, _ = path_structures(paths)
     return set().union(*junctions) - set.intersection(*junctions)
+
+
+def tested_path_groups(block, kept_paths, path_members=None):
+    """Mature path indices of each tested path of a fit row.
+
+    With path_members (the signatures of each tested group, recorded when same-junction paths are merged) the groups are
+    read from it, since the fit drops groups without opportunities before indexing kept_paths; otherwise each kept path
+    is its own group.
+    """
+    if isinstance(path_members, str):
+        index = {json.dumps(signature): position for position, signature in enumerate(block["signatures"])}
+        return [[index[json.dumps(chain)] for chain in group] for group in json.loads(path_members)]
+    return [[position] for position in json.loads(kept_paths)]
 
 
 def same_junction_groups(paths):

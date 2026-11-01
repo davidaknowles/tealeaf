@@ -99,15 +99,10 @@ def split_assessment(folds, repo, output, model, universe=None):
 
 def chain_feature_rows(block, row, features, transcript_chains):
     """Long-read feature rows of a test's paths, assigned by each transcript's exon chain (transcript_path_assignments)."""
-    from tealeaf.sc.local_path_reads import transcript_path_assignments
+    from tealeaf.sc.local_path_reads import tested_path_groups, transcript_path_assignments
 
-    members = getattr(row, "path_members", None)
-    if isinstance(members, str):
-        # the fit's own groups (signatures of each tested path); regrouping block paths can merge differently
-        index = {json.dumps(signature): position for position, signature in enumerate(block["signatures"])}
-        path_groups = [[block["paths"][index[json.dumps(chain)]] for chain in group] for group in json.loads(members)]
-    else:
-        path_groups = [[block["paths"][position]] for position in json.loads(row.kept_paths)]
+    groups = tested_path_groups(block, row.kept_paths, getattr(row, "path_members", None))
+    path_groups = [[block["paths"][index] for index in group] for group in groups]
     local = features.loc[features["transcript_id"].notna()].copy()
     chains = {transcript: transcript_chains[transcript] for transcript in local["transcript_id"] if transcript in transcript_chains}
     assignments = transcript_path_assignments(path_groups, chains)
