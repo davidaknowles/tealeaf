@@ -13,11 +13,11 @@ SUPPA2 primer-aware	mutually exclusive exons	18	Tests	128571	28
 SUPPA2 primer-aware	retained intron	15	Tests	128571	28
 Tealeaf	alternative acceptor	118	Tests	219931	28
 Tealeaf	alternative donor	44	Tests	219931	28
-Tealeaf	alternative first exon	1105	Tests	219931	28
-Tealeaf	alternative last exon	403	Tests	219931	28
+Tealeaf	alternative first exon	1107	Tests	219931	28
+Tealeaf	alternative last exon	366	Tests	219931	28
 Tealeaf	cassette exon	1024	Tests	219931	28
 Tealeaf	mutually exclusive exons	19	Tests	219931	28
-Tealeaf	other	911	Tests	219931	28
+Tealeaf	other	946	Tests	219931	28
 Tealeaf	retained intron	7	Tests	219931	28
 rMATS	alternative acceptor	7	Tests	445659	28
 rMATS	alternative donor	1	Tests	445659	28
@@ -31,18 +31,18 @@ SUPPA2	alternative donor	32	Gene–cell-type pairs	176613	28
 SUPPA2	cassette exon	236	Gene–cell-type pairs	176613	28
 SUPPA2	mutually exclusive exons	20	Gene–cell-type pairs	176613	28
 SUPPA2	retained intron	9	Gene–cell-type pairs	176613	28
-SUPPA2 primer-aware	alternative acceptor	37	Gene–cell-type pairs	128571	28
+SUPPA2 primer-aware	alternative acceptor	40	Gene–cell-type pairs	128571	28
 SUPPA2 primer-aware	alternative donor	25	Gene–cell-type pairs	128571	28
-SUPPA2 primer-aware	cassette exon	145	Gene–cell-type pairs	128571	28
-SUPPA2 primer-aware	mutually exclusive exons	12	Gene–cell-type pairs	128571	28
-SUPPA2 primer-aware	retained intron	14	Gene–cell-type pairs	128571	28
+SUPPA2 primer-aware	cassette exon	140	Gene–cell-type pairs	128571	28
+SUPPA2 primer-aware	mutually exclusive exons	15	Gene–cell-type pairs	128571	28
+SUPPA2 primer-aware	retained intron	13	Gene–cell-type pairs	128571	28
 Tealeaf	alternative acceptor	112	Gene–cell-type pairs	219931	28
 Tealeaf	alternative donor	40	Gene–cell-type pairs	219931	28
-Tealeaf	alternative first exon	995	Gene–cell-type pairs	219931	28
-Tealeaf	alternative last exon	352	Gene–cell-type pairs	219931	28
+Tealeaf	alternative first exon	997	Gene–cell-type pairs	219931	28
+Tealeaf	alternative last exon	320	Gene–cell-type pairs	219931	28
 Tealeaf	cassette exon	775	Gene–cell-type pairs	219931	28
 Tealeaf	mutually exclusive exons	15	Gene–cell-type pairs	219931	28
-Tealeaf	other	726	Gene–cell-type pairs	219931	28
+Tealeaf	other	756	Gene–cell-type pairs	219931	28
 Tealeaf	retained intron	5	Gene–cell-type pairs	219931	28
 rMATS	alternative acceptor	6	Gene–cell-type pairs	445659	28
 rMATS	alternative donor	1	Gene–cell-type pairs	445659	28

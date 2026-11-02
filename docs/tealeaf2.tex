@@ -42,7 +42,7 @@ Differential splicing between cell types in single-cell RNA-seq is usually teste
   \item \textbf{Subjects as replicates.} A Beta--logit-normal model with a subject random intercept pairs the two cell types of each subject and allows extra variation between subject--cell-type rows. Count simulations under the null on the real designs show the tests are calibrated.
   \item \textbf{A self-contained implementation.} A targeted two-pass spliced aligner, with a compiled Rust kernel and FASTQ reader, reproduces STAR's alignment scoring and filters on the target genes and replaces whole-genome search for competing alignments by a genome-wide k-mer uniqueness table. Tealeaf runs from FASTQ files to tests without an external aligner or pseudoaligner; a run of 345 million read pairs aligns in about the time STARsolo takes, and the stored alignments of a run take about 1~GB instead of a 46~GB BAM file.
 \end{enumerate}
-On a mouse brain dataset of 48 subjects, Tealeaf replicates more genes across independent halves of the subjects than LeafCutter, MAJIQ, SUPPA2, primer-aware SUPPA2, rMATS and scQuint, on each method's own set of testable genes, and its top-ranked directions agree with independent single-cell long-read data as often as those of the best of these methods, over many more evaluable tests (Section~\ref{sec:evaluation}). On three human PBMC datasets (Section~\ref{sec:pbmc}), differences between blood cell types replicate across halves of 19 donors, and a contrast between random groups of donors shows that tests between groups of different subjects are not anticonservative.
+On a mouse brain dataset of 48 subjects, Tealeaf replicates more genes across independent halves of the subjects than LeafCutter, MAJIQ, SUPPA2, primer-aware SUPPA2, rMATS and scQuint, on each method's own set of testable genes, and its top-ranked directions agree with independent single-cell long-read data as often as those of the best of these methods, over many more evaluable tests (Section~\ref{sec:evaluation}). On three human PBMC datasets (Section~\ref{sec:pbmc}), differences between blood cell types replicate across halves of 19 donors, 82 to 99 of the 100 top-ranked tests agree in direction with single-cell long reads of a Parse PBMC library, and a contrast between random groups of donors shows that tests between groups of different subjects are not anticonservative.
 
 \section{Overview}
 
@@ -283,7 +283,7 @@ The 48 subjects are divided into two halves of 24 with 4 subjects of each group 
 
 \subsection{Long-read direction}
 
-Directions of full-data tests are compared with the P56 mouse brain single-cell long-read data of Joglekar et al.\ (ScISOr-Seq2), using its UMI-filtered annotated-transcript count matrix. Transcript names are matched to the comprehensive GENCODE vM32 annotation, which gives each counted transcript an exon chain. Eight cell types have a prespecified correspondence, astrocytes (with Bergmann glia), mature oligodendrocytes, cerebellar granule neurons, cortical excitatory neurons, dentate gyrus and CA excitatory neurons, thalamic excitatory neurons and medium spiny neurons; glial samples are pooled over regions within replicate. The full data are tested on all pairs of these eight cell types in addition to the split universe. A transcript counts for a tested path if its exon chain is compatible with that path and no other, by the rule used for reads (Section~\ref{sec:classes}): its exons clipped to the block window lie within exons of the path and its junctions inside the window are junctions of the path. Transcripts compatible with several paths, which do not cover the region where the paths differ, and transcripts compatible with none are not counted. A novel path is evaluable when an annotated transcript of the comprehensive annotation has its structure. A test is evaluable if every tested path has at least one counted transcript, both cell types have at least 20 counted long-read UMIs, and both effects are finite and non-zero; 34{,}634 tests are evaluable. With long-read counts $\bm n_c\in\mathbb N_0^S$ of the paths in cell type $c$ (summed over replicates and over the transcripts of each path), the long-read effect is $\bm\Delta^{\rm L}=\bm n_{c_1}/\|\bm n_{c_1}\|_1-\bm n_{c_0}/\|\bm n_{c_0}\|_1$, and the test agrees if $(\bm\Delta^{\rm T})^{\mathsf T}\bm\Delta^{\rm L}>0$ for the Tealeaf effect $\bm\Delta^{\rm T}$. Evaluable tests are ranked by p-value, then by decreasing statistic. With $a_j\in\{0,1\}$ the agreement of the test at rank $j$ and $c_r=r^{-1}\sum_{j\le r}a_j$ the cumulative agreement, the endpoint is the normalized area $A_{100}=\frac{1}{100}\sum_{r=1}^{100}c_r$, the mean cumulative agreement over the 100 top-ranked tests. Comparators are ranked and scored in the same way, with long-read counts assigned by the same annotation and the same use of exon chains: junction usage of LeafCutter, MAJIQ and scQuint features is computed from the junctions of each counted transcript's exon chain on both strands, and each event of SUPPA2 and rMATS is scored from transcripts whose exon chain has its inclusion or its exclusion form.
+Directions of full-data tests are compared with the P56 mouse brain single-cell long-read data of Joglekar et al.\ (ScISOr-Seq2), using its UMI-filtered annotated-transcript count matrix. Transcript names are matched to the comprehensive GENCODE vM32 annotation, which gives each counted transcript an exon chain. Eight cell types have a prespecified correspondence, astrocytes (with Bergmann glia), mature oligodendrocytes, cerebellar granule neurons, cortical excitatory neurons, dentate gyrus and CA excitatory neurons, thalamic excitatory neurons and medium spiny neurons; glial samples are pooled over regions within replicate. The full data are tested on all pairs of these eight cell types in addition to the split universe. A transcript counts for a tested path if its exon chain is compatible with that path and no other, by the rule used for reads (Section~\ref{sec:classes}): its exons clipped to the block window lie within exons of the path and its junctions inside the window are junctions of the path. Transcripts compatible with several paths, which do not cover the region where the paths differ, and transcripts compatible with none are not counted. A novel path is evaluable when an annotated transcript of the comprehensive annotation has its structure. A test is evaluable if every tested path has at least one counted transcript, both cell types have at least 20 counted long-read UMIs, and both effects are finite and non-zero; 33{,}887 tests are evaluable. With long-read counts $\bm n_c\in\mathbb N_0^S$ of the paths in cell type $c$ (summed over replicates and over the transcripts of each path), the long-read effect is $\bm\Delta^{\rm L}=\bm n_{c_1}/\|\bm n_{c_1}\|_1-\bm n_{c_0}/\|\bm n_{c_0}\|_1$, and the test agrees if $(\bm\Delta^{\rm T})^{\mathsf T}\bm\Delta^{\rm L}>0$ for the Tealeaf effect $\bm\Delta^{\rm T}$. Evaluable tests are ranked by p-value, then by decreasing statistic. With $a_j\in\{0,1\}$ the agreement of the test at rank $j$ and $c_r=r^{-1}\sum_{j\le r}a_j$ the cumulative agreement, the endpoint is the normalized area $A_{100}=\frac{1}{100}\sum_{r=1}^{100}c_r$, the mean cumulative agreement over the 100 top-ranked tests. Comparators are ranked and scored in the same way, with long-read counts assigned by the same annotation and the same use of exon chains: junction usage of LeafCutter, MAJIQ and scQuint features is computed from the junctions of each counted transcript's exon chain on both strands, and each event of SUPPA2 and rMATS is scored from transcripts whose exon chain has its inclusion or its exclusion form.
 
 \subsection{Results of the current model}
 
@@ -308,11 +308,11 @@ Comparator replicated & 36 & 28 & 0 & 0 & 4 & 124\\
 Comparator $A_{100}$ & .918 & .938 & .870 & .625 & .898 & .914\\
 \bottomrule
 \end{tabular}
-\caption{Replicated genes on each comparator's matched and comparator universes, and long-read direction. SUPPA2-PA is primer-aware SUPPA2. Tealeaf has $A_{100}=0.940$ (93 of its 100 top-ranked evaluable tests agree with long reads; $A_{40}=0.959$, $A_{200}=0.936$).}
+\caption{Replicated genes on each comparator's matched and comparator universes, and long-read direction. SUPPA2-PA is primer-aware SUPPA2. Tealeaf has $A_{100}=0.946$ (95 of its 100 top-ranked evaluable tests agree with long reads; $A_{40}=0.963$, $A_{200}=0.942$).}
 \label{tab:results}
 \end{table}
 
-Table~\ref{tab:results} gives both endpoints. On both the matched and the comparator universes Tealeaf replicates more genes than every comparator. Figure~\ref{fig:lr} shows cumulative long-read agreement by rank. Over the first 40 ranks MAJIQ and scQuint agree slightly more often than Tealeaf; at rank 100 Tealeaf ($A_{100}=0.940$, 93 agreeing) is level with MAJIQ (0.938, 85 agreeing), and by rank 200 Tealeaf still agrees for 94\% of its tests against 75--84\% for the junction methods and 80\% for rMATS. Tealeaf has 34{,}634 evaluable tests against 1{,}562 to 8{,}497 features for the junction methods. The SUPPA2 and rMATS values are computed on their 500 top-ranked events per contrast.
+Table~\ref{tab:results} gives both endpoints. On both the matched and the comparator universes Tealeaf replicates more genes than every comparator. Figure~\ref{fig:lr} shows cumulative long-read agreement by rank. At rank 40, 39 of the MAJIQ features agree, against 38 for Tealeaf and scQuint; at rank 100 Tealeaf ($A_{100}=0.946$, 95 agreeing) is above MAJIQ (0.938, 85 agreeing), and by rank 200 Tealeaf still agrees for 94\% of its tests against 75--84\% for the junction methods and 80\% for rMATS. Tealeaf has 33{,}887 evaluable tests against 1{,}562 to 8{,}497 features for the junction methods. The SUPPA2 and rMATS values are computed on their 500 top-ranked events per contrast.
 
 \begin{figure}[ht]
 \centering
@@ -323,7 +323,7 @@ Table~\ref{tab:results} gives both endpoints. On both the matched and the compar
 
 \subsection{Event classes}
 
-Each test is assigned an event class from the exon chains of its retained paths. If all chains start and end at the same bases the block is internal, and two chains are classified by the exons in which they differ as a cassette exon, multi-exon skipping, an alternative donor or acceptor, mutually exclusive exons or a retained intron (a differing pattern outside these is complex internal); more than two chains are compound internal. Otherwise the paths differ at a transcript end, an alternative first exon, an alternative last exon, or both, oriented by the strand; when the differing terminal exons share their splice site, only the transcript start or end moves. Table~\ref{tab:events} gives the full-data tests, BH discoveries at 0.05 (one family over internal and terminal blocks) and their long-read agreement by class. Most discoveries that retain a novel path have no long-read counterpart. Long-read agreement of discoveries is 0.79 to 0.91 for the common classes, highest for alternative first exons and cassette exons. Retained introns are rare among block tests because a path whose chain is the whole window is removed; a per-intron test of differential retention is described in Appendix~\ref{sec:ir}.
+Each test is assigned an event class from the exon chains of its retained paths. If all chains start and end at the same bases the block is internal, and two chains are classified by the exons in which they differ as a cassette exon, multi-exon skipping, an alternative donor or acceptor, mutually exclusive exons or a retained intron (a differing pattern outside these is complex internal); more than two chains are compound internal. Otherwise the paths differ at a transcript end, an alternative first exon, an alternative last exon, or both, oriented by the strand; when the differing terminal exons share their splice site, only the transcript start or end moves. Table~\ref{tab:events} gives the full-data tests, BH discoveries at 0.05 (one family over internal and terminal blocks) and their long-read agreement by class. Most discoveries that retain a novel path have no long-read counterpart. Long-read agreement of discoveries is 0.83 to 0.90 for the common classes, 0.88 for cassette exons and 0.89 for alternative first exons. Retained introns are rare among block tests because a path whose chain is the whole window is removed; a per-intron test of differential retention is described in Appendix~\ref{sec:ir}.
 
 \begin{table}[ht]
 \centering
@@ -333,26 +333,26 @@ Each test is assigned an event class from the exon chains of its retained paths.
 \toprule
 Event class & Tests & Discoveries & Novel path & LR agreement & Top 100\\
 \midrule
-cassette exon & 215{,}456 & 3{,}549 & 1{,}551 & 0.88 (449) & 38/39\\
-alternative first exon & 104{,}601 & 2{,}837 & 2{,}115 & 0.91 (139) & 22/23\\
-compound internal & 101{,}871 & 1{,}614 & 1{,}208 & 0.84 (77) & 3/3\\
-alternative last exon & 69{,}974 & 1{,}060 & 628 & 0.86 (85) & 21/25\\
-alternative first and last exons & 24{,}167 & 851 & 689 & 0.79 (39) & 2/3\\
-alternative acceptor & 99{,}219 & 313 & 249 & 0.83 (41) & 3/3\\
-alternative donor & 55{,}749 & 113 & 89 & 0.53 (15) & 1/1\\
-alternative transcript end & 4{,}415 & 100 & 13 & 1.00 (7) & 0/0\\
-multi-exon skipping & 8{,}885 & 99 & 57 & 0.90 (21) & 3/3\\
+cassette exon & 217{,}758 & 3{,}553 & 1{,}555 & 0.88 (449) & 36/37\\
+alternative first exon & 101{,}666 & 2{,}840 & 2{,}207 & 0.89 (142) & 22/22\\
+compound internal & 104{,}884 & 1{,}635 & 1{,}229 & 0.84 (77) & 1/1\\
+alternative last exon & 57{,}878 & 941 & 648 & 0.86 (76) & 21/25\\
+alternative first and last exons & 24{,}646 & 883 & 740 & 0.85 (47) & 9/9\\
+alternative acceptor & 100{,}863 & 313 & 249 & 0.83 (41) & 2/2\\
+alternative transcript end & 9{,}055 & 150 & 31 & 1.00 (11) & 1/1\\
+alternative donor & 57{,}294 & 113 & 89 & 0.53 (15) & 0/0\\
+multi-exon skipping & 8{,}988 & 99 & 57 & 0.90 (21) & 3/3\\
 mutually exclusive exons & 2{,}701 & 82 & 11 & 0.88 (8) & 0/0\\
-complex internal & 4{,}867 & 59 & 57 & 1.00 (3) & 0/0\\
-alternative transcript start & 2{,}113 & 52 & 1 & 1.00 (3) & 0/0\\
-retained intron & 935 & 13 & 13 & -- (0) & 0/0\\
+alternative transcript start & 2{,}994 & 60 & 8 & 0.75 (4) & 0/0\\
+complex internal & 4{,}982 & 60 & 58 & 1.00 (3) & 0/0\\
+retained intron & 1{,}244 & 13 & 13 & -- (0) & 0/0\\
 \bottomrule
 \end{tabular}
 \caption{Full-data tests by event class. Novel path counts discoveries that retain an unannotated path. LR agreement is the fraction of long-read-evaluable discoveries whose direction agrees with the long reads (number evaluable in parentheses); Top 100 gives agreeing over all tests of the class among the 100 top-ranked long-read-evaluable tests.}
 \label{tab:events}
 \end{table}
 
-Figure~\ref{fig:discoveries} compares full-data discoveries with the comparators on the 28 pairs of the eight long-read cell types, the contrasts every method tests on the full data. Each method's finite p-values on these contrasts form one BH family, and a discovery has adjusted p at most 0.05. Methods test different units, a block for Tealeaf, an intron cluster for LeafCutter, an intron group for scQuint, a local splice variant for MAJIQ and an event for SUPPA2 and rMATS, so discoveries are also counted as gene--cell-type pairs with at least one discovery. Tealeaf has 3{,}631 discoveries in 3{,}020 gene--cell-type pairs, scQuint 2{,}234 pairs, MAJIQ 873, LeafCutter 351, SUPPA2 350, primer-aware SUPPA2 233 and rMATS 164. SUPPA2 and rMATS events are mapped to the Tealeaf classes (skipped exon to cassette exon, alternative 5$'$ and 3$'$ splice sites to alternative donor and acceptor, and mutually exclusive exons and retained introns to themselves); their event sets contain no alternative first or last exons, which make up 1{,}508 of the Tealeaf discoveries. Tealeaf discovers 1{,}024 cassette exons against 321 for SUPPA2 and 166 for rMATS. Over all 190 cell-type pairs (Figure~\ref{fig:discoveries-all}), with LeafCutter tested on 171, MAJIQ on 170 and SUPPA2 on 135 of them, Tealeaf has 10{,}742 discoveries in 9{,}037 gene--cell-type pairs, scQuint 8{,}835 pairs, MAJIQ 2{,}189, LeafCutter 890, rMATS 570, primer-aware SUPPA2 533 and SUPPA2 280. Tealeaf discovers 3{,}549 cassette exons against 495 for rMATS and 493 for primer-aware SUPPA2.
+Figure~\ref{fig:discoveries} compares full-data discoveries with the comparators on the 28 pairs of the eight long-read cell types, the contrasts every method tests on the full data. Each method's finite p-values on these contrasts form one BH family, and a discovery has adjusted p at most 0.05. Methods test different units, a block for Tealeaf, an intron cluster for LeafCutter, an intron group for scQuint, a local splice variant for MAJIQ and an event for SUPPA2 and rMATS, so discoveries are also counted as gene--cell-type pairs with at least one discovery. Tealeaf has 3{,}631 discoveries in 3{,}020 gene--cell-type pairs, scQuint 2{,}234 pairs, MAJIQ 873, LeafCutter 351, SUPPA2 350, primer-aware SUPPA2 233 and rMATS 164. SUPPA2 and rMATS events are mapped to the Tealeaf classes (skipped exon to cassette exon, alternative 5$'$ and 3$'$ splice sites to alternative donor and acceptor, and mutually exclusive exons and retained introns to themselves); their event sets contain no alternative first or last exons, which make up 1{,}473 of the Tealeaf discoveries. Tealeaf discovers 1{,}024 cassette exons against 321 for SUPPA2 and 166 for rMATS. Over all 190 cell-type pairs (Figure~\ref{fig:discoveries-all}), with LeafCutter tested on 171, MAJIQ on 170 and SUPPA2 on 135 of them, Tealeaf has 10{,}742 discoveries in 9{,}037 gene--cell-type pairs, scQuint 8{,}835 pairs, MAJIQ 2{,}189, LeafCutter 890, rMATS 570, primer-aware SUPPA2 533 and SUPPA2 280. Tealeaf discovers 3{,}553 cassette exons against 495 for rMATS and 493 for primer-aware SUPPA2.
 
 \begin{figure}[ht]
 \centering
@@ -442,6 +442,8 @@ Three public Parse datasets of human peripheral blood mononuclear cells (PBMCs) 
 \end{enumerate}
 Cell types are CellTypist labels with majority voting, from the fine-grained immune model for GSE320507 (19 types) and from the coarse model for the stimulation series, with macrophages merged into monocytes (10 and 8 types), because fine-grained labels separate stimulated monocytes by stimulus. Every pair of cell types is tested, and BH is applied over the internal and terminal tests of the cell-type pairs of a cohort. Donors are split into halves stratified by group (GSE320507) or batch (GSE327907). With no comparator fitted, the split universe is the set of (gene, cell-type pair) keys with a Tealeaf test in both halves, and replication is scored as in Section~\ref{sec:evaluation}.
 
+Long-read directions come from a public PacBio Kinnex library made from a Parse whole-transcriptome library of commercial PBMCs, from donors other than those of the three datasets. The library provides segmented reads without cell calls, so the three barcodes, the UMI and the reverse-transcription primer of each read are called here. The two linkers are placed by semi-global alignment, each barcode is corrected to the unique barcode within edit distance 1, and the poly(T) and the template-switch oligo are trimmed. Of 148 million reads, 93\% are assigned to a cell. Reads are aligned to the genome with minimap2 in spliced mode with the annotated junctions as hints. A read with mapping quality at least 5 is assigned to the gene with which it has the largest same-strand exonic overlap, and reads of a cell and gene whose UMIs differ by at most one base form a molecule, which takes the most frequent exon chain of its reads. Cells with at least 1{,}000 reads (10{,}077 cells, 26.4 million molecules) are labelled by CellTypist with the model used for each short-read dataset.
+
 \subsection{Cell-type contrasts}
 
 \begin{table}[ht]
@@ -473,6 +475,34 @@ Replicated genes & 65 & 5 & 0\\
 Table~\ref{tab:pbmc} gives the results. In GSE320507, with 19 donors per half, 65 genes replicate, and on average over the two directions 91\% of the genes discovered in one half have $p\le0.05$ in the other. Most replicated genes separate monocytes from lymphocytes. Classical monocytes against naive and central-memory helper T cells give 87 (273 gene discoveries in the full data), non-classical monocytes against the same T cells 22, classical monocytes against effector and resident-memory cytotoxic T cells 17, and CD16$^+$ NK cells against classical monocytes 16. With 6 donors per half, GSE327907 replicates 5 genes, and GSE334840, with 4 donors per half and 66-base reads, has almost no discoveries.
 
 Tests in blood reject less often than tests in brain at the same coverage. Among converged internal tests whose rows have a median of 20--50 molecules, 2.4\% (GSE320507), 2.6\% (GSE327907) and 1.4\% (GSE334840) have $p<0.01$, against 9.0\% in the brain data; with a median of at least 200 molecules, 6.3\% and 5.8\% against 19.4\%. This is consistent with smaller splicing differences between blood cell types than between neuronal and glial cell types.
+
+\subsection{Long-read direction}
+
+Each long-read molecule is assigned to the tested path that its exon chain fits, by the rule used for annotated transcripts in the brain data (Section~\ref{sec:evaluation}), and molecules are summed over all cells of a cell type. Evaluability, the long-read effect, agreement and $A_r$ are defined as in Section~\ref{sec:evaluation}. Table~\ref{tab:pbmc-lr} gives the results.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lrrr}
+\toprule
+ & GSE320507 & GSE327907 & GSE334840\\
+\midrule
+Long-read cell types (pairs) & 14 (91) & 7 (20) & 7 (20)\\
+Evaluable tests & 44{,}359 & 17{,}488 & 11{,}932\\
+Agreeing, top 40 & 39 & 38 & 35\\
+Agreeing, top 100 & 99 & 96 & 82\\
+Agreeing, top 200 & 197 & 177 & 152\\
+$A_{100}$ & 0.988 & 0.967 & 0.865\\
+Evaluable discoveries & 497 & 138 & 6\\
+Agreement of discoveries & 0.88 & 0.94 & 1.00\\
+Agreement of all evaluable tests & 0.54 & 0.54 & 0.52\\
+\bottomrule
+\end{tabular}
+\caption{Long-read direction of full-data cell-type tests in three PBMC datasets, against molecules of a Parse PBMC long-read library. Long-read cell types and pairs are those with at least one evaluable test. Agreeing gives the number of the $r$ top-ranked evaluable tests whose direction agrees with the long reads.}
+\label{tab:pbmc-lr}
+\end{table}
+
+In GSE320507 99 and in GSE327907 96 of the 100 top-ranked evaluable tests agree with the long reads, and 88\% and 94\% of the evaluable discoveries. GSE334840 has 6 evaluable discoveries, so its 100 top-ranked tests are mostly not significant, and 82 agree. Over all evaluable tests agreement is close to 0.5, since most tests have no cell-type difference.
 
 \subsection{Disease contrasts}
 
@@ -508,7 +538,7 @@ The alignment kernel exists in two implementations with identical output, a numb
 \section{Differential intron retention}
 \label{sec:ir}
 
-Block tests do not test retention of a whole intron, since a path whose chain is the block window duplicates the precursor path and is removed (935 retained-intron tests remain, Table~\ref{tab:events}). Retention is therefore tested per annotated intron. In nuclei most intronic molecules are precursor RNA, so the retained fraction of an intron is compared with that of the other introns of its gene.
+Block tests do not test retention of a whole intron, since a path whose chain is the block window duplicates the precursor path and is removed (1{,}244 retained-intron tests remain, Table~\ref{tab:events}). Retention is therefore tested per annotated intron. In nuclei most intronic molecules are precursor RNA, so the retained fraction of an intron is compared with that of the other introns of its gene.
 
 \subsection{Counts}
 

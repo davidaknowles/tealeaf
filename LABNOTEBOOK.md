@@ -5019,3 +5019,7 @@ Brain v4 (internal_native_v4 + tj_native_v4, comprehensive exon-chain mapping), 
 | GSE334840 (DMSO pairs) | same | 11,932 | 35/40 | 82/100 (.864) | 152/200 |
 
 Before the fix GSE320507 gave 66/100 (AUC100 .565), all of the loss in terminal blocks (internal 93/100 either way; terminal 61/100 → 99/100). GSE334840 has 6 evaluable BH discoveries, so its top 100 is mostly non-significant tests. Outputs `analyses/pbmc/<GSE>_lr` (GSE320507: `GSE320507_lr_groupfix`).
+
+### 2026-11-01 Manuscript: path-group fix and PBMC long-read direction
+
+`docs/tealeaf2.tex` updated with the corrected brain v4 long-read numbers (A100 .946, 95/100; A40 .963; A200 .942; 33,887 evaluable; at rank 100 Tealeaf is above MAJIQ, .938), the event-class table from `events_v4_groupfix` (common-class discovery agreement .83–.90; 1,244 retained-intron tests), and the discovery figures and Figure lr regenerated from the corrected outputs (28-pair first/last-exon discoveries 1,508 → 1,473; 190-pair cassette 3,549 → 3,553). Discovery totals are unchanged. In the SUPPA2 gene–pair breakdowns a few keys change class between runs (ties in the smallest-p discovery); the event-level counts are unchanged. The Human blood section gains a paragraph on the Kinnex Parse long-read library (barcode calling, minimap2, UMI molecules, CellTypist) and a subsection "Long-read direction" with Table pbmc-lr: top-100 agreement 99/96/82, discovery agreement .88 (497) / .94 (138) / 1.00 (6), all evaluable tests .52–.54. The abstract now mentions the PBMC long-read agreement.
