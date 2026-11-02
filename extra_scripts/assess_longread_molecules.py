@@ -18,12 +18,13 @@ from tealeaf.sc.junction_benchmark import benjamini_hochberg
 from tealeaf.sc.longread_molecules import molecule_source
 
 
-def cell_labels(path, column, merge):
+def cell_labels(path, column, merge, suffix=""):
     table = pd.read_csv(path, sep="\t", index_col=0)
     types = table[column].str.replace(" ", "_")
     for pair in merge:
         old, new = pair.split("=")
         types = types.replace(old, new)
+    types = types + suffix
     well = pd.Series(table.index.str.split("_").str[0], index=table.index)
     replicate = 1 + well.map(lambda w: int(w[1:]) % 2)
     return pd.DataFrame({"cell_type": types, "replicate": replicate})
@@ -38,6 +39,7 @@ def main():
     parser.add_argument("--labels", type=Path, required=True, help="cell -> label table (tsv)")
     parser.add_argument("--label-column", default="Immune_All_Low_majority")
     parser.add_argument("--merge", nargs="*", default=[], help="label renames old=new after spaces become underscores")
+    parser.add_argument("--suffix", default="", help="appended to labels to match level names (e.g. |Baseline)")
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -47,13 +49,13 @@ def main():
     usage = pd.concat([load_path_usage(args.cache / f"{model}_full", set(full.test_id)) for model in models], ignore_index=True).set_index(["test_id", "cell_type", "path_number"]).proportion
     blocks = json.load(gzip.open(args.blocks, "rt"))
     native_blocks = {block["block_id"]: block for block in blocks.values()}
-    labels = cell_labels(args.labels, args.label_column, args.merge)
+    labels = cell_labels(args.labels, args.label_column, args.merge, args.suffix)
     molecules = pd.read_parquet(args.molecules, columns=["cell", "gene", "chain"])
     matrix, features, columns, chains = molecule_source(molecules, labels)
     cells = labels.loc[labels.index.isin(set(molecules.cell))].groupby("cell_type").size()
     print(f"{len(molecules):,} molecules, {len(features):,} distinct chains; cells per type:\n{cells.to_string()}", flush=True)
     long_read_assessment(full, args.cache / f"{models[0]}_full", None, None, None, args.output_dir, ",".join(models), usage=usage, native_blocks=native_blocks, transcript_chains=chains, source=(matrix, features, columns))
-    (args.output_dir / "manifest.json").write_text(json.dumps({"models": models, "molecules": str(args.molecules), "labels": str(args.labels), "label_column": args.label_column, "merge": args.merge, "cells_per_type": cells.to_dict()}, indent=2) + "\n")
+    (args.output_dir / "manifest.json").write_text(json.dumps({"models": models, "molecules": str(args.molecules), "labels": str(args.labels), "label_column": args.label_column, "merge": args.merge, "suffix": args.suffix, "cells_per_type": cells.to_dict()}, indent=2) + "\n")
 
 
 if __name__ == "__main__":
