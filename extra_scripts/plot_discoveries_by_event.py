@@ -16,7 +16,8 @@ group, LSV or event) and gene--cell-type-pair keys with at least one
 discovery, the key taking the event type of its smallest-p discovery. Tealeaf
 event classes come from categorize_block_tests.py; SUPPA2 and rMATS event
 types map onto the same classes; junction-cluster methods have no event type.
-Needs plotnine.
+With --coverage-flagged (columns method, key; key is the Tealeaf test_id or contrast_id|feature_id), tests the
+coverage-only null calls are removed before BH (tealeaf.sc.coverage_null). Needs plotnine.
 """
 
 import argparse
@@ -46,7 +47,7 @@ def standard(table, method, event):
 
 
 def read_junction_table(path):
-    table = pd.read_csv(path, sep="\t", usecols=lambda column: column in ("method", "effect", "level_a", "level_b", "feature_id", "gene_id", "p_value"), low_memory=False)
+    table = pd.read_csv(path, sep="\t", usecols=lambda column: column in ("method", "effect", "contrast_id", "level_a", "level_b", "feature_id", "gene_id", "p_value"), low_memory=False)
     return table.loc[table.effect.eq("cell_type")] if "effect" in table else table
 
 
@@ -64,6 +65,13 @@ def read_majiq_tests(directory, coverage_null=None):
     return edges.groupby(["method", "effect", "level_a", "level_b", "feature_id", "gene_id"], as_index=False).p_value.min()
 
 
+def drop_coverage_flagged(table, method, flagged, key):
+    """Rows of table whose key (Series aligned to table) is not flagged for method."""
+    if flagged is None:
+        return table
+    return table.loc[~key.isin(set(flagged.loc[flagged.method.eq(method), "key"]))]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tealeaf-events", type=Path, required=True, help="test_events.tsv.gz of categorize_block_tests.py")
@@ -73,6 +81,7 @@ def main():
     parser.add_argument("--suppa2-primer-aware", type=Path, required=True)
     parser.add_argument("--rmats", type=Path, required=True, help="paired rMATS full-data tests")
     parser.add_argument("--majiq-coverage-null", type=Path, help="majiq_coverage_null.parquet of assess_majiq_coverage_null.py; MAJIQ edges it calls (median null p < .05) are removed before the LSV collapse")
+    parser.add_argument("--coverage-flagged", type=Path, help="tests called by the coverage-only null (method, key), removed for every method listed")
     parser.add_argument("--leafcutter-counts", type=Path, help="LeafCutter perind numerator counts, to map clusters without a gene")
     parser.add_argument("--junction-annotation", type=Path, help="junction table with chromosome, start, end and gene_id")
     parser.add_argument("--contrasts", choices=("common", "all"), default="common")
@@ -80,7 +89,10 @@ def main():
     parser.add_argument("--fdr", type=float, default=0.05)
     parser.add_argument("--output", type=Path, required=True, help="figure; the counts are written next to it as .tsv")
     args = parser.parse_args()
+    flagged = pd.read_csv(args.coverage_flagged, sep="\t") if args.coverage_flagged else None
     junctions = [read_junction_table(path) for path in args.junction_table]
+    if flagged is not None:
+        junctions = [pd.concat([drop_coverage_flagged(local, method, flagged, local.contrast_id + "|" + local.feature_id.astype(str)) for method, local in table.groupby("method")]) for table in junctions]
     if args.majiq_tests:
         junctions = [table.loc[table.method.ne("MAJIQ Heterogen")] for table in junctions] + [read_majiq_tests(args.majiq_tests, args.majiq_coverage_null)]
     junctions = pd.concat(junctions, ignore_index=True).astype({"gene_id": "object"})
@@ -92,12 +104,15 @@ def main():
     named = junctions.method.eq("scQuint") & junctions.gene_id.isna()
     junctions.loc[named, "gene_id"] = junctions.loc[named, "feature_id"].str.rsplit("_", n=3).str[0]
     tables = [standard(local, JUNCTION[method], "no event type") for method, local in junctions.groupby("method")]
-    tealeaf = pd.read_csv(args.tealeaf_events, sep="\t", usecols=["level_a", "level_b", "gene_id", "event", "p_value"])
+    tealeaf = pd.read_csv(args.tealeaf_events, sep="\t", usecols=["test_id", "level_a", "level_b", "gene_id", "event", "p_value"])
     tealeaf = tealeaf.loc[tealeaf.event.ne("untested")]
+    tealeaf = drop_coverage_flagged(tealeaf, "Tealeaf", flagged, tealeaf.test_id)
     tables.append(standard(tealeaf, "Tealeaf", tealeaf.event.where(tealeaf.event.isin(EVENTS), "other")))
-    columns = ["level_a", "level_b", "gene_id", "event_type", "p_value"]
+    columns = ["contrast_id", "level_a", "level_b", "feature_id", "gene_id", "event_type", "p_value"]
     for method, path in (("SUPPA2", args.suppa2), ("SUPPA2 primer-aware", args.suppa2_primer_aware), ("rMATS", args.rmats)):
-        local = pd.concat([chunk.loc[chunk.event_type.notna()] for chunk in pd.read_csv(path, sep="\t", usecols=columns, chunksize=500_000)], ignore_index=True)
+        local = pd.concat([chunk.loc[chunk.event_type.notna()] for chunk in pd.read_csv(path, sep="\t", usecols=lambda c: c in columns, chunksize=500_000)], ignore_index=True)
+        if "feature_id" in local:
+            local = drop_coverage_flagged(local, method, flagged, local.contrast_id + "|" + local.feature_id.astype(str))
         tables.append(standard(local, method, local.event_type.map(COMPARATOR_EVENTS).fillna("other")))
     tests = pd.concat(tables, ignore_index=True)
     tests = tests.loc[~tests.method.isin(args.exclude_method)]
