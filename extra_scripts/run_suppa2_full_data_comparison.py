@@ -140,7 +140,9 @@ def parse_args():
 
 
 def suppa_command(root, *args):
-    return ["python3", str(root / "suppa.py"), *map(str, args)]
+    """SUPPA2 command, run with the interpreter installed beside suppa.py when there is one."""
+    python = root / "python3"
+    return [str(python) if python.exists() else "python3", str(root / "suppa.py"), *map(str, args)]
 
 
 def load_events(work_dir):
