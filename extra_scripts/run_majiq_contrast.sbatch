@@ -33,9 +33,11 @@ print(" ".join(x["samples_b"]))
 # Heterogen group names may hold only alphanumerics and underscores
 print(re.sub(r"[^A-Za-z0-9_]", "_", x["level_a"]))
 print(re.sub(r"[^A-Za-z0-9_]", "_", x["level_b"]))
+from tealeaf.sc.junction_benchmark import contrast_file_stem
+print(contrast_file_stem(x["contrast_id"]))
 PY
 )
-contrast=${fields[0]}
+contrast=${fields[7]}
 read -ra group_a <<< "${fields[3]}"
 read -ra group_b <<< "${fields[4]}"
 raw="${OUTPUT_DIR}/raw/${contrast}.tsv"

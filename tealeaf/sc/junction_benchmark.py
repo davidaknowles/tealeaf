@@ -39,6 +39,11 @@ def benjamini_hochberg(pvalues) -> np.ndarray:
     return result
 
 
+def contrast_file_stem(contrast_id: str) -> str:
+    """File name stem of a contrast's per-contrast outputs; "/" in cell-type labels becomes "_"."""
+    return str(contrast_id).replace("/", "_")
+
+
 def index_subject_paired_contrasts(contrasts, samples, sample_indices):
     """Index contrast counts in identical subject order on both sides.
 

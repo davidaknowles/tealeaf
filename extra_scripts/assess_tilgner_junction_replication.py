@@ -18,7 +18,7 @@ from scipy.stats import binomtest
 
 from extra_scripts.assess_tilgner_long_read_replication import bh_adjust, read_tilgner_matrix, stable_identifier, vector_agreement, wilson_interval
 from tealeaf.sc.differential import paired_mean_test
-from tealeaf.sc.junction_benchmark import JunctionBundle
+from tealeaf.sc.junction_benchmark import JunctionBundle, contrast_file_stem
 from tealeaf.sc.long_read_events import chain_junction_rows, transcript_exon_chains
 
 
@@ -127,7 +127,7 @@ def majiq_groups(selected, raw_directory, bundle):
     lookup = {(str(row.chromosome), int(row.start), int(row.end), str(row.strand)): index for index, row in enumerate(bundle.junctions.itertuples(index=False))}
     groups = {}
     for contrast_id, selected_contrast in selected.groupby("contrast_id"):
-        raw = pd.read_csv(Path(raw_directory) / f"{contrast_id}.tsv", sep="\t", comment="#")
+        raw = pd.read_csv(Path(raw_directory) / f"{contrast_file_stem(contrast_id)}.tsv", sep="\t", comment="#")
         raw["majiq_feature"] = majiq_feature_ids(raw)
         raw["lsv_key"] = raw[["gene_id", "event_type", "ref_exon_start", "ref_exon_end"]].astype(str).agg("|".join, axis=1)
         selected_features = set(selected_contrast["feature_id"].astype(str))

@@ -10,6 +10,7 @@ import pandas as pd
 
 from extra_scripts.evaluate_suppa2_statistics import normalize_pairs, grouped_pvalues, metric_row
 from tealeaf.sc.ds_benchmark import benjamini_hochberg
+from tealeaf.sc.junction_benchmark import contrast_file_stem
 from tealeaf.sc.differential import helmert_basis
 from tealeaf.sc.replication_audit import coverage_correlation, aligned_direction
 from tealeaf.sc.junction_benchmark import JunctionBundle
@@ -97,7 +98,7 @@ def signed_junctions(table, bundle, benchmark, fold, method):
     local["effect_features"] = [[] for _ in range(len(local))]
     if method == "MAJIQ Heterogen":
         for contrast, selected in local.groupby("contrast_id"):
-            raw = pd.read_csv(benchmark / f"reproducibility/fold{fold}/majiq_min3_cov3/tests/raw/{contrast}.tsv", sep="\t", comment="#")
+            raw = pd.read_csv(benchmark / f"reproducibility/fold{fold}/majiq_min3_cov3/tests/raw/{contrast_file_stem(contrast)}.tsv", sep="\t", comment="#")
             features = majiq_feature_ids(raw)
             a, b = selected[["level_a", "level_b"]].iloc[0]
             delta = raw[f"{b}-raw_psi_quantile_0.500"] - raw[f"{a}-raw_psi_quantile_0.500"]
