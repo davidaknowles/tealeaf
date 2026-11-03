@@ -14,7 +14,7 @@ source "${HOME}/venv/cpa_blackwell/bin/activate"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 contrasts="${BENCHMARK_ROOT}/contrasts.json"
 python "${REPO_ROOT}/extra_scripts/run_junction_comparator.py" plan \
-  --bundle "${BUNDLE}" --min-subjects 4 --output "${contrasts}"
+  --bundle "${BUNDLE}" --min-subjects 4 ${PLAN_ARGS:-} --output "${contrasts}"
 n=$(python -c 'import json,sys; print(len(json.load(open(sys.argv[1]))))' "${contrasts}")
 if [[ "${n}" -eq 0 ]]; then
   echo "No replicate-supported contrasts" >&2

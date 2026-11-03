@@ -26,19 +26,21 @@ def eligible_reference(path):
     return normalize_pairs(table)
 
 
-def load_comparators(repro, repo, fold, reference=None, suppa2_split="split_data_matched_exact"):
-    table = pd.read_csv(repro / f"fold{fold}/comparison_majiq_min3_cov3/all_tests.tsv.gz", sep="\t", low_memory=False)
+def load_comparators(repro, repo, fold, reference=None, suppa2_split="split_data_matched_exact", comparator_root=None, comparison_subdir="comparison_majiq_min3_cov3"):
+    """Fold outputs of the comparators; LeafCutter/scQuint/MAJIQ from repro/fold<k>/<comparison_subdir>, SUPPA2 and rMATS from comparator_root (default repo/analyses/comparator_suppa_rmats)."""
+    table = pd.read_csv(repro / f"fold{fold}/{comparison_subdir}/all_tests.tsv.gz", sep="\t", low_memory=False)
     table = table.loc[table.effect.eq("cell_type")].copy()
     mapping = pd.read_csv(repro / "leafcutter_cluster_gene.tsv.gz", sep="\t").set_index("feature_id").gene_id
     leaf = table.method.eq("LeafCutter")
     table.loc[leaf, "gene_id"] = table.loc[leaf, "feature_id"].map(mapping)
     print(f"external methods fold={fold}: {table.method.unique().tolist()}", flush=True)
     result = {method: normalize_pairs(local) for method, local in table.groupby("method") if method in ("LeafCutter", "MAJIQ Heterogen", "scQuint", "rMATS")}
-    base = repo / "analyses/comparator_suppa_rmats"
+    base = Path(comparator_root) if comparator_root is not None else repo / "analyses/comparator_suppa_rmats"
     for label, path in (("SUPPA2", base / f"suppa2/{suppa2_split}_fold{fold}_tests.tsv.gz"),
                         ("SUPPA2 primer-aware", base / f"suppa2_primer_aware/{suppa2_split}_fold{fold}_tests.tsv.gz"),
                         ("SUPPA2/Tealeaf hybrid", base / f"suppa2_tealeaf_hybrid/split_data/fold{fold}_tests.tsv.gz")):
-        result[label] = normalize_pairs(pd.read_csv(path, sep="\t", low_memory=False))
+        if path.exists():
+            result[label] = normalize_pairs(pd.read_csv(path, sep="\t", low_memory=False))
     rmats_path = base / f"rmats/split_data_fold{fold}_tests.tsv.gz"
     if rmats_path.exists():
         result["rMATS (paired)"] = load_paired_rmats(rmats_path, reference)

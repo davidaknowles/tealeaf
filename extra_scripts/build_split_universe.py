@@ -26,10 +26,12 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--include-hybrid", action="store_true", help="keep the deprecated SUPPA2/Tealeaf hybrid comparator (its directions agree with long reads at chance, AUC100 .567)")
     parser.add_argument("--suppa2-split", default="split_data_exact", help="SUPPA2 fold outputs <name>_fold{k}_tests.tsv.gz in analyses/comparator_suppa_rmats/{suppa2,suppa2_primer_aware}; split_data_exact holds exact paired signed-rank tests on the full catalogue")
+    parser.add_argument("--comparator-root", type=Path, help="directory with suppa2/, suppa2_primer_aware/ and rmats/ fold outputs (default analyses/comparator_suppa_rmats)")
+    parser.add_argument("--comparison-subdir", default="comparison_majiq_min3_cov3", help="fold-relative directory of the LeafCutter/scQuint/MAJIQ summary all_tests.tsv.gz")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
     repro = args.run_root / "junction_benchmark/reproducibility"
-    folds = [load_comparators(repro, repo, fold, suppa2_split=args.suppa2_split) for fold in (0, 1)]
+    folds = [load_comparators(repro, repo, fold, suppa2_split=args.suppa2_split, comparator_root=args.comparator_root, comparison_subdir=args.comparison_subdir) for fold in (0, 1)]
     rows, summary = [], []
     for comparison in sorted(set(folds[0]) & set(folds[1])):
         if comparison == "SUPPA2/Tealeaf hybrid" and not args.include_hybrid:
