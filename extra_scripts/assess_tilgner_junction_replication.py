@@ -81,7 +81,8 @@ def replace_majiq_results(comparators, directory, mapped_cell_types):
     keep = (majiq["effect"] == "cell_type") & majiq["level_a"].isin(mapped_cell_types) & majiq["level_b"].isin(mapped_cell_types)
     majiq = majiq.loc[keep].copy()
     expected = set(comparators.loc[comparators["method"] != "MAJIQ Heterogen", "contrast_id"])
-    missing = expected - set(majiq["contrast_id"])
+    # a contrast whose normalized table exists but is empty had no testable LSV
+    missing = {contrast for contrast in expected - set(majiq["contrast_id"]) if not (Path(directory) / f"{contrast_file_stem(contrast)}.tsv").exists()}
     if missing:
         raise ValueError(f"normalized MAJIQ results omit {len(missing)} mapped contrasts")
     return pd.concat([comparators.loc[comparators["method"] != "MAJIQ Heterogen"], majiq], ignore_index=True, sort=False)
