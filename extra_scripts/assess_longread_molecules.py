@@ -15,19 +15,7 @@ import pandas as pd
 from extra_scripts.assess_paired_inference_audit import long_read_assessment
 from extra_scripts.assess_tilgner_long_read_replication import load_path_usage
 from tealeaf.sc.junction_benchmark import benjamini_hochberg
-from tealeaf.sc.longread_molecules import molecule_source
-
-
-def cell_labels(path, column, merge, suffix=""):
-    table = pd.read_csv(path, sep="\t", index_col=0)
-    types = table[column].str.replace(" ", "_")
-    for pair in merge:
-        old, new = pair.split("=")
-        types = types.replace(old, new)
-    types = types + suffix
-    well = pd.Series(table.index.str.split("_").str[0], index=table.index)
-    replicate = 1 + well.map(lambda w: int(w[1:]) % 2)
-    return pd.DataFrame({"cell_type": types, "replicate": replicate})
+from tealeaf.sc.longread_molecules import cell_labels, molecule_source
 
 
 def main():

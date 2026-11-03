@@ -15,8 +15,8 @@ import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 
-from extra_scripts.assess_longread_molecules import cell_labels
 from tealeaf.sc.intron_retention import chain_intron_calls, intron_catalogue, read_gtf_transcripts
+from tealeaf.sc.longread_molecules import cell_labels
 
 
 def main():

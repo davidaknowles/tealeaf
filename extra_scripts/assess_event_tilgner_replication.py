@@ -22,7 +22,11 @@ def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tests", action="append", required=True, type=Path)
     parser.add_argument("--events", type=Path, help="Event catalogue with feature_id, event_id and catalogue included/excluded transcript lists.")
-    parser.add_argument("--tilgner-matrix", required=True, type=Path)
+    parser.add_argument("--tilgner-matrix", type=Path)
+    parser.add_argument("--molecules", type=Path, help="molecules.parquet of longread_molecules.py collapse; replaces --tilgner-matrix (exon chains come from the molecules)")
+    parser.add_argument("--labels", type=Path, help="cell -> label table for --molecules")
+    parser.add_argument("--label-column", default="Immune_All_Low_majority")
+    parser.add_argument("--merge", nargs="*", default=[], help="label renames old=new for --molecules")
     parser.add_argument("--gtf", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--summary", required=True, type=Path)
@@ -38,12 +42,22 @@ def parse_args():
     return args
 
 
+def molecule_long_read_source(args):
+    """(matrix, features, columns, stranded chains keyed by feature id) from barcode-tagged long-read molecules, with labels named as junction-comparator pseudobulks."""
+    from tealeaf.sc.longread_molecules import cell_labels, molecule_source, stranded_chains
+
+    labels = cell_labels(args.labels, args.label_column, args.merge, clean=True)
+    molecules = pd.read_parquet(args.molecules, columns=["cell", "gene", "chain"])
+    matrix, features, columns, chains = molecule_source(molecules, labels)
+    return matrix, features, columns, stranded_chains(chains, args.gtf)
+
+
 def catalogue_classes(event_table):
     """Event keys with catalogue inclusion and exclusion transcript lists."""
     return [(str(event.feature_id), str(event.included).split(","), str(event.excluded).split(",")) for event in event_table.itertuples(index=False)]
 
 
-def exon_chain_classes(event_table, rmats_dir, gtf_path, transcript_rows):
+def exon_chain_classes(event_table, rmats_dir, gtf_path, transcript_rows, chains=None):
     """Event keys with source transcripts classified by their own exon chains."""
     keys, events = [], []
     if event_table is not None:
@@ -55,7 +69,8 @@ def exon_chain_classes(event_table, rmats_dir, gtf_path, transcript_rows):
             for row in pd.read_csv(Path(rmats_dir) / f"fromGTF.{event_type}.txt", sep="\t", dtype=str).to_dict("records"):
                 keys.append(f"rMATS:{event_type}:{row['ID']}")
                 events.append(rmats_event(event_type, row))
-    chains = transcript_exon_chains(gtf_path, transcripts=transcript_rows)
+    if chains is None:
+        chains = transcript_exon_chains(gtf_path, transcripts=transcript_rows)
     return [(key, included, excluded) for key, (included, excluded) in zip(keys, event_transcript_classes(events, chains))]
 
 
@@ -74,14 +89,19 @@ def summarize(table, minimum_depth, scope="top-ranked calls per contrast"):
 
 def main():
     args = parse_args()
-    source, features, columns = read_tilgner_matrix(args.tilgner_matrix, args.gtf)
+    if args.molecules:
+        source, features, columns, molecule_chains = molecule_long_read_source(args)
+        args.lr_classification = "exon-chain"
+    else:
+        source, features, columns = read_tilgner_matrix(args.tilgner_matrix, args.gtf)
+        molecule_chains = None
     event_table = pd.read_csv(args.events, sep="\t", compression="infer") if args.events is not None else None
     transcript_rows = defaultdict(list)
     for index, transcript in features.transcript_id.items():
         if pd.notna(transcript):
             transcript_rows[stable_identifier(transcript)].append(index)
     if args.lr_classification == "exon-chain":
-        classes = exon_chain_classes(event_table, args.rmats_events, args.gtf, transcript_rows)
+        classes = exon_chain_classes(event_table, args.rmats_events, args.gtf, transcript_rows, molecule_chains)
     else:
         classes = catalogue_classes(event_table)
     event_rows = []

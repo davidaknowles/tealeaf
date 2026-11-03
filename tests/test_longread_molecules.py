@@ -47,3 +47,14 @@ def test_molecule_source_counts_chains_by_type_and_replicate():
     column = columns.set_index(["tealeaf_cell_type", "replicate"]).column
     assert matrix[row, column[("X", 1)]] == 1 and matrix[row, column[("X", 2)]] == 1 and matrix[row, column[("Y", 1)]] == 1
     assert chains["ENSG1|1-5;8-9"] == [(1, 5), (8, 9)]
+
+
+def test_cell_labels_clean_and_stranded_chains(tmp_path):
+    table = pd.DataFrame({"cell": ["A1_B2_C3", "A2_B2_C3"], "low": ["Tcm/Naive helper T cells", "CD16+ NK cells"]})
+    table.to_csv(tmp_path / "labels.tsv", sep="\t", index=False)
+    labels = lm.cell_labels(tmp_path / "labels.tsv", "low", clean=True)
+    assert labels.cell_type.tolist() == ["Tcm_Naive_helper_T_cells", "CD16__NK_cells"] and labels.replicate.tolist() == [2, 1]
+    gtf = tmp_path / "a.gtf"
+    gtf.write_text('chr1\tx\texon\t11\t20\t.\t-\t.\tgene_id "ENSG1.2"; transcript_id "ENST1.1";\n')
+    chains = lm.stranded_chains({"ENSG1|10-20": [(10, 20)], "ENSG9|1-5": [(1, 5)]}, gtf)
+    assert chains == {"ENSG1|10-20": ("chr1", "-", ((10, 20),))}

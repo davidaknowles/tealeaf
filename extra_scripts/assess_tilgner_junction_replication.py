@@ -267,6 +267,16 @@ def transcript_junction_rows(gtf_path, features, wanted):
     return {junction: np.asarray(sorted(set(rows)), dtype=int) for junction, rows in result.items()}
 
 
+def molecule_long_read_source(args):
+    """(matrix, features, columns, stranded chains keyed by feature id) from barcode-tagged long-read molecules, with labels named as junction-comparator pseudobulks."""
+    from tealeaf.sc.longread_molecules import cell_labels, molecule_source, stranded_chains
+
+    labels = cell_labels(args.labels, args.label_column, args.merge, clean=True)
+    molecules = pd.read_parquet(args.molecules, columns=["cell", "gene", "chain"])
+    matrix, features, columns, chains = molecule_source(molecules, labels)
+    return matrix, features, columns, stranded_chains(chains, args.gtf)
+
+
 def exon_chain_junction_rows(gtf_path, features, wanted):
     """Junctions from each source transcript's sorted exon chain, on both strands."""
     feature_rows = defaultdict(list)
@@ -276,10 +286,13 @@ def exon_chain_junction_rows(gtf_path, features, wanted):
     return chain_junction_rows(chains, feature_rows, wanted)
 
 
-def source_junction_counts(groups, matrix, features, columns, gtf_path, lr_junctions="legacy"):
+def source_junction_counts(groups, matrix, features, columns, gtf_path, lr_junctions="legacy", chains=None):
     wanted = {coordinate for group in groups.values() for coordinate in group["coordinates"]}
     print(f"Mapping {len(wanted):,} selected junctions to annotated source transcripts ({lr_junctions})", file=sys.stderr, flush=True)
-    rows = exon_chain_junction_rows(gtf_path, features, wanted) if lr_junctions == "exon-chain" else transcript_junction_rows(gtf_path, features, wanted)
+    if chains is not None:
+        rows = {junction: np.asarray(sorted(values), dtype=int) for junction, values in chain_junction_rows(chains, {key: [row] for key, row in zip(features.transcript_id, features.row)}, wanted).items()}
+    else:
+        rows = exon_chain_junction_rows(gtf_path, features, wanted) if lr_junctions == "exon-chain" else transcript_junction_rows(gtf_path, features, wanted)
     column_groups = {(cell_type, int(replicate)): group["column"].to_numpy(dtype=int) for (cell_type, replicate), group in columns.dropna(subset=["tealeaf_cell_type", "replicate"]).groupby(["tealeaf_cell_type", "replicate"])}
     feature_counts = {key: np.asarray(matrix[:, selected_columns].sum(axis=1)).ravel() for key, selected_columns in column_groups.items()}
     counts = {}
@@ -352,7 +365,11 @@ def main():
     parser.add_argument("--majiq-psi-minimum-reads", type=int)
     parser.add_argument("--majiq-psi-minimum-bins", type=int)
     parser.add_argument("--majiq-heterogen-minimum-experiment-fraction", type=float)
-    parser.add_argument("--tilgner-matrix", required=True, type=Path)
+    parser.add_argument("--tilgner-matrix", type=Path)
+    parser.add_argument("--molecules", type=Path, help="molecules.parquet of longread_molecules.py collapse; replaces --tilgner-matrix (exon chains come from the molecules)")
+    parser.add_argument("--labels", type=Path, help="cell -> label table for --molecules")
+    parser.add_argument("--label-column", default="Immune_All_Low_majority")
+    parser.add_argument("--merge", nargs="*", default=[], help="label renames old=new for --molecules")
     parser.add_argument("--gtf", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--jobs", type=int, default=1)
@@ -364,7 +381,12 @@ def main():
     parser.add_argument("--lr-junctions", choices=["legacy", "exon-chain"], default="legacy", help="legacy reads consecutive GTF exon lines, which yields no minus-strand junctions for GENCODE (exons listed 5' to 3'); exon-chain uses each transcript's sorted exon chain on both strands.")
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    matrix, features, columns = read_tilgner_matrix(args.tilgner_matrix, args.gtf)
+    if args.molecules:
+        matrix, features, columns, molecule_chains = molecule_long_read_source(args)
+        args.lr_junctions = "exon-chain"
+    else:
+        matrix, features, columns = read_tilgner_matrix(args.tilgner_matrix, args.gtf)
+        molecule_chains = None
     mapped = set(columns["tealeaf_cell_type"].dropna())
     all_comparators = load_comparators(args.comparator_tests, mapped)
     if args.majiq_tests:
@@ -397,7 +419,7 @@ def main():
     coordinates = [(str(row.chromosome), int(row.start), int(row.end), str(row.strand)) for row in bundle.junctions.itertuples(index=False)]
     for group in groups.values():
         group["coordinates"] = [coordinates[index] for index in group["indices"]]
-    results = assess_groups(groups, source_junction_counts(groups, matrix, features, columns, args.gtf, args.lr_junctions))
+    results = assess_groups(groups, source_junction_counts(groups, matrix, features, columns, args.gtf, args.lr_junctions, molecule_chains))
     results.to_csv(args.output_dir / "junction_replication.tsv.gz", sep="\t", index=False, na_rep="NA")
     summary = pd.concat([summarize(results), summarize(results, one_per_gene_contrast=True)], ignore_index=True)
     if args.all_tested:
@@ -410,7 +432,7 @@ def main():
     if not args.skip_paired_clr:
         paired.to_csv(args.output_dir / "paired_clr_discoveries.tsv.gz", sep="\t", index=False, na_rep="NA")
     manifest = {
-        "source": "Joglekar et al. 2024 ScISOr-Seq2 processed annotated-transcript UMI matrix",
+        "source": str(args.molecules) if args.molecules else "Joglekar et al. 2024 ScISOr-Seq2 processed annotated-transcript UMI matrix",
         "source_doi": "10.1038/s41593-024-01616-4",
         "selection": "all converged finite full-data tests, without a significance cutoff" if args.all_tested else "full-data BH FDR below 0.05 within each method and cell-type contrast",
         "methods": (args.methods or ["LeafCutter", "MAJIQ Heterogen", "scQuint"]) + ([] if args.skip_paired_clr else ["Paired junction CLR"]),

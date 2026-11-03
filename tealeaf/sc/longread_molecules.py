@@ -124,3 +124,43 @@ def molecule_source(molecules, labels):
     matrix = sparse.csr_matrix((counts.molecules.to_numpy(float), (row.to_numpy(), np.asarray(column))), shape=(len(features), len(columns)))
     chains = {key: parse_chain(key.split("|", 1)[1]) for key in features.transcript_id}
     return matrix, features, columns, chains
+
+
+def clean_label(label):
+    """Cell-type name as written into pseudobulk read groups: characters other than letters, digits and _.- become _."""
+    return "".join(character if character.isalnum() or character in "_.-" else "_" for character in label)
+
+
+def cell_labels(path, column, merge=(), suffix="", clean=False):
+    """cell -> (cell_type, replicate) from a label table (e.g. CellTypist), replicate = 1 + RT-well column parity.
+
+    Spaces in labels become underscores; merge holds old=new renames applied after that; with clean, labels are also
+    passed through clean_label (the naming of junction-comparator pseudobulks).
+    """
+    import pandas as pd
+
+    table = pd.read_csv(path, sep="\t", index_col=0)
+    types = table[column].str.replace(" ", "_")
+    for pair in merge:
+        old, new = pair.split("=")
+        types = types.replace(old, new)
+    if clean:
+        types = types.map(clean_label)
+    types = types + suffix
+    well = pd.Series(table.index.str.split("_").str[0], index=table.index)
+    replicate = 1 + well.map(lambda w: int(w[1:]) % 2)
+    return pd.DataFrame({"cell_type": types, "replicate": replicate})
+
+
+def stranded_chains(chains, gtf_path):
+    """{feature key: (chromosome, strand, exons)} for molecule_source chains (keys stable_gene_id|chain), taking each
+    gene's chromosome and strand from the annotation; features of genes missing from it are dropped."""
+    from tealeaf.sc.differential import read_gtf_exons
+
+    genes = {gene.split(".")[0]: (record["chromosome"], record["strand"]) for gene, record in read_gtf_exons(gtf_path).items()}
+    output = {}
+    for key, exons in chains.items():
+        location = genes.get(key.split("|", 1)[0])
+        if location is not None:
+            output[key] = (*location, tuple(exons))
+    return output
