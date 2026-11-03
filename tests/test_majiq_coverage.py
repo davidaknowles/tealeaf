@@ -37,3 +37,11 @@ def test_drop_coverage_null_calls_keeps_unflagged_and_unmatched():
     null = pd.DataFrame({"contrast_id": ["c", "c"], "feature_id": ["f1", "f2"], "p_null0": [.01, .5], "p_null1": [.02, .6], "p_null2": [.2, .4]})
     kept = drop_coverage_null_calls(tests, null)
     assert kept.feature_id.tolist() == ["f2", "f3"]
+
+
+def test_coverage_flagged_targeted_and_drop():
+    from tealeaf.sc.coverage_null import coverage_flagged, drop_flagged
+    null = pd.DataFrame({"k": ["a", "b", "c"], "p_value": [.001, .5, .002], "p_null0": [.01, .01, .3], "p_null1": [.02, .01, .4], "p_null2": [.9, .01, .5]})
+    flagged = coverage_flagged(null, ["k"], p_column="p_value", threshold=.01)
+    assert flagged.k.tolist() == ["a"]
+    assert drop_flagged(pd.DataFrame({"k": ["a", "b", "d"]}), flagged, ["k"]).k.tolist() == ["b", "d"]
