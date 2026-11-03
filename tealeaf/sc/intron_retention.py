@@ -126,6 +126,25 @@ def contained_introns(starts, ends, intron_starts, intron_ends, overhang=0):
     return block, intron
 
 
+def chain_intron_calls(molecules, exon_starts, exon_ends, intron_starts, intron_ends, intron_ids, overhang=20):
+    """Retained and spliced calls of clean introns from exon chains on one chromosome.
+
+    Exons [exon_starts, exon_ends) of each molecule (molecules, the owner of
+    each exon) are sorted by molecule, then start. A molecule retains an
+    intron when one of its exons contains it with overhang bases on each side,
+    and splices it when two consecutive exons are joined by exactly that
+    intron. Introns are sorted and disjoint (clean). Returns a frame of unique
+    (molecule, intron, kind) with kind "retained" or "spliced".
+    """
+    molecules, exon_starts, exon_ends = np.asarray(molecules), np.asarray(exon_starts), np.asarray(exon_ends)
+    block, intron = contained_introns(exon_starts, exon_ends, intron_starts, intron_ends, overhang)
+    retained = pd.DataFrame({"molecule": molecules[block], "intron": np.asarray(intron_ids)[intron], "kind": "retained"})
+    same = molecules[1:] == molecules[:-1]
+    junctions = pd.DataFrame({"molecule": molecules[1:][same], "start": exon_ends[:-1][same], "end": exon_starts[1:][same]})
+    spliced = junctions.merge(pd.DataFrame({"start": intron_starts, "end": intron_ends, "intron": intron_ids}), on=["start", "end"])[["molecule", "intron"]].assign(kind="spliced")
+    return pd.concat([retained, spliced], ignore_index=True).drop_duplicates()
+
+
 def gene_baseline_offset(retained_other, spliced_other, pseudocount=.5):
     """Logit of the retained fraction over a row's other introns."""
     return np.log((np.asarray(retained_other, float) + pseudocount) / (np.asarray(spliced_other, float) + pseudocount))

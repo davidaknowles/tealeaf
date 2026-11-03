@@ -58,3 +58,14 @@ def test_null_inflation_recovers_scale():
     inflation = null_inflation(statistics)
     assert abs(inflation - 1.3) < .05
     assert np.isclose(calibrated_p_value(1.3 * 3.841, 1.3), .05, atol=1e-3)
+
+
+def test_chain_intron_calls_retained_and_spliced():
+    from tealeaf.sc.intron_retention import chain_intron_calls
+    # introns [100, 200) and [300, 400); molecule 0 splices both, molecule 1 retains the first (exon 50-250), molecule 2 has too little overhang
+    molecules = [0, 0, 0, 1, 2]
+    starts = [50, 200, 400, 50, 90]
+    ends = [100, 300, 450, 250, 210]
+    calls = chain_intron_calls(molecules, starts, ends, [100, 300], [200, 400], [7, 8], overhang=20)
+    got = set(map(tuple, calls[["molecule", "intron", "kind"]].to_numpy().tolist()))
+    assert got == {(0, 7, "spliced"), (0, 8, "spliced"), (1, 7, "retained")}
