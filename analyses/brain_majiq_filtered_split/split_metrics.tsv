@@ -1,0 +1,17 @@
+comparison	method	pair_combination	gene_combination	shared_gene_pairs	shared_genes	fold0_bh	fold1_bh	replicated_bh	heldout_nominal_replication	spearman_logp	universe	direction_selected	direction_evaluable	direction_agreement	failed_tests_fold0	failed_tests_fold1
+MAJIQ Heterogen [all]	Tealeaf	simes	simes	59129	2764	324	287	201	0.8300049468748656	0.49904677876627185	matched	4383.0	3581.0	0.9625802848366378	4659.0	5274.0
+MAJIQ Heterogen [all]	MAJIQ Heterogen [all]	simes	simes	59129	2764	55	124	27	0.7922287390029326	0.2483804919937688	matched	NA	NA	NA	NA	NA
+MAJIQ Heterogen [all]	Tealeaf	simes	simes	73984	3003	315	284	196	0.8345126313436173	0.5658515154236416	comparator	NA	NA	NA	NA	NA
+MAJIQ Heterogen [all]	MAJIQ Heterogen [all]	simes	simes	73984	3003	51	130	28	0.7838612368024133	0.23800147866322244	comparator	NA	NA	NA	NA	NA
+MAJIQ Heterogen [cov_ratio_le_05]	Tealeaf	simes	simes	24639	2270	263	228	153	0.8318407711293443	0.49237698379588124	matched	2691.0	2169.0	0.9621945597049332	2227.0	2515.0
+MAJIQ Heterogen [cov_ratio_le_05]	MAJIQ Heterogen [cov_ratio_le_05]	simes	simes	24639	2270	21	26	8	0.7847985347985348	0.27804942064102867	matched	NA	NA	NA	NA	NA
+MAJIQ Heterogen [cov_ratio_le_05]	Tealeaf	simes	simes	29099	2527	252	222	143	0.8337623337623337	0.5796532993652416	comparator	NA	NA	NA	NA	NA
+MAJIQ Heterogen [cov_ratio_le_05]	MAJIQ Heterogen [cov_ratio_le_05]	simes	simes	29099	2527	17	25	8	0.7823529411764706	0.2917147371916735	comparator	NA	NA	NA	NA	NA
+MAJIQ Heterogen [cov_ratio_le_1]	Tealeaf	simes	simes	45361	2674	310	280	193	0.8164170506912443	0.5066574336624634	matched	3763.0	3089.0	0.9643897701521528	3854.0	4351.0
+MAJIQ Heterogen [cov_ratio_le_1]	MAJIQ Heterogen [cov_ratio_le_1]	simes	simes	45361	2674	19	42	15	0.8402255639097744	0.18921670778798946	matched	NA	NA	NA	NA	NA
+MAJIQ Heterogen [cov_ratio_le_1]	Tealeaf	simes	simes	55891	2915	303	274	190	0.8241731107417312	0.5780327969885634	comparator	NA	NA	NA	NA	NA
+MAJIQ Heterogen [cov_ratio_le_1]	MAJIQ Heterogen [cov_ratio_le_1]	simes	simes	55891	2915	19	41	15	0.8376123234916559	0.1772953236855065	comparator	NA	NA	NA	NA	NA
+MAJIQ Heterogen [null_p_ge_05]	Tealeaf	simes	simes	56939	2732	326	285	200	0.8303519535033903	0.5042400031097158	matched	4363.0	3563.0	0.9623912433342688	4541.0	5124.0
+MAJIQ Heterogen [null_p_ge_05]	MAJIQ Heterogen [null_p_ge_05]	simes	simes	56939	2732	43	53	19	0.8641948222904783	0.25164894063605964	matched	NA	NA	NA	NA	NA
+MAJIQ Heterogen [null_p_ge_05]	Tealeaf	simes	simes	70146	2972	315	284	195	0.8360999329309189	0.569899211413541	comparator	NA	NA	NA	NA	NA
+MAJIQ Heterogen [null_p_ge_05]	MAJIQ Heterogen [null_p_ge_05]	simes	simes	70146	2972	41	50	18	0.8790243902439024	0.22606548441003316	comparator	NA	NA	NA	NA	NA

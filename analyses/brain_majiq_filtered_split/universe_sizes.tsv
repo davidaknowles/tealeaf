@@ -1,0 +1,5 @@
+variant	tests	keys	genes
+all	765412	73984	3003
+null_p_ge_05	708996	70146	2972
+cov_ratio_le_05	251117	29099	2527
+cov_ratio_le_1	541656	55891	2915

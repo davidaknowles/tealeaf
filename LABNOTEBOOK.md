@@ -5070,3 +5070,29 @@ Coverage-only null. Heterogen's raw test is a Mann–Whitney on per-sample poste
 | > .2 | 877 | 750 | 20 | 20 |
 
 With no PSI difference, the test calls 119,007 of 304,221 tests at BH .05 (observed 121,768), and 46% have p < .05. The null call rate follows the coverage ratio, |log2 median n_a / n_b| ≤ .5 / .5–1 / 1–2 / 2–3 / > 3 gives .006 / .18 / .71 / .86 / .93 (observed .013 / .20 / .72 / .86 / .94). 95% of MAJIQ's small-effect calls (112,349 of 117,798) are also null calls, and their sign matches the null's in 99.9%. So MAJIQ's PBMC split count is driven by expression differences between cell types, which replicate across donor halves; it does not measure splicing. Calls with pooled effect > .1 are mostly not reproduced by the null and agree with long reads. The same null has not been run on brain. Summaries in `analyses/pbmc/GSE320507_comparators/majiq_coverage_null`.
+
+### 2026-11-03 Coverage nulls for all junction methods; MAJIQ filtered split; GSE320507 six-comparator split
+
+MAJIQ coverage null on each subject half (PBMC) and on brain (full data and halves, `--min-experiments` 0.5 full / 3 halves as in the production runs). The reproduction now joins every test to MAJIQ's raw table (feature_id); Spearman with MAJIQ's raw p .995–.9999 on every run. Calls at BH .05, observed / coverage-only null: PBMC fold 0 111,173 / 110,246, fold 1 82,037 / 82,260; brain full 6,542 / 4,816, fold 0 1,383 / 880, fold 1 7,859 / 6,094. In brain, tests with coverage ratio ≤ 1.4-fold are called at .06–.11% in the halves and never by the null; calls with pooled effect > .2 are almost never null calls in either data set. Brain MAJIQ is affected by the same bias, at smaller absolute counts.
+
+Filtered MAJIQ split (`majiq_filtered_split.py`, comparator universe, Tealeaf / MAJIQ replicated genes; the "all" rows reproduce the reported counts):
+
+| MAJIQ tests kept | PBMC | brain |
+|---|---|---|
+| all | 70 / 991 | 196 / 28 |
+| coverage-null p ≥ .05 (median of 3 draws) | 70 / 27 | 195 / 18 |
+| coverage ratio ≤ 2 | 62 / 15 | 190 / 15 |
+| coverage ratio ≤ 1.4 | 41 / 8 | 143 / 8 |
+
+Count-model nulls (PBMC full data). LeafCutter and scQuint inputs with every LeafCutter cluster and every scQuint intron group (size ≥ 2) redrawn per sample, multinomial from the proportions pooled over all 649 pseudobulks with each sample's observed total (`junction_coverage_null.py`), then run on all 171 contrasts:
+
+| method | input | tests | p < .05 | p < .001 | BH .05 calls |
+|---|---|---|---|---|---|
+| LeafCutter | real | 26,091 | .099 | .033 | 1,018 |
+| LeafCutter | null | 26,257 | .023 | .0003 | 0 |
+| scQuint | real | 812,960 | .082 | .0061 | 2,848 |
+| scQuint | null | 927,851 | .045 | .0006 | 0 |
+
+Tealeaf count null (`assess_annotated_count_null.py`, 200 random full-data tests per structure, observed subject × cell type × primer totals, no cell-type effect, all 171 pairs eligible): anchors model rejection at .05 .006–.025 internal (about 35% converged; failures are p = 1) and .011–.054 terminal (92–99% converged). Among converged fits, by |log2 block-molecule ratio| between the levels ≤ 1 / 1–2 / 2–3 / > 3, the subject-20 no-row-variation scenario gives .00 / .03 / .06 / .05 internal and .03 / .02 / .04 / .04 terminal; the MAJIQ null rejects .93 above 8-fold. Row-overdispersion scenarios reach .10–.18 in the 2–4-fold internal bin (about 30 converged fits each). The count models do not show MAJIQ's coverage dependence.
+
+GSE320507 split with all six comparators (`analyses/pbmc/GSE320507_comparators/split`), Tealeaf / comparator replicated genes, comparator universe (matched in brackets): LeafCutter 56/60 (56/59), MAJIQ 70/991 (70/894), SUPPA2 56/0 (57/0), SUPPA2 primer-aware 53/0 (57/0), paired rMATS 60/184 (65/190), scQuint 54/67 (55/66). rMATS halves call 24,014 / 13,077 events at BH .05, its p < .05 rate over all tests is .045 / .040, and 64–66% of its calls have |ΔPSI| > .2, so it does not look like MAJIQ's coverage effect. MXE events make up 83–87% of the calls (brain rMATS replicated 4 genes); its long-read direction is pending the last full-data contrast.
