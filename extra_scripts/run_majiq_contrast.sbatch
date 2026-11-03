@@ -23,13 +23,16 @@ export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 mkdir -p "${OUTPUT_DIR}/raw" "${OUTPUT_DIR}/normalized"
 min_experiments=${MAJIQ_MIN_EXPERIMENTS:-0.5}
 mapfile -t fields < <("${MAJIQ_VENV}/bin/python" - "${CONTRASTS}" "${SLURM_ARRAY_TASK_ID}" <<'PY'
-import json, sys
+import json, re, sys
 x = json.load(open(sys.argv[1]))[int(sys.argv[2])]
 print(x["contrast_id"])
 print(x["level_a"])
 print(x["level_b"])
 print(" ".join(x["samples_a"]))
 print(" ".join(x["samples_b"]))
+# Heterogen group names may hold only alphanumerics and underscores
+print(re.sub(r"[^A-Za-z0-9_]", "_", x["level_a"]))
+print(re.sub(r"[^A-Za-z0-9_]", "_", x["level_b"]))
 PY
 )
 contrast=${fields[0]}
@@ -39,11 +42,23 @@ raw="${OUTPUT_DIR}/raw/${contrast}.tsv"
 "${MAJIQ_VENV}/bin/majiq-v3" heterogen -psi1 "${PSICOV}" -psi2 "${PSICOV}" \
   --select-grp1-prefixes "${group_a[@]}" \
   --select-grp2-prefixes "${group_b[@]}" \
-  -n "${fields[1]}" "${fields[2]}" --min-experiments "${min_experiments}" \
+  -n "${fields[5]}" "${fields[6]}" --min-experiments "${min_experiments}" \
   --stats mannwhitneyu --psisamples 100 --pvalue-quantiles 0.95 \
   --splicegraph "${SPLICEGRAPH}" --annotated "${ANNOTATED_SPLICEGRAPH}" \
   --output-tsv "${raw}" --nthreads "${SLURM_CPUS_PER_TASK:-4}" \
   --license "${MAJIQ_LICENSE_FILE}"
+# restore the contrast levels in the per-group column names (<group>-raw_psi_...)
+"${MAJIQ_VENV}/bin/python" - "${raw}" "${fields[5]}" "${fields[1]}" "${fields[6]}" "${fields[2]}" <<'PY'
+import sys
+path, renames = sys.argv[1], dict(zip(sys.argv[2::2], sys.argv[3::2]))
+lines = open(path).read().split("\n")
+header = next(i for i, line in enumerate(lines) if not line.startswith("#"))
+columns = lines[header].split("\t")
+for short, level in renames.items():
+    columns = [level + c[len(short):] if c.startswith(short + "-") else c for c in columns]
+lines[header] = "\t".join(columns)
+open(path, "w").write("\n".join(lines))
+PY
 "${MAJIQ_VENV}/bin/python" \
   "${REPO_ROOT}/extra_scripts/run_junction_comparator.py" normalize-majiq \
   --contrasts "${CONTRASTS}" --contrast-index "${SLURM_ARRAY_TASK_ID}" \
