@@ -1,0 +1,16 @@
+{
+  "input_tests": 85402,
+  "mapped_tests": 22010,
+  "top_per_contrast": 500,
+  "minimum_pooled_depth": 20.0,
+  "minimum_replicate_depth": 10.0,
+  "tests": [
+    "/gpfs/commons/home/daknowles/tealeaf_runs/pbmc/GSE320507/junction_benchmark/comparator_suppa_rmats/suppa2/full_data_tests.tsv.gz"
+  ],
+  "events": "/gpfs/commons/home/daknowles/tealeaf_runs/pbmc/GSE320507/junction_benchmark/comparator_suppa_rmats/suppa2/event_catalog.tsv.gz",
+  "rmats_events": null,
+  "gtf": "/gpfs/commons/home/daknowles/tealeaf_runs/pbmc/ref/gencode.v49.annotation.gtf.gz",
+  "lr_classification": "exon-chain",
+  "selection": "method-specific significance ranking per contrast",
+  "source_mapping": "at least one source annotated transcript in each event class; classes from each transcript's own exon chain"
+}

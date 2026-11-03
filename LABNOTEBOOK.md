@@ -5042,3 +5042,31 @@ Same test as brain (per clean intron Beta-binomial `retention_test` with the gen
 - Long-read direction (full data, 953,624 tests, 1,059 BH at retained ≥ 20): 7,890 tests are evaluable with |LR diff| ≥ .05 (23,476 with ≥ 5 LR-retained molecules). Agreement at rank 40/100/200 is .33/.36/.46 (|diff| criterion) and .55/.47/.50 (retained ≥ 5); over all evaluable tests .49, Spearman between short-read and long-read effects −.015. At rank 500 and 2,000 agreement is .53 and .51. The top 100 spans 81 genes (gene-level agreement .39), so the low value at rank 100 is not one gene. Brain gave .54–.65.
 
 Whole cells do not rescue the IR test: split replication is the same as brain nuclei and the long-read direction is at chance.
+
+### 2026-11-03 GSE320507 comparators: long reads, split (without rMATS), MAJIQ coverage null
+
+Long-read direction (Kinnex, exon-chain, all tested, zero LR effect counts as disagreement). Tealeaf 99/100 (AUC100 .987).
+
+| Method | A40 | A100 (AUC100) | A200 | top-100 zero LR effects | A100 excluding zeros |
+|---|---|---|---|---|---|
+| scQuint | 40/40 | 100/100 (1.00) | 191 | 0 | 1.00 |
+| LeafCutter | 39/40 | 98/100 (.989) | 192 | 0 | .98 |
+| MAJIQ Heterogen | 32/40 | 73/100 (.789) | 139 | 0 | .73 |
+| SUPPA2 | 25/40 | 47/100 (.555) | 86 | 29 | .66 |
+| SUPPA2 primer-aware | 17/40 | 46/100 (.460) | 95 | 12 | .52 |
+
+Split replication on each comparator's universe (replicated genes, Tealeaf / comparator; matched universe in brackets): LeafCutter 56/60 (56/59), MAJIQ 70/991 (70/894), SUPPA2 56/0 (57/0), SUPPA2 primer-aware 53/0 (57/0), scQuint 54/67 (55/66). rMATS is pending (`analyses/pbmc/GSE320507_comparators/split_trial_no_rmats`). Unlike brain (Tealeaf 201 vs MAJIQ 27 on the MAJIQ universe), LeafCutter and scQuint are level with Tealeaf and MAJIQ replicates 14 times as many genes, with fold BH 1,220/1,306 genes, held-out nominal .86 and log-p correlation .72.
+
+MAJIQ's calls are mostly tiny pooled effects. Of its q < .05 full-data tests with long-read evidence, 11,819 have pooled short-read effect ≤ .05, where long-read agreement is .58 (LeafCutter .69 in that bin); at effect ≥ .2 MAJIQ agrees .90–.99, like LeafCutter and scQuint. Its q < 1e-6 tests agree .62 overall (LeafCutter .96, scQuint 1.00).
+
+Coverage-only null. Heterogen's raw test is a Mann–Whitney on per-sample posterior means (x + 1/J)/(n + 1), with x the connection's reads, n the LSV total and J the LSV's connection count. The prior pulls a low-coverage sample toward 1/J, so two cell types with the same PSI but different expression differ in the tested quantity. `majiq_coverage_null.py` reproduces the test from the psicov store (Spearman .80 with MAJIQ's raw p on a checked contrast, median |log10 ratio| .04), then draws x_s ~ Binomial(n_s, p0) with each sample's own LSV total n_s and one pooled PSI p0 for both levels, and reruns it. Full data, 171 contrasts, 304,221 tests, three simulations:
+
+| pooled effect | tests | observed q < .05 | null q < .05 | observed calls also null q < .05 |
+|---|---|---|---|---|
+| ≤ .02 | 261,208 | 113,128 | 112,942 | 109,169 |
+| .02–.05 | 27,936 | 4,670 | 5,066 | 3,180 |
+| .05–.1 | 10,676 | 1,777 | 808 | 351 |
+| .1–.2 | 3,524 | 1,443 | 171 | 117 |
+| > .2 | 877 | 750 | 20 | 20 |
+
+With no PSI difference, the test calls 119,007 of 304,221 tests at BH .05 (observed 121,768), and 46% have p < .05. The null call rate follows the coverage ratio, |log2 median n_a / n_b| ≤ .5 / .5–1 / 1–2 / 2–3 / > 3 gives .006 / .18 / .71 / .86 / .93 (observed .013 / .20 / .72 / .86 / .94). 95% of MAJIQ's small-effect calls (112,349 of 117,798) are also null calls, and their sign matches the null's in 99.9%. So MAJIQ's PBMC split count is driven by expression differences between cell types, which replicate across donor halves; it does not measure splicing. Calls with pooled effect > .1 are mostly not reproduced by the null and agree with long reads. In brain the halves have fewer donors per level, which limits the Mann–Whitney's power on the same bias. Summaries in `analyses/pbmc/GSE320507_comparators/majiq_coverage_null`.

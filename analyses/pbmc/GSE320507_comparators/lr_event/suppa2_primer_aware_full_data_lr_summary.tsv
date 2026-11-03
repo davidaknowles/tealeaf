@@ -1,0 +1,3 @@
+method	endpoint	scope	minimum_depth	n_tests	n_replicated	replication_rate	ci_low	ci_high	conditional_null_rate
+SUPPA2 (primer aware); exact paired Wilcoxon	pooled direction	top-ranked calls per contrast	20.0	2419	778	0.3216205043406366	0.30330199734340024	0.34050465915154815	0.5
+SUPPA2 (primer aware); exact paired Wilcoxon	both biological replicates	top-ranked calls per contrast	20.0	2085	326	0.15635491606714627	0.14139897011469796	0.17257481475596678	0.5
