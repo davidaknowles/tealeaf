@@ -140,6 +140,17 @@ def parse_args():
     return parser.parse_args()
 
 
+def pseudobulk_sample(row):
+    """Sample id <subject>__<cell type> of a pseudobulk row <cell type>__<condition>__<subject>; cell types may contain "__"."""
+    cell_type, _, subject = row.rsplit("__", 2)
+    return f"{subject}__{cell_type}"
+
+
+def sample_cell_type(sample):
+    """Cell type of a sample id <subject>__<cell type>."""
+    return sample.split("__", 1)[1]
+
+
 def suppa_command(root, *args, python=None):
     """SUPPA2 command, run with python, else the interpreter installed beside suppa.py, else python3 on PATH."""
     if python is None:
@@ -202,8 +213,8 @@ def main():
     matrix = sparse.load_npz(args.matrix).tocsr()
     transcripts = [line.strip() for line in args.columns.read_text().splitlines()]
     rows = [line.strip() for line in args.rows.read_text().splitlines()]
-    row_lookup = {row.split("__")[-1] + "__" + row.split("__")[0]: index for index, row in enumerate(rows)}
-    cell_types = sorted({sample.rsplit("__", 1)[1] for sample in samples})
+    row_lookup = {pseudobulk_sample(row): index for index, row in enumerate(rows)}
+    cell_types = sorted({sample_cell_type(sample) for sample in samples})
     ioe_prefix = args.work_dir / "mouse"
     ioe = args.work_dir / "mouse.ioe"
     if not ioe.exists():
@@ -221,7 +232,7 @@ def main():
     psi_by_cell = {}
     for cell_type in cell_types:
         expression = args.work_dir / f"{cell_type}.tsv"
-        selected = write_expression(matrix, transcripts, row_lookup, [sample for sample in samples if sample.endswith("__" + cell_type)], expression)
+        selected = write_expression(matrix, transcripts, row_lookup, [sample for sample in samples if sample_cell_type(sample) == cell_type], expression)
         if not selected:
             continue
         psi_path = run_native_psi(args.suppa_root, ioe, expression, args.work_dir / f"{cell_type}.psi", args.work_dir / f"{cell_type}.log", python=args.suppa_python)
@@ -233,10 +244,15 @@ def main():
     result_rows = []
     for contrast in contrasts:
         level_a, level_b = contrast["level_a"], contrast["level_b"]
-        if level_a not in psi_by_cell or level_b not in psi_by_cell:
+        # PSI is keyed by the cell type of the sample ids, which may be a cleaned form of the level
+        cell_a, cell_b = ({sample_cell_type(sample) for sample in contrast[f"samples_{side}"]} for side in ("a", "b"))
+        if len(cell_a) != 1 or len(cell_b) != 1:
+            raise ValueError(f"{contrast['contrast_id']}: samples of a level span several cell types")
+        cell_a, cell_b = cell_a.pop(), cell_b.pop()
+        if cell_a not in psi_by_cell or cell_b not in psi_by_cell:
             continue
-        samples_a, psi_a = psi_by_cell[level_a]
-        samples_b, psi_b = psi_by_cell[level_b]
+        samples_a, psi_a = psi_by_cell[cell_a]
+        samples_b, psi_b = psi_by_cell[cell_b]
         pairs = [(a, b) for a, b in zip(contrast["samples_a"], contrast["samples_b"]) if a in samples_a and b in samples_b]
         if len(pairs) < args.minimum_pairs:
             continue

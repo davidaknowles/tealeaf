@@ -22,6 +22,7 @@ from extra_scripts.run_suppa2_full_data_comparison import (
     bh,
     event_test_pvalues,
     method_label,
+    pseudobulk_sample,
 )
 
 
@@ -86,10 +87,7 @@ def main():
     columns = args.columns.read_text().splitlines()
     if matrix.shape != (len(rows), len(columns)):
         raise ValueError(f"matrix shape {matrix.shape} does not match rows/columns")
-    row_lookup = {
-        row.split("__")[-1] + "__" + row.split("__")[0]: index
-        for index, row in enumerate(rows)
-    }
+    row_lookup = {pseudobulk_sample(row): index for index, row in enumerate(rows)}
     catalog = load_catalog(args.event_catalog)
     psi = event_psi(catalog, matrix, columns)
     contrasts = json.loads(args.contrasts.read_text())
