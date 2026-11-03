@@ -10,6 +10,10 @@ set -euo pipefail
 : "${OUTPUT_DIR:?set OUTPUT_DIR}"
 : "${MAJIQ_LICENSE_FILE:?set MAJIQ_LICENSE_FILE}"
 
+unset LOADEDMODULES
+for variable in $(compgen -A variable _ModuleTable); do
+  unset "${variable}"
+done
 module purge
 module load Python/3.12.3-GCCcore-13.3.0 HTSlib/1.21 zstd/1.5.6-GCCcore-13.3.0
 source "${MAJIQ_VENV:-${HOME}/venv/majiq_cluster}/bin/activate"
