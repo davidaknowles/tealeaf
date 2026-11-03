@@ -129,7 +129,8 @@ def parse_args():
     parser.add_argument("--rows", required=True, type=Path)
     parser.add_argument("--columns", required=True, type=Path)
     parser.add_argument("--gtf", required=True, type=Path)
-    parser.add_argument("--suppa-root", required=True, type=Path)
+    parser.add_argument("--suppa-root", required=True, type=Path, help="directory holding suppa.py")
+    parser.add_argument("--suppa-python", type=Path, help="interpreter for suppa.py (default: python3 beside it, else on PATH)")
     parser.add_argument("--contrasts", action="append", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--event-output", required=True, type=Path)
@@ -139,10 +140,11 @@ def parse_args():
     return parser.parse_args()
 
 
-def suppa_command(root, *args):
-    """SUPPA2 command, run with the interpreter installed beside suppa.py when there is one."""
-    python = root / "python3"
-    return [str(python) if python.exists() else "python3", str(root / "suppa.py"), *map(str, args)]
+def suppa_command(root, *args, python=None):
+    """SUPPA2 command, run with python, else the interpreter installed beside suppa.py, else python3 on PATH."""
+    if python is None:
+        python = root / "python3" if (root / "python3").exists() else "python3"
+    return [str(python), str(root / "suppa.py"), *map(str, args)]
 
 
 def load_events(work_dir):
@@ -173,11 +175,11 @@ def write_expression(matrix, transcripts, row_lookup, samples, path):
     return selected
 
 
-def run_native_psi(root, ioe, expression, output_prefix, log_path):
+def run_native_psi(root, ioe, expression, output_prefix, log_path, python=None):
     psi_path = Path(str(output_prefix) + ".psi")
     if psi_path.exists():
         return psi_path
-    command = suppa_command(root, "psiPerEvent", "-i", ioe, "-e", expression, "-o", output_prefix, "-m", "ERROR")
+    command = suppa_command(root, "psiPerEvent", "-i", ioe, "-e", expression, "-o", output_prefix, "-m", "ERROR", python=python)
     with log_path.open("w") as log:
         subprocess.run(command, check=True, stdout=log, stderr=log)
     return psi_path
@@ -205,7 +207,7 @@ def main():
     ioe_prefix = args.work_dir / "mouse"
     ioe = args.work_dir / "mouse.ioe"
     if not ioe.exists():
-        subprocess.run(suppa_command(args.suppa_root, "generateEvents", "-i", args.gtf, "-o", ioe_prefix, "-f", "ioe", "-e", "SE", "SS", "MX", "RI", "FL", "-m", "ERROR"), check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(suppa_command(args.suppa_root, "generateEvents", "-i", args.gtf, "-o", ioe_prefix, "-f", "ioe", "-e", "SE", "SS", "MX", "RI", "FL", "-m", "ERROR", python=args.suppa_python), check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         parts = [args.work_dir / f"mouse_{event_type}_strict.ioe" for event_type in EVENT_TYPES]
         with ioe.open("w") as handle:
             for index, part in enumerate(parts):
@@ -222,7 +224,7 @@ def main():
         selected = write_expression(matrix, transcripts, row_lookup, [sample for sample in samples if sample.endswith("__" + cell_type)], expression)
         if not selected:
             continue
-        psi_path = run_native_psi(args.suppa_root, ioe, expression, args.work_dir / f"{cell_type}.psi", args.work_dir / f"{cell_type}.log")
+        psi_path = run_native_psi(args.suppa_root, ioe, expression, args.work_dir / f"{cell_type}.psi", args.work_dir / f"{cell_type}.log", python=args.suppa_python)
         psi_table = load_psi(psi_path)
         # SUPPA2 can omit an expression column that has no usable transcript
         # values, so use the columns actually returned by psiPerEvent.
