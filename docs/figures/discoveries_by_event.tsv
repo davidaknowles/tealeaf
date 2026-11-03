@@ -1,6 +1,6 @@
 method	event	count	unit	tests	contrasts
 LeafCutter	no event type	403	Tests	5507	28
-MAJIQ	no event type	1361	Tests	3977	28
+MAJIQ	no event type	343	Tests	3121	28
 SUPPA2	alternative acceptor	57	Tests	176613	28
 SUPPA2	alternative donor	34	Tests	176613	28
 SUPPA2	cassette exon	321	Tests	176613	28
@@ -25,16 +25,16 @@ rMATS	cassette exon	166	Tests	445659	28
 rMATS	mutually exclusive exons	23	Tests	445659	28
 scQuint	no event type	2634	Tests	157510	28
 LeafCutter	no event type	351	Gene–cell-type pairs	5507	28
-MAJIQ	no event type	873	Gene–cell-type pairs	3977	28
-SUPPA2	alternative acceptor	53	Gene–cell-type pairs	176613	28
+MAJIQ	no event type	269	Gene–cell-type pairs	3121	28
+SUPPA2	alternative acceptor	54	Gene–cell-type pairs	176613	28
 SUPPA2	alternative donor	32	Gene–cell-type pairs	176613	28
-SUPPA2	cassette exon	236	Gene–cell-type pairs	176613	28
+SUPPA2	cassette exon	235	Gene–cell-type pairs	176613	28
 SUPPA2	mutually exclusive exons	20	Gene–cell-type pairs	176613	28
 SUPPA2	retained intron	9	Gene–cell-type pairs	176613	28
-SUPPA2 primer-aware	alternative acceptor	40	Gene–cell-type pairs	128571	28
+SUPPA2 primer-aware	alternative acceptor	37	Gene–cell-type pairs	128571	28
 SUPPA2 primer-aware	alternative donor	25	Gene–cell-type pairs	128571	28
-SUPPA2 primer-aware	cassette exon	140	Gene–cell-type pairs	128571	28
-SUPPA2 primer-aware	mutually exclusive exons	15	Gene–cell-type pairs	128571	28
+SUPPA2 primer-aware	cassette exon	144	Gene–cell-type pairs	128571	28
+SUPPA2 primer-aware	mutually exclusive exons	14	Gene–cell-type pairs	128571	28
 SUPPA2 primer-aware	retained intron	13	Gene–cell-type pairs	128571	28
 Tealeaf	alternative acceptor	112	Gene–cell-type pairs	219931	28
 Tealeaf	alternative donor	40	Gene–cell-type pairs	219931	28

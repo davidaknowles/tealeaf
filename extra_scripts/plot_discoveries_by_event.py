@@ -50,10 +50,16 @@ def read_junction_table(path):
     return table.loc[table.effect.eq("cell_type")] if "effect" in table else table
 
 
-def read_majiq_tests(directory):
-    """MAJIQ Heterogen normalized edge tests (one file per contrast) collapsed to LSVs, each with its smallest edge p-value."""
-    edges = pd.concat([pd.read_csv(path, sep="\t", usecols=["method", "effect", "level_a", "level_b", "feature_id", "gene_id", "p_value"]) for path in sorted(Path(directory).glob("*.tsv"))], ignore_index=True)
+def read_majiq_tests(directory, coverage_null=None):
+    """MAJIQ Heterogen normalized edge tests (one file per contrast) collapsed to LSVs, each with its smallest edge p-value.
+
+    With coverage_null (assess_majiq_coverage_null.py output), edges the coverage-only null calls are removed first.
+    """
+    edges = pd.concat([pd.read_csv(path, sep="\t", usecols=["method", "effect", "contrast_id", "level_a", "level_b", "feature_id", "gene_id", "p_value"]) for path in sorted(Path(directory).glob("*.tsv"))], ignore_index=True)
     edges = edges.loc[edges.effect.eq("cell_type")]
+    if coverage_null is not None:
+        from tealeaf.sc.majiq_coverage import drop_coverage_null_calls
+        edges = drop_coverage_null_calls(edges, pd.read_parquet(coverage_null, columns=["contrast_id", "feature_id", "p_null0", "p_null1", "p_null2"]))
     edges["feature_id"] = edges.feature_id.str.split(":").str[:6].str.join(":")
     return edges.groupby(["method", "effect", "level_a", "level_b", "feature_id", "gene_id"], as_index=False).p_value.min()
 
@@ -66,6 +72,7 @@ def main():
     parser.add_argument("--suppa2", type=Path, required=True, help="SUPPA2 full-data tests")
     parser.add_argument("--suppa2-primer-aware", type=Path, required=True)
     parser.add_argument("--rmats", type=Path, required=True, help="paired rMATS full-data tests")
+    parser.add_argument("--majiq-coverage-null", type=Path, help="majiq_coverage_null.parquet of assess_majiq_coverage_null.py; MAJIQ edges it calls (median null p < .05) are removed before the LSV collapse")
     parser.add_argument("--leafcutter-counts", type=Path, help="LeafCutter perind numerator counts, to map clusters without a gene")
     parser.add_argument("--junction-annotation", type=Path, help="junction table with chromosome, start, end and gene_id")
     parser.add_argument("--contrasts", choices=("common", "all"), default="common")
@@ -75,7 +82,7 @@ def main():
     args = parser.parse_args()
     junctions = [read_junction_table(path) for path in args.junction_table]
     if args.majiq_tests:
-        junctions = [table.loc[table.method.ne("MAJIQ Heterogen")] for table in junctions] + [read_majiq_tests(args.majiq_tests)]
+        junctions = [table.loc[table.method.ne("MAJIQ Heterogen")] for table in junctions] + [read_majiq_tests(args.majiq_tests, args.majiq_coverage_null)]
     junctions = pd.concat(junctions, ignore_index=True).astype({"gene_id": "object"})
     leaf = junctions.method.eq("LeafCutter") & junctions.gene_id.isna()
     if leaf.any() and args.leafcutter_counts:
