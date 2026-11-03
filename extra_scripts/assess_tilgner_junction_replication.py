@@ -268,10 +268,10 @@ def transcript_junction_rows(gtf_path, features, wanted):
 
 
 def molecule_long_read_source(args):
-    """(matrix, features, columns, stranded chains keyed by feature id) from barcode-tagged long-read molecules, with labels named as junction-comparator pseudobulks."""
+    """(matrix, features, columns, stranded chains keyed by feature id) from barcode-tagged long-read molecules, with labels named as the contrast levels (spaces become underscores)."""
     from tealeaf.sc.longread_molecules import cell_labels, molecule_source, stranded_chains
 
-    labels = cell_labels(args.labels, args.label_column, args.merge, clean=True)
+    labels = cell_labels(args.labels, args.label_column, args.merge)
     molecules = pd.read_parquet(args.molecules, columns=["cell", "gene", "chain"])
     matrix, features, columns, chains = molecule_source(molecules, labels)
     return matrix, features, columns, stranded_chains(chains, args.gtf)
