@@ -1,0 +1,23 @@
+test_id	path	path_label	start	end	x0	x1
+ENSG00000101745.18:B2|cell_type|Classical_monocytes|HC|Classical_monocytes|LTCS	1	Path 1	9195550	9195698	0.0	148.0
+ENSG00000101745.18:B2|cell_type|Classical_monocytes|HC|Classical_monocytes|LTCS	1	Path 1	9208656	9208797	817.0	958.0
+ENSG00000101745.18:B2|cell_type|Classical_monocytes|HC|Classical_monocytes|LTCS	2	Path 2	9195550	9195698	0.0	148.0
+ENSG00000101745.18:B2|cell_type|Classical_monocytes|HC|Classical_monocytes|LTCS	2	Path 2	9204475	9204544	448.0	517.0
+ENSG00000101745.18:B2|cell_type|Classical_monocytes|HC|Classical_monocytes|LTCS	2	Path 2	9208656	9208797	817.0	958.0
+ENSG00000113649.15:B7|cell_type|Tcm/Naive_helper_T_cells|HC|Tcm/Naive_helper_T_cells|LTCS	1	Path 2	146498646	146498686	0.0	40.0
+ENSG00000113649.15:B7|cell_type|Tcm/Naive_helper_T_cells|HC|Tcm/Naive_helper_T_cells|LTCS	1	Path 2	146503374	146503539	340.0	505.0
+ENSG00000113649.15:B7|cell_type|Tcm/Naive_helper_T_cells|HC|Tcm/Naive_helper_T_cells|LTCS	1	Path 2	146507027	146507207	1272.0	1452.0
+ENSG00000113649.15:B7|cell_type|Tcm/Naive_helper_T_cells|HC|Tcm/Naive_helper_T_cells|LTCS	2	Path 3	146498646	146498686	0.0	40.0
+ENSG00000113649.15:B7|cell_type|Tcm/Naive_helper_T_cells|HC|Tcm/Naive_helper_T_cells|LTCS	2	Path 3	146503374	146503539	340.0	505.0
+ENSG00000113649.15:B7|cell_type|Tcm/Naive_helper_T_cells|HC|Tcm/Naive_helper_T_cells|LTCS	2	Path 3	146503823	146504006	789.0	972.0
+ENSG00000113649.15:B7|cell_type|Tcm/Naive_helper_T_cells|HC|Tcm/Naive_helper_T_cells|LTCS	2	Path 3	146507027	146507207	1272.0	1452.0
+ENSG00000114439.20:B4|cell_type|Tcm/Naive_helper_T_cells|HC|Tcm/Naive_helper_T_cells|LTCS	1	Path 1	107755597	107755678	0.0	81.0
+ENSG00000114439.20:B4|cell_type|Tcm/Naive_helper_T_cells|HC|Tcm/Naive_helper_T_cells|LTCS	1	Path 1	107774718	107774857	1690.0	1829.0
+ENSG00000114439.20:B4|cell_type|Tcm/Naive_helper_T_cells|HC|Tcm/Naive_helper_T_cells|LTCS	2	Path 2	107755597	107755678	0.0	81.0
+ENSG00000114439.20:B4|cell_type|Tcm/Naive_helper_T_cells|HC|Tcm/Naive_helper_T_cells|LTCS	2	Path 2	107772627	107773636	381.0	1390.0
+ENSG00000114439.20:B4|cell_type|Tcm/Naive_helper_T_cells|HC|Tcm/Naive_helper_T_cells|LTCS	2	Path 2	107774718	107774857	1690.0	1829.0
+ENSG00000165929.14:N3|cell_type|Tcm/Naive_helper_T_cells|HC|Tcm/Naive_helper_T_cells|LTCS	1	Path 1	91792366	91792558	0.0	192.0
+ENSG00000165929.14:N3|cell_type|Tcm/Naive_helper_T_cells|HC|Tcm/Naive_helper_T_cells|LTCS	1	Path 1	91797784	91797901	492.0	609.0
+ENSG00000165929.14:N3|cell_type|Tcm/Naive_helper_T_cells|HC|Tcm/Naive_helper_T_cells|LTCS	1	Path 1	91798298	91798399	909.0	1010.0
+ENSG00000165929.14:N3|cell_type|Tcm/Naive_helper_T_cells|HC|Tcm/Naive_helper_T_cells|LTCS	2	Path 2	91792366	91792558	0.0	192.0
+ENSG00000165929.14:N3|cell_type|Tcm/Naive_helper_T_cells|HC|Tcm/Naive_helper_T_cells|LTCS	2	Path 2	91798298	91798399	909.0	1010.0

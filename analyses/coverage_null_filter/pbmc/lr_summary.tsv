@@ -1,0 +1,43 @@
+method	cutoff	n_available	n_agree	agreement	normalized_auc	table	n_evaluable
+LeafCutter	40	200	39	0.975	0.9980760796221322	unfiltered	13849
+LeafCutter	100	200	98	0.98	0.9889829068027984	unfiltered	13849
+LeafCutter	200	200	192	0.96	0.9776666501898768	unfiltered	13849
+MAJIQ Heterogen	40	200	32	0.8	0.8648934944247675	unfiltered	19896
+MAJIQ Heterogen	100	200	73	0.73	0.788692159784921	unfiltered	19896
+MAJIQ Heterogen	200	200	139	0.695	0.7448875921932665	unfiltered	19896
+SUPPA2 (full data); exact paired Wilcoxon	40	200	25	0.625	0.6325567532468381	unfiltered	4719
+SUPPA2 (full data); exact paired Wilcoxon	100	200	47	0.47	0.5553193687182513	unfiltered	4719
+SUPPA2 (full data); exact paired Wilcoxon	200	200	86	0.43	0.5043622383438715	unfiltered	4719
+SUPPA2 (primer aware); exact paired Wilcoxon	40	200	17	0.425	0.4686502847237798	unfiltered	2419
+SUPPA2 (primer aware); exact paired Wilcoxon	100	200	46	0.46	0.45991994883269993	unfiltered	2419
+SUPPA2 (primer aware); exact paired Wilcoxon	200	200	95	0.475	0.4575513560727187	unfiltered	2419
+Tealeaf	40	200	39	0.975	0.9920777689662671	unfiltered	44359
+Tealeaf	100	200	99	0.99	0.9877427627994745	unfiltered	44359
+Tealeaf	200	200	197	0.985	0.989299140962881	unfiltered	44359
+rMATS paired JCEC	40	200	26	0.65	0.5866607659585678	unfiltered	1694
+rMATS paired JCEC	100	200	64	0.64	0.6020090293511212	unfiltered	1694
+rMATS paired JCEC	200	200	125	0.625	0.624851740933665	unfiltered	1694
+scQuint	40	200	40	1.0	1.0	unfiltered	19878
+scQuint	100	200	100	1.0	1.0	unfiltered	19878
+scQuint	200	200	191	0.955	0.9895881949342753	unfiltered	19878
+LeafCutter	40	200	39	0.975	0.9980760796221322	filtered	13846
+LeafCutter	100	200	98	0.98	0.9889829068027984	filtered	13846
+LeafCutter	200	200	192	0.96	0.9776666501898768	filtered	13846
+MAJIQ Heterogen	40	200	40	1.0	1.0	filtered	14749
+MAJIQ Heterogen	100	200	100	1.0	1.0	filtered	14749
+MAJIQ Heterogen	200	200	195	0.975	0.9961781741397898	filtered	14749
+SUPPA2 (full data); exact paired Wilcoxon	40	200	25	0.625	0.6325567532468381	filtered	4719
+SUPPA2 (full data); exact paired Wilcoxon	100	200	47	0.47	0.5553193687182513	filtered	4719
+SUPPA2 (full data); exact paired Wilcoxon	200	200	86	0.43	0.5043622383438715	filtered	4719
+SUPPA2 (primer aware); exact paired Wilcoxon	40	200	17	0.425	0.4686502847237798	filtered	2419
+SUPPA2 (primer aware); exact paired Wilcoxon	100	200	46	0.46	0.45991994883269993	filtered	2419
+SUPPA2 (primer aware); exact paired Wilcoxon	200	200	95	0.475	0.4575513560727187	filtered	2419
+Tealeaf	40	200	39	0.975	0.9920777689662671	filtered	44349
+Tealeaf	100	200	99	0.99	0.9877427627994745	filtered	44349
+Tealeaf	200	200	196	0.98	0.9891618096867633	filtered	44349
+rMATS paired JCEC	40	200	25	0.625	0.5327057494495736	filtered	1530
+rMATS paired JCEC	100	200	64	0.64	0.575265501141678	filtered	1530
+rMATS paired JCEC	200	200	129	0.645	0.6093719087588378	filtered	1530
+scQuint	40	200	40	1.0	1.0	filtered	19875
+scQuint	100	200	100	1.0	1.0	filtered	19875
+scQuint	200	200	191	0.955	0.9890920194402733	filtered	19875

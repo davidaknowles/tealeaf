@@ -9,6 +9,10 @@ full-length annotated-transcript UMI counts of the long-read data, summed
 over replicates, per --long-read-scale long-read UMIs of the cell type (default one million). The annotation
 track shows the gene's annotated transcripts and the block's tested paths.
 Junction counts label the arcs in the block view only.
+
+Without --long-read-matrix only the Parse tracks are drawn. With --subject-groups (columns subject and
+--group-column), cell types are relabelled <cell type>|<group> by subject, for tests between groups of subjects within a
+cell type (levels such as "Classical_monocytes|LTCS").
 """
 
 import argparse
@@ -17,6 +21,7 @@ import json
 import re
 import shlex
 import subprocess
+from collections import Counter
 from concurrent.futures import ProcessPoolExecutor
 from itertools import repeat
 from pathlib import Path
@@ -33,9 +38,17 @@ LONG = "long reads"
 COLORS = ("#2C7FB8", "#D95F0E")
 
 
-def library_support(library, runs_dir, locus_chromosome, locus_shift, events):
+def relabelled(group, subject_groups):
+    """(subject, cell type, primer) with the cell type suffixed by the subject's group when subject_groups is given."""
+    subject, cell_type, primer = group
+    if subject_groups is None:
+        return (subject, cell_type, primer)
+    return (subject, f"{cell_type}|{subject_groups[subject]}" if subject in subject_groups else cell_type, primer)
+
+
+def library_support(library, runs_dir, locus_chromosome, locus_shift, events, subject_groups=None):
     barcodes = sorted(library["barcode_groups"])
-    groups = {index: tuple(library["barcode_groups"][barcode]) for index, barcode in enumerate(barcodes)}
+    groups = {index: relabelled(library["barcode_groups"][barcode], subject_groups) for index, barcode in enumerate(barcodes)}
     chunks = [path for run in library["runs"] for path in sorted((runs_dir / Path(run["path"]).parent.name).glob("chunk_*.npz"))]
     return collect_native_event_support(chunks, groups, locus_chromosome, locus_shift, events)
 
@@ -65,7 +78,9 @@ def main():
     parser.add_argument("--runs", default="runs_pass2")
     parser.add_argument("--recipe", type=Path, required=True)
     parser.add_argument("--gtf", type=Path, required=True)
-    parser.add_argument("--long-read-matrix", type=Path, required=True)
+    parser.add_argument("--long-read-matrix", type=Path, help="long-read annotated-transcript count matrix; without it no long-read tracks are drawn")
+    parser.add_argument("--subject-groups", type=Path, help="table of subjects and their group, to relabel cell types as <cell type>|<group>")
+    parser.add_argument("--group-column", default="group")
     parser.add_argument("--long-read-gtf", type=Path, help="annotation for long-read transcript names and exon chains (e.g. comprehensive GENCODE); default --gtf, which is also drawn")
     parser.add_argument("--ggsashimi", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
@@ -92,31 +107,40 @@ def main():
     locus_chromosome = reference["locus_chromosome"].astype(str)
     locus_shift = (reference["locus_genome_start"] - reference["locus_ref_start"]).astype(np.int64)
     recipe = json.loads(args.recipe.read_text())
+    subject_groups = None
+    if args.subject_groups is not None:
+        table = pd.read_csv(args.subject_groups, sep="\t", dtype={"subject": str})
+        subject_groups = dict(zip(table.subject, table[args.group_column].astype(str)))
     with ProcessPoolExecutor(max_workers=len(recipe["bams"])) as executor:
-        results = list(executor.map(library_support, recipe["bams"], repeat(args.native_dir / args.runs), repeat(locus_chromosome), repeat(locus_shift), repeat(tuple(events))))
+        results = list(executor.map(library_support, recipe["bams"], repeat(args.native_dir / args.runs), repeat(locus_chromosome), repeat(locus_shift), repeat(tuple(events)), repeat(subject_groups)))
     exon_blocks, junctions, _ = merge_support(results)
-    cells = pd.DataFrame([group for library in recipe["bams"] for group in library["barcode_groups"].values()], columns=["subject", "cell_type", "primer"])
+    cells = pd.DataFrame([relabelled(group, subject_groups) for library in recipe["bams"] for group in library["barcode_groups"].values()], columns=["subject", "cell_type", "primer"])
     cell_sizes = cells.groupby(["subject", "cell_type", "primer"]).size().rename("cells").reset_index()
-    matrix, features, columns = read_tilgner_matrix(args.long_read_matrix, args.long_read_gtf or args.gtf)
-    long_annotation = annotation if args.long_read_gtf is None else {gene.split(".")[0]: record for gene, record in read_gtf_exons(args.long_read_gtf).items() if gene.split(".")[0] in set(examples.gene_id)}
-    chains = {stable_identifier(transcript): sorted(chain) for record in long_annotation.values() for transcript, chain in record["transcripts"].items()}
+    long_reads = args.long_read_matrix is not None
+    if long_reads:
+        matrix, features, columns = read_tilgner_matrix(args.long_read_matrix, args.long_read_gtf or args.gtf)
+        long_annotation = annotation if args.long_read_gtf is None else {gene.split(".")[0]: record for gene, record in read_gtf_exons(args.long_read_gtf).items() if gene.split(".")[0] in set(examples.gene_id)}
+        chains = {stable_identifier(transcript): sorted(chain) for record in long_annotation.values() for transcript, chain in record["transcripts"].items()}
+    sources = (*PRIMERS, LONG) if long_reads else PRIMERS
     long_sizes = []
     lines = gene_gtf_lines(args.gtf, set(examples.gene_id))
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for event in events:
         example, mature = info[event.event_id]
         levels = [example.level_a, example.level_b]
-        counts = {}
-        for cell_type in levels:
-            selected = columns.index[columns.tealeaf_cell_type.eq(cell_type)].to_numpy()
-            totals = np.asarray(matrix[:, selected].sum(axis=1)).ravel()
-            long_sizes.append({"subject": LONG, "cell_type": cell_type, "primer": LONG, "cells": float(totals.sum())})
-            rows = features.index[features.stable_gene_id.eq(example.gene_id) & features.transcript_id.notna()]
-            counts.update({(cell_type, stable_identifier(features.transcript_id[row])): float(totals[row]) for row in rows})
-        long_blocks, long_junctions = long_read_event_support(event, counts, chains)
-        sizes = pd.concat([cell_sizes, pd.DataFrame(long_sizes).drop_duplicates(["cell_type"])], ignore_index=True)
+        long_blocks, long_junctions, sizes = Counter(), Counter(), cell_sizes
+        if long_reads:
+            counts = {}
+            for cell_type in levels:
+                selected = columns.index[columns.tealeaf_cell_type.eq(cell_type)].to_numpy()
+                totals = np.asarray(matrix[:, selected].sum(axis=1)).ravel()
+                long_sizes.append({"subject": LONG, "cell_type": cell_type, "primer": LONG, "cells": float(totals.sum())})
+                rows = features.index[features.stable_gene_id.eq(example.gene_id) & features.transcript_id.notna()]
+                counts.update({(cell_type, stable_identifier(features.transcript_id[row])): float(totals[row]) for row in rows})
+            long_blocks, long_junctions = long_read_event_support(event, counts, chains)
+            sizes = pd.concat([cell_sizes, pd.DataFrame(long_sizes).drop_duplicates(["cell_type"])], ignore_index=True)
         event_dir = args.output_dir / event.event_id
-        intron, exon, strand = write_ggsashimi_inputs(event_dir, event, exon_blocks + long_blocks, junctions + long_junctions, sizes, levels, primers=(*PRIMERS, LONG), scales={LONG: args.long_read_scale})
+        intron, exon, strand = write_ggsashimi_inputs(event_dir, event, exon_blocks + long_blocks, junctions + long_junctions, sizes, levels, primers=sources, scales={LONG: args.long_read_scale})
         gtf = event_dir / f"{event.event_id}.gtf"
         path_lines = []
         for index, chain in enumerate(mature, start=1):
@@ -125,7 +149,7 @@ def main():
             path_lines += ["\t".join((event.chromosome, "Tealeaf", "exon", str(start + 1), str(end), ".", event.strand, ".", attributes)) for start, end in chain]
         gtf.write_text("\n".join(path_lines) + "\n" + "".join(lines[example.gene_id]))
         palette = event_dir / "palette.txt"
-        palette.write_text("".join(f"{color}\n" for color in COLORS for _ in range(3)))
+        palette.write_text("".join(f"{color}\n" for color in COLORS for _ in sources))
         prefix = event_dir / f"{event.event_id}_sashimi"
         coordinates = f"{event.chromosome}:{event.start + 1}-{event.end}"
         command = ["python3", str(args.ggsashimi), "--intron", str(intron), "--exon", str(exon), "--strand_info", str(strand), "--data_type", "sc", "--aggregation", "False", "-c", coordinates, "-g", str(gtf), "-o", str(prefix), "-M", str(args.min_junction), "--shrink", "--height", str(args.track_height), "--ann-height", f"{max(1.2, 0.16 * (len(mature) + len(annotation[example.gene_id]['transcripts']))):.2f}", "--width", str(args.width), "--base-size", "11", "-P", str(palette), "-F", "pdf", "--compact"] + (["--no-junction-labels"] if event.event_id.endswith("_gene") else [])

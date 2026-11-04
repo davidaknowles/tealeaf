@@ -31,7 +31,7 @@ from tealeaf.sc.ds_benchmark import leafcutter_cluster_gene_map
 from tealeaf.sc.junction_benchmark import benjamini_hochberg
 
 JUNCTION = {"LeafCutter": "LeafCutter", "scQuint": "scQuint", "MAJIQ Heterogen": "MAJIQ"}
-COMPARATOR_EVENTS = {"SE": "cassette exon", "A5SS": "alternative donor", "A3SS": "alternative acceptor", "MXE": "mutually exclusive exons", "RI": "retained intron"}
+COMPARATOR_EVENTS = {"SE": "cassette exon", "A5SS": "alternative donor", "A3SS": "alternative acceptor", "MXE": "mutually exclusive exons", "RI": "retained intron", "AF": "alternative first exon", "AL": "alternative last exon"}
 # categorical slots in fixed order; the classes absent from comparators fold into "other"
 EVENTS = {"cassette exon": "#2a78d6", "alternative donor": "#eb6834", "alternative acceptor": "#1baf7a", "mutually exclusive exons": "#eda100", "retained intron": "#e87ba4", "alternative first exon": "#008300", "alternative last exon": "#6250d6", "other": "#e34948", "no event type": "#b5b3ad"}
 

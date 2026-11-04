@@ -1,0 +1,14 @@
+event	tests	discoveries	discoveries_with_novel_path	long_read_evaluable_discoveries	long_read_agreement	top100	top100_agreeing
+alternative first exon	195908	886	622	219	0.9041095890410958	43	43
+alternative first and last exons	82279	742	718	94	0.8829787234042553	37	36
+compound internal	424829	365	314	78	0.8333333333333334	9	9
+cassette exon	381924	154	85	62	0.9516129032258065	11	11
+alternative last exon	171845	116	97	16	0.6875	0	0
+alternative transcript end	19790	42	5	14	0.8571428571428571	0	0
+alternative donor	67915	10	10	2	0.0	0	0
+mutually exclusive exons	934	7	0	5	0.4	0	0
+alternative transcript start	17699	7	2	4	0.75	0	0
+alternative acceptor	114686	6	5	3	0.6666666666666666	0	0
+multi-exon skipping	15641	3	3	0		0	0
+complex internal	9589	2	2	0		0	0
+retained intron	1507	0	0	0		0	0

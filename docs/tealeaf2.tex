@@ -42,7 +42,7 @@ Differential splicing between cell types in single-cell RNA-seq is usually teste
   \item \textbf{Subjects as replicates.} A Beta--logit-normal model with a subject random intercept pairs the two cell types of each subject and allows extra variation between subject--cell-type rows. Count simulations under the null on the real designs show the tests are calibrated.
   \item \textbf{A self-contained implementation.} A targeted two-pass spliced aligner, with a compiled Rust kernel and FASTQ reader, reproduces STAR's alignment scoring and filters on the target genes and replaces whole-genome search for competing alignments by a genome-wide k-mer uniqueness table. Tealeaf runs from FASTQ files to tests without an external aligner or pseudoaligner; a run of 345 million read pairs aligns in about the time STARsolo takes, and the stored alignments of a run take about 1~GB instead of a 46~GB BAM file.
 \end{enumerate}
-On a mouse brain dataset of 48 subjects, Tealeaf replicates more genes across independent halves of the subjects than LeafCutter, MAJIQ, SUPPA2, primer-aware SUPPA2, rMATS and scQuint, on each method's own set of testable genes, and its top-ranked directions agree with independent single-cell long-read data as often as those of the best of these methods, over many more evaluable tests (Section~\ref{sec:evaluation}). On three human PBMC datasets (Section~\ref{sec:pbmc}), differences between blood cell types replicate across halves of 19 donors, 82 to 99 of the 100 top-ranked tests agree in direction with single-cell long reads of a Parse PBMC library, and a contrast between random groups of donors shows that tests between groups of different subjects are not anticonservative.
+On a mouse brain dataset of 48 subjects, Tealeaf replicates more genes across independent halves of the subjects than LeafCutter, MAJIQ, SUPPA2, primer-aware SUPPA2, rMATS and scQuint, on each method's own set of testable genes, and its top-ranked directions agree with independent single-cell long-read data as often as those of the best of these methods, over many more evaluable tests (Section~\ref{sec:evaluation}). On three human PBMC datasets (Section~\ref{sec:pbmc}), differences between blood cell types replicate across halves of 19 donors, 82 to 99 of the 100 top-ranked tests agree in direction with single-cell long reads of a Parse PBMC library (in the largest dataset LeafCutter and scQuint replicate as many genes and agree as often, over two to three times fewer evaluable tests), and a contrast between random groups of donors shows that tests between groups of different subjects are not anticonservative.
 
 \section{Overview}
 
@@ -505,6 +505,53 @@ Agreement of all evaluable tests & 0.54 & 0.54 & 0.52\\
 
 In GSE320507 99 and in GSE327907 96 of the 100 top-ranked evaluable tests agree with the long reads, and 88\% and 94\% of the evaluable discoveries. GSE334840 has 6 evaluable discoveries, so its 100 top-ranked tests are mostly not significant, and 82 agree. Over all evaluable tests agreement is close to 0.5, since most tests have no cell-type difference.
 
+\subsection{Comparators in GSE320507}
+
+The six comparators of Section~\ref{sec:evaluation} are run on GSE320507 with the same settings, on the 171 cell-type pairs of the full data and of each half, and the tests the coverage-only null calls are removed for every method except SUPPA2 (Appendix~\ref{sec:coverage-null}). Table~\ref{tab:pbmc-results} gives split replication on the matched and comparator universes and long-read direction, and Figure~\ref{fig:lr-pbmc} the agreement by rank.
+
+\begin{table}[ht]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccccc}
+\toprule
+ & LeafCutter & MAJIQ & SUPPA2 & SUPPA2-PA & rMATS & scQuint\\
+\midrule
+\multicolumn{7}{l}{\emph{Matched universe}}\\
+Genes & 1{,}168 & 3{,}411 & 8{,}478 & 8{,}405 & 8{,}829 & 6{,}034\\
+Tealeaf replicated & 56 & 69 & 57 & 57 & 65 & 55\\
+Comparator replicated & 59 & 23 & 0 & 0 & 131 & 66\\
+\midrule
+\multicolumn{7}{l}{\emph{Comparator universe}}\\
+Genes & 1{,}235 & 3{,}618 & 10{,}577 & 10{,}569 & 10{,}179 & 6{,}402\\
+Tealeaf replicated & 56 & 68 & 56 & 53 & 60 & 54\\
+Comparator replicated & 60 & 26 & 0 & 0 & 133 & 67\\
+\midrule
+Comparator $A_{100}$ & .989 & 1.000 & .555 & .460 & .575 & 1.000\\
+\bottomrule
+\end{tabular}
+\caption{GSE320507 cell-type contrasts: replicated genes on each comparator's matched and comparator universes, and long-read direction against the Kinnex library, as in Table~\ref{tab:results}. Tests called by the coverage-only null are removed for Tealeaf and every comparator except SUPPA2 and SUPPA2-PA. Tealeaf has $A_{100}=0.988$ (99 of its 100 top-ranked evaluable tests agree; $A_{40}=0.992$, $A_{200}=0.989$).}
+\label{tab:pbmc-results}
+\end{table}
+
+In blood, LeafCutter and scQuint replicate about as many genes as Tealeaf on their universes (60 against 56 and 67 against 54), and their top-ranked features agree with the long reads as often ($A_{100}$ of 0.989 and 1.000 against 0.988). MAJIQ replicates 26 genes against 68 for Tealeaf after the removal of 96\% of its recomputed edges, and its 100 top-ranked local splice variants that remain all agree; without removal it replicates 991 genes and 73 of its 100 top-ranked features agree. rMATS replicates 133 genes against 60, but only 64 of its 100 top-ranked events agree with the long reads, and the coverage-only null calls a quarter of its recomputed tests (Appendix~\ref{sec:coverage-null}), so most of its replicated genes are not supported by the long reads. SUPPA2 and primer-aware SUPPA2 replicate no genes, and their top-ranked events agree at about chance. Tealeaf has 44{,}349 evaluable tests after removal against 13{,}846 to 19{,}875 features for the junction methods and 1{,}530 to 4{,}719 events for SUPPA2 and rMATS, whose values are computed on their 500 top-ranked events per contrast.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/lr_agreement_GSE320507.pdf}
+\caption{GSE320507: cumulative agreement with long-read directions among the top-ranked tests (Tealeaf) or features (comparators), as in Figure~\ref{fig:lr}. Tests called by the coverage-only null are removed for every method except SUPPA2.}
+\label{fig:lr-pbmc}
+\end{figure}
+
+Figure~\ref{fig:discoveries-pbmc} gives the full-data discoveries on the 135 cell-type pairs tested by every method, counted as in Figure~\ref{fig:discoveries}. SUPPA2 has 65{,}760 discoveries in 16{,}314 gene--cell-type pairs, most of them alternative first exons (40{,}557), primer-aware SUPPA2 8{,}438 pairs, rMATS 2{,}863, scQuint 1{,}900, Tealeaf 1{,}904 discoveries in 1{,}600 pairs, MAJIQ 783 and LeafCutter 427. The SUPPA2 counts come with no replicated genes and top-ranked directions at about chance (Table~\ref{tab:pbmc-results}). Tealeaf discovers 711 alternative first exons and 88 alternative last exons against 118 cassette exons; most of its other 969 discoveries are blocks with both alternative first and last exons and compound internal blocks.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{figures/discoveries_by_event_GSE320507.pdf}
+\caption{GSE320507 full-data discoveries (BH 0.05 within method) on the 135 cell-type pairs tested by every method, counted as tests (left) and as gene--cell-type pairs with at least one discovery (right), by event class, as in Figure~\ref{fig:discoveries}. Tests called by the coverage-only null are removed for every method except SUPPA2.}
+\label{fig:discoveries-pbmc}
+\end{figure}
+
 \subsection{Disease contrasts}
 
 In GSE320507 the disease groups are compared within each cell type, with the levels in different subjects (Section~\ref{sec:block}) and at least 4 donors in each level. Each cell type has four contrasts, LTCS against HC, LTCS against CONV, CONV against HC, and LTCS against HC and CONV pooled. A fifth contrast compares two sets of 26 and 12 donors drawn at random from the 38 without regard to group, the same draw in every cell type; it has no group effect and shows the calibration of the test with groups of this size.
@@ -528,6 +575,51 @@ LTCS vs HC and CONV & 182{,}408 & 1.18\% & 0.251\% & 23\\
 \end{table}
 
 Table~\ref{tab:disease} gives the results. The random contrast rejects below the nominal rate, so the test is not anticonservative with 12 donors in the smaller group, and CONV against HC and LTCS against CONV, with 5 donors in one group, are close to it. LTCS against HC gives 215 discoveries in 153 genes, mostly in naive and central-memory helper T cells (111) and classical monocytes (82). The CONV donors share these differences. Of the 215 tests, 205 are also tested between CONV and HC, 59\% of them with $p<0.05$ and 92\% with the same direction, while LTCS against CONV has $p<0.05$ for 9\% of them (3\% for the random contrast). The differences therefore separate the healthy donors from all donors after COVID-19, not long COVID from recovery, and may reflect differences between the donor groups other than disease, such as age or the time of sampling, which are not available.
+
+Figures~\ref{fig:ankrd12}--\ref{fig:tc2n} show LTCS against HC discoveries, selected without regard to their biology: discoveries with at most four paths, a median of at least 50 gene molecules per donor row and a block window of at most 20~kb (so that the block view is readable), one per gene, ranked by the norm of the fitted path-usage difference. All four are cassette exons, three in naive and central-memory helper T cells. The long-read library comes from donors without disease groups, so the figures show Parse coverage only. In each of the four, the CONV donors differ from HC in the same direction as the LTCS donors ($p$ from 0.02 to 0.06 for CONV against HC, and from 0.06 to 0.23 for LTCS against CONV), as for the discoveries overall.
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{ANKRD12} (Figure~\ref{fig:ankrd12}), classical monocytes. Path 2 includes a 69-base exon. HC donors include it in 42\% of molecules and LTCS donors in 75\% (means over 7 and 26 donors).
+  \item \textbf{TCERG1} (Figure~\ref{fig:tcerg1}), naive and central-memory helper T cells. Path 3 includes a 183-base exon, path 2 skips it, and path 1 is removed by the share screen. Path 3 carries 78\% of HC and 49\% of LTCS molecules.
+  \item \textbf{BBX} (Figure~\ref{fig:bbx}), naive and central-memory helper T cells. Path 1 skips a 1{,}009-base exon, in 3\% of HC and 14\% of LTCS molecules.
+  \item \textbf{TC2N} (Figure~\ref{fig:tc2n}), naive and central-memory helper T cells, a block added by novel paths. Path 2, which is not annotated, skips a 117-base exon, in 9\% of HC and 34\% of LTCS molecules.
+\end{enumerate}
+
+\begin{figure}[p]
+\centering
+\makebox[\textwidth][c]{\includegraphics[width=1.15\textwidth,height=0.4\textheight,keepaspectratio]{figures/sashimi_ltcs_ANKRD12_B2_gene.pdf}}\\
+(a)\\[4pt]
+\makebox[\textwidth][c]{\includegraphics[width=1.15\textwidth,height=0.4\textheight,keepaspectratio]{figures/sashimi_ltcs_ANKRD12_B2.pdf}}\\
+(b)
+\caption{ANKRD12 block 2 in classical monocytes, healthy controls (HC, 7 donors) against long COVID donors (LTCS, 26 donors). (a) Sashimi tracks over the whole gene and (b) over the block, for the two groups: Parse coverage from UMI-deduplicated native alignments of the cell type by primer, per 1,000 half-cells of the primer and group. Arcs are junctions, labelled with their coverage in the same units in the block view, and long introns are shortened. Below the tracks are the block's paths (Path $k$), which mark the block in the gene view, and the gene's annotated transcripts. The long-read library has no disease groups, so no long-read tracks are shown.}
+\label{fig:ankrd12}
+\end{figure}
+\begin{figure}[p]
+\centering
+\makebox[\textwidth][c]{\includegraphics[width=1.15\textwidth,height=0.4\textheight,keepaspectratio]{figures/sashimi_ltcs_TCERG1_B7_gene.pdf}}\\
+(a)\\[4pt]
+\makebox[\textwidth][c]{\includegraphics[width=1.15\textwidth,height=0.4\textheight,keepaspectratio]{figures/sashimi_ltcs_TCERG1_B7.pdf}}\\
+(b)
+\caption{TCERG1 block 7 in naive and central-memory helper T cells, HC against LTCS donors. Panels as in Figure~\ref{fig:ankrd12}.}
+\label{fig:tcerg1}
+\end{figure}
+\begin{figure}[p]
+\centering
+\makebox[\textwidth][c]{\includegraphics[width=1.15\textwidth,height=0.4\textheight,keepaspectratio]{figures/sashimi_ltcs_BBX_B4_gene.pdf}}\\
+(a)\\[4pt]
+\makebox[\textwidth][c]{\includegraphics[width=1.15\textwidth,height=0.4\textheight,keepaspectratio]{figures/sashimi_ltcs_BBX_B4.pdf}}\\
+(b)
+\caption{BBX block 4 in naive and central-memory helper T cells, HC against LTCS donors. Panels as in Figure~\ref{fig:ankrd12}.}
+\label{fig:bbx}
+\end{figure}
+\begin{figure}[p]
+\centering
+\makebox[\textwidth][c]{\includegraphics[width=1.15\textwidth,height=0.4\textheight,keepaspectratio]{figures/sashimi_ltcs_TC2N_N3_gene.pdf}}\\
+(a)\\[4pt]
+\makebox[\textwidth][c]{\includegraphics[width=1.15\textwidth,height=0.4\textheight,keepaspectratio]{figures/sashimi_ltcs_TC2N_N3.pdf}}\\
+(b)
+\caption{TC2N novel block 3 in naive and central-memory helper T cells, HC against LTCS donors. Panels as in Figure~\ref{fig:ankrd12}.}
+\label{fig:tc2n}
+\end{figure}
 
 \section{Implementation}
 
