@@ -42,6 +42,42 @@ def read_end_profiles(path):
     return pd.DataFrame(rows)
 
 
+def read_end_metaplot(paths, width=25, gap=900):
+    """Mean per-gene share of read ends per 100 bases near the 5' and 3' ends, laid out as one gene (5' left, 3' right)."""
+    rows = []
+    for path in paths:
+        for primer, genes in json.loads(Path(path).read_text()).items():
+            for gene in genes:
+                five, three = np.asarray(gene["five"], float), np.asarray(gene["three"], float)
+                total = five.sum() + three.sum()
+                if total > 0:
+                    rows.append((primer, five / total, three / total))
+    out = []
+    for primer in sorted({row[0] for row in rows}):
+        five = np.mean([row[1] for row in rows if row[0] == primer], axis=0)
+        three = np.mean([row[2] for row in rows if row[0] == primer], axis=0)
+        n = len(five)
+        x_five = (np.arange(n) + 0.5) * width
+        x_three = n * width + gap + (n * width - (np.arange(n) + 0.5) * width)
+        scale = 100 * 100 / width  # percent of the gene's reads per 100 bases
+        out.append(pd.DataFrame({"primer": primer, "x": x_five, "share": five * scale, "end": "5'"}))
+        out.append(pd.DataFrame({"primer": primer, "x": x_three, "share": three * scale, "end": "3'"}))
+    return pd.concat(out, ignore_index=True), n * width, gap
+
+
+def metaplot(table, span, gap, width, height):
+    breaks = [0, 1000, 2000, span + gap, span + gap + 1000, 2 * span + gap]
+    labels = ["5' end", "+1 kb", "+2 kb", "-2 kb", "-1 kb", "3' end"]
+    return (p9.ggplot(table, p9.aes("x", "share", color="primer", group="primer + end"))
+            + p9.annotate("rect", xmin=span, xmax=span + gap, ymin=-np.inf, ymax=np.inf, fill="#F0F0F0")
+            + p9.annotate("text", x=span + gap / 2, y=table.share.max() * 0.95, label="//", size=8, color="#888888")
+            + p9.geom_line(size=0.6)
+            + p9.scale_color_manual(values=PRIMERS)
+            + p9.scale_x_continuous(breaks=breaks, labels=labels, expand=(0.01, 0))
+            + p9.labs(x="Position of read end in the transcript (spliced bases)", y="Reads per 100 bases\n(% of the gene's reads)")
+            + theme(width, height, "bottom"))
+
+
 def split_table(path, universe):
     table = pd.read_csv(path, sep="\t")
     table = table.loc[table.universe.eq(universe) & ~table.comparison.str.contains("hybrid")].copy()
@@ -233,12 +269,8 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     brain, pbmc = Path("analyses/coverage_null_filter/brain"), Path("analyses/coverage_null_filter/pbmc")
 
-    profiles = read_end_profiles(".cache/read_end_profiles/profiles.json")
-    profiles["end"] = pd.Categorical(profiles.end, categories=["Distance from 5' end", "Distance from 3' end"])
-    save(p9.ggplot(profiles, p9.aes("distance", "density", color="primer")) + p9.geom_line(size=0.6) + p9.facet_wrap("~end")
-         + p9.geom_hline(yintercept=1, linetype="dashed", color="#888888", size=0.3)
-         + p9.scale_color_manual(values=PRIMERS) + p9.labs(x="Spliced distance of read end (bases)", y="Read density relative\nto transcript middle")
-         + theme(3.3, 1.75, "bottom"), out, "fig1_profiles")
+    table, span, gap = read_end_metaplot(sorted(Path(".cache/read_end_profiles").glob("library_*.json")))
+    save(metaplot(table, span, gap, 3.3, 1.9), out, "fig1_profiles")
 
     save(split_plot(split_table(brain / "split_filtered/split_metrics.tsv", "matched"), 3.3, 2.3), out, "fig2_split")
     save(lr_plot(lr_curves(brain / "tealeaf_lr_rank_filtered.tsv.gz", brain / "sign_agreement_by_rank_filtered.tsv"), 3.3, 2.0), out, "fig2_lr")

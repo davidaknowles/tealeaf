@@ -88,6 +88,8 @@ def main():
     parser.add_argument("--track-height", type=float, default=0.75, help="ggsashimi height per track (inches)")
     parser.add_argument("--width", type=float, default=12.0, help="ggsashimi width (inches)")
     parser.add_argument("--min-junction", type=int, default=1, help="ggsashimi minimum normalized junction coverage")
+    parser.add_argument("--base-size", type=float, default=11.0, help="ggsashimi base font size")
+    parser.add_argument("--level-label", action="append", default=[], help="LEVEL=label for track labels (default: the level name)")
     parser.add_argument("--plot-setup", default="", help="shell commands run before ggsashimi (making Rscript with ggplot2, data.table and gridExtra, and a python with pandas, available)")
     args = parser.parse_args()
     examples = pd.read_csv(args.examples, sep="\t")
@@ -148,11 +150,16 @@ def main():
             path_lines.append("\t".join((event.chromosome, "Tealeaf", "transcript", str(chain[0][0] + 1), str(chain[-1][1]), ".", event.strand, ".", attributes)))
             path_lines += ["\t".join((event.chromosome, "Tealeaf", "exon", str(start + 1), str(end), ".", event.strand, ".", attributes)) for start, end in chain]
         gtf.write_text("\n".join(path_lines) + "\n" + "".join(lines[example.gene_id]))
+        names = dict(item.split("=", 1) for item in args.level_label)
+        short = {"poly(dT)": "poly(dT)", "random hexamer": "hexamer", LONG: "long reads"}
+        compact = lambda value: value.translate(str.maketrans("", "", "_ ()"))
+        labels = {f"{compact(level)}_{compact(source)}": f"{names.get(level, level)}\\n{short.get(source, source)}" for level in levels for source in sources}
+        (event_dir / "labels.json").write_text(json.dumps(labels))
         palette = event_dir / "palette.txt"
         palette.write_text("".join(f"{color}\n" for color in COLORS for _ in sources))
         prefix = event_dir / f"{event.event_id}_sashimi"
         coordinates = f"{event.chromosome}:{event.start + 1}-{event.end}"
-        command = ["python3", str(args.ggsashimi), "--intron", str(intron), "--exon", str(exon), "--strand_info", str(strand), "--data_type", "sc", "--aggregation", "False", "-c", coordinates, "-g", str(gtf), "-o", str(prefix), "-M", str(args.min_junction), "--shrink", "--height", str(args.track_height), "--ann-height", f"{max(1.2, 0.16 * (len(mature) + len(annotation[example.gene_id]['transcripts']))):.2f}", "--width", str(args.width), "--base-size", "11", "-P", str(palette), "-F", "pdf", "--compact"] + (["--no-junction-labels"] if event.event_id.endswith("_gene") else [])
+        command = ["python3", str(args.ggsashimi), "--intron", str(intron), "--exon", str(exon), "--strand_info", str(strand), "--data_type", "sc", "--aggregation", "False", "-c", coordinates, "-g", str(gtf), "-o", str(prefix), "-M", str(args.min_junction), "--shrink", "--height", str(args.track_height), "--ann-height", f"{max(0.8, 0.0145 * args.base_size * (len(mature) + len(annotation[example.gene_id]['transcripts']))):.2f}", "--width", str(args.width), "--base-size", str(args.base_size), "--labels", str(event_dir / "labels.json"), "-P", str(palette), "-F", "pdf", "--compact"] + (["--no-junction-labels"] if event.event_id.endswith("_gene") else [])
         subprocess.run(["bash", "-lc", f"{args.plot_setup}; {shlex.join(command)}" if args.plot_setup else shlex.join(command)], check=True)
         print(event.event_id, prefix.with_suffix(".pdf"), flush=True)
 

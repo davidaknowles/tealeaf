@@ -773,6 +773,8 @@ def define_options():
                 help="Height of annotation plot in inches [default=%(default)s]")
         parser.add_argument("--width", type=float, default=10,
                 help="Width of the plot in inches [default=%(default)s]")
+        parser.add_argument("--labels", type=str, default=None,
+                help="JSON file mapping track names (column name without its replicate suffix) to track labels; a literal \\n in a label starts a new line")
         parser.add_argument("--base-size", type=float, default=14, dest="base_size",
                 help="Base font size of the plot in pch [default=%(default)s]")
         parser.add_argument("-F", "--out-format", type=str, default="pdf", dest="out_format",
@@ -814,6 +816,11 @@ if __name__ == "__main__":
                 
 
         palette = read_palette(args.palette)
+        track_labels = {}
+        if args.labels:
+                import json
+                with open(args.labels) as handle:
+                        track_labels = json.load(handle)
 
         sample_dict, overlay_dict, color_dict, id_list, label_dict = {"+":OrderedDict()}, OrderedDict(), OrderedDict(), [], OrderedDict()
         if args.strand != "NONE": sample_dict["-"] = OrderedDict()
@@ -842,7 +849,7 @@ if __name__ == "__main__":
                         print("WARN: Sample {} has no reads in the specified area.".format(id))
                         continue
                 id_list.append(id)
-                label_dict[id] = label_text
+                label_dict[id] = track_labels.get(label_text, label_text)
                 for strand in a:
                         # Store junction information
                         if args.strand == "NONE" or args.out_strand == 'both' or strand == strand_dict[args.out_strand]:
@@ -859,7 +866,7 @@ if __name__ == "__main__":
                         color_dict.setdefault(id, id)
                 if overlay_level is not None:
                         overlay_dict.setdefault(overlay_level, []).append(id)
-                        label_dict[overlay_level] = overlay_level
+                        label_dict[overlay_level] = track_labels.get(overlay_level, overlay_level)
                         color_dict.setdefault(overlay_level, overlay_level)
                 if overlay_level is None:
                         color_dict.setdefault(id, color_level)
