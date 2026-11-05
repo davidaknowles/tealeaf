@@ -26,7 +26,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 from tealeaf.sc.junction_benchmark import JunctionBundle  # noqa: E402
 
-LEAFCUTTER_FILTERS = ["--min_samples_per_intron", "3", "--min_samples_per_group", "3", "--min_coverage", "20"]
+LEAFCUTTER_FILTERS = ["--min_samples_per_intron", "3", "--min_samples_per_group", "3", "--min_coverage"]
 
 
 def redraw(matrix, rng):
@@ -65,7 +65,7 @@ def leafcutter_null(args, contrast, selected, work, rng):
     with gzip.open(path, "wt") as handle:
         handle.write("\n".join(lines) + "\n")
     script = (f"unset LOADEDMODULES; for v in $(compgen -A variable _ModuleTable); do unset \"$v\"; done; module purge; module load leafcutter/0.2.9; "
-              f"Rscript {args.leafcutter_root}/scripts/leafcutter_ds.R --num_threads 1 {' '.join(LEAFCUTTER_FILTERS)} --output_prefix {work}/null {path} {args.metadata}")
+              f"Rscript {args.leafcutter_root}/scripts/leafcutter_ds.R --num_threads 1 {' '.join(LEAFCUTTER_FILTERS)} {args.leafcutter_min_coverage} --output_prefix {work}/null {path} {args.metadata}")
     subprocess.run(["bash", "-lc", script], check=False, capture_output=True)
     significance = work / "null_cluster_significance.txt"
     if not significance.exists():
@@ -134,6 +134,7 @@ def main():
     parser.add_argument("--bundle", type=Path, help="junction bundle prefix (scQuint)")
     parser.add_argument("--leafcutter-root", type=Path, default=Path.home() / "projects/leafcutter")
     parser.add_argument("--scquint-root", type=Path, default=Path.home() / "projects/scquint")
+    parser.add_argument("--leafcutter-min-coverage", type=int, default=20, help="leafcutter_ds --min_coverage, as in the real run")
     parser.add_argument("--threshold", type=float, default=.01)
     parser.add_argument("--draws", type=int, default=3)
     parser.add_argument("--output", type=Path, required=True)

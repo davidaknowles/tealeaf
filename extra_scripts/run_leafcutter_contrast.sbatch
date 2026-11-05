@@ -30,7 +30,7 @@ module load leafcutter/0.2.9
 set +e
 Rscript "${LEAFCUTTER_ROOT}/scripts/leafcutter_ds.R" \
   --num_threads "${SLURM_CPUS_PER_TASK:-4}" \
-  --min_samples_per_intron 3 --min_samples_per_group 3 --min_coverage 20 \
+  --min_samples_per_intron 3 --min_samples_per_group 3 --min_coverage "${MIN_COVERAGE:-20}" \
   --output_prefix "${OUTPUT_DIR}/raw/${index}" \
   "${COUNTS}" "${OUTPUT_DIR}/metadata/${index}.tsv"
 leaf_status=$?
