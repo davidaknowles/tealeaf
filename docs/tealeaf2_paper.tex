@@ -16,6 +16,9 @@
 \usetikzlibrary{arrows.meta,positioning,decorations.pathreplacing,calc}
 \emergencystretch=1em
 \captionsetup{font=small,labelfont=bf}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\textfraction}{0.08}
+\renewcommand{\floatpagefraction}{0.75}
 
 \definecolor{tealeafNavy}{HTML}{17324D}
 \definecolor{tealeafTeal}{HTML}{168C8C}
@@ -57,67 +60,76 @@ We present Tealeaf (Testing Exon Alternatives Locally in Exon-Anchored Frames), 
 
 Tealeaf goes from paired FASTQ files to tests in five steps (Fig.~\ref{fig:overview}; Supplementary Fig.~\ref{fig:pipeline}): targeted spliced alignment, blocks and paths, molecule classes, read opportunities and the test.
 
-The unit of test is a \emph{splice block}, a window of one gene bounded by constitutive exons in which transcripts take two or more exon chains, the \emph{paths} (Fig.~\ref{fig:overview}b). A path set represents any local pattern, including several adjacent alternative exons, mutually exclusive exons, combinations of alternative splice sites and alternative first or last exons, in one test, and the paths themselves show which exons and splice sites differ. We take the paths of annotated blocks from the annotation, and we add novel paths (alternative splice sites, new exons and novel first and last exons) and new blocks from unannotated junctions, whose read support we count over all cells and therefore without cell-type labels (Supplementary Fig.~\ref{fig:novel}). In the brain data the block set has 34{,}677 blocks, 11{,}779 of them new, with 21{,}509 novel paths. We call a block \emph{internal} if all its annotated paths share their first and last exon, and \emph{terminal} if they differ at a transcript end (alternative first or last exons, or transcript starts or ends). For reporting, we assign each test an \emph{event class}, such as cassette exon or alternative first exon, from the exon chains of its tested paths (Methods).
+The unit of test is a \emph{splice block}, a window of one gene bounded by constitutive exons in which transcripts take two or more exon chains, the \emph{paths} (Fig.~\ref{fig:overview}a). A path set represents any local pattern, including several adjacent alternative exons, mutually exclusive exons, combinations of alternative splice sites and alternative first or last exons, in one test, and the paths themselves show which exons and splice sites differ. We take the paths of annotated blocks from the annotation, and we add novel paths (alternative splice sites, new exons and novel first and last exons) and new blocks from unannotated junctions, whose read support we count over all cells and therefore without cell-type labels (Supplementary Fig.~\ref{fig:novel}). In the brain data the block set has 34{,}677 blocks, 11{,}779 of them new, with 21{,}509 novel paths. We call a block \emph{internal} if all its annotated paths share their first and last exon, and \emph{terminal} if they differ at a transcript end (alternative first or last exons, or transcript starts or ends). For reporting, we assign each test an \emph{event class}, such as cassette exon or alternative first exon, from the exon chains of its tested paths (Methods).
 
-We group reads into molecules by cell barcode and unique molecular identifier (UMI), and assign each molecule that overlaps a block its \emph{class}, the set of paths it is compatible with, from the parts of its reads inside the block window. A read inside an alternative exon is compatible with the paths that include the exon, and a read inside a constitutive exon with all paths (Fig.~\ref{fig:overview}b). For every path and class, the \emph{read opportunities}, the number of read start positions on the path that produce the class, give the class probabilities as a function of path usage, so exon-body and junction reads enter one likelihood in proportion to the information they carry. In terminal blocks, exon-body coverage follows the positional capture of the primers (Fig.~\ref{fig:overview}a), so for these blocks we use only molecules that span a junction distinguishing the paths (the \emph{junction-only} test).
+We group reads into molecules by cell barcode and unique molecular identifier (UMI), and assign each molecule that overlaps a block its \emph{class}, the set of paths it is compatible with, from the parts of its reads inside the block window. A read inside an alternative exon is compatible with the paths that include the exon, and a read inside a constitutive exon with all paths (Fig.~\ref{fig:overview}a). For every path and class, the \emph{read opportunities}, the number of read start positions on the path that produce the class, give the class probabilities as a function of path usage, so exon-body and junction reads enter one likelihood in proportion to the information they carry. In terminal blocks, exon-body coverage follows the positional capture of the primers (Fig.~\ref{fig:overview}b), so for these blocks we use only molecules that span a junction distinguishing the paths (the \emph{junction-only} test).
 
 A test compares one block between two cell types (Fig.~\ref{fig:overview}c). We test each path against the others with a Beta--logit-normal model in which every donor--cell-type row has its own usage, rows vary around a mean that depends on the cell type through a donor random intercept, and the poly(dT) and random-hexamer molecules of a row share the row's usage up to a primer offset that we estimate without cell-type labels. A likelihood-ratio test of the cell-type effect gives one p-value per path, and we combine the path p-values by Simes' method \cite{simes1986}. Because the donor intercept is shared by the donor's two cell types, the test is paired. The same model compares two groups of different donors within a cell type, with one row per donor. In count simulations under the null on the designs of the brain data, internal tests reject at most 2.9\% of converged fits at nominal 0.05 and at most 1.0\% at 0.01, and junction-only terminal tests 2.7 to 4.3\% at 0.05.
 
 We align reads to the loci of the target genes with a two-pass spliced aligner that reproduces the scoring and filters of STAR \cite{dobin2013} and replaces the whole-genome search for competing alignments by a genome-wide 23-mer uniqueness table (Methods). Compared with STARsolo \cite{kaminow2021}, the single-cell mode of STAR, it reports 97.6\% of STAR's unique alignments in the target loci, with identical junctions for 99.5\% of reads that both align, and molecule counts per block, class, donor, cell type and primer agree to within 5\%. A run of 345 million read pairs aligns to all 33{,}755 multi-exon genes in 32 to 67 minutes, against 67 minutes for STARsolo over the whole genome, and its stored alignments take about 1~GB instead of a 46~GB BAM file.
 
-\begin{figure}[t]
+\begin{figure}[tbp]
 \centering
-\begin{minipage}[t]{0.47\textwidth}\vspace{0pt}\raggedright\panel{a}\\\includegraphics[width=\textwidth]{figures/paper/fig1_profiles.pdf}\end{minipage}\hfill
-\begin{minipage}[t]{0.51\textwidth}\vspace{0pt}\raggedright\panel{b}\\[2pt]
-\begin{tikzpicture}[x=0.5mm,y=4.9mm,
+\begin{minipage}{\textwidth}\raggedright\panel{a}\\[2pt]\centering
+\begin{tikzpicture}[x=0.66mm,y=3.6mm,
   exon/.style={fill=tealeafTeal,draw=tealeafNavy,line width=0.3pt},
   alt/.style={fill=tealeafOrange,draw=tealeafNavy,line width=0.3pt},
-  arc/.style={draw=tealeafNavy,line width=0.5pt},
-  dT/.style={draw=primerDT,line width=1.6pt},
-  hex/.style={draw=primerHex,line width=1.6pt},
+  arc/.style={draw=tealeafNavy,line width=0.45pt},
+  dT/.style={draw=primerDT,line width=1.5pt},
+  hex/.style={draw=primerHex,line width=1.5pt},
+  gapdT/.style={draw=primerDT,line width=0.4pt,dashed},
+  gaphex/.style={draw=primerHex,line width=0.4pt,dashed},
   lab/.style={font=\scriptsize,anchor=east},
   cls/.style={font=\scriptsize,anchor=west}]
-\node[lab] at (-2,0) {Path 1};
-\draw[exon] (0,-0.22) rectangle (16,0.22); \draw[alt] (40,-0.22) rectangle (58,0.22); \draw[exon] (84,-0.22) rectangle (100,0.22);
-\draw[arc] (16,0.22) -- (28,0.65) -- (40,0.22); \draw[arc] (58,0.22) -- (71,0.65) -- (84,0.22);
-\node[lab] at (-2,-1.1) {Path 2};
-\draw[exon] (0,-1.32) rectangle (16,-0.88); \draw[alt] (48,-1.32) rectangle (58,-0.88); \draw[exon] (84,-1.32) rectangle (100,-0.88);
-\draw[arc] (16,-0.88) -- (32,-0.45) -- (48,-0.88); \draw[arc] (58,-0.88) -- (71,-0.45) -- (84,-0.88);
-\node[lab] at (-2,-2.2) {Path 3};
-\draw[exon] (0,-2.42) rectangle (16,-1.98); \draw[exon] (84,-2.42) rectangle (100,-1.98);
-\draw[arc] (16,-1.98) -- (50,-1.55) -- (84,-1.98);
-\node[lab] at (-2,-3.2) {Precursor};
-\draw[fill=tealeafLight,draw=tealeafNavy,line width=0.3pt] (0,-3.32) rectangle (100,-3.08);
-\node[font=\scriptsize\bfseries,anchor=west] at (104,-3.9) {Class};
-\node[lab] at (-2,-6.6) {Molecules};
-\draw[dT] (3,-4.5) -- (12,-4.5); \node[cls] at (104,-4.5) {$\{1,2,3\}$};
-\draw[hex] (11,-5.2) -- (16,-5.2); \draw[primerHex,line width=0.4pt,dashed] (16,-5.2) -- (40,-5.2); \draw[hex] (40,-5.2) -- (45,-5.2); \node[cls] at (104,-5.2) {$\{1\}$};
-\draw[hex] (41,-5.9) -- (47,-5.9); \node[cls] at (104,-5.9) {$\{1\}$};
-\draw[hex] (49,-6.6) -- (57,-6.6); \node[cls] at (104,-6.6) {$\{1,2\}$};
-\draw[dT] (11,-7.3) -- (16,-7.3); \draw[primerDT,line width=0.4pt,dashed] (16,-7.3) -- (48,-7.3); \draw[dT] (48,-7.3) -- (53,-7.3); \node[cls] at (104,-7.3) {$\{2\}$};
-\draw[hex] (53,-8.0) -- (58,-8.0); \draw[primerHex,line width=0.4pt,dashed] (58,-8.0) -- (84,-8.0); \draw[hex] (84,-8.0) -- (89,-8.0); \node[cls] at (104,-8.0) {$\{1,2\}$};
-\draw[dT] (11,-8.7) -- (16,-8.7); \draw[primerDT,line width=0.4pt,dashed] (16,-8.7) -- (84,-8.7); \draw[dT] (84,-8.7) -- (89,-8.7); \node[cls] at (104,-8.7) {$\{3\}$};
-\draw[hex] (24,-9.4) -- (33,-9.4); \node[cls] at (104,-9.4) {precursor};
-\draw[decorate,decoration={brace,mirror,amplitude=3pt}] (0,-9.9) -- (100,-9.9) node[midway,below=3pt,font=\scriptsize] {block window $W_b$};
-\draw[primerDT,line width=1.6pt] (0,-11.6) -- (6,-11.6); \node[cls] at (7,-11.6) {poly(dT)};
-\draw[primerHex,line width=1.6pt] (45,-11.6) -- (51,-11.6); \node[cls] at (52,-11.6) {random hexamer};
+\def\ex#1#2#3#4{\draw[#1] (#2,#4-0.22) rectangle (#3,#4+0.22);}
+\def\jn#1#2#3{\draw[arc] (#1,#3+0.22) -- ({(#1+#2)/2},#3+0.62) -- (#2,#3+0.22);}
+% gene
+\node[lab] at (-2,0) {Gene};
+\ex{alt}{0}{10}{0} \ex{alt}{22}{32}{0} \ex{exon}{52}{66}{0} \ex{alt}{92}{108}{0} \ex{exon}{134}{148}{0} \ex{exon}{178}{192}{0}
+\draw[tealeafNavy,line width=0.3pt] (10,0) -- (22,0) (32,0) -- (52,0) (66,0) -- (92,0) (108,0) -- (134,0) (148,0) -- (178,0);
+% block 1 (terminal)
+\node[lab] at (-2,-1.3) {Block 1, path 1}; \ex{alt}{0}{10}{-1.3} \ex{exon}{52}{66}{-1.3} \jn{10}{52}{-1.3}
+\node[lab] at (-2,-2.2) {path 2}; \ex{alt}{22}{32}{-2.2} \ex{exon}{52}{66}{-2.2} \jn{32}{52}{-2.2}
+% block 2 (internal)
+\node[lab] at (-2,-3.5) {Block 2, path 1}; \ex{exon}{52}{66}{-3.5} \ex{alt}{92}{108}{-3.5} \ex{exon}{134}{148}{-3.5} \jn{66}{92}{-3.5} \jn{108}{134}{-3.5}
+\node[lab] at (-2,-4.4) {path 2}; \ex{exon}{52}{66}{-4.4} \ex{alt}{98}{108}{-4.4} \ex{exon}{134}{148}{-4.4} \jn{66}{98}{-4.4} \jn{108}{134}{-4.4}
+\node[lab] at (-2,-5.3) {path 3}; \ex{exon}{52}{66}{-5.3} \ex{exon}{134}{148}{-5.3} \jn{66}{134}{-5.3}
+\node[lab] at (-2,-6.2) {precursor}; \draw[fill=tealeafLight,draw=tealeafNavy,line width=0.3pt] (52,-6.32) rectangle (148,-6.08);
+% molecules, block 1
+\node[lab] at (-2,-7.8) {Molecules, block 1};
+\draw[dT] (5,-7.4) -- (10,-7.4); \draw[gapdT] (10,-7.4) -- (52,-7.4); \draw[dT] (52,-7.4) -- (57,-7.4); \node[cls] at (58,-7.4) {$\{1\}$};
+\draw[hex] (27,-8.2) -- (32,-8.2); \draw[gaphex] (32,-8.2) -- (52,-8.2); \draw[hex] (52,-8.2) -- (57,-8.2); \node[cls] at (58,-8.2) {$\{2\}$};
+% molecules, block 2
+\node[lab] at (-2,-12.2) {Molecules, block 2};
+\draw[dT] (54,-9.4) -- (63,-9.4); \node[cls] at (64,-9.4) {$\{1,2,3\}$};
+\draw[hex] (60,-10.2) -- (66,-10.2); \draw[gaphex] (66,-10.2) -- (92,-10.2); \draw[hex] (92,-10.2) -- (96,-10.2); \node[cls] at (97,-10.2) {$\{1\}$};
+\draw[hex] (92.5,-11.0) -- (97,-11.0); \node[cls] at (110,-11.0) {$\{1\}$};
+\draw[hex] (99,-11.8) -- (107,-11.8); \node[cls] at (110,-11.8) {$\{1,2\}$};
+\draw[dT] (60,-12.6) -- (66,-12.6); \draw[gapdT] (66,-12.6) -- (98,-12.6); \draw[dT] (98,-12.6) -- (103,-12.6); \node[cls] at (110,-12.6) {$\{2\}$};
+\draw[hex] (102,-13.4) -- (108,-13.4); \draw[gaphex] (108,-13.4) -- (134,-13.4); \draw[hex] (134,-13.4) -- (139,-13.4); \node[cls] at (140,-13.4) {$\{1,2\}$};
+\draw[dT] (60,-14.2) -- (66,-14.2); \draw[gapdT] (66,-14.2) -- (134,-14.2); \draw[dT] (134,-14.2) -- (139,-14.2); \node[cls] at (140,-14.2) {$\{3\}$};
+\draw[hex] (75,-15.0) -- (84,-15.0); \node[cls] at (85,-15.0) {precursor};
+% windows
+\draw[decorate,decoration={brace,mirror,amplitude=3pt}] (0,-15.8) -- (66,-15.8) node[midway,below=3pt,font=\scriptsize] {block 1 window (terminal: junction-spanning molecules)};
+\draw[decorate,decoration={brace,mirror,amplitude=3pt}] (52,-17.5) -- (148,-17.5) node[midway,below=3pt,font=\scriptsize] {block 2 window (internal: all molecules)};
+\draw[primerDT,line width=1.5pt] (158,-9.4) -- (164,-9.4); \node[cls] at (165,-9.4) {poly(dT)};
+\draw[primerHex,line width=1.5pt] (158,-10.2) -- (164,-10.2); \node[cls] at (165,-10.2) {random hexamer};
 \end{tikzpicture}
-
-\end{minipage}\\[6pt]
-\begin{minipage}[t]{\textwidth}\raggedright\panel{c}\\[2pt]\centering
+\end{minipage}\\[8pt]
+\begin{minipage}[t]{0.47\textwidth}\vspace{0pt}\raggedright\panel{b}\\\includegraphics[width=\textwidth]{figures/paper/fig1_profiles.pdf}\end{minipage}\hfill
+\begin{minipage}[t]{0.5\textwidth}\vspace{0pt}\raggedright\panel{c}\\[4pt]\centering
 \begin{tikzpicture}[
-  box/.style={draw=tealeafNavy,rounded corners=2pt,fill=tealeafLight,align=center,font=\scriptsize,text width=33mm,minimum height=15mm,inner sep=2pt},
+  box/.style={draw=tealeafNavy,rounded corners=2pt,fill=tealeafLight,align=center,font=\scriptsize,text width=36mm,minimum height=13mm,inner sep=2pt},
   flow/.style={-{Stealth[length=1.8mm]},thick,draw=tealeafTeal},
-  node distance=4mm]
-\node[box,fill=tealeafLightTeal] (counts) {\textbf{Class counts}\\$y_{ucpk}$ by donor $u$, cell type $c$, primer $p$, class $k$};
+  node distance=5mm and 6mm]
+\node[box,fill=tealeafLightTeal] (counts) {\textbf{Class counts}\\$y_{ucpk}$ by donor $u$, cell type $c$,\\primer $p$ and class $k$};
 \node[box,right=of counts] (row) {\textbf{Row likelihood}\\$f_{pk}(\psi_{uc})$ from opportunities $n_{ks}$,\\primer offset $\gamma$ (label-free)};
-\node[box,right=of row] (model) {\textbf{Random effects}\\$\psi_{uc}\sim\BetaDist(\kappa\mu_{uc},\kappa(1-\mu_{uc}))$\\$\logit\mu_{uc}=\theta_0+\theta_1z_c+v_u$};
-\node[box,right=of model,fill=tealeafLightTeal] (test) {\textbf{Test}\\LRT of $\theta_1=0$ per path\\(one path against the rest),\\Simes over paths};
+\node[box,below=of row] (model) {\textbf{Random effects}\\$\psi_{uc}\sim\BetaDist(\kappa\mu_{uc},\kappa(1-\mu_{uc}))$\\$\logit\mu_{uc}=\theta_0+\theta_1z_c+v_u$};
+\node[box,left=of model,fill=tealeafLightTeal] (test) {\textbf{Test}\\LRT of $\theta_1=0$ per path\\(one path against the rest),\\Simes over paths};
 \draw[flow] (counts)--(row); \draw[flow] (row)--(model); \draw[flow] (model)--(test);
 \end{tikzpicture}
-
 \end{minipage}
-\caption{Tealeaf. \textbf{a}, Read ends along transcripts for poly(dT) and random-hexamer molecules of the brain data: the mean, over 1{,}500 to 1{,}700 long single-isoform genes per library, of each gene's share of reads per 100 bases within 2~kb of the 5$'$ end (left) and of the 3$'$ end (right, oriented 5$'$ to 3$'$); the middle of the transcripts is omitted. \textbf{b}, A splice block between two constitutive anchor exons with three paths, an alternative exon (orange) included with an upstream (path 1) or downstream (path 2) 3$'$ splice site or skipped (path 3), the precursor (the unspliced window), and molecules of each class. A molecule's class is the set of paths compatible with its reads inside the window: a read in the part of the exon used only by path 1 is compatible with path 1 alone, a read in the shared part with paths 1 and 2, and a read in an anchor exon with all three. The read opportunities $n_{ks}$ count the read start positions on path $s$ that give class $k$. \textbf{c}, The test. Class counts of each donor $u$, cell type $c$ and primer $p$ follow from the row usage $\psi_{uc}$ through the opportunities, with a primer offset $\gamma$; $\psi_{uc}$ varies around a mean with a cell-type effect $\theta_1$ and a donor intercept $v_u$, each path is tested against the others by a likelihood-ratio test (LRT) of $\theta_1=0$, and the path p-values are combined by Simes' method.}
+\caption{Tealeaf. \textbf{a}, A gene with two splice blocks between constitutive exons (teal), and a constitutive last exon in no block. Block 1 is terminal, with two alternative first exons (orange); block 2 is internal, with an alternative exon included with an upstream (path 1) or downstream (path 2) 3$'$ splice site or skipped (path 3), and a precursor path (the unspliced window). Below are molecules and their classes, the set of paths compatible with a molecule's reads inside the block window: a read in the part of the exon used only by path 1 is compatible with path 1 alone, a read in the shared part with paths 1 and 2, and a read in an anchor exon with all three. In terminal blocks only molecules that span a distinguishing junction are used. The read opportunities $n_{ks}$ count the read start positions on path $s$ that give class $k$. \textbf{b}, Read ends along transcripts for poly(dT) and random-hexamer molecules of the brain data: the mean, over 1{,}500 to 1{,}700 long single-isoform genes per library, of each gene's share of its reads per 100 bases within 2~kb of the 5$'$ end (left) and of the 3$'$ end (right, oriented 5$'$ to 3$'$); the middle of the transcripts is omitted. \textbf{c}, The test. Class counts of each donor $u$, cell type $c$ and primer $p$ follow from the row usage $\psi_{uc}$ through the opportunities, with a primer offset $\gamma$; $\psi_{uc}$ varies around a mean with a cell-type effect $\theta_1$ and a donor intercept $v_u$, each path is tested against the others by a likelihood-ratio test (LRT) of $\theta_1=0$, and the path p-values are combined by Simes' method.}
 \label{fig:overview}
 \end{figure}
 
@@ -137,10 +149,10 @@ Tealeaf's 100 top-ranked long-read-evaluable tests agree with the long reads in 
 
 On the 28 pairs of the long-read cell types, the contrasts every method tests, Tealeaf makes 3{,}600 discoveries (BH-adjusted $p\le0.05$ within method) in 3{,}005 gene--cell-type pairs, scQuint 2{,}205 pairs, LeafCutter 1{,}634, SUPPA2 1{,}221, primer-aware SUPPA2 412, MAJIQ 263 and rMATS 164 (Fig.~\ref{fig:brain}d). Tealeaf discovers 1{,}010 cassette exons, SUPPA2 1{,}123 and rMATS 166, and 1{,}464 of Tealeaf's discoveries are alternative first or last exons, which the brain event sets of SUPPA2 and rMATS do not contain. Over all 190 pairs, Tealeaf has 8{,}975 gene--cell-type pairs with a discovery, scQuint 8{,}742, LeafCutter 4{,}717 and SUPPA2 3{,}658 (Supplementary Fig.~\ref{fig:discoveries-all}). By event class, long-read agreement of Tealeaf's evaluable discoveries is 0.83 to 0.90 for the common classes, and 6{,}895 of its 10{,}742 full-data discoveries retain an unannotated path (Supplementary Table~\ref{tab:events}).
 
-\begin{figure}[t]
+\begin{figure}[tbp]
 \centering
-\begin{minipage}[t]{0.5\textwidth}\vspace{0pt}\raggedright\panel{a}\\\includegraphics[width=\textwidth]{figures/paper/fig2_split.pdf}\end{minipage}\hfill
-\begin{minipage}[t]{0.49\textwidth}\vspace{0pt}\raggedright\panel{b}\\\includegraphics[width=\textwidth]{figures/paper/fig2_lr.pdf}\end{minipage}\\[4pt]
+\begin{minipage}[t]{0.42\textwidth}\vspace{0pt}\raggedright\panel{a}\\\includegraphics[width=\textwidth]{figures/paper/fig2_split.pdf}\end{minipage}\hfill
+\begin{minipage}[t]{0.56\textwidth}\vspace{0pt}\raggedright\panel{b}\\\includegraphics[width=\textwidth]{figures/paper/fig2_lr.pdf}\end{minipage}\\[4pt]
 \begin{minipage}[t]{0.37\textwidth}\vspace{0pt}\raggedright\panel{c}\\\includegraphics[width=\textwidth]{figures/paper/fig2_evaluable.pdf}\end{minipage}\hfill
 \begin{minipage}[t]{0.62\textwidth}\vspace{0pt}\raggedright\panel{d}\\\includegraphics[width=\textwidth]{figures/paper/fig2_discoveries.pdf}\end{minipage}
 \caption{Mouse brain. \textbf{a}, Genes replicated across the two halves of the animals by Tealeaf and by each comparator, on the comparator's matched universe (number of genes under the name; SUPPA2-PA is primer-aware SUPPA2). \textbf{b}, Cumulative agreement with long-read directions among the top-ranked full-data tests (Tealeaf) or features (comparators); the dashed line is chance. \textbf{c}, Number of long-read-evaluable tests or features (SUPPA2 and rMATS, 500 top-ranked events per contrast). \textbf{d}, Gene--cell-type pairs with a full-data discovery (BH 0.05 within method) on the 28 pairs of the long-read cell types, by the event class of the pair's smallest-p discovery. LeafCutter, scQuint and MAJIQ test junction clusters, which have no event class. Tests called by the coverage-only null are removed for every method except SUPPA2.}
@@ -153,7 +165,7 @@ Without the coverage-only filter, MAJIQ and rMATS replicate 27 and 4 genes on th
 
 The filter keeps a test unless the null calls it, so it removes coverage-driven tests but does not recalibrate the remaining ones. It removes 0.4 to 0.9\% of the recomputed tests of Tealeaf, LeafCutter and scQuint, 8 to 27\% for rMATS and 43 to 96\% for MAJIQ (Fig.~\ref{fig:null}b). After the filter, MAJIQ replicates 17 genes on its matched brain universe and its 100 top-ranked features agree with the long reads for 90; the results without the filter are given in Supplementary Note~\ref{sec:unfiltered}.
 
-\begin{figure}[t]
+\begin{figure}[tbp]
 \centering
 \begin{minipage}[t]{0.34\textwidth}\vspace{0pt}\raggedright\panel{a}\\\includegraphics[width=\textwidth]{figures/paper/fig4_null_coverage.pdf}\end{minipage}\hfill
 \begin{minipage}[t]{0.33\textwidth}\vspace{0pt}\raggedright\panel{b}\\\includegraphics[width=\textwidth]{figures/paper/fig4_removed.pdf}\end{minipage}\hfill
@@ -190,8 +202,8 @@ GSE320507 also allows tests between disease groups within a cell type, where the
 
 \begin{figure}[p]
 \centering
-\begin{minipage}[t]{0.5\textwidth}\vspace{0pt}\raggedright\panel{a}\\\includegraphics[width=\textwidth]{figures/paper/fig5_split.pdf}\end{minipage}\hfill
-\begin{minipage}[t]{0.49\textwidth}\vspace{0pt}\raggedright\panel{b}\\\includegraphics[width=\textwidth]{figures/paper/fig5_lr.pdf}\end{minipage}\\[4pt]
+\begin{minipage}[t]{0.42\textwidth}\vspace{0pt}\raggedright\panel{a}\\\includegraphics[width=\textwidth]{figures/paper/fig5_split.pdf}\end{minipage}\hfill
+\begin{minipage}[t]{0.56\textwidth}\vspace{0pt}\raggedright\panel{b}\\\includegraphics[width=\textwidth]{figures/paper/fig5_lr.pdf}\end{minipage}\\[4pt]
 \begin{minipage}[t]{0.45\textwidth}\vspace{0pt}\raggedright\panel{c}\\\includegraphics[width=\textwidth]{figures/paper/fig5_datasets.pdf}\end{minipage}\hfill
 \begin{minipage}[t]{0.54\textwidth}\vspace{0pt}\raggedright\panel{d}\\\includegraphics[width=\textwidth]{figures/paper/fig5_disease.pdf}\end{minipage}\\[4pt]
 \begin{minipage}[t]{\textwidth}\vspace{0pt}\raggedright\panel{e}\\\centering\includegraphics[width=0.86\textwidth,height=0.25\textheight,keepaspectratio]{figures/paper/sashimi_ltcs_ANKRD12_B2.pdf}\end{minipage}

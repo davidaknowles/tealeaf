@@ -43,13 +43,15 @@ def read_end_profiles(path):
 
 
 def read_end_metaplot(paths, width=25, gap=900):
-    """Mean per-gene share of read ends per 100 bases near the 5' and 3' ends, laid out as one gene (5' left, 3' right)."""
+    """Mean per-gene share of read ends per 100 bases near the 5' and 3' ends, laid out as one gene (5' left, 3' right).
+
+    Shares are of all the gene's reads, including those more than 2 kb from both ends (the omitted middle)."""
     rows = []
     for path in paths:
         for primer, genes in json.loads(Path(path).read_text()).items():
             for gene in genes:
                 five, three = np.asarray(gene["five"], float), np.asarray(gene["three"], float)
-                total = five.sum() + three.sum()
+                total = five.sum() + three.sum() + float(gene["middle"])
                 if total > 0:
                     rows.append((primer, five / total, three / total))
     out = []
@@ -99,6 +101,40 @@ def split_plot(table, width, height):
             + p9.scale_y_continuous(expand=(0, 0, 0.12, 0))
             + p9.labs(x="", y="Replicated genes")
             + theme(width, height, "bottom") + p9.theme(panel_grid_major_y=p9.element_blank(), axis_text_y=p9.element_text(size=6.5)))
+
+
+def split_scatter(table, width, height, offsets):
+    """Tealeaf against comparator replicated genes, one point per comparator and universe.
+
+    offsets maps a label (comparator names joined by ", " where points coincide) to its comparator and the label
+    offset (dx, dy) from the matched-universe point, as fractions of the axis range.
+    """
+    wide = table.pivot_table(index=["comparator", "universe"], columns="method", values="replicated_bh").reset_index()
+    wide["comparator"] = pd.Categorical(wide.comparator, categories=[c for c in COMPARATORS if c in set(wide.comparator)])
+    top = float(max(wide.Tealeaf.max(), wide.Comparator.max())) * 1.12
+    matched = wide.loc[wide.universe.eq("matched")].set_index("comparator", drop=False)
+    labels = pd.DataFrame([{"label": label, "comparator": comparator, "x": matched.loc[comparator, "Comparator"], "y": matched.loc[comparator, "Tealeaf"],
+                            "lx": matched.loc[comparator, "Comparator"] + dx * top, "ly": matched.loc[comparator, "Tealeaf"] + dy * top, "ha": "left" if dx >= 0 else "right"}
+                           for label, (comparator, dx, dy) in offsets.items()])
+    plot = (p9.ggplot(wide, p9.aes("Comparator", "Tealeaf", color="comparator", shape="universe"))
+            + p9.geom_abline(intercept=0, slope=1, linetype="dashed", color="#888888", size=0.3)
+            + p9.geom_segment(p9.aes(x="x", y="y", xend="lx", yend="ly"), data=labels, inherit_aes=False, color="#AAAAAA", size=0.3)
+            + p9.geom_point(size=2.0, fill="white", stroke=0.7))
+    for ha in ("left", "right"):
+        local = labels.loc[labels.ha.eq(ha)]
+        if len(local):
+            plot += p9.geom_text(p9.aes("lx", "ly", label="label", color="comparator"), data=local, inherit_aes=False, ha=ha, va="center", size=6, nudge_x=(0.01 if ha == "left" else -0.01) * top, show_legend=False)
+    return (plot + p9.scale_color_manual(values=METHODS, guide=None)
+            + p9.scale_shape_manual(values={"matched": "o", "comparator": "^"}, labels={"matched": "Matched universe", "comparator": "Comparator universe"})
+            + p9.scale_x_continuous(limits=(0, top)) + p9.scale_y_continuous(limits=(0, top))
+            + p9.coord_fixed()
+            + p9.labs(x="Comparator replicated genes", y="Tealeaf replicated genes")
+            + theme(width, height, "bottom"))
+
+
+def split_both(path):
+    rows = [split_table(path, universe).assign(universe=universe) for universe in ("matched", "comparator")]
+    return pd.concat(rows, ignore_index=True)
 
 
 def lr_curves(tealeaf_path, comparator_path, max_rank=200):
@@ -272,7 +308,8 @@ def main():
     table, span, gap = read_end_metaplot(sorted(Path(".cache/read_end_profiles").glob("library_*.json")))
     save(metaplot(table, span, gap, 3.3, 1.9), out, "fig1_profiles")
 
-    save(split_plot(split_table(brain / "split_filtered/split_metrics.tsv", "matched"), 3.3, 2.3), out, "fig2_split")
+    brain_labels = {"MAJIQ": ("MAJIQ", 0.08, 0.02), "LeafCutter": ("LeafCutter", 0.02, -0.12), "scQuint": ("scQuint", -0.08, 0.07), "rMATS": ("rMATS", 0.08, 0.0), "SUPPA2-PA": ("SUPPA2-PA", 0.08, 0.04), "SUPPA2": ("SUPPA2", 0.08, -0.05)}
+    save(split_scatter(split_both(brain / "split_filtered/split_metrics.tsv"), 3.0, 3.1, brain_labels), out, "fig2_split")
     save(lr_plot(lr_curves(brain / "tealeaf_lr_rank_filtered.tsv.gz", brain / "sign_agreement_by_rank_filtered.tsv"), 3.3, 2.0), out, "fig2_lr")
     summary = pd.read_csv(brain / "lr_summary.tsv", sep="\t")
     suppa = pd.read_csv(brain / "suppa2_exact_lr_summary.tsv", sep="\t")
@@ -283,7 +320,8 @@ def main():
     save(removed_plot(removed_table({"Brain": brain / "removed_tests.tsv", "GSE320507": pbmc / "removed_tests.tsv"}), 2.3, 2.3), out, "fig4_removed")
     save(rmats_null_plot("analyses/pbmc/GSE320507_comparators/coverage_null/rmats_null_vs_real_4contrasts.tsv", 2.2, 2.0), out, "fig4_rmats")
 
-    save(split_plot(split_table(pbmc / "split_filtered/split_metrics.tsv", "comparator"), 3.3, 2.3), out, "fig5_split")
+    pbmc_labels = {"MAJIQ": ("MAJIQ", 0.06, 0.08), "LeafCutter": ("LeafCutter", -0.08, 0.12), "rMATS": ("rMATS", 0.04, -0.14), "scQuint": ("scQuint", 0.08, -0.08), "SUPPA2, SUPPA2-PA": ("SUPPA2", 0.06, 0.12)}
+    save(split_scatter(split_both(pbmc / "split_filtered/split_metrics.tsv"), 3.0, 3.1, pbmc_labels), out, "fig5_split")
     save(lr_plot(lr_curves(pbmc / "tealeaf_lr_rank_filtered.tsv.gz", pbmc / "sign_agreement_by_rank_filtered.tsv"), 3.3, 2.0), out, "fig5_lr")
     save(dataset_plot(dataset_curves({"GSE320507": "analyses/pbmc/GSE320507_lr_groupfix/lr_rank.tsv.gz", "GSE327907": "analyses/pbmc/GSE327907_lr/lr_rank.tsv.gz", "GSE334840": "analyses/pbmc/GSE334840_lr/lr_rank.tsv.gz"}), 3.0, 1.8), out, "fig5_datasets")
     save(disease_plot("analyses/pbmc/GSE320507_disease/calibration.tsv", 3.6, 1.8), out, "fig5_disease")
