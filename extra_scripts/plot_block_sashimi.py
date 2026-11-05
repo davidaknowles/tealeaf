@@ -89,6 +89,8 @@ def main():
     parser.add_argument("--width", type=float, default=12.0, help="ggsashimi width (inches)")
     parser.add_argument("--min-junction", type=int, default=1, help="ggsashimi minimum normalized junction coverage")
     parser.add_argument("--base-size", type=float, default=11.0, help="ggsashimi base font size")
+    parser.add_argument("--y-breaks", type=int, default=4, help="approximate number of y-axis breaks per track")
+    parser.add_argument("--replot", action="store_true", help="redraw from the ggsashimi inputs already in --output-dir, without collecting coverage")
     parser.add_argument("--level-label", action="append", default=[], help="LEVEL=label for track labels (default: the level name)")
     parser.add_argument("--plot-setup", default="", help="shell commands run before ggsashimi (making Rscript with ggplot2, data.table and gridExtra, and a python with pandas, available)")
     args = parser.parse_args()
@@ -113,17 +115,20 @@ def main():
     if args.subject_groups is not None:
         table = pd.read_csv(args.subject_groups, sep="\t", dtype={"subject": str})
         subject_groups = dict(zip(table.subject, table[args.group_column].astype(str)))
-    with ProcessPoolExecutor(max_workers=len(recipe["bams"])) as executor:
-        results = list(executor.map(library_support, recipe["bams"], repeat(args.native_dir / args.runs), repeat(locus_chromosome), repeat(locus_shift), repeat(tuple(events)), repeat(subject_groups)))
-    exon_blocks, junctions, _ = merge_support(results)
+    if args.replot:
+        exon_blocks, junctions = Counter(), Counter()
+    else:
+        with ProcessPoolExecutor(max_workers=len(recipe["bams"])) as executor:
+            results = list(executor.map(library_support, recipe["bams"], repeat(args.native_dir / args.runs), repeat(locus_chromosome), repeat(locus_shift), repeat(tuple(events)), repeat(subject_groups)))
+        exon_blocks, junctions, _ = merge_support(results)
     cells = pd.DataFrame([relabelled(group, subject_groups) for library in recipe["bams"] for group in library["barcode_groups"].values()], columns=["subject", "cell_type", "primer"])
     cell_sizes = cells.groupby(["subject", "cell_type", "primer"]).size().rename("cells").reset_index()
-    long_reads = args.long_read_matrix is not None
+    long_reads = args.long_read_matrix is not None and not args.replot
     if long_reads:
         matrix, features, columns = read_tilgner_matrix(args.long_read_matrix, args.long_read_gtf or args.gtf)
         long_annotation = annotation if args.long_read_gtf is None else {gene.split(".")[0]: record for gene, record in read_gtf_exons(args.long_read_gtf).items() if gene.split(".")[0] in set(examples.gene_id)}
         chains = {stable_identifier(transcript): sorted(chain) for record in long_annotation.values() for transcript, chain in record["transcripts"].items()}
-    sources = (*PRIMERS, LONG) if long_reads else PRIMERS
+    sources = (*PRIMERS, LONG) if args.long_read_matrix is not None else PRIMERS
     long_sizes = []
     lines = gene_gtf_lines(args.gtf, set(examples.gene_id))
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -142,7 +147,10 @@ def main():
             long_blocks, long_junctions = long_read_event_support(event, counts, chains)
             sizes = pd.concat([cell_sizes, pd.DataFrame(long_sizes).drop_duplicates(["cell_type"])], ignore_index=True)
         event_dir = args.output_dir / event.event_id
-        intron, exon, strand = write_ggsashimi_inputs(event_dir, event, exon_blocks + long_blocks, junctions + long_junctions, sizes, levels, primers=sources, scales={LONG: args.long_read_scale})
+        if args.replot:
+            intron, exon, strand = (event_dir / f"{event.event_id}_{kind}.tsv" for kind in ("intron", "exon", "strand"))
+        else:
+            intron, exon, strand = write_ggsashimi_inputs(event_dir, event, exon_blocks + long_blocks, junctions + long_junctions, sizes, levels, primers=sources, scales={LONG: args.long_read_scale})
         gtf = event_dir / f"{event.event_id}.gtf"
         path_lines = []
         for index, chain in enumerate(mature, start=1):
@@ -159,7 +167,7 @@ def main():
         palette.write_text("".join(f"{color}\n" for color in COLORS for _ in sources))
         prefix = event_dir / f"{event.event_id}_sashimi"
         coordinates = f"{event.chromosome}:{event.start + 1}-{event.end}"
-        command = ["python3", str(args.ggsashimi), "--intron", str(intron), "--exon", str(exon), "--strand_info", str(strand), "--data_type", "sc", "--aggregation", "False", "-c", coordinates, "-g", str(gtf), "-o", str(prefix), "-M", str(args.min_junction), "--shrink", "--height", str(args.track_height), "--ann-height", f"{max(0.8, 0.0145 * args.base_size * (len(mature) + len(annotation[example.gene_id]['transcripts']))):.2f}", "--width", str(args.width), "--base-size", str(args.base_size), "--labels", str(event_dir / "labels.json"), "-P", str(palette), "-F", "pdf", "--compact"] + (["--no-junction-labels"] if event.event_id.endswith("_gene") else [])
+        command = ["python3", str(args.ggsashimi), "--intron", str(intron), "--exon", str(exon), "--strand_info", str(strand), "--data_type", "sc", "--aggregation", "False", "-c", coordinates, "-g", str(gtf), "-o", str(prefix), "-M", str(args.min_junction), "--shrink", "--height", str(args.track_height), "--ann-height", f"{max(0.8, 0.0145 * args.base_size * (len(mature) + len(annotation[example.gene_id]['transcripts']))):.2f}", "--width", str(args.width), "--base-size", str(args.base_size), "--y-breaks", str(args.y_breaks), "--labels", str(event_dir / "labels.json"), "-P", str(palette), "-F", "pdf", "--compact"] + (["--no-junction-labels"] if event.event_id.endswith("_gene") else [])
         subprocess.run(["bash", "-lc", f"{args.plot_setup}; {shlex.join(command)}" if args.plot_setup else shlex.join(command)], check=True)
         print(event.event_id, prefix.with_suffix(".pdf"), flush=True)
 

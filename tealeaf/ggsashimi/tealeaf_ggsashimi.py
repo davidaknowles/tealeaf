@@ -773,6 +773,8 @@ def define_options():
                 help="Height of annotation plot in inches [default=%(default)s]")
         parser.add_argument("--width", type=float, default=10,
                 help="Width of the plot in inches [default=%(default)s]")
+        parser.add_argument("--y-breaks", type=int, default=4, dest="y_breaks",
+                help="Approximate number of y-axis breaks per track [default=%(default)s]")
         parser.add_argument("--labels", type=str, default=None,
                 help="JSON file mapping track names (column name without its replicate suffix) to track labels; a literal \\n in a label starts a new line")
         parser.add_argument("--base-size", type=float, default=14, dest="base_size",
@@ -960,7 +962,7 @@ if __name__ == "__main__":
                 if(%(fix_y_scale)s) {
 
                         maxheight = max(unlist(lapply(density_list, function(df){max(df$y)})))
-                        breaks_y = labeling::extended(0, maxheight, m = 4)
+                        breaks_y = labeling::extended(0, maxheight, m = %(y_breaks)s)
                         maxheight_j = 0
                         for (bam_index in 1:length(density_list)) { # Emulate code below to obtain max top arch height
 
@@ -1068,7 +1070,7 @@ if __name__ == "__main__":
 
                         if(!%(fix_y_scale)s){
                                 maxheight = max(d[['y']])
-                                breaks_y = labeling::extended(0, maxheight, m = 4)
+                                breaks_y = labeling::extended(0, maxheight, m = %(y_breaks)s)
                                 gp = gp + scale_y_continuous(breaks = breaks_y)
                         } else {
                                 gp = gp + scale_y_continuous(breaks = breaks_y, limits = c(NA, max(maxheight, maxheight_j)))
@@ -1223,7 +1225,8 @@ if __name__ == "__main__":
                         "alpha": args.alpha,
                         "fix_y_scale": ("TRUE" if args.fix_y_scale else "FALSE"),
                         "compact": ("TRUE" if args.compact else "FALSE"),
-                        "junction_labels": ("FALSE" if args.no_junction_labels else "TRUE")
+                        "junction_labels": ("FALSE" if args.no_junction_labels else "TRUE"),
+                        "y_breaks": args.y_breaks
                         })
                 if os.getenv('GGSASHIMI_DEBUG') is not None:
                         with open("R_script", 'w') as r:

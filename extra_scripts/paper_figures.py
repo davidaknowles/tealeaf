@@ -267,7 +267,7 @@ def main():
     args = parser.parse_args()
     out = args.output_dir
     out.mkdir(parents=True, exist_ok=True)
-    brain, pbmc = Path("analyses/coverage_null_filter/brain"), Path("analyses/coverage_null_filter/pbmc")
+    brain, pbmc = Path("analyses/coverage_null_filter_leaf5/brain"), Path("analyses/coverage_null_filter_leaf5/pbmc")
 
     table, span, gap = read_end_metaplot(sorted(Path(".cache/read_end_profiles").glob("library_*.json")))
     save(metaplot(table, span, gap, 3.3, 1.9), out, "fig1_profiles")
@@ -275,7 +275,7 @@ def main():
     save(split_plot(split_table(brain / "split_filtered/split_metrics.tsv", "matched"), 3.3, 2.3), out, "fig2_split")
     save(lr_plot(lr_curves(brain / "tealeaf_lr_rank_filtered.tsv.gz", brain / "sign_agreement_by_rank_filtered.tsv"), 3.3, 2.0), out, "fig2_lr")
     summary = pd.read_csv(brain / "lr_summary.tsv", sep="\t")
-    suppa = pd.read_csv("analyses/tilgner_junction_replication/sign_agreement_rank_summary_comprehensive.tsv", sep="\t")
+    suppa = pd.read_csv(brain / "suppa2_exact_lr_summary.tsv", sep="\t")
     save(evaluable_plot(pd.concat([summary.loc[summary.table.eq("filtered")], suppa.loc[suppa.method.str.startswith("SUPPA2")]], ignore_index=True), 2.6, 2.0), out, "fig2_evaluable")
     save(discoveries_plot("docs/figures/discoveries_by_event.tsv", 4.0, 2.0), out, "fig2_discoveries")
 

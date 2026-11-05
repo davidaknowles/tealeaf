@@ -21,7 +21,7 @@ def theme(base):
     return p9.theme_classic(base_size=base) + p9.theme(plot_title=p9.element_text(size=base), legend_title=p9.element_text(size=base), legend_text=p9.element_text(size=base - 1), legend_key_size=base, axis_line=p9.element_line(size=0.4), axis_ticks=p9.element_line(size=0.4))
 
 
-def figure(example, parse, long_read, exons, base=11, names=None):
+def figure(example, parse, long_read, exons, base=11, names=None, size=None):
     names = names or {}
     levels = [example.level_a, example.level_b]
     shown = [names.get(level, level) for level in levels]
@@ -46,7 +46,7 @@ def figure(example, parse, long_read, exons, base=11, names=None):
                   + p9.geom_point(data=means, position=dodge, shape="_", size=base / 11 * 12, stroke=base / 11 * 1.2)
                   + p9.scale_color_manual(values=TYPES, name="")
                   + p9.scale_y_continuous(limits=(0, 1))
-                  + p9.labs(x="", y="Path usage", title="Parse, per subject (bar: mean)")
+                  + p9.labs(x="", y="Path usage", color="", title="Parse, per subject (bar: mean)")
                   + theme(base) + p9.theme(legend_position="bottom", legend_direction="vertical"))
     long_read = long_read.assign(cell_type=pd.Categorical(long_read.cell_type, categories=shown), path_label=pd.Categorical(long_read.path_label, categories=paths), replicate=long_read.replicate.astype(str))
     long_plot = (p9.ggplot(long_read, p9.aes("path_label", "proportion", color="cell_type", shape="replicate"))
@@ -56,7 +56,8 @@ def figure(example, parse, long_read, exons, base=11, names=None):
                  + p9.scale_y_continuous(limits=(0, 1))
                  + p9.labs(x="", y="Transcript share", title=f"Long reads ({'agrees' if example.long_read_agrees else 'disagrees'})")
                  + theme(base) + p9.theme(legend_position="bottom", legend_direction="vertical"))
-    return structure / (parse_plot | long_plot)
+    composed = structure / (parse_plot | long_plot)
+    return composed + p9.theme(figure_size=size) if size else composed
 
 
 def main():
@@ -76,8 +77,8 @@ def main():
         name = f"example_{example.gene_name}_{example.block_id.split(':')[-1]}"
         for suffix, options in ((".pdf", {}), (".png", {"dpi": 110})):
             # a composed plot can be saved once, so it is rebuilt per format
-            plot = figure(example, select(tables["parse_usage"]), select(tables["long_read_usage"]), select(tables["exons"]), args.base_size, names)
-            plot.save(args.output_dir / f"{name}{suffix}", width=args.width, height=args.height, verbose=False, **options)
+            plot = figure(example, select(tables["parse_usage"]), select(tables["long_read_usage"]), select(tables["exons"]), args.base_size, names, (args.width, args.height))
+            plot.save(args.output_dir / f"{name}{suffix}", verbose=False, **options)
         print(name, flush=True)
 
 
