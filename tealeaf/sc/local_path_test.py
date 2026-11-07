@@ -230,14 +230,15 @@ def simes(p_values):
     return float(min(1., np.min(len(ordered) * ordered / np.arange(1, len(ordered) + 1))))
 
 
-def fit_local_block(lookup, block, opportunities, n_paths, subjects, labels, levels, *, anchors=True, primer_offset=True, nodes=9, precursor=False, primer_opportunities=None, unpaired=False):
+def fit_local_block(lookup, block, opportunities, n_paths, subjects, labels, levels, *, anchors=True, primer_offset=True, nodes=9, precursor=False, primer_opportunities=None, unpaired=False, primer_offset_prior_sd=None):
     """Test one block contrast; returns summary fields and per-level path usage.
 
     lookup maps (block, subject, cell type, primer, mask) -> molecules, labels
     index levels (0 = level a). Failed target fits enter Simes as p = 1. The
     effect for two paths is the model's standardized proportion difference;
     for more paths it is the equal-subject mean difference of row EM
-    compositions (row_compositions), a joint S-path estimate.
+    compositions (row_compositions), a joint S-path estimate. primer_offset_prior_sd
+    puts a Gaussian prior on the label-blind primer offset (estimate_primer_offset).
     """
     masks = local_class_masks(opportunities, n_paths, anchors)
     pooled = {mask: sum(lookup.get((block, subject, levels[int(label)], primer, mask), 0.) for subject, label in set(zip(subjects, labels)) for primer in PRIMERS) for mask in masks}
@@ -248,7 +249,7 @@ def fit_local_block(lookup, block, opportunities, n_paths, subjects, labels, lev
         try:
             likelihood = local_read_likelihood(lookup, block, opportunities, subjects, labels, levels, anchors, target, shares, n_paths=n_paths, precursor=precursor, primer_opportunities=primer_opportunities)
             if primer_offset:
-                likelihood.primer_offsets = np.array([0., estimate_primer_offset(likelihood)])
+                likelihood.primer_offsets = np.array([0., estimate_primer_offset(likelihood, prior_sd=primer_offset_prior_sd)])
                 offsets.append(float(likelihood.primer_offsets[1]))
             fit = binary_grid_test(likelihood, nodes=nodes, paired=not unpaired)
         except (ValueError, np.linalg.LinAlgError, FloatingPointError):

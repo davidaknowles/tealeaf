@@ -99,6 +99,8 @@ def main():
     parser.add_argument("--structure", choices=("all", "internal", "terminal"), default="all")
     parser.add_argument("--group-same-junctions", action="store_true")
     parser.add_argument("--position-opportunities", action="store_true", help="primer-specific position-weighted opportunities (opportunities_position.json.gz in --local-reads, compute_position_opportunities.py)")
+    parser.add_argument("--position-opportunities-file", default="opportunities_position.json.gz", help="file name in --local-reads for --position-opportunities (e.g. opportunities_priming.json.gz of compute_priming_opportunities.py)")
+    parser.add_argument("--primer-offset-prior-sd", type=float, help="Gaussian prior standard deviation on the primer offset (logit scale)")
     parser.add_argument("--merge", action="store_true")
     args = parser.parse_args()
     if args.merge:
@@ -115,7 +117,7 @@ def main():
     if args.stored_opportunities and not stored_path.exists():
         raise FileNotFoundError(stored_path)
     stored = json.load(gzip.open(stored_path, "rt")) if stored_path.exists() else None
-    positioned = json.load(gzip.open(args.local_reads / "opportunities_position.json.gz", "rt")) if args.position_opportunities else None
+    positioned = json.load(gzip.open(args.local_reads / args.position_opportunities_file, "rt")) if args.position_opportunities else None
     allowed = None
     if args.universe is not None or args.lr_cell_types or args.level_pairs is not None:
         pairs = set()
@@ -170,7 +172,7 @@ def main():
             if prepared["groups"] is not None:
                 record["path_members"] = json.dumps(members)
             record.update(n_paths=len(kept), path_signatures=json.dumps(signatures), median_gene_umis=prepared["median_molecules"], kept_paths=json.dumps(kept), annotated_path_shares=json.dumps(prepared["shares"].tolist()))
-            fields, usage = fit_local_block(prepared["lookup"], key, prepared["opportunities"], len(kept), prepared["subjects"], prepared["labels"], levels, anchors=not args.no_anchors, primer_offset=args.primer_offset, nodes=args.nodes, precursor=args.precursor, primer_opportunities=prepared["primer_opportunities"], unpaired=args.unpaired)
+            fields, usage = fit_local_block(prepared["lookup"], key, prepared["opportunities"], len(kept), prepared["subjects"], prepared["labels"], levels, anchors=not args.no_anchors, primer_offset=args.primer_offset, nodes=args.nodes, precursor=args.precursor, primer_opportunities=prepared["primer_opportunities"], unpaired=args.unpaired, primer_offset_prior_sd=args.primer_offset_prior_sd)
             record.update({name: json.dumps(value) if isinstance(value, list) else value for name, value in fields.items()})
             record["raw_p_value"] = record["p_value"]
             for target, level, proportion in usage:
@@ -182,7 +184,7 @@ def main():
     args.output_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows_out).to_csv(args.output_dir / "paired_path.tsv", sep="\t", index=False, na_rep="NA")
     pd.DataFrame(usage_out, columns=["test_id", "block_id", "gene_id", "subject", "cell_type", "path", "path_number", "path_signature", "proportion"]).to_csv(args.output_dir / "path_usage.tsv", sep="\t", index=False, na_rep="NA")
-    settings = {"subject_fold": None if args.cohort == "full" else int(args.cohort), "test_effect": "cell_type_pairwise", "min_subjects": args.min_subjects, "unpaired": args.unpaired, "min_molecules": args.min_molecules, "min_share": args.min_share, "anchors": not args.no_anchors, "precursor": args.precursor, "primer_offset": args.primer_offset, "stored_opportunities": stored is not None, "structure": args.structure, "group_same_junctions": args.group_same_junctions, "position_opportunities": args.position_opportunities, "local_reads": str(args.local_reads), "read_length": READ_LENGTH}
+    settings = {"subject_fold": None if args.cohort == "full" else int(args.cohort), "test_effect": "cell_type_pairwise", "min_subjects": args.min_subjects, "unpaired": args.unpaired, "min_molecules": args.min_molecules, "min_share": args.min_share, "anchors": not args.no_anchors, "precursor": args.precursor, "primer_offset": args.primer_offset, "stored_opportunities": stored is not None, "structure": args.structure, "group_same_junctions": args.group_same_junctions, "position_opportunities": args.position_opportunities, "position_opportunities_file": args.position_opportunities_file if args.position_opportunities else None, "primer_offset_prior_sd": args.primer_offset_prior_sd, "local_reads": str(args.local_reads), "read_length": READ_LENGTH}
     summary = {"candidates": len(rows_out), "converged": int(sum(row["converged"] for row in rows_out)), "elapsed_seconds": time.monotonic() - started, "candidate_settings": settings}
     (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps({key: value for key, value in summary.items() if key != "candidate_settings"}), flush=True)

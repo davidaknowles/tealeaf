@@ -121,18 +121,81 @@ def weighted_path_read_opportunities(paths, read_length, strand, distances, prof
                 local5 = d5 + ends if strand == "+" else d5 + (length - 1 - ends)
                 total += profile_weight(f, local3, bin_width) * profile_weight(g, local5, bin_width)
             weights[primer] = np.maximum(total / len(distances[index]), floor)
-        for row, position in enumerate(positions):
-            first, last = max(position, 0), min(position + read_length, length)
-            blocks = []
-            for exon, (a, b) in enumerate(chain):
-                low, high = max(first, offsets[exon]), min(last, offsets[exon + 1])
-                if low < high:
-                    blocks.append((a + low - offsets[exon], a + high - offsets[exon]))
-            junctions = [(blocks[i][1], blocks[i + 1][0]) for i in range(len(blocks) - 1) if blocks[i][1] < blocks[i + 1][0]]
-            if variable is not None and not variable.intersection(junctions):
-                continue
-            mask = compatibility_mask(blocks, junctions, structures)
-            if mask:
-                for primer in profiles:
-                    opportunities[primer][mask][index] += weights[primer][row]
+        _accumulate(opportunities, structures, index, chain, offsets, positions, read_length, weights, variable)
+    return {primer: dict(values) for primer, values in opportunities.items()}
+
+
+def _accumulate(opportunities, structures, index, chain, offsets, positions, read_length, weights, variable):
+    """Add each read start's primer weights to the class (mask) of the read it produces on path index."""
+    length = offsets[-1]
+    for row, position in enumerate(positions):
+        first, last = max(position, 0), min(position + read_length, length)
+        blocks = []
+        for exon, (a, b) in enumerate(chain):
+            low, high = max(first, offsets[exon]), min(last, offsets[exon + 1])
+            if low < high:
+                blocks.append((a + low - offsets[exon], a + high - offsets[exon]))
+        junctions = [(blocks[i][1], blocks[i + 1][0]) for i in range(len(blocks) - 1) if blocks[i][1] < blocks[i + 1][0]]
+        if variable is not None and not variable.intersection(junctions):
+            continue
+        mask = compatibility_mask(blocks, junctions, structures)
+        if mask:
+            for primer, weight in weights.items():
+                opportunities[primer][mask][index] += weight[row]
+
+
+def a_run_starts(sequence, minimum=8, window=10):
+    """Start positions of A-runs (windows of window bases with at least minimum A, merged) in a sense sequence."""
+    is_a = np.frombuffer(sequence.upper().encode(), dtype=np.uint8) == ord("A")
+    if len(is_a) < window:
+        return np.zeros(0, dtype=int)
+    hit = np.convolve(is_a, np.ones(window, dtype=int), "valid") >= minimum
+    return np.flatnonzero(hit & ~np.r_[False, hit[:-1]])
+
+
+def priming_kernel(enrichment, delta, *, smooth=21, low=-300, high=400):
+    """Excess read-end density kappa(delta) = max(smoothed enrichment - 1, 0) for low <= delta <= high, else 0.
+
+    enrichment is the observed / uniform read-end density at offset delta = A-run start - read end (transcript
+    orientation), from read ends of single-transcript genes (internal priming diagnostic).
+    """
+    enrichment, delta = np.asarray(enrichment, dtype=float), np.asarray(delta, dtype=int)
+    smoothed = np.convolve(enrichment, np.ones(smooth) / smooth, "same")
+    keep = (delta >= low) & (delta <= high)
+    return delta[keep], np.maximum(smoothed[keep] - 1., 0.)
+
+
+def priming_weights(sequence, ends, kernel):
+    """Weight 1 + sum over A-runs a of kappa(a - e) for read ends e (transcript coordinates of a sense sequence)."""
+    delta, kappa = kernel
+    ends = np.asarray(ends, dtype=int)
+    weights = np.ones(len(ends))
+    if not len(ends):
+        return weights
+    offset = ends.min()
+    density = np.zeros(ends.max() - offset + 1)
+    for start in a_run_starts(sequence):
+        positions = start - delta - offset  # read ends e = a - delta
+        inside = (positions >= 0) & (positions < len(density))
+        np.add.at(density, positions[inside], kappa[inside])
+    return weights + density[ends - offset]
+
+
+def primed_path_read_opportunities(paths, read_length, strand, sequences, kernel, variable=None, primed="poly(dT)", flat="random hexamer"):
+    """Primer-specific opportunities {primer: {mask: length-S vector}} with internal priming of primed (poly(dT)).
+
+    sequences[s] is the sense (transcript-orientation) sequence of path s, its exons concatenated. Each read start
+    position of the primed primer is weighted by priming_weights at the read's 3'-most base, so a path whose
+    sequence holds A-runs within the kernel's reach of its read ends yields more primed reads; the flat primer
+    (random hexamer) has weight 1. A-runs outside the path are not seen.
+    """
+    structures = path_structures(paths)
+    opportunities = {primer: defaultdict(lambda: np.zeros(len(paths))) for primer in (primed, flat)}
+    for index, chain in enumerate(structures[0]):
+        offsets = np.cumsum([0] + [b - a for a, b in chain])
+        length = offsets[-1]
+        positions = np.arange(1 - read_length, length)
+        ends = positions + read_length - 1 if strand == "+" else length - 1 - positions
+        weights = {primed: priming_weights(sequences[index], ends, kernel), flat: np.ones(len(positions))}
+        _accumulate(opportunities, structures, index, chain, offsets, positions, read_length, weights, variable)
     return {primer: dict(values) for primer, values in opportunities.items()}

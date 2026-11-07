@@ -83,12 +83,14 @@ def shifted_row_log_likelihood(likelihood, row, t, offsets):
     return total - likelihood.offsets[row]
 
 
-def estimate_primer_offset(likelihood, *, limit=4., step=.05):
+def estimate_primer_offset(likelihood, *, limit=4., step=.05, prior_sd=None):
     """Label-blind logit offset of the second primer, profiling each row's psi.
 
     Maximizes sum_n max_t [l_n0(t) + l_n1(t + gamma)] over a gamma grid, then
     refines with a parabola through the best three points. Rows observed in
-    only one primer do not inform gamma. Requires exactly two primers.
+    only one primer do not inform gamma. Requires exactly two primers. With
+    prior_sd, a Gaussian log prior -gamma^2 / (2 prior_sd^2) is added to the
+    profile, which keeps gamma near 0 when the rows do not identify it.
     """
     if len(likelihood.counts) != 2:
         raise ValueError("two primers required")
@@ -103,6 +105,8 @@ def estimate_primer_offset(likelihood, *, limit=4., step=.05):
         second = primer_row_log_likelihood(likelihood, row, t, 1)
         for index, move in enumerate(moves):
             profile[index] += np.max(first + second[pad + move:len(t) - pad + move])
+    if prior_sd is not None:
+        profile = profile - .5 * (moves * step / prior_sd) ** 2
     best = int(np.clip(np.argmax(profile), 1, len(moves) - 2))
     left, centre, right = profile[best - 1:best + 2]
     curvature = left - 2 * centre + right
