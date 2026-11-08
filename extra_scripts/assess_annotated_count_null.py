@@ -52,6 +52,7 @@ def main():
     parser.add_argument("--min-share", type=float, default=.02)
     parser.add_argument("--novel-only", action="store_true", help="sample only blocks with unannotated paths (collect_local_path_reads.py --novel-paths)")
     parser.add_argument("--collect", action="store_true")
+    parser.add_argument("--primer-offset-prior-sd", type=float, help="Gaussian prior sd on the primer offset, as in run_local_path_tests.py")
     args = parser.parse_args()
     if args.collect:
         table = pd.concat([pd.read_csv(path, sep="\t") for path in sorted(args.output_dir.glob("shard_*/null.tsv"))], ignore_index=True)
@@ -126,7 +127,7 @@ def main():
                 for model, local_lookup, local_opportunities, precursor in models:
                     record = {"test_id": test_id, "n_paths": size, "smallest_share": float(np.min(shares[:size])), "scenario": scenario, "draw": draw, "model": model, "p_value": 1., "converged": False, "error": ""}
                     try:
-                        fields, _ = fit_local_block(local_lookup, key, local_opportunities, size, prepared["subjects"], prepared["labels"], levels, anchors=True, primer_offset=True, precursor=precursor)
+                        fields, _ = fit_local_block(local_lookup, key, local_opportunities, size, prepared["subjects"], prepared["labels"], levels, anchors=True, primer_offset=True, precursor=precursor, primer_offset_prior_sd=args.primer_offset_prior_sd)
                         record.update(p_value=fields["p_value"], converged=fields["converged"], statistic=fields["statistic"], n_converged_path_tests=fields["n_converged_path_tests"])
                     except (ValueError, np.linalg.LinAlgError, FloatingPointError) as exception:
                         record["error"] = str(exception)

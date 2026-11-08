@@ -1,0 +1,16 @@
+	v4	v4sh	v4ip
+LR A40	0.963	0.965	0.965
+LR agree40	38.0	38.0	38.0
+LR A100	0.946	0.947	0.948
+LR agree100	95.0	95.0	95.0
+LR A200	0.942	0.943	0.944
+LR agree200	188.0	188.0	189.0
+LR evaluable			
+full tests	694953.0	694953.0	695547.0
+converged	646782.0	664275.0	665134.0
+discoveries	10742.0	10830.0	10845.0
+gene-pair discoveries	9037.0	9085.0	9089.0
+discoveries internal	6851.0	6870.0	6889.0
+discoveries terminal	3891.0	3960.0	3956.0
+offsets at |4|	0.71	0.002	0.001
+offset |median|	4.0	0.041	0.044

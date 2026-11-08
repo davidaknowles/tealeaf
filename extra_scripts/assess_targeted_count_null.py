@@ -88,7 +88,7 @@ def main():
             null_lookup = {(key, rows[row][0], levels[rows[row][1]], primer, mask): float(value) for (row, primer, mask), value in simulated.items()}
             p_null, converged = 1., False
             try:
-                fields, _ = fit_local_block(null_lookup, key, opportunities, len(prepared["kept"]), prepared["subjects"], prepared["labels"], levels, anchors=settings["anchors"], primer_offset=settings["primer_offset"], nodes=args.nodes, precursor=settings["precursor"], primer_opportunities=prepared["primer_opportunities"], unpaired=settings.get("unpaired", False))
+                fields, _ = fit_local_block(null_lookup, key, opportunities, len(prepared["kept"]), prepared["subjects"], prepared["labels"], levels, anchors=settings["anchors"], primer_offset=settings["primer_offset"], nodes=args.nodes, precursor=settings["precursor"], primer_opportunities=prepared["primer_opportunities"], unpaired=settings.get("unpaired", False), primer_offset_prior_sd=settings.get("primer_offset_prior_sd"))
                 p_null, converged = float(fields["p_value"]), bool(fields["converged"])
             except (ValueError, np.linalg.LinAlgError, FloatingPointError) as exception:
                 record["error"] = str(exception)
