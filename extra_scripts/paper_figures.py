@@ -303,7 +303,7 @@ def main():
     args = parser.parse_args()
     out = args.output_dir
     out.mkdir(parents=True, exist_ok=True)
-    brain, pbmc = Path("analyses/coverage_null_filter_leaf5/brain"), Path("analyses/coverage_null_filter_leaf5/pbmc")
+    brain, pbmc = Path("analyses/coverage_null_filter_sh/brain"), Path("analyses/coverage_null_filter_sh/pbmc")
 
     table, span, gap = read_end_metaplot(sorted(Path(".cache/read_end_profiles").glob("library_*.json")))
     save(metaplot(table, span, gap, 3.3, 1.9), out, "fig1_profiles")
@@ -316,15 +316,15 @@ def main():
     save(evaluable_plot(pd.concat([summary.loc[summary.table.eq("filtered")], suppa.loc[suppa.method.str.startswith("SUPPA2")]], ignore_index=True), 2.6, 2.0), out, "fig2_evaluable")
     save(discoveries_plot("docs/figures/discoveries_by_event.tsv", 4.0, 2.0), out, "fig2_discoveries")
 
-    save(null_plot(null_by_coverage("analyses/pbmc/GSE320507_comparators/majiq_coverage_null/by_coverage_ratio.tsv", "analyses/pbmc/GSE320507_comparators/coverage_null/tealeaf_count_null_by_coverage.tsv"), 2.4, 2.3), out, "fig4_null_coverage")
+    save(null_plot(null_by_coverage("analyses/pbmc/GSE320507_comparators/majiq_coverage_null/by_coverage_ratio.tsv", "analyses/pbmc/GSE320507_comparators/coverage_null/tealeaf_count_null_by_coverage_sh.tsv"), 2.4, 2.3), out, "fig4_null_coverage")
     save(removed_plot(removed_table({"Brain": brain / "removed_tests.tsv", "GSE320507": pbmc / "removed_tests.tsv"}), 2.3, 2.3), out, "fig4_removed")
     save(rmats_null_plot("analyses/pbmc/GSE320507_comparators/coverage_null/rmats_null_vs_real_4contrasts.tsv", 2.2, 2.0), out, "fig4_rmats")
 
     pbmc_labels = {"MAJIQ": ("MAJIQ", 0.06, 0.08), "LeafCutter": ("LeafCutter", -0.08, 0.12), "rMATS": ("rMATS", 0.04, -0.14), "scQuint": ("scQuint", 0.08, -0.08), "SUPPA2, SUPPA2-PA": ("SUPPA2", 0.06, 0.12)}
     save(split_scatter(split_both(pbmc / "split_filtered/split_metrics.tsv"), 3.0, 3.1, pbmc_labels), out, "fig5_split")
     save(lr_plot(lr_curves(pbmc / "tealeaf_lr_rank_filtered.tsv.gz", pbmc / "sign_agreement_by_rank_filtered.tsv"), 3.3, 2.0), out, "fig5_lr")
-    save(dataset_plot(dataset_curves({"GSE320507": "analyses/pbmc/GSE320507_lr_groupfix/lr_rank.tsv.gz", "GSE327907": "analyses/pbmc/GSE327907_lr/lr_rank.tsv.gz", "GSE334840": "analyses/pbmc/GSE334840_lr/lr_rank.tsv.gz"}), 3.0, 1.8), out, "fig5_datasets")
-    save(disease_plot("analyses/pbmc/GSE320507_disease/calibration.tsv", 3.6, 1.8), out, "fig5_disease")
+    save(dataset_plot(dataset_curves({"GSE320507": "analyses/pbmc/GSE320507_lr_sh/lr_rank.tsv.gz", "GSE327907": "analyses/pbmc/GSE327907_lr_sh/lr_rank.tsv.gz", "GSE334840": "analyses/pbmc/GSE334840_lr_sh/lr_rank.tsv.gz"}), 3.0, 1.8), out, "fig5_datasets")
+    save(disease_plot("analyses/pbmc/GSE320507_disease_sh/calibration.tsv", 3.6, 1.8), out, "fig5_disease")
 
 
 if __name__ == "__main__":

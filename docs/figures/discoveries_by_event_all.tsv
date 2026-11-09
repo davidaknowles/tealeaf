@@ -11,14 +11,14 @@ SUPPA2 primer-aware	alternative donor	130	Tests	653199	190
 SUPPA2 primer-aware	cassette exon	888	Tests	653199	190
 SUPPA2 primer-aware	mutually exclusive exons	82	Tests	653199	190
 SUPPA2 primer-aware	retained intron	39	Tests	653199	190
-Tealeaf	alternative acceptor	310	Tests	694768	190
-Tealeaf	alternative donor	112	Tests	694768	190
-Tealeaf	alternative first exon	2820	Tests	694768	190
-Tealeaf	alternative last exon	934	Tests	694768	190
-Tealeaf	cassette exon	3510	Tests	694768	190
-Tealeaf	mutually exclusive exons	82	Tests	694768	190
-Tealeaf	other	2863	Tests	694768	190
-Tealeaf	retained intron	13	Tests	694768	190
+Tealeaf	alternative acceptor	317	Tests	694806	190
+Tealeaf	alternative donor	113	Tests	694806	190
+Tealeaf	alternative first exon	2848	Tests	694806	190
+Tealeaf	alternative last exon	928	Tests	694806	190
+Tealeaf	cassette exon	3503	Tests	694806	190
+Tealeaf	mutually exclusive exons	86	Tests	694806	190
+Tealeaf	other	2917	Tests	694806	190
+Tealeaf	retained intron	13	Tests	694806	190
 rMATS	alternative acceptor	25	Tests	1986166	190
 rMATS	alternative donor	8	Tests	1986166	190
 rMATS	cassette exon	466	Tests	1986166	190
@@ -26,24 +26,24 @@ rMATS	mutually exclusive exons	89	Tests	1986166	190
 scQuint	no event type	10008	Tests	586228	190
 LeafCutter	no event type	4717	Gene–cell-type pairs	130683	190
 MAJIQ	no event type	706	Gene–cell-type pairs	8913	157
-SUPPA2	alternative acceptor	605	Gene–cell-type pairs	1240197	190
-SUPPA2	alternative donor	393	Gene–cell-type pairs	1240197	190
-SUPPA2	cassette exon	2325	Gene–cell-type pairs	1240197	190
-SUPPA2	mutually exclusive exons	233	Gene–cell-type pairs	1240197	190
+SUPPA2	alternative acceptor	614	Gene–cell-type pairs	1240197	190
+SUPPA2	alternative donor	389	Gene–cell-type pairs	1240197	190
+SUPPA2	cassette exon	2322	Gene–cell-type pairs	1240197	190
+SUPPA2	mutually exclusive exons	231	Gene–cell-type pairs	1240197	190
 SUPPA2	retained intron	102	Gene–cell-type pairs	1240197	190
-SUPPA2 primer-aware	alternative acceptor	162	Gene–cell-type pairs	653199	190
+SUPPA2 primer-aware	alternative acceptor	164	Gene–cell-type pairs	653199	190
 SUPPA2 primer-aware	alternative donor	118	Gene–cell-type pairs	653199	190
-SUPPA2 primer-aware	cassette exon	667	Gene–cell-type pairs	653199	190
+SUPPA2 primer-aware	cassette exon	664	Gene–cell-type pairs	653199	190
 SUPPA2 primer-aware	mutually exclusive exons	58	Gene–cell-type pairs	653199	190
-SUPPA2 primer-aware	retained intron	32	Gene–cell-type pairs	653199	190
-Tealeaf	alternative acceptor	299	Gene–cell-type pairs	694768	190
-Tealeaf	alternative donor	104	Gene–cell-type pairs	694768	190
-Tealeaf	alternative first exon	2578	Gene–cell-type pairs	694768	190
-Tealeaf	alternative last exon	809	Gene–cell-type pairs	694768	190
-Tealeaf	cassette exon	2712	Gene–cell-type pairs	694768	190
-Tealeaf	mutually exclusive exons	70	Gene–cell-type pairs	694768	190
-Tealeaf	other	2394	Gene–cell-type pairs	694768	190
-Tealeaf	retained intron	9	Gene–cell-type pairs	694768	190
+SUPPA2 primer-aware	retained intron	33	Gene–cell-type pairs	653199	190
+Tealeaf	alternative acceptor	302	Gene–cell-type pairs	694806	190
+Tealeaf	alternative donor	106	Gene–cell-type pairs	694806	190
+Tealeaf	alternative first exon	2592	Gene–cell-type pairs	694806	190
+Tealeaf	alternative last exon	800	Gene–cell-type pairs	694806	190
+Tealeaf	cassette exon	2693	Gene–cell-type pairs	694806	190
+Tealeaf	mutually exclusive exons	75	Gene–cell-type pairs	694806	190
+Tealeaf	other	2436	Gene–cell-type pairs	694806	190
+Tealeaf	retained intron	9	Gene–cell-type pairs	694806	190
 rMATS	alternative acceptor	23	Gene–cell-type pairs	1986166	190
 rMATS	alternative donor	8	Gene–cell-type pairs	1986166	190
 rMATS	cassette exon	418	Gene–cell-type pairs	1986166	190

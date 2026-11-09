@@ -1,0 +1,2 @@
+test_id	label	gene_id	gene_name	block_id	structure	level_a	level_b	n_paths	p_value	effect_norm	long_read_agrees	fdr	minimum_long_read_depth	chromosome	strand	novel_paths	event
+ENSMUSG00000040407.19:N2|cell_type|INH_medium_spiny|ODC	Akap9 N2	ENSMUSG00000040407	Akap9	ENSMUSG00000040407.19:N2	internal	INH_medium_spiny	ODC	2	3.731555738683665e-09	1.2703185494883984	True	2.672569365653928e-06	6658.33	chr5	+	1	cassette exon
