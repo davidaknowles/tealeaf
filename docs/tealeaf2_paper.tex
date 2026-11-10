@@ -139,7 +139,7 @@ We evaluated Tealeaf on the brain data, nuclei of 48 animals in six groups of ei
 
 We use two endpoints, neither of which needs knowledge of the true splicing differences. For \emph{split replication}, we divide the animals into two halves of 24, balanced by group, and run each method on each half. A gene replicates when it has signal in both halves, by the Benjamini--Hochberg (BH) \cite{benjamini1995} adjustment over genes of the larger of its two half p-values, each the Simes combination of the gene's tests in that half. Each method tests its own (gene, cell-type pair) keys, so we score each comparison on two sets of keys, the comparator's \emph{universe}, the keys it tests in both halves, and the \emph{matched universe}, the subset that Tealeaf also tests in both halves. For \emph{long-read direction}, we compare the effects of the tests on the full data (all 48 animals) with the P56 mouse brain single-cell long-read data of Joglekar et al.\ \cite{joglekar2024}, in eight cell types with a prespecified correspondence. We assign long-read transcripts to the tested paths (or junctions or events) of every method by their exon chains in the comprehensive annotation, and call a test \emph{evaluable} when the long reads cover its tested paths in both cell types (Methods). We rank the evaluable tests by p-value, and the endpoint $A_{100}$ is the mean, over $r=1,\ldots,100$, of the fraction of the $r$ top-ranked tests whose direction agrees with the long reads. Split replication does not use direction, and long-read direction does not use replication.
 
-The comparators are LeafCutter, MAJIQ Heterogen, scQuint, paired rMATS (PAIRADISE \cite{demirdjian2020}), SUPPA2 with paired signed-rank tests, and a primer-aware SUPPA2 that estimates event usage from equivalence-class counts of each primer with a primer offset (Methods). We run each on the same donor--cell-type pseudobulks, contrasts and halves. For every method we remove, before both endpoints, the tests that the coverage-only null also calls (Methods). In this null each sample keeps its coverage of the tested feature and the two cell types share one usage, so a test it calls responds to coverage, not to splicing. We recompute each test with $p<0.01$ on the data on three null draws and remove it when the median of its three null p-values is below 0.05, which removes about 0.7\% of the recomputed tests of a calibrated method. The filter removes 0.4 to 0.9\% of the recomputed tests of Tealeaf, LeafCutter and scQuint, 8 to 12\% for rMATS and 43 to 68\% for MAJIQ (Supplementary Table~\ref{tab:coverage-removed}). We do not recompute SUPPA2, which replicates 0 to 8 genes.
+The comparators are LeafCutter, MAJIQ Heterogen, scQuint, paired rMATS (PAIRADISE \cite{demirdjian2020}), SUPPA2 with paired signed-rank tests, and a primer-aware SUPPA2 that estimates event usage from equivalence-class counts of each primer with a primer offset (Methods). We run each on the same donor--cell-type pseudobulks, contrasts and halves. For every method we remove, before both endpoints, the tests that the coverage-only null also calls (Methods). In this null each sample keeps its coverage of the tested feature and the two cell types share one usage, so a test it calls responds to coverage, not to splicing. We recompute each test with $p<0.01$ on the data on three null draws and remove it when the median of its three null p-values is below 0.05, which removes about 0.7\% of the recomputed tests of a calibrated method. The filter removes 0.5 to 0.8\% of the recomputed tests of Tealeaf, LeafCutter and scQuint, 8 to 12\% for rMATS and 43 to 68\% for MAJIQ (Supplementary Table~\ref{tab:coverage-removed}). We do not recompute SUPPA2, which replicates 0 to 8 genes.
 
 \subsection{Tealeaf replicates more genes in mouse brain}
 
@@ -192,13 +192,13 @@ We show the full-data tests with the largest effect among those evaluable in the
 
 We processed three public Parse datasets of peripheral blood mononuclear cells (PBMCs) with the same pipeline, the GRCh38 genome and the GENCODE v49 basic annotation \cite{frankish2023}: GSE320507 \cite{ray2026}, 38 donors with long-term COVID-19 syndrome (long COVID, LTCS; 26), after recovery from COVID-19 (CONV, 5) and healthy controls (HC, 7), and two stimulation series of 12 \cite{wood2026} and 8 donors \cite{benavides2026}, of which we use only the unstimulated or vehicle-control cells for cell-type contrasts. We labelled cell types with CellTypist \cite{dominguezconde2022} (19, 10 and 8 types). Long-read directions come from a public PacBio Kinnex library made from a Parse PBMC library of other donors, for which we called cell barcodes, UMIs and the reverse-transcription primer from the reads (93\% of 148 million reads assigned to a cell; Methods).
 
-In GSE320507, with 19 donors per half, 65 genes replicate between halves on the keys Tealeaf tests in both, and 91\% of the genes discovered in one half have $p\le0.05$ in the other (Supplementary Table~\ref{tab:pbmc}). Most replicated genes separate monocytes from lymphocytes. With 6 donors per half GSE327907 replicates 5 genes, and GSE334840, with 4 donors per half and 66-base reads, almost none. Of the 100 top-ranked long-read-evaluable tests, 99, 96 and 82 agree with the long reads in the three datasets (Fig.~\ref{fig:blood}c; Supplementary Table~\ref{tab:pbmc-lr}). Tests in blood reject less often than tests in brain at the same coverage, 2.4\% at $p<0.01$ in GSE320507 against 9.0\% in brain for rows with a median of 20 to 50 molecules, consistent with smaller splicing differences between blood cell types than between neuronal and glial cell types.
+In GSE320507, with 19 donors per half, 65 genes replicate between halves on the keys Tealeaf tests in both, and 94\% of the genes discovered in one half have $p\le0.05$ in the other (Supplementary Table~\ref{tab:pbmc}). Most replicated genes separate monocytes from lymphocytes. With 6 donors per half GSE327907 replicates 5 genes, and GSE334840, with 4 donors per half and 66-base reads, almost none. Of the 100 top-ranked long-read-evaluable tests, 99, 96 and 83 agree with the long reads in the three datasets (Fig.~\ref{fig:blood}c; Supplementary Table~\ref{tab:pbmc-lr}). Tests in blood reject less often than tests in brain at the same coverage, 2.4\% at $p<0.01$ in GSE320507 against 8.9\% in brain for rows with a median of 20 to 50 molecules, consistent with smaller splicing differences between blood cell types than between neuronal and glial cell types.
 
-We ran the six comparators on GSE320507 as on the brain data, with the same coverage-only filter. In blood, LeafCutter replicates more genes than Tealeaf on its universe of 3{,}588 genes (126 against 67; Fig.~\ref{fig:blood}a), its top-ranked intron clusters agree with the long reads as often ($A_{100}$ 0.991 against 0.988; Fig.~\ref{fig:blood}b), and it has more evaluable tests (59{,}097 against 44{,}349). scQuint replicates about as many genes as Tealeaf (67 against 54), with $A_{100}=1.000$ over 19{,}875 evaluable tests. MAJIQ, after the removal of 96\% of its recomputed edges, replicates 26 genes against 68. rMATS replicates 133 genes against 60, but 64 of its 100 top-ranked events agree with the long reads, so most of its replicated genes are not supported by the long reads. SUPPA2 and primer-aware SUPPA2 replicate no genes and their top-ranked events agree at about chance, although SUPPA2 makes 65{,}091 discoveries on the 144 pairs every method tests, against 1{,}903 for Tealeaf (Supplementary Fig.~\ref{fig:discoveries-pbmc}).
+We ran the six comparators on GSE320507 as on the brain data, with the same coverage-only filter. In blood, LeafCutter replicates more genes than Tealeaf on its universe of 3{,}588 genes (126 against 64; Fig.~\ref{fig:blood}a), its top-ranked intron clusters agree with the long reads as often ($A_{100}$ 0.991 against 0.988; Fig.~\ref{fig:blood}b), and it has more evaluable tests (59{,}097 against 44{,}650). scQuint replicates about as many genes as Tealeaf (67 against 53), with $A_{100}=1.000$ over 19{,}875 evaluable tests. MAJIQ, after the removal of 96\% of its recomputed edges, replicates 26 genes against 67. rMATS replicates 133 genes against 59, but 64 of its 100 top-ranked events agree with the long reads, so most of its replicated genes are not supported by the long reads. SUPPA2 and primer-aware SUPPA2 replicate no genes and their top-ranked events agree at about chance, although SUPPA2 makes 65{,}091 discoveries on the 144 pairs every method tests, against 1{,}894 for Tealeaf (Supplementary Fig.~\ref{fig:discoveries-pbmc}).
 
 \subsection{Tests between groups of donors}
 
-GSE320507 also allows tests between disease groups within a cell type, where the two levels are different donors. Each cell type has four contrasts, LTCS against HC, LTCS against CONV, CONV against HC, and LTCS against HC and CONV pooled, and a fifth contrast compares two sets of 26 and 12 donors drawn at random, which has no group effect. The random contrast rejects below the nominal rate at $p<0.01$ and $p<0.001$ and has no discoveries (Fig.~\ref{fig:blood}d), so the test is not anticonservative with 12 donors in the smaller group. LTCS against HC gives 215 discoveries in 153 genes, mostly in naive and central-memory helper T cells and classical monocytes. The CONV donors share these differences. Of the 215 tests, 205 are also tested between CONV and HC, 59\% with $p<0.05$ and 92\% with the same direction, while LTCS against CONV has $p<0.05$ for 9\% (3\% for the random contrast). The differences therefore separate healthy donors from all donors after COVID-19, not long COVID from recovery, and may reflect other differences between the donor groups, such as age or time of sampling, which are not available. Fig.~\ref{fig:blood}e shows the discovery with the largest effect under the selection rule of Methods, a 69-base cassette exon of \emph{ANKRD12} in classical monocytes, included in 42\% of HC and 75\% of LTCS molecules; the other three examples are in Supplementary Figs.~\ref{fig:tcerg1}--\ref{fig:tc2n}.
+GSE320507 also allows tests between disease groups within a cell type, where the two levels are different donors. Each cell type has four contrasts, LTCS against HC, LTCS against CONV, CONV against HC, and LTCS against HC and CONV pooled, and a fifth contrast compares two sets of 26 and 12 donors drawn at random, which has no group effect. The random contrast rejects below the nominal rate at $p<0.01$ and $p<0.001$ and has no discoveries (Fig.~\ref{fig:blood}d), so the test is not anticonservative with 12 donors in the smaller group. LTCS against HC gives 199 discoveries in 140 genes, mostly in naive and central-memory helper T cells and classical monocytes. The CONV donors share these differences. Of the 199 tests, 194 are also tested between CONV and HC, 59\% with $p<0.05$ and 93\% with the same direction, while LTCS against CONV has $p<0.05$ for 9\% (4\% for the random contrast). The differences therefore separate healthy donors from all donors after COVID-19, not long COVID from recovery, and may reflect other differences between the donor groups, such as age or time of sampling, which are not available. Fig.~\ref{fig:blood}e shows the discovery with the largest effect under the selection rule of Methods, a 69-base cassette exon of \emph{ANKRD12} in classical monocytes, included in 42\% of HC and 75\% of LTCS molecules; the other three examples are in Supplementary Figs.~\ref{fig:tcerg1}--\ref{fig:tc2n}.
 
 \begin{figure}[p]
 \centering
@@ -674,11 +674,11 @@ Read 1 length & 136 & 150 & 66\\
 Read pairs (billions) & 1.84 & 11.7 & 2.52\\
 \midrule
 Full-data tests & 1{,}504{,}546 & 200{,}346 & 80{,}470\\
-Discoveries & 2{,}340 & 472 & 15\\
-Gene--pair discoveries & 1{,}847 & 377 & 13\\
+Discoveries & 2{,}335 & 475 & 15\\
+Gene--pair discoveries & 1{,}819 & 372 & 13\\
 \midrule
 Genes tested in both halves & 10{,}079 & 8{,}640 & 5{,}211\\
-Discoveries, half 1 / half 2 & 133 / 96 & 15 / 29 & 0 / 0\\
+Discoveries, half 1 / half 2 & 130 / 91 & 15 / 28 & 0 / 0\\
 Replicated genes & 65 & 5 & 0\\
 \bottomrule
 \end{tabular}
@@ -694,14 +694,14 @@ Replicated genes & 65 & 5 & 0\\
  & GSE320507 & GSE327907 & GSE334840\\
 \midrule
 Long-read cell types (pairs) & 14 (91) & 7 (20) & 7 (20)\\
-Evaluable tests & 44{,}359 & 17{,}488 & 11{,}932\\
-Agreeing, top 40 & 39 & 38 & 35\\
-Agreeing, top 100 & 99 & 96 & 82\\
-Agreeing, top 200 & 197 & 177 & 152\\
-$A_{100}$ & 0.988 & 0.967 & 0.865\\
-Evaluable discoveries & 497 & 138 & 6\\
+Evaluable tests & 44{,}661 & 17{,}588 & 12{,}012\\
+Agreeing, top 40 & 39 & 38 & 36\\
+Agreeing, top 100 & 99 & 96 & 83\\
+Agreeing, top 200 & 197 & 177 & 155\\
+$A_{100}$ & 0.988 & 0.967 & 0.886\\
+Evaluable discoveries & 505 & 138 & 6\\
 Agreement of discoveries & 0.88 & 0.94 & 1.00\\
-Agreement of all evaluable tests & 0.54 & 0.54 & 0.52\\
+Agreement of all evaluable tests & 0.54 & 0.53 & 0.53\\
 \bottomrule
 \end{tabular}
 \caption{Long-read direction of full-data cell-type tests in three PBMC datasets, against molecules of a Parse PBMC long-read library. Long-read cell types and pairs are those with at least one evaluable test. Agreeing gives the number of the $r$ top-ranked evaluable tests whose direction agrees with the long reads.}
@@ -718,12 +718,12 @@ Agreement of all evaluable tests & 0.54 & 0.54 & 0.52\\
 \midrule
 \multicolumn{7}{l}{\emph{Matched universe}}\\
 Genes & 3{,}461 & 3{,}411 & 8{,}478 & 8{,}405 & 8{,}829 & 6{,}034\\
-Tealeaf replicated & 67 & 69 & 57 & 57 & 65 & 55\\
+Tealeaf replicated & 64 & 68 & 57 & 57 & 64 & 57\\
 Comparator replicated & 120 & 23 & 0 & 0 & 131 & 66\\
 \midrule
 \multicolumn{7}{l}{\emph{Comparator universe}}\\
 Genes & 3{,}588 & 3{,}618 & 10{,}577 & 10{,}569 & 10{,}179 & 6{,}402\\
-Tealeaf replicated & 67 & 68 & 56 & 53 & 60 & 54\\
+Tealeaf replicated & 64 & 67 & 54 & 51 & 59 & 53\\
 Comparator replicated & 126 & 26 & 0 & 0 & 133 & 67\\
 \midrule
 Comparator $A_{100}$ & .991 & 1.000 & .555 & .460 & .575 & 1.000\\
@@ -740,11 +740,11 @@ Comparator $A_{100}$ & .991 & 1.000 & .555 & .460 & .575 & 1.000\\
 \toprule
 Contrast & Tests & $p<0.01$ & $p<0.001$ & Discoveries\\
 \midrule
-Random 26 vs 12 & 182{,}434 & 0.44\% & 0.041\% & 0\\
-CONV vs HC & 62{,}155 & 0.70\% & 0.069\% & 0\\
-LTCS vs CONV & 66{,}481 & 0.57\% & 0.032\% & 0\\
-LTCS vs HC & 148{,}293 & 1.65\% & 0.460\% & 215\\
-LTCS vs HC and CONV & 182{,}408 & 1.18\% & 0.251\% & 23\\
+Random 26 vs 12 & 182{,}434 & 0.34\% & 0.025\% & 0\\
+CONV vs HC & 62{,}155 & 0.56\% & 0.051\% & 0\\
+LTCS vs CONV & 66{,}481 & 0.45\% & 0.032\% & 0\\
+LTCS vs HC & 148{,}293 & 1.57\% & 0.441\% & 199\\
+LTCS vs HC and CONV & 182{,}408 & 1.07\% & 0.229\% & 22\\
 \bottomrule
 \end{tabular}
 \caption{Disease-group contrasts within cell types in GSE320507, full data. Tests that do not converge enter with $p=1$; discoveries are BH-adjusted $p\le0.05$ within each contrast.}
@@ -848,7 +848,7 @@ Table~\ref{tab:majiq-null} gives the calls. Under the null, which has no differe
 
 In GSE320507, MAJIQ without removal replicates 991 genes on its comparator universe against 70 for Tealeaf. The coverage-only null removes 96\% of its recomputed edges in each half, and 26 genes replicate after removal (Tealeaf 68). Restricting MAJIQ instead to tests with $|\log_2 r|\le1$ gives 15 replicated genes in both datasets (Tealeaf 190 in brain and 62 in GSE320507), and $|\log_2 r|\le0.5$ gives 8 (Tealeaf 143 and 41).
 
-The count models of the other junction methods and of Tealeaf do not show this dependence. In GSE320507, junction counts redrawn within each LeafCutter cluster and each scQuint intron group from the proportions pooled over all pseudobulks, with each pseudobulk's observed total, give no BH discoveries for either method on the 171 cell-type pairs (on the data, 1{,}018 and 2{,}848). For Tealeaf, the count null of Section~\ref{sec:calibration} on 200 random full-data tests per block structure (subject concentration 20, no row variation) rejects at 0.05 for 0 to 6\% of converged internal and 2 to 4\% of terminal tests in every class of the molecule-total ratio between the two cell types, including ratios above eightfold, where the MAJIQ null calls 93\% of tests.
+The count models of the other junction methods and of Tealeaf do not show this dependence. In GSE320507, junction counts redrawn within each LeafCutter cluster and each scQuint intron group from the proportions pooled over all pseudobulks, with each pseudobulk's observed total, give no BH discoveries for either method on the 171 cell-type pairs (on the data, 1{,}018 and 2{,}848). For Tealeaf, the count null of Section~\ref{sec:calibration} on 200 random full-data tests per block structure (subject concentration 20, no row variation) rejects at 0.05 for 0 to 4\% of converged internal and 2 to 5\% of terminal tests in every class of the molecule-total ratio between the two cell types, including ratios above eightfold, where the MAJIQ null calls 93\% of tests.
 
 \subsection{rMATS under the coverage-only null}
 
