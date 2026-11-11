@@ -45,39 +45,53 @@ def read_end_profiles(path):
 def read_end_metaplot(paths, width=25, gap=900):
     """Mean per-gene share of read ends per 100 bases near the 5' and 3' ends, laid out as one gene (5' left, 3' right).
 
-    Shares are of all the gene's reads, including those more than 2 kb from both ends (the omitted middle)."""
+    Shares are of all the gene's reads, including those more than 2 kb from both ends (the omitted middle). When the
+    histograms record reads near A-runs ("five_arun", "three_arun"), each primer is split into reads near an A-run and
+    the others, both as shares of all the gene's reads of the primer."""
     rows = []
     for path in paths:
         for primer, genes in json.loads(Path(path).read_text()).items():
             for gene in genes:
                 five, three = np.asarray(gene["five"], float), np.asarray(gene["three"], float)
                 total = five.sum() + three.sum() + float(gene["middle"])
-                if total > 0:
-                    rows.append((primer, five / total, three / total))
+                if total <= 0:
+                    continue
+                if "five_arun" in gene:
+                    five_a, three_a = np.asarray(gene["five_arun"], float), np.asarray(gene["three_arun"], float)
+                    rows.append((primer, "near A-run", five_a / total, three_a / total))
+                    rows.append((primer, "other", (five - five_a) / total, (three - three_a) / total))
+                else:
+                    rows.append((primer, "all", five / total, three / total))
     out = []
-    for primer in sorted({row[0] for row in rows}):
-        five = np.mean([row[1] for row in rows if row[0] == primer], axis=0)
-        three = np.mean([row[2] for row in rows if row[0] == primer], axis=0)
+    for primer, kind in sorted({row[:2] for row in rows}):
+        five = np.mean([row[2] for row in rows if row[:2] == (primer, kind)], axis=0)
+        three = np.mean([row[3] for row in rows if row[:2] == (primer, kind)], axis=0)
         n = len(five)
         x_five = (np.arange(n) + 0.5) * width
         x_three = n * width + gap + (n * width - (np.arange(n) + 0.5) * width)
         scale = 100 * 100 / width  # percent of the gene's reads per 100 bases
-        out.append(pd.DataFrame({"primer": primer, "x": x_five, "share": five * scale, "end": "5'"}))
-        out.append(pd.DataFrame({"primer": primer, "x": x_three, "share": three * scale, "end": "3'"}))
+        out.append(pd.DataFrame({"primer": primer, "reads": kind, "x": x_five, "share": five * scale, "end": "5'"}))
+        out.append(pd.DataFrame({"primer": primer, "reads": kind, "x": x_three, "share": three * scale, "end": "3'"}))
     return pd.concat(out, ignore_index=True), n * width, gap
 
 
 def metaplot(table, span, gap, width, height):
     breaks = [0, 1000, 2000, span + gap, span + gap + 1000, 2 * span + gap]
     labels = ["5' end", "+1 kb", "+2 kb", "-2 kb", "-1 kb", "3' end"]
-    return (p9.ggplot(table, p9.aes("x", "share", color="primer", group="primer + end"))
+    split = table.reads.nunique() > 1
+    aes = p9.aes("x", "share", color="primer", linetype="reads", group="primer + reads + end") if split else p9.aes("x", "share", color="primer", group="primer + end")
+    plot = (p9.ggplot(table, aes)
             + p9.annotate("rect", xmin=span, xmax=span + gap, ymin=-np.inf, ymax=np.inf, fill="#F0F0F0")
             + p9.annotate("text", x=span + gap / 2, y=table.share.max() * 0.95, label="//", size=8, color="#888888")
             + p9.geom_line(size=0.6)
-            + p9.scale_color_manual(values=PRIMERS)
+            + p9.scale_color_manual(values=PRIMERS, name="")
             + p9.scale_x_continuous(breaks=breaks, labels=labels, expand=(0.01, 0))
             + p9.labs(x="Position of read end in the transcript (spliced bases)", y="Reads per 100 bases\n(% of the gene's reads)")
             + theme(width, height, "bottom"))
+    if split:
+        plot += p9.scale_linetype_manual(values={"near A-run": "solid", "other": "dashed"}, name="")
+        plot += p9.theme(legend_box="vertical", legend_box_spacing=0.02)
+    return plot
 
 
 def split_table(path, universe):
@@ -305,11 +319,11 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     brain, pbmc = Path("analyses/coverage_null_filter_sh/brain"), Path("analyses/coverage_null_filter_sh/pbmc")
 
-    table, span, gap = read_end_metaplot(sorted(Path(".cache/read_end_profiles").glob("library_*.json")))
-    save(metaplot(table, span, gap, 3.3, 1.9), out, "fig1_profiles")
+    table, span, gap = read_end_metaplot(sorted(Path(".cache/read_end_profiles_arun").glob("library_*.json")))
+    save(metaplot(table, span, gap, 3.3, 2.3), out, "fig1_profiles")
 
     brain_labels = {"MAJIQ": ("MAJIQ", 0.08, 0.02), "LeafCutter": ("LeafCutter", 0.02, -0.12), "scQuint": ("scQuint", -0.08, 0.07), "rMATS": ("rMATS", 0.08, 0.0), "SUPPA2-PA": ("SUPPA2-PA", 0.08, 0.04), "SUPPA2": ("SUPPA2", 0.08, -0.05)}
-    save(split_scatter(split_both(brain / "split_filtered/split_metrics.tsv"), 3.0, 3.1, brain_labels), out, "fig2_split")
+    save(split_scatter(split_both(brain / "split_filtered/split_metrics.tsv"), 2.5, 2.6, brain_labels), out, "fig2_split")
     save(lr_plot(lr_curves(brain / "tealeaf_lr_rank_filtered.tsv.gz", brain / "sign_agreement_by_rank_filtered.tsv"), 3.3, 2.0), out, "fig2_lr")
     summary = pd.read_csv(brain / "lr_summary.tsv", sep="\t")
     suppa = pd.read_csv(brain / "suppa2_exact_lr_summary.tsv", sep="\t")
@@ -320,8 +334,8 @@ def main():
     save(removed_plot(removed_table({"Brain": brain / "removed_tests.tsv", "GSE320507": pbmc / "removed_tests.tsv"}), 2.3, 2.3), out, "fig4_removed")
     save(rmats_null_plot("analyses/pbmc/GSE320507_comparators/coverage_null/rmats_null_vs_real_4contrasts.tsv", 2.2, 2.0), out, "fig4_rmats")
 
-    pbmc_labels = {"MAJIQ": ("MAJIQ", 0.06, 0.08), "LeafCutter": ("LeafCutter", -0.08, 0.12), "rMATS": ("rMATS", 0.04, -0.14), "scQuint": ("scQuint", 0.08, -0.08), "SUPPA2, SUPPA2-PA": ("SUPPA2", 0.06, 0.12)}
-    save(split_scatter(split_both(pbmc / "split_filtered/split_metrics.tsv"), 3.0, 3.1, pbmc_labels), out, "fig5_split")
+    pbmc_labels = {"MAJIQ": ("MAJIQ", 0.06, 0.08), "LeafCutter": ("LeafCutter", -0.08, 0.12), "rMATS": ("rMATS", 0.04, -0.14), "scQuint": ("scQuint", 0.08, -0.08), "SUPPA2, SUPPA2-PA": ("SUPPA2", 0.02, 0.22)}
+    save(split_scatter(split_both(pbmc / "split_filtered/split_metrics.tsv"), 2.5, 2.6, pbmc_labels), out, "fig5_split")
     save(lr_plot(lr_curves(pbmc / "tealeaf_lr_rank_filtered.tsv.gz", pbmc / "sign_agreement_by_rank_filtered.tsv"), 3.3, 2.0), out, "fig5_lr")
     save(dataset_plot(dataset_curves({"GSE320507": "analyses/pbmc/GSE320507_lr_sh/lr_rank.tsv.gz", "GSE327907": "analyses/pbmc/GSE327907_lr_sh/lr_rank.tsv.gz", "GSE334840": "analyses/pbmc/GSE334840_lr_sh/lr_rank.tsv.gz"}), 3.0, 1.8), out, "fig5_datasets")
     save(disease_plot("analyses/pbmc/GSE320507_disease_sh/calibration.tsv", 3.6, 1.8), out, "fig5_disease")

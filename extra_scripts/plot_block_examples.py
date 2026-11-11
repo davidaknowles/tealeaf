@@ -21,7 +21,7 @@ def theme(base):
     return p9.theme_classic(base_size=base) + p9.theme(plot_title=p9.element_text(size=base), legend_title=p9.element_text(size=base), legend_text=p9.element_text(size=base - 1), legend_key_size=base, axis_line=p9.element_line(size=0.4), axis_ticks=p9.element_line(size=0.4))
 
 
-def figure(example, parse, long_read, exons, base=11, names=None, size=None):
+def figure(example, parse, long_read, exons, base=11, names=None, size=None, structure_panel=True):
     names = names or {}
     levels = [example.level_a, example.level_b]
     shown = [names.get(level, level) for level in levels]
@@ -56,7 +56,7 @@ def figure(example, parse, long_read, exons, base=11, names=None, size=None):
                  + p9.scale_y_continuous(limits=(0, 1))
                  + p9.labs(x="", y="Transcript share", title=f"Long reads ({'agrees' if example.long_read_agrees else 'disagrees'})")
                  + theme(base) + p9.theme(legend_position="bottom", legend_direction="vertical"))
-    composed = structure / (parse_plot | long_plot)
+    composed = structure / (parse_plot | long_plot) if structure_panel else parse_plot | long_plot
     return composed + p9.theme(figure_size=size) if size else composed
 
 
@@ -68,6 +68,7 @@ def main():
     parser.add_argument("--height", type=float, default=7.)
     parser.add_argument("--base-size", type=float, default=11.)
     parser.add_argument("--level-label", action="append", default=[], help="LEVEL=label for cell-type names")
+    parser.add_argument("--no-structure", action="store_true", help="omit the path-structure panel (shown elsewhere, e.g. in a sashimi plot)")
     args = parser.parse_args()
     names = dict(item.split("=", 1) for item in args.level_label)
     tables = {name: pd.read_csv(args.tables / f"{name}.tsv", sep="\t") for name in ("examples", "parse_usage", "long_read_usage", "exons")}
@@ -77,7 +78,7 @@ def main():
         name = f"example_{example.gene_name}_{example.block_id.split(':')[-1]}"
         for suffix, options in ((".pdf", {}), (".png", {"dpi": 110})):
             # a composed plot can be saved once, so it is rebuilt per format
-            plot = figure(example, select(tables["parse_usage"]), select(tables["long_read_usage"]), select(tables["exons"]), args.base_size, names, (args.width, args.height))
+            plot = figure(example, select(tables["parse_usage"]), select(tables["long_read_usage"]), select(tables["exons"]), args.base_size, names, (args.width, args.height), not args.no_structure)
             plot.save(args.output_dir / f"{name}{suffix}", verbose=False, **options)
         print(name, flush=True)
 
