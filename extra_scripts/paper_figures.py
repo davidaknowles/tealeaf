@@ -336,7 +336,7 @@ def main():
 
     pbmc_labels = {"MAJIQ": ("MAJIQ", 0.06, 0.08), "LeafCutter": ("LeafCutter", -0.08, 0.12), "rMATS": ("rMATS", 0.04, -0.14), "scQuint": ("scQuint", 0.08, -0.08), "SUPPA2, SUPPA2-PA": ("SUPPA2", 0.02, 0.22)}
     save(split_scatter(split_both(pbmc / "split_filtered/split_metrics.tsv"), 2.5, 2.6, pbmc_labels), out, "fig5_split")
-    save(lr_plot(lr_curves(pbmc / "tealeaf_lr_rank_filtered.tsv.gz", pbmc / "sign_agreement_by_rank_filtered.tsv"), 3.3, 2.0), out, "fig5_lr")
+    save(lr_plot(lr_curves(pbmc / "tealeaf_lr_rank_filtered_depth1000.tsv.gz", pbmc / "sign_agreement_by_rank_filtered_depth1000.tsv", 1000), 3.3, 2.0), out, "fig5_lr")
     save(dataset_plot(dataset_curves({"GSE320507": "analyses/pbmc/GSE320507_lr_sh/lr_rank.tsv.gz", "GSE327907": "analyses/pbmc/GSE327907_lr_sh/lr_rank.tsv.gz", "GSE334840": "analyses/pbmc/GSE334840_lr_sh/lr_rank.tsv.gz"}), 3.0, 1.8), out, "fig5_datasets")
     save(disease_plot("analyses/pbmc/GSE320507_disease_sh/calibration.tsv", 3.6, 1.8), out, "fig5_disease")
 
