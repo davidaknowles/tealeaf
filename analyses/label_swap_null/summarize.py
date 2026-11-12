@@ -14,7 +14,7 @@ tables = []
 real = pd.concat(pd.read_csv(PB / f"leafcutter/tests_cov5/normalized/{full.index(c['contrast_id'])}.tsv", sep="\t") for c in contrasts)
 swap = pd.concat(pd.read_csv(O / f"leafcutter/normalized/{i}.tsv", sep="\t") for i in range(len(contrasts)))
 for label, t in (("real", real), ("swapped", swap)):
-    tables.append(pd.DataFrame({"method": "LeafCutter", "labels": label, "pair": t.level_a + "||" + t.level_b, "p": t.p_value.fillna(1.).to_numpy()}))
+    tables.append(pd.DataFrame({"method": "LeafCutter", "labels": label, "pair": t.level_a + "||" + t.level_b, "p": t.p_value.to_numpy()}).dropna(subset=["p"]))
 for s in ("internal", "terminal"):
     for label, path in (("real", f".cache/binary_grid/pbmc_GSE320507_{s}_sh_full/merged/paired_path.tsv"), ("swapped", O / f"tealeaf_{s}/merged/paired_path.tsv")):
         t = pd.read_csv(path, sep="\t", usecols=["level_a", "level_b", "p_value", "converged"])

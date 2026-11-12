@@ -5229,3 +5229,18 @@ Terminal blocks with a path that has no junction inside the window (e.g. alterna
 Blood replication (GSE320507, matched universes, `analyses/blood_replication/`):
 - rMATS (131 replicated, 9 shared with Tealeaf): the best event of its replicated genes is MXE in 69/83 of 131 genes per half, against 20% of its tests; Tealeaf's half p for rMATS-only genes has median 1.0. With A100 .575 and the MXE construction (both exons often in one annotated transcript), its excess is not splicing signal Tealeaf misses.
 - LeafCutter (120 replicated, 46 shared): its replicated genes are real (A100 .991), 82% of best clusters in pairs with monocytes or DCs. Tealeaf runs 5–6x more tests per gene (median 174 vs 36 for LeafCutter-only genes), but the main gap is per test: LeafCutter's best cluster junction lies in a Tealeaf block in 122/148 gene-folds (26 in no block), the block is tested on the same pair in 120, mostly terminal (89), and Tealeaf's p for that block has median 1e-3 (82% < .05) against LeafCutter's 6e-8 (-log10 quartiles 5.3/7.2/9.8 vs 1.8/3.0/4.2). The strongest LeafCutter p (1e-51) are between classical monocytes and naive helper T cells, the two most abundant types: LeafCutter's Dirichlet-multinomial on pooled pseudobulk counts scales with molecule counts, Tealeaf's paired random-effects test is bounded by between-donor variation over 19 donors per half. Whether LeafCutter is calibrated under donor-level variation is not checked (the coverage-only null redraws from pooled proportions and has no donor variation).
+
+### 2026-11-12 Within-subject label-swap null in blood (LeafCutter vs Tealeaf); blood long-read agreement to rank 1000
+
+GSE320507, the 21 pairs among the seven most abundant cell types; in each pair each donor's two labels are exchanged with probability 1/2 (`permute_paired_contrasts`, seed 1; `analyses/label_swap_null/`: `make_contrasts.py`, `submit.sh`, `summarize.py`, `summary.tsv`, `swapped_by_pair.tsv`). Tealeaf reads the same swaps (`run_local_path_tests.py --swapped-pairs`), settings of the `pbmc_GSE320507_*_sh` fits. Under this null the mean cell-type effect is zero but its size varies between donors.
+
+| | tests | p < .05 | p < .01 | p < .001 | BH |
+|---|---|---|---|---|---|
+| LeafCutter, real | 95,708 | 9.4% | 4.5% | 2.0% | 1,961 |
+| LeafCutter, swapped | 153,777 | 6.9% | 2.5% | 0.59% | 164 |
+| Tealeaf, real | 399,513 | 5.3% | 1.6% | 0.56% | 1,384 |
+| Tealeaf, swapped | 399,513 | 3.6% | 0.61% | 0.05% | 0 |
+
+LeafCutter rows include clusters it reports with p = 1 (untested); among clusters with p < 1 the swapped rates are 12.7% / 4.6% / 1.1%. Every pair: LeafCutter 2.1–2.8% at .01 under the swap, Tealeaf 0.4–0.8%. LeafCutter's Dirichlet-multinomial on pseudobulks does not model donor-level variation in usage and is anticonservative under it; Tealeaf's paired random-effects test is calibrated. Part of LeafCutter's blood replication and p-value strength (e.g. 1e-51 between monocytes and naive helper T cells) reflects this.
+
+Blood long-read agreement to rank 1000 (`pbmc_lr_filter.py` with LR_DEPTH=1000, `lr_summary_depth1000.tsv`): agreeing of top 500 / 1000, LeafCutter 476 / 856, Tealeaf 439 / 801, MAJIQ 418 / 751, scQuint 417 / 710, rMATS 316 / 628, SUPPA2 224 / 475, primer-aware SUPPA2 237 / 454. Fig. 5b extended to rank 1000.
