@@ -101,6 +101,7 @@ def main():
     parser.add_argument("--position-opportunities", action="store_true", help="primer-specific position-weighted opportunities (opportunities_position.json.gz in --local-reads, compute_position_opportunities.py)")
     parser.add_argument("--position-opportunities-file", default="opportunities_position.json.gz", help="file name in --local-reads for --position-opportunities (e.g. opportunities_priming.json.gz of compute_priming_opportunities.py)")
     parser.add_argument("--primer-offset-prior-sd", type=float, help="Gaussian prior standard deviation on the primer offset (logit scale)")
+    parser.add_argument("--swapped-pairs", type=Path, help="within-subject label-swap null: tab-separated level_a, level_b, subject; in a test of that pair, the subject's two cell-type labels are exchanged (e.g. from run_junction_comparator.py permute-contrasts, so comparators see the same swaps)")
     parser.add_argument("--merge", action="store_true")
     args = parser.parse_args()
     if args.merge:
@@ -130,6 +131,11 @@ def main():
             pairs = {(gene.split(".")[0], tuple(sorted(pair.split("||")))) for gene, pair in zip(universe.gene_id, universe.pair_id)}
         lr_types = set(args.lr_cell_types.split(";")) if args.lr_cell_types else set()
         allowed = lambda gene, a, b: (gene.split(".")[0], (a, b)) in pairs or (a in lr_types and b in lr_types) or (a, b) in level_pairs
+    swapped = {}
+    if args.swapped_pairs is not None:
+        listed = pd.read_csv(args.swapped_pairs, sep="\t", dtype={"subject": str})
+        for a, b, subject in zip(listed.level_a, listed.level_b, listed.subject):
+            swapped.setdefault(tuple(sorted((a, b))), set()).add(subject)
     tests = declared_tests(counts, blocks, subjects, args.min_subjects, args.min_molecules, allowed, args.unpaired)
     if args.count_only:
         print(f"cohort {args.cohort}: {len(tests)} tests, {len({key for key, _, _ in tests})} blocks", flush=True)
@@ -149,6 +155,9 @@ def main():
         test_id = f"{block['block_id']}|cell_type|{level_a}|{level_b}"
         levels = (level_a, level_b)
         entries = [entry for entry in grouped[key] if entry[1] in levels]
+        if swapped:
+            exchange = swapped.get(levels, set())
+            entries = [(subject, levels[1 - levels.index(cell_type)] if subject in exchange else cell_type, *rest) for subject, cell_type, *rest in entries]
         record = {"test_id": test_id, "block_id": block["block_id"], "gene_id": block["gene_id"], "contrast": "cell_type_pairwise", "level_a": level_a, "level_b": level_b, "method": "block-local path classes, random-subject Beta binomial", "n_annotated_paths": n_paths, "n_paths": 0, "path_signatures": "[]", "n_subjects": 0, "median_gene_umis": np.nan, "statistic": 0., "p_value": 1., "raw_p_value": 1., "converged": False, "mean_difference": "[]", "mean_difference_norm": np.nan, "screened": True, "error": ""}
         begin = time.monotonic()
         try:
@@ -184,7 +193,7 @@ def main():
     args.output_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows_out).to_csv(args.output_dir / "paired_path.tsv", sep="\t", index=False, na_rep="NA")
     pd.DataFrame(usage_out, columns=["test_id", "block_id", "gene_id", "subject", "cell_type", "path", "path_number", "path_signature", "proportion"]).to_csv(args.output_dir / "path_usage.tsv", sep="\t", index=False, na_rep="NA")
-    settings = {"subject_fold": None if args.cohort == "full" else int(args.cohort), "test_effect": "cell_type_pairwise", "min_subjects": args.min_subjects, "unpaired": args.unpaired, "min_molecules": args.min_molecules, "min_share": args.min_share, "anchors": not args.no_anchors, "precursor": args.precursor, "primer_offset": args.primer_offset, "stored_opportunities": stored is not None, "structure": args.structure, "group_same_junctions": args.group_same_junctions, "position_opportunities": args.position_opportunities, "position_opportunities_file": args.position_opportunities_file if args.position_opportunities else None, "primer_offset_prior_sd": args.primer_offset_prior_sd, "local_reads": str(args.local_reads), "read_length": READ_LENGTH}
+    settings = {"subject_fold": None if args.cohort == "full" else int(args.cohort), "test_effect": "cell_type_pairwise", "min_subjects": args.min_subjects, "unpaired": args.unpaired, "min_molecules": args.min_molecules, "min_share": args.min_share, "anchors": not args.no_anchors, "precursor": args.precursor, "primer_offset": args.primer_offset, "stored_opportunities": stored is not None, "structure": args.structure, "group_same_junctions": args.group_same_junctions, "position_opportunities": args.position_opportunities, "position_opportunities_file": args.position_opportunities_file if args.position_opportunities else None, "primer_offset_prior_sd": args.primer_offset_prior_sd, "swapped_pairs": str(args.swapped_pairs) if args.swapped_pairs else None, "local_reads": str(args.local_reads), "read_length": READ_LENGTH}
     summary = {"candidates": len(rows_out), "converged": int(sum(row["converged"] for row in rows_out)), "elapsed_seconds": time.monotonic() - started, "candidate_settings": settings}
     (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps({key: value for key, value in summary.items() if key != "candidate_settings"}), flush=True)
