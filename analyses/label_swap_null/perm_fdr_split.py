@@ -10,7 +10,8 @@ genes with r <= t for the largest real t with estimated FDR <= .05. The statisti
 Usage: perm_fdr_split.py <output dir> <pair set: level_pairs.tsv> <null dir> [<null dir> ...]
 Each null dir holds fold{0,1}/{leafcutter/normalized/*.tsv, scquint/*.tsv, rmats/*.tsv.gz, tealeaf_{internal,terminal}/merged/paired_path.tsv}.
 Real tests: unfiltered comparator universe (split_universe_leaf5) and the pbmc_GSE320507_*_sh half fits; with
---coverage-filtered, the coverage-null-filtered tables of analyses/coverage_null_filter_sh/pbmc (null tests unfiltered)."""
+--coverage-filtered, the coverage-null-filtered tables of analyses/coverage_null_filter_sh/pbmc, and the same (half, pair,
+feature) tests are removed from the null fits, so the filter defines one test set for the real and the swapped labels."""
 import glob, sys
 from pathlib import Path
 import numpy as np, pandas as pd
@@ -42,11 +43,18 @@ def read_all(pattern):
     return pd.concat(frames, ignore_index=True)
 
 
-def tealeaf_half(root, k, filtered=False):
-    t = pd.concat([fit_table(root(s, k)) for s in ("internal", "terminal")], ignore_index=True)
-    if filtered:
+FLAGGED = {}
+if FILTERED:
+    for k in (0, 1):
         null = pd.concat([pd.read_csv(f".cache/targeted_null/pbmc_GSE320507_{s}_sh_{k}/null.tsv.gz", sep="\t") for s in ("internal", "terminal")], ignore_index=True)
-        t = drop_flagged(t, coverage_flagged(null, ["test_id"]), ["test_id"])
+        FLAGGED[k] = coverage_flagged(null, ["test_id"])
+
+
+def tealeaf_half(root, k):
+    """Tealeaf tests of half k (real or swapped labels; test_id carries block and pair), without the flagged tests."""
+    t = pd.concat([fit_table(root(s, k)) for s in ("internal", "terminal")], ignore_index=True)
+    if FILTERED:
+        t = drop_flagged(t, FLAGGED[k], ["test_id"])
     return pd.DataFrame({"gene_id": gene(t.gene_id), "pair_id": t.pair_id, "p_value": t.p_value})
 
 
@@ -54,9 +62,16 @@ def tealeaf_half(root, k, filtered=False):
 universe = pd.read_csv("analyses/coverage_null_filter_sh/pbmc/comparator_tests_filtered.tsv.gz" if FILTERED else "analyses/pbmc/GSE320507_comparators/split_universe_leaf5/comparator_tests.tsv.gz", sep="\t", dtype={"gene_id": str}, low_memory=False)
 universe["gene_id"] = gene(universe.gene_id)
 universe = universe.loc[universe.pair_id.isin(pairs)]
-real = {"Tealeaf": [tealeaf_half(lambda s, k: f".cache/binary_grid/pbmc_GSE320507_{s}_sh_{k}/merged/paired_path.tsv", k, FILTERED) for k in (0, 1)]}
+real = {"Tealeaf": [tealeaf_half(lambda s, k: f".cache/binary_grid/pbmc_GSE320507_{s}_sh_{k}/merged/paired_path.tsv", k) for k in (0, 1)]}
 real["Tealeaf"] = [t.loc[t.pair_id.isin(pairs)] for t in real["Tealeaf"]]
 genes_of = universe.drop_duplicates(["comparison", "feature_id"]).set_index(["comparison", "feature_id"]).gene_id
+removed = set()  # (comparison, half, pair, feature) dropped by the coverage-only filter
+if FILTERED:
+    unfiltered = pd.read_csv("analyses/pbmc/GSE320507_comparators/split_universe_leaf5/comparator_tests.tsv.gz", sep="\t", dtype={"gene_id": str}, low_memory=False)
+    unfiltered = unfiltered.loc[unfiltered.pair_id.isin(pairs) & unfiltered.comparison.isin(list(METHODS))]
+    kept = set(zip(universe.comparison, universe.fold, universe.pair_id, universe.feature_id))
+    removed = {key for key in zip(unfiltered.comparison, unfiltered.fold, unfiltered.pair_id, unfiltered.feature_id) if key not in kept}
+    print("coverage-filtered comparator tests removed from both sides:", pd.Series([key[0] for key in removed]).value_counts().to_dict(), flush=True)
 
 # null tests, per draw
 nulls = []
@@ -68,7 +83,10 @@ for root in NULLS:
             t = read_all(str(root / f"fold{k}" / pattern))
             pair = ["||".join(sorted(x)) for x in zip(t.level_a, t.level_b)]
             g = [genes_of.get((method, f), np.nan) for f in t.feature_id]
-            halves.append(pd.DataFrame({"gene_id": g, "pair_id": pair, "p_value": t.p_value.fillna(1.)}).dropna(subset=["gene_id"]))
+            half = pd.DataFrame({"gene_id": g, "pair_id": pair, "feature_id": t.feature_id, "p_value": t.p_value.fillna(1.)}).dropna(subset=["gene_id"])
+            if removed:
+                half = half.loc[[(method, k, p, f) not in removed for p, f in zip(half.pair_id, half.feature_id)]]
+            halves.append(half[["gene_id", "pair_id", "p_value"]])
         draw[method] = halves
     nulls.append(draw)
 
