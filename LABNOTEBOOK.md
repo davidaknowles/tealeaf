@@ -5244,3 +5244,18 @@ GSE320507, the 21 pairs among the seven most abundant cell types; in each pair e
 LeafCutter rows include clusters it reports with p = 1 (untested); among clusters with p < 1 the swapped rates are 12.7% / 4.6% / 1.1%. Every pair: LeafCutter 2.1–2.8% at .01 under the swap, Tealeaf 0.4–0.8%. LeafCutter's Dirichlet-multinomial on pseudobulks does not model donor-level variation in usage and is anticonservative under it; Tealeaf's paired random-effects test is calibrated. Part of LeafCutter's blood replication and p-value strength (e.g. 1e-51 between monocytes and naive helper T cells) reflects this.
 
 Blood long-read agreement to rank 1000 (`pbmc_lr_filter.py` with LR_DEPTH=1000, `lr_summary_depth1000.tsv`): agreeing of top 500 / 1000, LeafCutter 476 / 856, Tealeaf 439 / 801, MAJIQ 418 / 751, scQuint 417 / 710, rMATS 316 / 628, SUPPA2 224 / 475, primer-aware SUPPA2 237 / 454. Fig. 5b extended to rank 1000.
+
+### 2026-11-13 Label-swap null on the halves and recalibrated blood replication
+
+Null on both halves of GSE320507 for 21 pairs of seven cell types spread over abundance (Tcm/naive helper T 120k cells, classical monocytes 52k, memory B 8.5k, Treg 4.2k, pDC 1.7k, CRTAM+ gamma-delta T 604, plasma 144), one swap per (pair, donor) shared by all methods (`analyses/label_swap_null/make_contrasts_spread.py`, `submit_spread.sh`, `rmats_swap.sbatch`, `recalibrate_split.py`; results `analyses/label_swap_null/results/`). Rejection at p < .01 by stratum (cells of the rarer type >= 8,000 / 1,500-8,000 / < 1,500), halves pooled: LeafCutter 2.5-2.6% / 2.0-2.1% / 0.7-0.8%; scQuint 1.6% / 1.5-1.6% / 1.7%; rMATS 0.35-0.46% / 0.16-0.33% / 0.07-0.10%; Tealeaf 0.53-0.64% / 0.43-0.48% / 0.46-0.50%. LeafCutter's inflation is confined to pairs of abundant cell types. No method replicates a gene with swapped labels (LeafCutter 13 and 5 half discoveries, none shared).
+
+Recalibration. Empirical p-values against the null fail: the floor 1/(N+1) (about 2e-5) times the number of tests per gene in Simes leaves almost no gene below BH. A power-law tail fit F(t) = c t^a of the null (per method, half, stratum) gives p_cal = min(1, c p^a), which extrapolates far below the fitted range (replication rests on p of 1e-6 to 1e-10). Replicated genes, comparator universe, Tealeaf / comparator (raw: LeafCutter 64/126, rMATS 59/133, scQuint 53/67, MAJIQ 67/26, SUPPA2 54/0, SUPPA2-PA 51/0):
+
+| variant | LeafCutter | rMATS | scQuint | MAJIQ* | SUPPA2* | SUPPA2-PA* |
+|---|---|---|---|---|---|---|
+| fit 1e-4..0.05 | 82/77 | 82/108 | 77/76 | 90/26 | 78/0 | 77/0 |
+| fit 1e-3..0.05 | 82/77 | 80/158 | 76/70 | 83/26 | 75/0 | 72/0 |
+| penalize only, 1e-4 | 64/77 | 59/93 | 53/66 | 67/26 | 54/0 | 51/0 |
+| penalize only, 1e-3 | 64/77 | 59/125 | 53/66 | 67/26 | 54/0 | 51/0 |
+
+(*not recalibrated; Tealeaf changes through its own recalibration.) Robust: LeafCutter 126 -> 77 in every variant. Tealeaf's gain (64 -> about 82) comes from extrapolating its conservative tail (a about 1.1-1.25) and vanishes when only penalties are allowed. rMATS is unstable (93-158), so the swap null cannot settle it; its long-read agreement (64 of the top 100) is the stronger argument.
