@@ -19,4 +19,4 @@ mkdir -p $OUTDIR
 W=/scratch/$USER/swap_pairadise_$(basename $(dirname $OUTDIR))_$i; mkdir -p $W
 $HOME/venv/cpa_blackwell/bin/python $REPO/extra_scripts/run_rmats_comparison.py --contrasts $CONTRASTS --contrast-index $i --output $out \
   --old-output $R/count_pass --work-dir $W --jobs 1 --threads-per-job 4 --paired-stats --paired-jcec-only \
-  --rscript $HOME/rscript_bin/Rscript --r-libs-user $R_LIBS_USER
+  --count-type ${COUNT_TYPE:-JCEC} --rscript $HOME/rscript_bin/Rscript --r-libs-user $R_LIBS_USER

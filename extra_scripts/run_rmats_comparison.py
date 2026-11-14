@@ -45,6 +45,7 @@ def parse_args():
     parser.add_argument("--threads-per-job", type=int, default=2)
     parser.add_argument("--paired-stats", action="store_true")
     parser.add_argument("--paired-jcec-only", action="store_true", help="With --paired-stats, run only the JCEC paired model. The JC model is redundant when parsing JCEC results and approximately doubles runtime.")
+    parser.add_argument("--count-type", choices=("JCEC", "JC"), default="JCEC", help="With --paired-jcec-only, the counts the paired model is fitted to: JCEC (junction and exon-body reads) or JC (junction reads only); results are parsed from the same type.")
     parser.add_argument("--rscript", type=Path)
     parser.add_argument("--r-libs-user", type=Path)
     parser.add_argument("--old-output", type=Path, default=OLD_OUTPUT)
@@ -75,10 +76,10 @@ def run_command(command, args, cwd=None):
         raise RuntimeError(f"command failed with exit {error.returncode}: {shell_command}; stderr={detail}") from error
 
 
-def parse_result(path, contrast):
+def parse_result(path, contrast, count_type="JCEC"):
     rows = []
     for event_type in EVENT_TYPES:
-        result_path = path / f"{event_type}.MATS.JCEC.txt"
+        result_path = path / f"{event_type}.MATS.{count_type}.txt"
         if not result_path.exists():
             continue
         table = pd.read_csv(result_path, sep="\t", low_memory=False, na_values=["NA", "nan", "NaN"])
@@ -103,14 +104,14 @@ def parse_result(path, contrast):
         table["q_value"] = pd.to_numeric(table["FDR"], errors="coerce")
         table["effect_size"] = pd.to_numeric(table["IncLevelDifference"], errors="coerce")
         table["significant"] = table["q_value"].lt(0.05)
-        table["criterion"] = "rMATS JCEC FDR < 0.05"
+        table["criterion"] = f"rMATS {count_type} FDR < 0.05"
         table["gene_id"] = table["GeneID"].replace("nan", np.nan)
         table["gene_name"] = table["geneSymbol"].replace("nan", np.nan)
         rows.append(table[["method", "contrast_id", "effect", "stratum", "level_a", "level_b", "feature_id", "event_type", "event_id", "p_value", "q_value", "effect_size", "significant", "criterion", "gene_id", "gene_name"]])
     return pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
 
 
-def run_paired_jcec_only(work, args, threads):
+def run_paired_jcec_only(work, args, threads, count_type="JCEC"):
     """Run PAIRADISE on JCEC counts and assemble standard rMATS tables.
 
     rMATS' paired mode runs the same expensive PAIRADISE model for both JC and
@@ -120,20 +121,20 @@ def run_paired_jcec_only(work, args, threads):
     tmp_root = work / "tmp"
     tmp_root.mkdir(parents=True, exist_ok=True)
     for event_type in EVENT_TYPES:
-        count_path = work / f"JCEC.raw.input.{event_type}.txt"
+        count_path = work / f"{count_type}.raw.input.{event_type}.txt"
         from_gtf = work / f"fromGTF.{event_type}.txt"
         if not count_path.exists() or not from_gtf.exists():
             continue
         started = time.monotonic()
         print(f"PAIRADISE {work.name}, {event_type} started", flush=True)
-        sec_tmp = tmp_root / f"JCEC_{event_type}"
+        sec_tmp = tmp_root / f"{count_type}_{event_type}"
         sec_tmp.mkdir(parents=True, exist_ok=True)
         result_id = sec_tmp / "rMATS_result_ID.txt"
         result_inp = sec_tmp / "rMATS_result_INP.txt"
         result_il = sec_tmp / "rMATS_result_I-L.txt"
         result_fdr = sec_tmp / "rMATS_result_FDR.txt"
         result_paired = sec_tmp / "rMATS_result_paired.txt"
-        result_final = work / f"{event_type}.MATS.JCEC.txt"
+        result_final = work / f"{event_type}.MATS.{count_type}.txt"
         run_command(["python", str(PASTE), "-i", str(count_path), "--o1", str(result_id), "--o2", str(result_inp)], args)
         run_command(["python", str(INCLUSION_LEVEL), str(result_inp), str(result_il)], args)
         rscript = str(args.rscript) if args.rscript is not None else "Rscript"
@@ -155,13 +156,13 @@ def process_one(item):
     try:
         run_command(["python", str(PREPARE), "--new-output-dir", work, "--old-output-dir", old_output, "--group-1-indices", ",".join(map(str, contrast["indices_a"])), "--group-2-indices", ",".join(map(str, contrast["indices_b"]))], args)
         if args.paired_stats and args.paired_jcec_only:
-            run_paired_jcec_only(work, args, threads)
+            run_paired_jcec_only(work, args, threads, args.count_type)
         else:
             command = [RMATS, "--od", work, "--tmp", work / "tmp", "--task", "stat", "--nthread", str(threads)]
             if args.paired_stats:
                 command.append("--paired-stats")
             run_command(command, args, cwd=work)
-        result = parse_result(work, contrast)
+        result = parse_result(work, contrast, args.count_type if args.paired_stats and args.paired_jcec_only else "JCEC")
         result["fold"] = fold
         result["statistical_model"] = "PAIRADISE" if args.paired_stats else "unpaired"
         result["effect_orientation"] = "a_minus_b"

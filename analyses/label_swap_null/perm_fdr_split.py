@@ -10,7 +10,9 @@ genes with r <= t for the largest real t with estimated FDR <= .05. The statisti
 Usage: perm_fdr_split.py <output dir> <pair set: level_pairs.tsv> <null dir> [<null dir> ...]
 Each null dir holds fold{0,1}/{leafcutter/normalized/*.tsv, scquint/*.tsv, rmats/*.tsv.gz, tealeaf_{internal,terminal}/merged/paired_path.tsv}.
 Real tests: unfiltered comparator universe (split_universe_leaf5) and the pbmc_GSE320507_*_sh half fits; with
---coverage-filtered, the real tests are the coverage-null-filtered tables of analyses/coverage_null_filter_sh/pbmc, and each
+RMATS_JC=1 adds rMATS fitted to junction reads only ("rMATS JC": real fits in .cache/label_swap_all/real/fold{k}/rmats_jc, null fits in
+<null dir>/fold{k}/rmats_jc; unfiltered only). Replicated genes are written to replicated_genes*.tsv.
+With --coverage-filtered, the real tests are the coverage-null-filtered tables of analyses/coverage_null_filter_sh/pbmc, and each
 swapped-label fit is filtered by the same rule from its own coverage-only null (submit_coverage_null.sh: fold{k}/tnull_*),
 so the filter is part of the procedure that the permutation FDR calibrates."""
 import glob, json, sys
@@ -28,6 +30,10 @@ OUT, PAIRS, NULLS = Path(args[0]), Path(args[1]), [Path(a) for a in args[2:]]
 OUT.mkdir(parents=True, exist_ok=True)
 pairs = {"||".join(sorted(p)) for p in pd.read_csv(PAIRS, sep="\t")[["level_a", "level_b"]].itertuples(index=False)}
 METHODS = {"LeafCutter": "leafcutter/normalized/*.tsv", "scQuint": "scquint/*.tsv", "rMATS (paired)": "rmats/*.tsv.gz"}
+RMATS_JC = __import__("os").environ.get("RMATS_JC") == "1"
+if RMATS_JC:
+    assert not FILTERED, "rMATS JC has no coverage-only null"
+    METHODS["rMATS JC"] = "rmats_jc/*.tsv.gz"
 
 
 def gene(values):
@@ -74,6 +80,16 @@ universe["gene_id"] = gene(universe.gene_id)
 universe = universe.loc[universe.pair_id.isin(pairs)]
 real = {"Tealeaf": [tealeaf_half(lambda s, k: f".cache/binary_grid/pbmc_GSE320507_{s}_sh_{k}/merged/paired_path.tsv", k, lambda s, k: f".cache/targeted_null/pbmc_GSE320507_{s}_sh_{k}/null.tsv.gz") for k in (0, 1)]}
 real["Tealeaf"] = [t.loc[t.pair_id.isin(pairs)] for t in real["Tealeaf"]]
+if RMATS_JC:
+    jc = []
+    for k in (0, 1):
+        t = read_all(f".cache/label_swap_all/real/fold{k}/rmats_jc/*.tsv.gz")
+        jc.append(pd.DataFrame({"gene_id": gene(t.gene_id), "pair_id": ["||".join(sorted(x)) for x in zip(t.level_a, t.level_b)], "feature_id": t.feature_id, "p_value": t.p_value.fillna(1.), "comparison": "rMATS JC", "method": "rMATS JC", "fold": k}))
+    jc = pd.concat(jc, ignore_index=True)
+    jc = jc.loc[jc.pair_id.isin(pairs) & jc.gene_id.ne("nan")]
+    both = jc.groupby(["gene_id", "pair_id"]).fold.nunique().pipe(lambda x: x[x == 2]).index
+    jc = jc.set_index(["gene_id", "pair_id"]).loc[lambda d: d.index.isin(both)].reset_index()
+    universe = pd.concat([universe, jc[universe.columns]], ignore_index=True)
 genes_of = universe.drop_duplicates(["comparison", "feature_id"]).set_index(["comparison", "feature_id"]).gene_id
 
 # null tests, per draw
@@ -107,7 +123,7 @@ def gene_stat(halves, keys):
 
 
 def permutation_fdr(r, null_rs, level=.05):
-    """Number of genes replicated at estimated FDR <= level, the threshold, and the null count at it."""
+    """Number of genes replicated at estimated FDR <= level, the threshold, and the null count at it (r is a gene-indexed Series)."""
     order = np.sort(r.to_numpy())
     best = (0, np.nan, np.nan)
     for t in np.unique(order):
@@ -118,7 +134,7 @@ def permutation_fdr(r, null_rs, level=.05):
     return best
 
 
-rows = []
+rows, replicated = [], []
 tealeaf_keys = [set(zip(t.gene_id, t.pair_id)) for t in real["Tealeaf"]]
 for comparison, comp in universe.groupby("comparison"):
     if comparison not in METHODS:
@@ -134,5 +150,10 @@ for comparison, comp in universe.groupby("comparison"):
             bh = int((benjamini_hochberg(r.to_numpy()) <= .05).sum())
             null_bh = [int((benjamini_hochberg(x.to_numpy()) <= .05).sum()) for x in null_rs]
             rows.append(dict(comparison=comparison, method=method, universe=scope, genes=len(r), replicated_perm_fdr=n, threshold=t, null_genes_at_threshold=n_null, replicated_bh=bh, null_replicated_bh=np.mean(null_bh)))
+            q = benjamini_hochberg(r.to_numpy())
+            for procedure, chosen in (("permutation FDR", r.index[r <= t] if n else []), ("BH", r.index[q <= .05])):
+                replicated.extend(dict(comparison=comparison, method=method, universe=scope, procedure=procedure, gene_id=g) for g in chosen)
             print(rows[-1], flush=True)
-pd.DataFrame(rows).to_csv(OUT / f"perm_fdr_split{'_filtered' if FILTERED else ''}.tsv", sep="\t", index=False)
+suffix = ("_filtered" if FILTERED else "") + ("_jc" if RMATS_JC else "")
+pd.DataFrame(rows).to_csv(OUT / f"perm_fdr_split{suffix}.tsv", sep="\t", index=False)
+pd.DataFrame(replicated).to_csv(OUT / f"replicated_genes{suffix}.tsv", sep="\t", index=False)
