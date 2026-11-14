@@ -1,0 +1,13 @@
+comparison	method	universe	genes	replicated_perm_fdr	threshold	null_genes_at_threshold	replicated_bh	null_replicated_bh
+LeafCutter	Tealeaf	matched	3462	179	0.059602845355436605	8.5	64	0.0
+LeafCutter	LeafCutter	matched	3462	132	0.002540654542899	6.0	120	1.5
+LeafCutter	Tealeaf	comparator	3589	179	0.059602845355436605	8.5	64	0.0
+LeafCutter	LeafCutter	comparator	3589	137	0.002540654542899	6.0	128	1.5
+rMATS (paired)	Tealeaf	matched	8830	212	0.10125387345287899	10.5	64	0.0
+rMATS (paired)	rMATS (paired)	matched	8830	758	0.050140107259305275	37.5	190	0.0
+rMATS (paired)	Tealeaf	comparator	10180	216	0.1512171927576324	10.5	59	0.0
+rMATS (paired)	rMATS (paired)	comparator	10180	793	0.0583146706415227	39.5	184	0.0
+scQuint	Tealeaf	matched	6035	180	0.0758653047076443	7.5	57	0.0
+scQuint	scQuint	matched	6035	174	0.0308414525734836	8.5	66	0.0
+scQuint	Tealeaf	comparator	6403	181	0.0796431059952672	9.0	53	0.0
+scQuint	scQuint	comparator	6403	176	0.0288643385224326	8.0	67	0.0

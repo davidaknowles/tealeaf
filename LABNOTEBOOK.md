@@ -5259,3 +5259,17 @@ Recalibration. Empirical p-values against the null fail: the floor 1/(N+1) (abou
 | penalize only, 1e-3 | 64/77 | 59/125 | 53/66 | 67/26 | 54/0 | 51/0 |
 
 (*not recalibrated; Tealeaf changes through its own recalibration.) Robust: LeafCutter 126 -> 77 in every variant. Tealeaf's gain (64 -> about 82) comes from extrapolating its conservative tail (a about 1.1-1.25) and vanishes when only penalties are allowed. rMATS is unstable (93-158), so the swap null cannot settle it; its long-read agreement (64 of the top 100) is the stronger argument.
+
+### 2026-11-14 Blood split replication at a permutation FDR (label-swap null, all 171 pairs)
+
+Null: both halves of GSE320507, all 171 pairs, two swap draws (seeds 1, 2; `make_contrasts_spread.py --all-pairs`), LeafCutter (min_coverage 5), scQuint, rMATS (PAIRADISE JCEC) and Tealeaf (settings of the `_sh` half fits; `submit_all.sh`), and the coverage-only null on every swapped fit (`submit_coverage_null.sh`; Tealeaf's `assess_targeted_count_null.py` reads the swap from the fit settings through `tealeaf.sc.local_path_test.swap_entry_labels`). Replication (`perm_fdr_split.py`): gene statistic r = max over halves of the Simes-within-(gene, pair)-then-gene statistic, as in the reported split; a method replicates the genes with r <= t for the largest t with mean #{null r* <= t} / #{r <= t} <= .05 over the two draws. With `--coverage-filtered` the real and each swapped fit are filtered by their own coverage-only null. scQuint has no test for DC1 vs plasma cells in half 2 (real and swapped).
+
+Replicated genes, comparator universe, Tealeaf / comparator (filtered; unfiltered in brackets where different):
+
+| comparator | BH (Fig. 5a) | permutation FDR | Tealeaf threshold t | comparator t | null genes at t (T / C) |
+|---|---|---|---|---|---|
+| LeafCutter (3,588 genes) | 64 / 126 | 179 / 136 (137) | .060 | .0025 | 8.5 / 6.5 |
+| scQuint (6,402) | 53 / 67 | 181 / 175 (176) | .080 | .029 | 9.0 / 8.0 |
+| rMATS (10,179) | 59 / 133 | 216 / 701 (793) | .151 | .064 | 10.5 / 34.5 |
+
+Matched universes give the same picture (LeafCutter 179 / 131, scQuint 180 / 174, rMATS 212 / 678). LeafCutter's threshold is strict because its swapped fits are anticonservative (1.5 null genes replicate at BH); Tealeaf's and rMATS's loosen because their tests are conservative. The permutation controls replication of genes without an average cell-type effect; it cannot remove differences that are consistent between cell types but not splicing, which is what rMATS's 64 of 100 long-read agreement points to. Outputs `analyses/label_swap_null/perm171/`.
