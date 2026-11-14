@@ -30,7 +30,7 @@ import pandas as pd
 
 from tealeaf.sc.junction_benchmark import benjamini_hochberg
 from tealeaf.sc.local_path_reads import block_structure, structure_paths, path_read_opportunities, same_junction_groups
-from tealeaf.sc.local_path_test import fit_local_block, prepare_block_test
+from tealeaf.sc.local_path_test import fit_local_block, prepare_block_test, read_swapped_pairs, swap_entry_labels
 
 READ_LENGTH = 151
 
@@ -131,11 +131,7 @@ def main():
             pairs = {(gene.split(".")[0], tuple(sorted(pair.split("||")))) for gene, pair in zip(universe.gene_id, universe.pair_id)}
         lr_types = set(args.lr_cell_types.split(";")) if args.lr_cell_types else set()
         allowed = lambda gene, a, b: (gene.split(".")[0], (a, b)) in pairs or (a in lr_types and b in lr_types) or (a, b) in level_pairs
-    swapped = {}
-    if args.swapped_pairs is not None:
-        listed = pd.read_csv(args.swapped_pairs, sep="\t", dtype={"subject": str})
-        for a, b, subject in zip(listed.level_a, listed.level_b, listed.subject):
-            swapped.setdefault(tuple(sorted((a, b))), set()).add(subject)
+    swapped = read_swapped_pairs(args.swapped_pairs) if args.swapped_pairs is not None else {}
     tests = declared_tests(counts, blocks, subjects, args.min_subjects, args.min_molecules, allowed, args.unpaired)
     if args.count_only:
         print(f"cohort {args.cohort}: {len(tests)} tests, {len({key for key, _, _ in tests})} blocks", flush=True)
@@ -156,8 +152,7 @@ def main():
         levels = (level_a, level_b)
         entries = [entry for entry in grouped[key] if entry[1] in levels]
         if swapped:
-            exchange = swapped.get(levels, set())
-            entries = [(subject, levels[1 - levels.index(cell_type)] if subject in exchange else cell_type, *rest) for subject, cell_type, *rest in entries]
+            entries = swap_entry_labels(entries, levels, swapped)
         record = {"test_id": test_id, "block_id": block["block_id"], "gene_id": block["gene_id"], "contrast": "cell_type_pairwise", "level_a": level_a, "level_b": level_b, "method": "block-local path classes, random-subject Beta binomial", "n_annotated_paths": n_paths, "n_paths": 0, "path_signatures": "[]", "n_subjects": 0, "median_gene_umis": np.nan, "statistic": 0., "p_value": 1., "raw_p_value": 1., "converged": False, "mean_difference": "[]", "mean_difference_norm": np.nan, "screened": True, "error": ""}
         begin = time.monotonic()
         try:

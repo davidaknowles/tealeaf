@@ -78,6 +78,23 @@ class ProfiledPrecursorLikelihood(BinaryECPathLikelihood):
         return sum(self.primer_log_likelihood(row, t, primer) for primer in range(len(self.counts))) - self.offsets[row]
 
 
+def read_swapped_pairs(path):
+    """Within-subject label swaps {(level_a, level_b) sorted: set of subjects} from a table level_a, level_b, subject."""
+    import pandas as pd
+    table = pd.read_csv(path, sep="\t", dtype={"subject": str})
+    swapped = {}
+    for a, b, subject in zip(table.level_a, table.level_b, table.subject):
+        swapped.setdefault(tuple(sorted((a, b))), set()).add(subject)
+    return swapped
+
+
+def swap_entry_labels(entries, levels, swapped):
+    """Count entries (subject, cell type, ...) of a test of levels with the two cell-type labels exchanged for the
+    subjects that swapped (read_swapped_pairs) lists for that pair (a label-swap null)."""
+    exchange = swapped.get(tuple(sorted(levels)), set())
+    return [(subject, levels[1 - levels.index(cell_type)] if subject in exchange and cell_type in levels else cell_type, *rest) for subject, cell_type, *rest in entries]
+
+
 def prepare_block_test(block, entries, opportunities, n_paths, levels, min_share=.02, precursor=False, groups=None, min_subjects=4, min_molecules=20., primer_opportunities=None, unpaired=False):
     """Prune a block's paths for one contrast and project its read classes.
 

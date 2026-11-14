@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 from tealeaf.sc.local_path_reads import pooled_path_shares, same_junction_groups, simulate_null_class_counts
-from tealeaf.sc.local_path_test import PRIMERS, fit_local_block, prepare_block_test
+from tealeaf.sc.local_path_test import PRIMERS, fit_local_block, prepare_block_test, read_swapped_pairs, swap_entry_labels
 
 
 def main():
@@ -51,6 +51,7 @@ def main():
     fold = settings["subject_fold"]
     subjects = set(folds.subject if fold is None else folds.loc[folds.fold.eq(int(fold)), "subject"])
     local_reads = Path(settings["local_reads"])
+    swapped = read_swapped_pairs(settings["swapped_pairs"]) if settings.get("swapped_pairs") else {}  # fits of a label-swap null
     blocks = json.load(gzip.open(local_reads / "blocks.json.gz", "rt"))
     key_of = {block["block_id"]: key for key, block in blocks.items()}
     keys = {key_of[block] for block in selected.block_id}
@@ -70,6 +71,8 @@ def main():
             full = {int(mask): np.asarray(vector, dtype=float) for mask, vector in stored[key].items()}
             groups = same_junction_groups(block["paths"][:n_paths]) if settings["group_same_junctions"] else None
             entries = [entry for entry in grouped[key] if entry[1] in levels]
+            if swapped:
+                entries = swap_entry_labels(entries, levels, swapped)
             prepared = prepare_block_test(key, entries, full, n_paths, levels, settings["min_share"], settings["precursor"], groups, settings["min_subjects"], settings["min_molecules"], None, settings.get("unpaired", False))
         except (ValueError, KeyError) as exception:
             record["error"] = f"prepare: {exception}"
