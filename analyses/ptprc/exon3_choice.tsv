@@ -1,0 +1,23 @@
+source		exon 4 (RA)	exon 5 (RB)	exon 6 (RC)	exon 7 (RO)
+short	Classical_monocytes	1355	845	3	445
+short	Non-classical_monocytes	534	169	1	20
+short	Naive_B_cells	742	53	0	16
+short	Memory_B_cells	643	14	0	23
+short	Tcm/Naive_helper_T_cells	3957	1036	2	818
+short	Regulatory_T_cells	44	23	0	54
+short	Tem/Trm_cytotoxic_T_cells	361	219	1	128
+short	Tem/Temra_cytotoxic_T_cells	527	270	1	99
+short	MAIT_cells	66	54	0	43
+short	NK_cells	154	35	0	2
+short	CD16+_NK_cells	1507	141	0	10
+long	Classical_monocytes	983	1003	5	623
+long	Non-classical_monocytes	220	190	2	21
+long	Naive_B_cells	479	95	0	40
+long	Memory_B_cells	37	4	0	2
+long	Tcm/Naive_helper_T_cells	1214	916	5	482
+long	Regulatory_T_cells	2	9	0	29
+long	Tem/Trm_cytotoxic_T_cells	17	27	0	10
+long	Tem/Temra_cytotoxic_T_cells	81	66	0	23
+long	MAIT_cells	12	41	0	22
+long	NK_cells	201	128	0	31
+long	CD16+_NK_cells	163	66	0	6

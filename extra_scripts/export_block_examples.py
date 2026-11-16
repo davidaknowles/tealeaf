@@ -79,6 +79,7 @@ def main():
     parser.add_argument("--unpaired", action="store_true")
     parser.add_argument("--any-structure", action="store_true", help="do not require one internal and one terminal example")
     parser.add_argument("--max-window", type=float, help="maximum block window (bases), so the block view is readable")
+    parser.add_argument("--test-ids", nargs="+", help="export these tests (test_id) instead of selecting examples")
     args = parser.parse_args()
     blocks = json.load(gzip.open(args.internal_reads / "blocks.json.gz", "rt"))
     by_id = {block["block_id"]: key for key, block in blocks.items()}
@@ -101,9 +102,18 @@ def main():
     if args.max_window is not None:
         span = {block["block_id"]: max(b for path in block["paths"] for _, b in path) - min(a for path in block["paths"] for a, _ in path) for block in blocks.values()}
         candidates = candidates.loc[candidates.block_id.map(span).le(args.max_window)]
-    candidates = candidates.sort_values("mean_difference_norm", ascending=False).drop_duplicates("gene_id")
-    chosen = list(candidates.head(args.examples).itertuples())
-    for kind in ("internal", "terminal") if not args.any_structure else ():
+    if args.test_ids:
+        if args.assessment is not None:
+            candidates = fits.merge(mapping, on="test_id", how="left")
+        else:
+            candidates = fits
+        candidates = candidates.loc[candidates.test_id.isin(args.test_ids)]
+        missing = set(args.test_ids) - set(candidates.test_id)
+        if missing:
+            raise ValueError(f"tests not found: {sorted(missing)}")
+    candidates = candidates.sort_values("mean_difference_norm", ascending=False).drop_duplicates("test_id" if args.test_ids else "gene_id")
+    chosen = list(candidates.head(len(args.test_ids) if args.test_ids else args.examples).itertuples())
+    for kind in ("internal", "terminal") if not args.any_structure and not args.test_ids else ():
         if not any(row.structure == kind for row in chosen):
             extra = candidates.loc[candidates.structure.eq(kind)].head(1)
             chosen = chosen[:-1] + list(extra.itertuples())
