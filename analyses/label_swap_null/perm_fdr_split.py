@@ -7,6 +7,9 @@ swap per pair and donor in both halves), over the same keys. For threshold t the
 #{genes with r* <= t} / #{genes with r <= t} (the gene sets are equal), averaged over swap draws; a method replicates the
 genes with r <= t for the largest real t with estimated FDR <= .05. The statistics only rank genes.
 
+With --min-effect E, tests whose usage shift is below E get p = 1 before the gene statistic, in the real and the swapped
+fits: Tealeaf, the largest |mean path usage difference|; LeafCutter and scQuint, the largest change in junction share
+within the feature; rMATS, |IncLevelDifference| (compute_effects.py, .cache/label_swap_all/effects.parquet).
 Usage: perm_fdr_split.py <output dir> <pair set: level_pairs.tsv> <null dir> [<null dir> ...]
 Each null dir holds fold{0,1}/{leafcutter/normalized/*.tsv, scquint/*.tsv, rmats/*.tsv.gz, tealeaf_{internal,terminal}/merged/paired_path.tsv}.
 Real tests: unfiltered comparator universe (split_universe_leaf5) and the pbmc_GSE320507_*_sh half fits; with
@@ -24,7 +27,11 @@ from extra_scripts.evaluate_suppa2_statistics import grouped_pvalues
 from tealeaf.sc.coverage_null import coverage_flagged, drop_flagged
 from tealeaf.sc.junction_benchmark import benjamini_hochberg
 
-args = [a for a in sys.argv[1:] if not a.startswith("--")]
+argv = sys.argv[1:]
+MIN_EFFECT = None
+if "--min-effect" in argv:  # tests whose usage shift is below this get p = 1 (real and swapped fits alike)
+    MIN_EFFECT = float(argv.pop(argv.index("--min-effect") + 1)); argv.remove("--min-effect")
+args = [a for a in argv if not a.startswith("--")]
 FILTERED = "--coverage-filtered" in sys.argv
 OUT, PAIRS, NULLS = Path(args[0]), Path(args[1]), [Path(a) for a in args[2:]]
 OUT.mkdir(parents=True, exist_ok=True)
@@ -57,7 +64,27 @@ def tealeaf_half(root, k, null_root=None):
     if FILTERED:
         null = pd.concat([pd.read_csv(null_root(s, k), sep="\t") for s in ("internal", "terminal")], ignore_index=True)
         t = drop_flagged(t, coverage_flagged(null, ["test_id"]), ["test_id"])
-    return pd.DataFrame({"gene_id": gene(t.gene_id), "pair_id": t.pair_id, "p_value": t.p_value})
+    p = t.p_value.to_numpy(float).copy()
+    if MIN_EFFECT is not None:
+        shift = np.array([np.max(np.abs(json.loads(v))) if isinstance(v, str) and v not in ("[]", "") else np.nan for v in t.mean_difference])
+        p[~(shift >= MIN_EFFECT)] = 1.
+    return pd.DataFrame({"gene_id": gene(t.gene_id), "pair_id": t.pair_id, "p_value": p})
+
+
+EFFECTS = None
+if MIN_EFFECT is not None:
+    EFFECTS = pd.read_parquet(".cache/label_swap_all/effects.parquet")
+    EFFECTS = {key: g.groupby(["pair_id", "feature_id"]).effect.max() for key, g in EFFECTS.groupby(["labeling", "method", "fold"])}
+
+
+def apply_min_effect(table, labeling, method, k):
+    """p = 1 for tests (pair_id, feature_id) whose usage shift is below MIN_EFFECT or unknown."""
+    if MIN_EFFECT is None:
+        return table
+    effect = EFFECTS[(labeling, method, k)].reindex(pd.MultiIndex.from_arrays([table.pair_id, table.feature_id])).to_numpy()
+    table = table.copy()
+    table.loc[~(effect >= MIN_EFFECT), "p_value"] = 1.
+    return table
 
 
 def comparator_flags(root, k, method):
@@ -78,6 +105,8 @@ def comparator_flags(root, k, method):
 universe = pd.read_csv("analyses/coverage_null_filter_sh/pbmc/comparator_tests_filtered.tsv.gz" if FILTERED else "analyses/pbmc/GSE320507_comparators/split_universe_leaf5/comparator_tests.tsv.gz", sep="\t", dtype={"gene_id": str}, low_memory=False)
 universe["gene_id"] = gene(universe.gene_id)
 universe = universe.loc[universe.pair_id.isin(pairs)]
+if MIN_EFFECT is not None:
+    universe = pd.concat([apply_min_effect(g, "real", method, int(k)) for (method, k), g in universe.groupby(["comparison", "fold"]) if method in ("LeafCutter", "scQuint", "rMATS (paired)")] + [g for method, g in universe.groupby("comparison") if method not in ("LeafCutter", "scQuint", "rMATS (paired)")], ignore_index=True)
 real = {"Tealeaf": [tealeaf_half(lambda s, k: f".cache/binary_grid/pbmc_GSE320507_{s}_sh_{k}/merged/paired_path.tsv", k, lambda s, k: f".cache/targeted_null/pbmc_GSE320507_{s}_sh_{k}/null.tsv.gz") for k in (0, 1)]}
 real["Tealeaf"] = [t.loc[t.pair_id.isin(pairs)] for t in real["Tealeaf"]]
 if RMATS_JC:
@@ -106,6 +135,8 @@ for root in NULLS:
             if FILTERED:
                 flagged = comparator_flags(root, k, method)
                 half = half.loc[[(p, f) not in flagged for p, f in zip(half.pair_id, half.feature_id)]]
+            if MIN_EFFECT is not None and method != "rMATS JC":
+                half = apply_min_effect(half, root.name, method, k)
             halves.append(half[["gene_id", "pair_id", "p_value"]])
         draw[method] = halves
     nulls.append(draw)
@@ -154,6 +185,6 @@ for comparison, comp in universe.groupby("comparison"):
             for procedure, chosen in (("permutation FDR", r.index[r <= t] if n else []), ("BH", r.index[q <= .05])):
                 replicated.extend(dict(comparison=comparison, method=method, universe=scope, procedure=procedure, gene_id=g) for g in chosen)
             print(rows[-1], flush=True)
-suffix = ("_filtered" if FILTERED else "") + ("_jc" if RMATS_JC else "")
+suffix = ("_filtered" if FILTERED else "") + ("_jc" if RMATS_JC else "") + (f"_min{MIN_EFFECT:g}" if MIN_EFFECT is not None else "")
 pd.DataFrame(rows).to_csv(OUT / f"perm_fdr_split{suffix}.tsv", sep="\t", index=False)
 pd.DataFrame(replicated).to_csv(OUT / f"replicated_genes{suffix}.tsv", sep="\t", index=False)
