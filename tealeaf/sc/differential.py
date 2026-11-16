@@ -432,6 +432,23 @@ def _constitutive_intervals(exon_chains):
     return _merge_intervals(constitutive)
 
 
+def _local_anchor_intervals(exon_chains):
+    """Intervals covered by an exon of every transcript whose span (first exon start to last exon end) contains them,
+    and by at least two transcripts. Unlike _constitutive_intervals, a transcript that starts after or ends before an
+    interval does not prevent it from being an anchor."""
+    boundaries = sorted({coordinate for chain in exon_chains for interval in chain for coordinate in interval})
+    spans = [(chain[0][0], chain[-1][1]) for chain in exon_chains]
+    local = []
+    for start, end in zip(boundaries[:-1], boundaries[1:]):
+        if start == end:
+            continue
+        spanning = [chain for chain, (first, last) in zip(exon_chains, spans) if first <= start and end <= last]
+        covered = sum(any(exon_start <= start and end <= exon_end for exon_start, exon_end in chain) for chain in spanning)
+        if covered >= 2 and covered == len(spanning):
+            local.append((start, end))
+    return _merge_intervals(local)
+
+
 def _clipped_signature(chain, start, end, strand):
     intervals = []
     for exon_start, exon_end in chain:
@@ -443,12 +460,19 @@ def _clipped_signature(chain, start, end, strand):
     return intervals if strand == "+" else tuple(reversed(intervals))
 
 
-def build_splice_blocks(gtf_path, allowed_transcripts=None):
+def build_splice_blocks(gtf_path, allowed_transcripts=None, local_anchors=False, local_only=False):
     """Construct alternative paths between consecutive constitutive regions.
 
     Terminal pseudo-anchors are included, so alternative first and last
     regions are represented. Genes without a shared constitutive region get
     one whole-gene block.
+
+    With local_anchors, blocks "<gene>:L<k>" are added between consecutive local anchors (_local_anchor_intervals), for
+    windows that are not already the window of a block between constitutive anchors. Their paths are the distinct exon
+    chains of the transcripts overlapping the window, clipped to the window plus both anchors, with the anchors held in
+    the signatures (left_anchor and right_anchor are None); a transcript that starts or ends inside the window gives a
+    path with its own first or last exon, so the block is terminal. Transcripts not overlapping the window have path
+    index -1. local_only keeps only these blocks.
     """
     genes = read_gtf_exons(gtf_path, allowed_transcripts)
     blocks = []
@@ -472,7 +496,8 @@ def build_splice_blocks(gtf_path, allowed_transcripts=None):
         if record["strand"] == "-":
             candidate_blocks.reverse()
         block_number = 0
-        for left, right, start, end in candidate_blocks:
+        global_windows = {(left[1], right[0]) for left, right, _, _ in candidate_blocks if left is not None and right is not None}
+        for left, right, start, end in candidate_blocks if not local_only else ():
             if start >= end:
                 continue
             signatures = tuple(
@@ -500,6 +525,35 @@ def build_splice_blocks(gtf_path, allowed_transcripts=None):
                     path_signatures=tuple(unique),
                 )
             )
+        if local_anchors:
+            local = _local_anchor_intervals(chains)
+            pairs = list(zip(local[:-1], local[1:]))
+            if record["strand"] == "-":
+                pairs.reverse()
+            local_number = 0
+            for left, right in pairs:
+                if left[1] >= right[0] or (left[1], right[0]) in global_windows:
+                    continue
+                overlapping = [index for index, chain in enumerate(chains) if chain[0][0] < right[1] and left[0] < chain[-1][1]]
+                signatures = {index: _clipped_signature(chains[index], left[0], right[1], record["strand"]) for index in overlapping}
+                unique = sorted(set(signatures.values()))
+                if len(unique) < 2:
+                    continue
+                path_of = {signature: index for index, signature in enumerate(unique)}
+                local_number += 1
+                blocks.append(
+                    SpliceBlock(
+                        gene_id=gene,
+                        block_id=f"{gene}:L{local_number}",
+                        chromosome=record["chromosome"],
+                        strand=record["strand"],
+                        left_anchor=None,
+                        right_anchor=None,
+                        transcripts=transcripts,
+                        path_index=tuple(path_of[signatures[index]] if index in signatures else -1 for index in range(len(chains))),
+                        path_signatures=tuple(unique),
+                    )
+                )
     return blocks
 
 

@@ -125,7 +125,8 @@ def annotated_blocks(candidate_caches, block_cache, max_paths=10, junctions=None
             continue
         paths = [block_path_exons(anchor(block["left_anchor"]), signature, anchor(block["right_anchor"])) for signature in signatures]
         window = (min(a for path in paths for a, _ in path), max(b for path in paths for _, b in path))
-        windows[block["gene_id"]].append(window)
+        if ":L" not in block["block_id"]:  # local-anchor blocks overlap annotated blocks; new-block windows stay as before
+            windows[block["gene_id"]].append(window)
         signatures, paths = drop_precursor_copies(signatures, paths, window)
         if not 2 <= len(signatures) <= max_paths:
             continue
