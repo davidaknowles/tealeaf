@@ -38,6 +38,7 @@ OUT.mkdir(parents=True, exist_ok=True)
 pairs = {"||".join(sorted(p)) for p in pd.read_csv(PAIRS, sep="\t")[["level_a", "level_b"]].itertuples(index=False)}
 METHODS = {"LeafCutter": "leafcutter/normalized/*.tsv", "scQuint": "scquint/*.tsv", "rMATS (paired)": "rmats/*.tsv.gz"}
 RMATS_JC = __import__("os").environ.get("RMATS_JC") == "1"
+LOCAL = __import__("os").environ.get("TEALEAF_LOCAL") == "1"  # Tealeaf with local-anchor blocks: real fits pbmc_GSE320507_*_shL, swapped fits tealeaf_* plus tealeaf_*_L
 if RMATS_JC:
     assert not FILTERED, "rMATS JC has no coverage-only null"
     METHODS["rMATS JC"] = "rmats_jc/*.tsv.gz"
@@ -59,10 +60,12 @@ def read_all(pattern):
 
 def tealeaf_half(root, k, null_root=None):
     """Tealeaf tests of half k (real or swapped labels), without the tests flagged by the coverage-only null in
-    null_root(structure, k) (null.tsv.gz of assess_targeted_count_null.py) when filtering."""
-    t = pd.concat([fit_table(root(s, k)) for s in ("internal", "terminal")], ignore_index=True)
+    null_root(structure, k) (null.tsv.gz of assess_targeted_count_null.py) when filtering. root and null_root may
+    return several paths (e.g. existing and local-anchor blocks), which are concatenated."""
+    many = lambda f, s: f(s, k) if isinstance(f(s, k), list) else [f(s, k)]
+    t = pd.concat([fit_table(path) for s in ("internal", "terminal") for path in many(root, s)], ignore_index=True)
     if FILTERED:
-        null = pd.concat([pd.read_csv(null_root(s, k), sep="\t") for s in ("internal", "terminal")], ignore_index=True)
+        null = pd.concat([pd.read_csv(path, sep="\t") for s in ("internal", "terminal") for path in many(null_root, s)], ignore_index=True)
         t = drop_flagged(t, coverage_flagged(null, ["test_id"]), ["test_id"])
     p = t.p_value.to_numpy(float).copy()
     if MIN_EFFECT is not None:
@@ -107,7 +110,8 @@ universe["gene_id"] = gene(universe.gene_id)
 universe = universe.loc[universe.pair_id.isin(pairs)]
 if MIN_EFFECT is not None:
     universe = pd.concat([apply_min_effect(g, "real", method, int(k)) for (method, k), g in universe.groupby(["comparison", "fold"]) if method in ("LeafCutter", "scQuint", "rMATS (paired)")] + [g for method, g in universe.groupby("comparison") if method not in ("LeafCutter", "scQuint", "rMATS (paired)")], ignore_index=True)
-real = {"Tealeaf": [tealeaf_half(lambda s, k: f".cache/binary_grid/pbmc_GSE320507_{s}_sh_{k}/merged/paired_path.tsv", k, lambda s, k: f".cache/targeted_null/pbmc_GSE320507_{s}_sh_{k}/null.tsv.gz") for k in (0, 1)]}
+TAG = "shL" if LOCAL else "sh"
+real = {"Tealeaf": [tealeaf_half(lambda s, k: f".cache/binary_grid/pbmc_GSE320507_{s}_{TAG}_{k}/merged/paired_path.tsv", k, lambda s, k: f".cache/targeted_null/pbmc_GSE320507_{s}_{TAG}_{k}/null.tsv.gz") for k in (0, 1)]}
 real["Tealeaf"] = [t.loc[t.pair_id.isin(pairs)] for t in real["Tealeaf"]]
 if RMATS_JC:
     jc = []
@@ -124,7 +128,8 @@ genes_of = universe.drop_duplicates(["comparison", "feature_id"]).set_index(["co
 # null tests, per draw
 nulls = []
 for root in NULLS:
-    draw = {"Tealeaf": [tealeaf_half(lambda s, k: root / f"fold{k}/tealeaf_{s}/merged/paired_path.tsv", k, lambda s, k: root / f"fold{k}/tnull_tealeaf_{s}/null.tsv.gz") for k in (0, 1)]}
+    parts = ("", "_L") if LOCAL else ("",)
+    draw = {"Tealeaf": [tealeaf_half(lambda s, k: [root / f"fold{k}/tealeaf_{s}{x}/merged/paired_path.tsv" for x in parts], k, lambda s, k: [root / f"fold{k}/tnull_tealeaf_{s}{x}/null.tsv.gz" for x in parts]) for k in (0, 1)]}
     for method, pattern in METHODS.items():
         halves = []
         for k in (0, 1):
@@ -185,6 +190,6 @@ for comparison, comp in universe.groupby("comparison"):
             for procedure, chosen in (("permutation FDR", r.index[r <= t] if n else []), ("BH", r.index[q <= .05])):
                 replicated.extend(dict(comparison=comparison, method=method, universe=scope, procedure=procedure, gene_id=g) for g in chosen)
             print(rows[-1], flush=True)
-suffix = ("_filtered" if FILTERED else "") + ("_jc" if RMATS_JC else "") + (f"_min{MIN_EFFECT:g}" if MIN_EFFECT is not None else "")
+suffix = ("_local" if LOCAL else "") + ("_filtered" if FILTERED else "") + ("_jc" if RMATS_JC else "") + (f"_min{MIN_EFFECT:g}" if MIN_EFFECT is not None else "")
 pd.DataFrame(rows).to_csv(OUT / f"perm_fdr_split{suffix}.tsv", sep="\t", index=False)
 pd.DataFrame(replicated).to_csv(OUT / f"replicated_genes{suffix}.tsv", sep="\t", index=False)
