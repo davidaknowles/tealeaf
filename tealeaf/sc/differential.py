@@ -460,7 +460,41 @@ def _clipped_signature(chain, start, end, strand):
     return intervals if strand == "+" else tuple(reversed(intervals))
 
 
-def build_splice_blocks(gtf_path, allowed_transcripts=None, local_anchors=False, local_only=False):
+def _local_rule_blocks(gene, record, transcripts, chains):
+    """Blocks of one gene under the local-anchor rule (build_splice_blocks anchor_rule="local").
+
+    Regions run from the gene start to the end of the first local anchor, between consecutive local anchors (anchors
+    included) and from the start of the last local anchor to the gene end; a gene without a local anchor has one
+    whole-gene region. A region's paths are the distinct exon chains of the transcripts overlapping it, clipped to it,
+    so anchors are part of the signatures (left_anchor and right_anchor are None) and a transcript that starts or ends
+    inside a region gives a path with its own first or last exon.
+    """
+    anchors = _local_anchor_intervals(chains)
+    gene_start = min(chain[0][0] for chain in chains)
+    gene_end = max(chain[-1][1] for chain in chains)
+    if anchors:
+        regions = [(gene_start, anchors[0][1], gene_start < anchors[0][0])]
+        regions += [(left[0], right[1], left[1] < right[0]) for left, right in zip(anchors[:-1], anchors[1:])]
+        regions.append((anchors[-1][0], gene_end, anchors[-1][1] < gene_end))
+    else:
+        regions = [(gene_start, gene_end, True)]
+    if record["strand"] == "-":
+        regions.reverse()
+    blocks, number = [], 0
+    for start, end, open_window in regions:
+        if not open_window:
+            continue
+        signatures = {index: _clipped_signature(chain, start, end, record["strand"]) for index, chain in enumerate(chains) if chain[0][0] < end and start < chain[-1][1]}
+        unique = sorted(set(signatures.values()))
+        if len(unique) < 2:
+            continue
+        path_of = {signature: index for index, signature in enumerate(unique)}
+        number += 1
+        blocks.append(SpliceBlock(gene_id=gene, block_id=f"{gene}:B{number}", chromosome=record["chromosome"], strand=record["strand"], left_anchor=None, right_anchor=None, transcripts=transcripts, path_index=tuple(path_of[signatures[index]] if index in signatures else -1 for index in range(len(chains))), path_signatures=tuple(unique)))
+    return blocks
+
+
+def build_splice_blocks(gtf_path, allowed_transcripts=None, local_anchors=False, local_only=False, anchor_rule="global"):
     """Construct alternative paths between consecutive constitutive regions.
 
     Terminal pseudo-anchors are included, so alternative first and last
@@ -473,6 +507,9 @@ def build_splice_blocks(gtf_path, allowed_transcripts=None, local_anchors=False,
     the signatures (left_anchor and right_anchor are None); a transcript that starts or ends inside the window gives a
     path with its own first or last exon, so the block is terminal. Transcripts not overlapping the window have path
     index -1. local_only keeps only these blocks.
+
+    anchor_rule="local" uses local anchors for every block instead (_local_rule_blocks): one consistent definition in
+    which the current blocks without a local anchor inside are unchanged in content, and the others are split.
     """
     genes = read_gtf_exons(gtf_path, allowed_transcripts)
     blocks = []
@@ -482,6 +519,9 @@ def build_splice_blocks(gtf_path, allowed_transcripts=None, local_anchors=False,
             continue
         transcripts = tuple(item[0] for item in transcript_items)
         chains = tuple(item[1] for item in transcript_items)
+        if anchor_rule == "local":
+            blocks.extend(_local_rule_blocks(gene, record, transcripts, chains))
+            continue
         anchors = _constitutive_intervals(chains)
         gene_start = min(start for chain in chains for start, _ in chain)
         gene_end = max(end for chain in chains for _, end in chain)

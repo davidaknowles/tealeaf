@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Write a splice-block cache (tealeaf.sc.differential.build_splice_blocks) in the format read by
 tealeaf.sc.local_blocks.annotated_blocks. --local-anchors adds blocks between local anchors ("<gene>:L<k>");
---local-only writes only those."""
+--local-only writes only those. --anchor-rule local builds every block from local anchors."""
 import argparse
 import gzip
 import json
@@ -16,8 +16,9 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--local-anchors", action="store_true")
     parser.add_argument("--local-only", action="store_true")
+    parser.add_argument("--anchor-rule", choices=("global", "local"), default="global", help="local: every block from local anchors (one consistent definition)")
     args = parser.parse_args()
-    blocks = build_splice_blocks(args.gtf, local_anchors=args.local_anchors or args.local_only, local_only=args.local_only)
+    blocks = build_splice_blocks(args.gtf, local_anchors=args.local_anchors or args.local_only, local_only=args.local_only, anchor_rule=args.anchor_rule)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with gzip.open(args.output, "wt") as handle:
         json.dump([{"gene_id": b.gene_id, "block_id": b.block_id, "chromosome": b.chromosome, "strand": b.strand, "left_anchor": b.left_anchor, "right_anchor": b.right_anchor, "transcripts": b.transcripts, "path_index": b.path_index, "path_signatures": b.path_signatures} for b in blocks], handle)

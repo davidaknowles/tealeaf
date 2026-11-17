@@ -293,7 +293,7 @@ def stage_junctions(args):
                 libraries.setdefault(key, set()).add(index)
                 strands[key] = strand
     support = {key: (reads[key], len(libraries[key]), strands[key]) for key in reads}
-    if not args.blocks_only:
+    if not args.blocks_only and not args.no_junction_table:
         pd.DataFrame([(c, d, a, *value) for (c, d, a), value in sorted(support.items())], columns=["chromosome", "donor", "acceptor", "reads", "libraries", "strand"]).to_csv(args.output_dir / f"junctions{suffix(args)}.tsv.gz", sep="\t", index=False)
     genes = read_gtf_exons(args.gtf)
     options = {"min_reads": args.novel_min_reads, "min_libraries": args.novel_min_libraries, "max_novel": args.novel_max, "terminal_length": args.novel_terminal_length}
@@ -429,6 +429,7 @@ def main():
     parser.add_argument("--collate-dir", type=Path, help="collate: write the collated collections here instead of --collection-dir")
     parser.add_argument("--read-length", type=int, default=READ_LENGTH, help="collate: read 1 length for read opportunities (151 for the microglia data)")
     parser.add_argument("--max-paths", type=int, default=30)
+    parser.add_argument("--no-junction-table", action="store_true", help="junctions: do not rewrite the junction table (e.g. a new block set from an existing run)")
     parser.add_argument("--blocks-only", action="store_true", help="junctions: write only --blocks for the --block-cache blocks (with novel paths), without the junction table or new blocks from unannotated junctions (e.g. local-anchor blocks added to an existing run)")
     parser.add_argument("--novel-min-reads", type=int, default=20)
     parser.add_argument("--novel-min-libraries", type=int, default=4)

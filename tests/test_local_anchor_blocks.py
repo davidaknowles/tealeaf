@@ -52,3 +52,16 @@ def test_minus_strand_local_blocks(tmp_path: Path):
     write_gtf(gtf, TRANSCRIPTS, strand="-")
     local = [b for b in build_splice_blocks(gtf, local_anchors=True) if ":L" in b.block_id]
     assert any(len(b.path_signatures) == 4 for b in local)
+
+
+def test_local_rule_is_one_consistent_block_set(tmp_path: Path):
+    gtf = tmp_path / "g.gtf"
+    write_gtf(gtf, TRANSCRIPTS)
+    blocks = build_splice_blocks(gtf, anchor_rule="local")
+    assert all(":B" in b.block_id for b in blocks)
+    contents = [{tuple(block_path_exons(None, s, None)) for s in b.path_signatures} for b in blocks]
+    # the cassette combinations form one block, as with the added local blocks
+    cassette = {((100, 150), (300, 400), (500, 600), (700, 800), (900, 950)), ((100, 150), (300, 400), (900, 950)), ((100, 150), (500, 600), (900, 950)), ((100, 150), (900, 950))}
+    assert cassette in contents
+    # no block spans the whole gene any more
+    assert all(max(e for p in c for _, e in p) - min(a for p in c for a, _ in p) < 1500 for c in contents)
