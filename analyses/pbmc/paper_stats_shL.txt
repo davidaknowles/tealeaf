@@ -1,0 +1,15 @@
+GSE320507: 70643 cells (half-cell barcodes 141286), 38 donors, 19 types, 171 pairs; full tests 1759000 (internal 1056595), BH 3305, (gene, pair) BH 1887 in 463 genes
+GSE327907: 24314 cells (half-cell barcodes 48628), 12 donors, 10 types, 43 pairs; full tests 237922 (internal 132860), BH 679, (gene, pair) BH 388 in 220 genes
+GSE334840: 23000 cells (half-cell barcodes 46000), 8 donors, 8 types, 28 pairs; full tests 95895 (internal 54239), BH 21, (gene, pair) BH 13 in 7 genes
+                GSE320507  GSE327907  GSE334840  brain v4
+bin                                                      
+[20.0, 50.0)        0.024      0.027      0.014     0.092
+[50.0, 100.0)       0.034      0.040      0.023     0.106
+[100.0, 200.0)      0.033      0.028      0.023     0.096
+[200.0, inf)        0.066      0.060      0.000     0.194
+                  GSE320507  GSE327907  GSE334840  brain v4
+median_gene_umis                                           
+[20.0, 50.0)          30820       9741       4897      3041
+[50.0, 100.0)          5637       2326       1034       557
+[100.0, 200.0)         1274        780        266       178
+[200.0, inf)            244        183         40       108

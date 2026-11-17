@@ -1,0 +1,37 @@
+comparison	method	universe	procedure	genes	evaluable_genes	gene_agreement	evaluable_tests	test_agreement
+LeafCutter	LeafCutter	comparator	BH	126	122	0.9180327868852459	5467	0.5942930309127492
+LeafCutter	LeafCutter	comparator	permutation FDR	136	132	0.9166666666666666	5853	0.5913206902443191
+LeafCutter	LeafCutter	comparator	added by permutation FDR	10	10	0.9	386	0.5492227979274611
+LeafCutter	LeafCutter	matched	BH	120	116	0.9310344827586207	5356	0.5950336071695295
+LeafCutter	LeafCutter	matched	permutation FDR	131	127	0.9212598425196851	5785	0.592048401037165
+LeafCutter	LeafCutter	matched	added by permutation FDR	11	11	0.8181818181818182	429	0.5547785547785548
+LeafCutter	Tealeaf	comparator	BH	64	55	0.9090909090909091	1535	0.6462540716612378
+LeafCutter	Tealeaf	comparator	permutation FDR	193	155	0.8258064516129032	3730	0.6053619302949061
+LeafCutter	Tealeaf	comparator	added by permutation FDR	129	100	0.78	2195	0.5767653758542142
+LeafCutter	Tealeaf	matched	BH	64	55	0.9090909090909091	1535	0.6462540716612378
+LeafCutter	Tealeaf	matched	permutation FDR	193	155	0.8258064516129032	3730	0.6053619302949061
+LeafCutter	Tealeaf	matched	added by permutation FDR	129	100	0.78	2195	0.5767653758542142
+rMATS (paired)	Tealeaf	comparator	BH	58	38	0.8947368421052632	1191	0.6515533165407221
+rMATS (paired)	Tealeaf	comparator	permutation FDR	221	141	0.8014184397163121	3391	0.6119138897080507
+rMATS (paired)	Tealeaf	comparator	added by permutation FDR	163	103	0.7669902912621359	2200	0.5904545454545455
+rMATS (paired)	Tealeaf	matched	BH	65	43	0.9069767441860465	1223	0.6549468520032706
+rMATS (paired)	Tealeaf	matched	permutation FDR	232	145	0.7931034482758621	3321	0.6115627822944896
+rMATS (paired)	Tealeaf	matched	added by permutation FDR	167	102	0.7450980392156863	2098	0.5862726406101049
+rMATS (paired)	rMATS (paired)	comparator	BH	133	73	0.5342465753424658	668	0.5748502994011976
+rMATS (paired)	rMATS (paired)	comparator	permutation FDR	701	252	0.6190476190476191	1156	0.5891003460207612
+rMATS (paired)	rMATS (paired)	comparator	added by permutation FDR	568	179	0.6536312849162011	488	0.6086065573770492
+rMATS (paired)	rMATS (paired)	matched	BH	135	72	0.5555555555555556	642	0.5981308411214953
+rMATS (paired)	rMATS (paired)	matched	permutation FDR	688	239	0.6359832635983264	1082	0.5998151571164511
+rMATS (paired)	rMATS (paired)	matched	added by permutation FDR	553	167	0.6706586826347305	440	0.6022727272727273
+scQuint	Tealeaf	comparator	BH	53	42	0.9047619047619048	1244	0.6511254019292605
+scQuint	Tealeaf	comparator	permutation FDR	183	134	0.835820895522388	3309	0.6134783922635237
+scQuint	Tealeaf	comparator	added by permutation FDR	130	92	0.8043478260869565	2065	0.5907990314769975
+scQuint	Tealeaf	matched	BH	55	44	0.9090909090909091	1265	0.6529644268774704
+scQuint	Tealeaf	matched	permutation FDR	183	134	0.835820895522388	3319	0.6143416691774631
+scQuint	Tealeaf	matched	added by permutation FDR	128	90	0.8	2054	0.5905550146056475
+scQuint	scQuint	comparator	BH	67	44	0.7045454545454546	1039	0.6246390760346487
+scQuint	scQuint	comparator	permutation FDR	175	90	0.7666666666666667	1899	0.6334913112164297
+scQuint	scQuint	comparator	added by permutation FDR	108	46	0.8260869565217391	860	0.6441860465116279
+scQuint	scQuint	matched	BH	66	43	0.7209302325581395	1031	0.6275460717749758
+scQuint	scQuint	matched	permutation FDR	175	89	0.7752808988764045	1876	0.6348614072494669
+scQuint	scQuint	matched	added by permutation FDR	109	46	0.8260869565217391	845	0.6437869822485207
