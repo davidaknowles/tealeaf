@@ -136,6 +136,7 @@ def annotated_blocks(candidate_caches, block_cache, max_paths=10, junctions=None
         signatures = signatures + [chain for chain, _ in novel]
         paths = paths + [chain for chain, _ in novel]
         blocks[path_key(block["block_id"], signatures)] = {"block_id": block["block_id"], "gene_id": block["gene_id"], "chromosome": block["chromosome"], "strand": block["strand"], "signatures": signatures, "n_annotated": len(signatures) - len(novel), "novel_reads": [reads for _, reads in novel], "paths": paths + [[window]], "precursor": True}
+    seen = {(block["gene_id"], frozenset(tuple(map(tuple, chain)) for chain in block["signatures"])) for block in blocks.values()}
     if junctions is not None and gene_transcripts is not None:
         for gene in sorted(genes):
             if gene not in gene_transcripts:
@@ -150,6 +151,10 @@ def annotated_blocks(candidate_caches, block_cache, max_paths=10, junctions=None
                 signatures = annotated + [chain for chain, _ in novel]
                 if len(signatures) < 2:
                     continue
+                content = (gene, frozenset(tuple(map(tuple, chain)) for chain in signatures))
+                if content in seen:  # the same paths as an earlier block (e.g. two windows around one novel junction)
+                    continue
+                seen.add(content)
                 block_id = f"{gene}:N{index + 1}"
                 blocks[path_key(block_id, signatures)] = {"block_id": block_id, "gene_id": gene, "chromosome": record["chromosome"], "strand": record["strand"], "signatures": signatures, "n_annotated": len(annotated), "novel_reads": [reads for _, reads in novel], "paths": signatures + [[window]], "precursor": True}
     return blocks
