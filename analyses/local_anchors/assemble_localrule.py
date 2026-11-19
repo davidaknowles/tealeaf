@@ -9,7 +9,10 @@ contributes only its matched blocks, renamed to the local-rule block ids and key
   the donor-group collection disease_localrule and models pbmc_GSE320507_disease_<structure>_lr);
 - label-swap null fits of GSE320507 (.cache/label_swap_all/seed*/fold*/tealeaf_<structure>{,_L,_N} and their
   coverage nulls) -> tealeaf_<structure>_LR and tnull_tealeaf_<structure>_LR.
-Usage: assemble_localrule.py <brain|GSE320507|GSE327907|GSE334840>"""
+Usage: assemble_localrule.py <brain|GSE320507|GSE327907|GSE334840> [hier]
+With hier, the blocks of the hierarchical rule (<run>/hier_match.tsv; gene-wide blocks plus differing local-rule blocks)
+are assembled instead, into models suffixed hl (brain *_native_v4hl, blood *_hl), collection_hier, disease_hier,
+long-read mappings *_lr_hl / lr_brain_v4hl and swapped fits tealeaf_<structure>_HL."""
 import gzip, json, shutil, sys
 from pathlib import Path
 import pandas as pd
@@ -17,18 +20,20 @@ sys.path.insert(0, ".")
 from tealeaf.sc.junction_benchmark import benjamini_hochberg
 
 DS = sys.argv[1]
+HIER = len(sys.argv) > 2 and sys.argv[2] == "hier"
+OUT_TAG, MATCH, COLL_OUT, SWAP_OUT = ("hl", "hier_match.tsv", "collection_hier", "HL") if HIER else ("lr", "localrule_match.tsv", "collection_localrule", "LR")
 CACHE, NULL = Path(".cache/binary_grid"), Path(".cache/targeted_null")
 if DS == "brain":
     RUN = Path(".cache/native_v4")
     COLL = {"current": RUN / "collection_parity_p2_v4", "local": RUN / "collection_local", "new": RUN / "collection_lrnew"}
-    MODELS = {s: {"current": f"{p}_native_v4sh", "local": f"{p}_native_v4sh_L", "new": f"{p}_native_v4sh_N", "out": f"{p}_native_v4lr"} for s, p in (("internal", "internal"), ("terminal", "tj"))}
-    LR = {"current": ".cache/internal_priming/compare/v4sh", "local": ".cache/local_anchor/lr_brain_L", "new": ".cache/local_anchor/lr_brain_N", "out": ".cache/local_anchor/lr_brain_v4lr"}
+    MODELS = {s: {"current": f"{p}_native_v4sh", "local": f"{p}_native_v4sh_L", "new": f"{p}_native_v4sh_N", "out": f"{p}_native_v4{OUT_TAG}"} for s, p in (("internal", "internal"), ("terminal", "tj"))}
+    LR = {"current": ".cache/internal_priming/compare/v4sh", "local": ".cache/local_anchor/lr_brain_L", "new": ".cache/local_anchor/lr_brain_N", "out": f".cache/local_anchor/lr_brain_v4{OUT_TAG}"}
 else:
     RUN = Path(f".cache/pbmc/{DS}")
     COLL = {"current": RUN / "collection", "local": RUN / "collection_local", "new": RUN / "collection_lrnew"}
-    MODELS = {s: {"current": f"pbmc_{DS}_{s}_sh", "local": f"pbmc_{DS}_{s}_sh_L", "new": f"pbmc_{DS}_{s}_sh_N", "out": f"pbmc_{DS}_{s}_lr"} for s in ("internal", "terminal")}
-    LR = {"current": f"analyses/pbmc/{DS}_lr_sh", "local": f"analyses/pbmc/{DS}_lr_sh_L", "new": f"analyses/pbmc/{DS}_lr_sh_N", "out": f"analyses/pbmc/{DS}_lr_lr"}
-match = pd.read_csv(RUN / "localrule_match.tsv", sep="\t", dtype=str, keep_default_na=False)
+    MODELS = {s: {"current": f"pbmc_{DS}_{s}_sh", "local": f"pbmc_{DS}_{s}_sh_L", "new": f"pbmc_{DS}_{s}_sh_N", "out": f"pbmc_{DS}_{s}_{OUT_TAG}"} for s in ("internal", "terminal")}
+    LR = {"current": f"analyses/pbmc/{DS}_lr_sh", "local": f"analyses/pbmc/{DS}_lr_sh_L", "new": f"analyses/pbmc/{DS}_lr_sh_N", "out": f"analyses/pbmc/{DS}_lr_{OUT_TAG}"}
+match = pd.read_csv(RUN / MATCH, sep="\t", dtype=str, keep_default_na=False)
 match.loc[match.source.eq("new"), ["old_key", "old_block_id"]] = match.loc[match.source.eq("new"), ["key", "block_id"]].to_numpy()
 rename_id = {src: dict(zip(g.old_block_id, g.block_id)) for src, g in match.groupby("source")}
 rename_key = {src: dict(zip(g.old_key, g.key)) for src, g in match.groupby("source")}
@@ -94,7 +99,7 @@ def collection(sources, out):
         print(out / k, len(blocks), "blocks", flush=True)
 
 
-out_coll = RUN / "collection_localrule"
+out_coll = RUN / COLL_OUT
 collection(COLL, out_coll)
 for s, models in MODELS.items():
     fits(models, models["out"], out_coll / ("all" if s == "internal" else "junction"))
@@ -102,19 +107,20 @@ Path(LR["out"]).mkdir(parents=True, exist_ok=True)
 pd.concat([renamed(pd.read_csv(f"{LR[src]}/lr_mapping.tsv.gz", sep="\t", low_memory=False), src) for src in ("current", "local", "new")], ignore_index=True).to_csv(f"{LR['out']}/lr_mapping.tsv.gz", sep="\t", index=False, na_rep="NA")
 print(LR["out"], "long-read mapping written", flush=True)
 if DS == "GSE320507":
-    collection({"current": RUN / "disease", "local": RUN / "disease_local", "new": RUN / "disease_lrnew"}, RUN / "disease_localrule")
-    shutil.copy(RUN / "disease/level_pairs.tsv", RUN / "disease_localrule/level_pairs.tsv")
+    disease_out = RUN / ("disease_hier" if HIER else "disease_localrule")
+    collection({"current": RUN / "disease", "local": RUN / "disease_local", "new": RUN / "disease_lrnew"}, disease_out)
+    shutil.copy(RUN / "disease/level_pairs.tsv", disease_out / "level_pairs.tsv")
     for s in ("internal", "terminal"):
         m = {"current": f"pbmc_GSE320507_disease_{s}_sh", "local": f"pbmc_GSE320507_disease_{s}_sh_L", "new": f"pbmc_GSE320507_disease_{s}_sh_N"}
-        fits(m, f"pbmc_GSE320507_disease_{s}_lr", RUN / "disease_localrule" / ("all" if s == "internal" else "junction"))
+        fits(m, f"pbmc_GSE320507_disease_{s}_{OUT_TAG}", disease_out / ("all" if s == "internal" else "junction"))
     for draw in sorted(Path(".cache/label_swap_all").glob("seed*")):
         for k in (0, 1):
             for s in ("internal", "terminal"):
                 base = draw / f"fold{k}"
                 parts = [renamed(pd.read_csv(base / f"tealeaf_{s}{x}/merged/paired_path.tsv", sep="\t", low_memory=False), src) for x, src in (("", "current"), ("_L", "local"), ("_N", "new"))]
-                (base / f"tealeaf_{s}_LR/merged").mkdir(parents=True, exist_ok=True)
-                pd.concat(parts, ignore_index=True).to_csv(base / f"tealeaf_{s}_LR/merged/paired_path.tsv", sep="\t", index=False, na_rep="NA")
+                (base / f"tealeaf_{s}_{SWAP_OUT}/merged").mkdir(parents=True, exist_ok=True)
+                pd.concat(parts, ignore_index=True).to_csv(base / f"tealeaf_{s}_{SWAP_OUT}/merged/paired_path.tsv", sep="\t", index=False, na_rep="NA")
                 nulls = [renamed(pd.read_csv(base / f"tnull_tealeaf_{s}{x}/null.tsv.gz", sep="\t"), src) for x, src in (("", "current"), ("_L", "local"), ("_N", "new"))]
-                (base / f"tnull_tealeaf_{s}_LR").mkdir(parents=True, exist_ok=True)
-                pd.concat(nulls, ignore_index=True).to_csv(base / f"tnull_tealeaf_{s}_LR/null.tsv.gz", sep="\t", index=False, na_rep="NA")
+                (base / f"tnull_tealeaf_{s}_{SWAP_OUT}").mkdir(parents=True, exist_ok=True)
+                pd.concat(nulls, ignore_index=True).to_csv(base / f"tnull_tealeaf_{s}_{SWAP_OUT}/null.tsv.gz", sep="\t", index=False, na_rep="NA")
                 print(draw.name, k, s, "swap fits", sum(map(len, parts)), flush=True)

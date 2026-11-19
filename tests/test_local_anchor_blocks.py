@@ -65,3 +65,15 @@ def test_local_rule_is_one_consistent_block_set(tmp_path: Path):
     assert cassette in contents
     # no block spans the whole gene any more
     assert all(max(e for p in c for _, e in p) - min(a for p in c for a, _ in p) < 1500 for c in contents)
+
+
+def test_hierarchical_rule_keeps_gene_wide_blocks_and_adds_local_ones(tmp_path: Path):
+    gtf = tmp_path / "g.gtf"
+    write_gtf(gtf, TRANSCRIPTS)
+    plain = build_splice_blocks(gtf)
+    hier = build_splice_blocks(gtf, anchor_rule="hierarchical")
+    assert hier[:len(plain)] == plain
+    local = [b for b in hier if ":L" in b.block_id]
+    contents = [{tuple(block_path_exons(None, s, None)) for s in b.path_signatures} for b in local]
+    cassette = {((100, 150), (300, 400), (500, 600), (700, 800), (900, 950)), ((100, 150), (300, 400), (900, 950)), ((100, 150), (500, 600), (900, 950)), ((100, 150), (900, 950))}
+    assert cassette in contents

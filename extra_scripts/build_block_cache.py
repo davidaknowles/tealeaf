@@ -16,7 +16,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--local-anchors", action="store_true")
     parser.add_argument("--local-only", action="store_true")
-    parser.add_argument("--anchor-rule", choices=("global", "local"), default="global", help="local: every block from local anchors (one consistent definition)")
+    parser.add_argument("--anchor-rule", choices=("global", "local", "hierarchical"), default="global", help="local: every block from local anchors; hierarchical: blocks between gene-wide anchors plus the differing local-anchor blocks")
     args = parser.parse_args()
     blocks = build_splice_blocks(args.gtf, local_anchors=args.local_anchors or args.local_only, local_only=args.local_only, anchor_rule=args.anchor_rule)
     args.output.parent.mkdir(parents=True, exist_ok=True)
