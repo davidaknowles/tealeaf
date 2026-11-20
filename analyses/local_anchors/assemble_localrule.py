@@ -52,6 +52,9 @@ def renamed(table, src):
     return table
 
 
+CONTRIBUTED = {}  # tests per source over all models; a source can have no tests in one structure (e.g. only terminal blocks)
+
+
 def fits(models, out, collection):
     for c in ("0", "1", "full"):
         parts = [renamed(pd.read_csv(CACHE / f"{models[src]}_{c}/merged/paired_path.tsv", sep="\t", low_memory=False), src) for src in ("current", "local", "new")]
@@ -69,7 +72,8 @@ def fits(models, out, collection):
             (NULL / f"{out}_{c}").mkdir(parents=True, exist_ok=True)
             pd.concat([renamed(pd.read_csv(p, sep="\t"), src) for p, src in zip(nulls, ("current", "local", "new"))], ignore_index=True).to_csv(NULL / f"{out}_{c}/null.tsv.gz", sep="\t", index=False, na_rep="NA")
             note = "with coverage null"
-        assert all(len(p) for p, src in zip(parts, ("current", "local", "new")) if (match.source == src).any()), f"{out} {c}: a source with matched blocks contributed no tests"
+        for p, src in zip(parts, ("current", "local", "new")):
+            CONTRIBUTED[src] = CONTRIBUTED.get(src, 0) + len(p)
         print(out, c, len(t), "tests", int((t.fdr <= .05).sum()), "BH", " ".join(f"{src} {len(p)}" for src, p in zip(("current", "local", "new"), parts)), note, flush=True)
 
 
@@ -105,6 +109,9 @@ out_coll = RUN / COLL_OUT
 collection(COLL, out_coll)
 for s, models in MODELS.items():
     fits(models, models["out"], out_coll / ("all" if s == "internal" else "junction"))
+missing = [src for src in ("current", "local", "new") if (match.source == src).any() and not CONTRIBUTED.get(src)]
+assert not missing, f"sources with matched blocks but no tests in any model: {missing}"
+print("tests per source over all models:", CONTRIBUTED, flush=True)
 Path(LR["out"]).mkdir(parents=True, exist_ok=True)
 pd.concat([renamed(pd.read_csv(f"{LR[src]}/lr_mapping.tsv.gz", sep="\t", low_memory=False), src) for src in ("current", "local", "new")], ignore_index=True).to_csv(f"{LR['out']}/lr_mapping.tsv.gz", sep="\t", index=False, na_rep="NA")
 print(LR["out"], "long-read mapping written", flush=True)
