@@ -34,7 +34,8 @@ else:
     MODELS = {s: {"current": f"pbmc_{DS}_{s}_sh", "local": f"pbmc_{DS}_{s}_sh_L", "new": f"pbmc_{DS}_{s}_sh_N", "out": f"pbmc_{DS}_{s}_{OUT_TAG}"} for s in ("internal", "terminal")}
     LR = {"current": f"analyses/pbmc/{DS}_lr_sh", "local": f"analyses/pbmc/{DS}_lr_sh_L", "new": f"analyses/pbmc/{DS}_lr_sh_N", "out": f"analyses/pbmc/{DS}_lr_{OUT_TAG}"}
 match = pd.read_csv(RUN / MATCH, sep="\t", dtype=str, keep_default_na=False)
-match.loc[match.source.eq("new"), ["old_key", "old_block_id"]] = match.loc[match.source.eq("new"), ["key", "block_id"]].to_numpy()
+fill = match.source.eq("new") & match.old_key.eq("")  # local rule: new blocks were fitted under their own ids
+match.loc[fill, ["old_key", "old_block_id"]] = match.loc[fill, ["key", "block_id"]].to_numpy()
 rename_id = {src: dict(zip(g.old_block_id, g.block_id)) for src, g in match.groupby("source")}
 rename_key = {src: dict(zip(g.old_key, g.key)) for src, g in match.groupby("source")}
 
@@ -68,6 +69,7 @@ def fits(models, out, collection):
             (NULL / f"{out}_{c}").mkdir(parents=True, exist_ok=True)
             pd.concat([renamed(pd.read_csv(p, sep="\t"), src) for p, src in zip(nulls, ("current", "local", "new"))], ignore_index=True).to_csv(NULL / f"{out}_{c}/null.tsv.gz", sep="\t", index=False, na_rep="NA")
             note = "with coverage null"
+        assert all(len(p) for p, src in zip(parts, ("current", "local", "new")) if (match.source == src).any()), f"{out} {c}: a source with matched blocks contributed no tests"
         print(out, c, len(t), "tests", int((t.fdr <= .05).sum()), "BH", " ".join(f"{src} {len(p)}" for src, p in zip(("current", "local", "new"), parts)), note, flush=True)
 
 
