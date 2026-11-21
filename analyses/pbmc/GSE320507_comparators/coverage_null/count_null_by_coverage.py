@@ -1,22 +1,23 @@
 """Tealeaf count-null rejection by coverage ratio between the two cell types (total block molecules per level).
 
-Usage: count_null_by_coverage.py OUTPUT [COUNT_NULL_DIR], where COUNT_NULL_DIR holds {internal,terminal}/trials.tsv.gz
-(default .cache/pbmc/GSE320507/count_null). Internal blocks use the anchors + precursor model, terminal blocks the anchors model.
+Usage: count_null_by_coverage.py OUTPUT [COUNT_NULL_DIR [INTERNAL_DIR,TERMINAL_DIR [COLLECTION]]], where COUNT_NULL_DIR holds {internal,terminal}/trials.tsv.gz
+(default .cache/pbmc/GSE320507/count_null) and COLLECTION the block collection of the trials (default .cache/pbmc/GSE320507/collection). Internal blocks use the anchors + precursor model, terminal blocks the anchors model.
 """
 import gzip, json, sys
 import numpy as np, pandas as pd
 rows = []
 base = sys.argv[2] if len(sys.argv) > 2 else ".cache/pbmc/GSE320507/count_null"
+collection = sys.argv[4] if len(sys.argv) > 4 else ".cache/pbmc/GSE320507/collection"
 dirs = {"internal": "internal", "terminal": "terminal"} if len(sys.argv) <= 3 else dict(zip(("internal", "terminal"), sys.argv[3].split(",")))
 for structure, coll, model in (("internal", "all", "anchors + precursor"), ("terminal", "junction", "anchors")):
     t = pd.read_csv(f"{base}/{dirs[structure]}/trials.tsv.gz", sep="\t")
     t = t[t.model.eq(model)]
-    blocks = json.load(gzip.open(f".cache/pbmc/GSE320507/collection/{coll}/blocks.json.gz", "rt"))
+    blocks = json.load(gzip.open(f"{collection}/{coll}/blocks.json.gz", "rt"))
     key_of = {b["block_id"]: k for k, b in blocks.items()}
     parts = t.test_id.str.split("|", expand=True)
     t["block_id"], t["a"], t["b"] = parts[0], parts[2], parts[3]
     keys = {key_of[b] for b in t.block_id}
-    c = pd.concat(ch[ch.path_key.isin(keys)] for ch in pd.read_csv(f".cache/pbmc/GSE320507/collection/{coll}/counts.tsv.gz", sep="\t", chunksize=2_000_000))
+    c = pd.concat(ch[ch.path_key.isin(keys)] for ch in pd.read_csv(f"{collection}/{coll}/counts.tsv.gz", sep="\t", chunksize=2_000_000))
     tot = c.groupby(["path_key", "cell_type"])["count"].sum()
     t["cov_a"] = [tot.get((key_of[b], a), 0) for b, a in zip(t.block_id, t.a)]
     t["cov_b"] = [tot.get((key_of[b], x), 0) for b, x in zip(t.block_id, t.b)]

@@ -360,7 +360,7 @@ def main():
     save(evaluable_plot(pd.concat([summary.loc[summary.table.eq("filtered")], suppa.loc[suppa.method.str.startswith("SUPPA2")]], ignore_index=True), 2.6, 2.0), out, "fig2_evaluable")
     save(discoveries_plot("docs/figures/discoveries_by_event.tsv", 4.0, 2.0), out, "fig2_discoveries")
 
-    save(null_plot(null_by_coverage("analyses/pbmc/GSE320507_comparators/majiq_coverage_null/by_coverage_ratio.tsv", "analyses/pbmc/GSE320507_comparators/coverage_null/tealeaf_count_null_by_coverage_sh.tsv"), 2.4, 2.3), out, "fig4_null_coverage")
+    save(null_plot(null_by_coverage("analyses/pbmc/GSE320507_comparators/majiq_coverage_null/by_coverage_ratio.tsv", "analyses/pbmc/GSE320507_comparators/coverage_null/tealeaf_count_null_by_coverage_hl.tsv"), 2.4, 2.3), out, "fig4_null_coverage")
     save(removed_plot(removed_table({"Brain": brain / "removed_tests.tsv", "GSE320507": pbmc / "removed_tests.tsv"}), 2.3, 2.3), out, "fig4_removed")
     save(rmats_null_plot("analyses/pbmc/GSE320507_comparators/coverage_null/rmats_null_vs_real_4contrasts.tsv", 2.2, 2.0), out, "fig4_rmats")
 

@@ -5337,3 +5337,21 @@ Filtered, comparator universes (current -> hierarchical): brain LeafCutter 182 -
   - Facet spacing in the disease calibration panel.
   - rMATS label position in the BH scatter.
 - Not rerun on hierarchical blocks: count-null calibration simulations and the Tealeaf coverage-null rates in Fig 3a still use the gene-wide blocks. The test is the same, so these remain valid checks of calibration.
+
+### 2026-11-21 Count-null calibration on the hierarchical blocks
+
+Rerun of `assess_annotated_count_null.py` (offset prior sd 1, two draws; brain 200 internal / 800 terminal, GSE320507 200 each) on the hierarchical collections (`analyses/local_anchors/count_null_hl.sh`, output `.cache/hier_count_null`). Random draws include local (L) and new-path (N) blocks: brain internal 52 B / 9 L / 139 N, terminal 554 B / 241 L / 5 N; blood internal 81 / 19 / 100, terminal 110 / 82 / 8. Rejection among converged fits, internal model anchors + precursor, terminal junction-only anchors:
+
+| Structure | At 0.05 | At 0.01 |
+|---|---|---|
+| Brain internal | 0–2.6% | ≤0.9% |
+| Brain terminal, two-path | 3.3–5.6% | ≤1.3% |
+| Brain terminal, multi-path | 2.4–3.7% | ≤1.3% (≤0.2% at 0.001) |
+| Blood internal | ≤4.0% | ≤1.3% |
+| Blood terminal, multi-path | 1.0–2.5% | ≤2.5% |
+| Blood terminal, two-path (~79 fits per scenario) | 1.3–5.1% | ≤2.5% |
+
+- Brain terminal two-path tests with row variation (concentration 20 or 5) are slightly above nominal at 0.05, 5.3–5.6% over about 645 fits. The gene-wide run gave 4.0–4.2%.
+- By block kind, over all scenarios of each structure and dataset, L/N blocks reject 1.4–3.7% at 0.05 and B blocks 0.5–3.6%, so local blocks are calibrated like gene-wide ones.
+- Fig 3a Tealeaf curve (`count_null_by_coverage.py`, which now takes the collection as a 4th argument; output `tealeaf_count_null_by_coverage_hl.tsv`, scenario with no row variation): internal 0–2.4%, terminal 0.9–3.4% in every coverage-ratio class.
+- Paper Calibration paragraph and Fig 3a text updated.
