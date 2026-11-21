@@ -146,6 +146,36 @@ def split_scatter(table, width, height, offsets):
             + theme(width, height, "bottom"))
 
 
+def perm_split_both(path):
+    """Replicated genes at permutation FDR 5% (perm_fdr_split.py: label-swap null) in the split_both layout."""
+    table = pd.read_csv(path, sep="\t")
+    table = table.loc[table.universe.isin(["matched", "comparator"])].copy()
+    table["comparator"] = table.comparison.replace(NAMES)
+    table["method"] = np.where(table.method.eq("Tealeaf"), "Tealeaf", "Comparator")
+    table = table.drop(columns="replicated_bh").rename(columns={"genes": "shared_genes", "replicated_perm_fdr": "replicated_bh"})
+    return table[["comparator", "method", "shared_genes", "replicated_bh", "universe"]]
+
+
+def perm_bar_plot(table, width, height):
+    """Replicated genes of Tealeaf and each comparator on the comparator's universe, as grouped horizontal bars."""
+    table = table.loc[table.universe.eq("comparator")].copy()
+    order = [name for name in COMPARATORS if name in set(table.comparator)]
+    labels = {name: f"{name}\n{genes:,} genes" for name, genes in table.drop_duplicates("comparator")[["comparator", "shared_genes"]].itertuples(index=False)}
+    table["universe_label"] = pd.Categorical(table.comparator.map(labels), categories=[labels[name] for name in order[::-1]])
+    table["who"] = np.where(table.method.eq("Tealeaf"), "Tealeaf", table.comparator)
+    table["who"] = pd.Categorical(table.who, categories=["Tealeaf"] + order)
+    dodge = p9.position_dodge(width=0.8)
+    top = table.replicated_bh.max()
+    return (p9.ggplot(table, p9.aes("universe_label", "replicated_bh", fill="who"))
+            + p9.geom_col(position=dodge, width=0.75)
+            + p9.geom_text(p9.aes(label="replicated_bh", y="replicated_bh + 0.02 * top"), position=dodge, ha="left", size=6, color="#333333")
+            + p9.scale_fill_manual(values=METHODS, name="")
+            + p9.scale_y_continuous(expand=(0, 0, 0.15, 0))
+            + p9.coord_flip()
+            + p9.labs(x="", y="Replicated genes (permutation FDR 5%)")
+            + theme(width, height, "bottom"))
+
+
 def split_both(path):
     rows = [split_table(path, universe).assign(universe=universe) for universe in ("matched", "comparator")]
     return pd.concat(rows, ignore_index=True)
@@ -317,7 +347,7 @@ def main():
     args = parser.parse_args()
     out = args.output_dir
     out.mkdir(parents=True, exist_ok=True)
-    brain, pbmc = Path("analyses/coverage_null_filter_sh/brain"), Path("analyses/coverage_null_filter_sh/pbmc")
+    brain, pbmc = Path("analyses/coverage_null_filter_hl/brain"), Path("analyses/coverage_null_filter_hl/pbmc")
 
     table, span, gap = read_end_metaplot(sorted(Path(".cache/read_end_profiles_arun").glob("library_*.json")))
     save(metaplot(table, span, gap, 3.3, 2.3), out, "fig1_profiles")
@@ -335,10 +365,11 @@ def main():
     save(rmats_null_plot("analyses/pbmc/GSE320507_comparators/coverage_null/rmats_null_vs_real_4contrasts.tsv", 2.2, 2.0), out, "fig4_rmats")
 
     pbmc_labels = {"MAJIQ": ("MAJIQ", 0.06, 0.08), "LeafCutter": ("LeafCutter", -0.08, 0.12), "rMATS": ("rMATS", 0.04, -0.14), "scQuint": ("scQuint", 0.08, -0.08), "SUPPA2, SUPPA2-PA": ("SUPPA2", 0.02, 0.22)}
-    save(split_scatter(split_both(pbmc / "split_filtered/split_metrics.tsv"), 2.5, 2.6, pbmc_labels), out, "fig5_split")
+    save(perm_bar_plot(perm_split_both("analyses/label_swap_null/perm171/perm_fdr_split_hier_filtered.tsv"), 2.8, 2.4), out, "fig5_split")
+    save(split_scatter(split_both(pbmc / "split_filtered/split_metrics.tsv"), 2.5, 2.6, pbmc_labels), out, "figS_split_bh_pbmc")
     save(lr_plot(lr_curves(pbmc / "tealeaf_lr_rank_filtered_depth1000.tsv.gz", pbmc / "sign_agreement_by_rank_filtered_depth1000.tsv", 1000), 3.3, 2.0), out, "fig5_lr")
-    save(dataset_plot(dataset_curves({"GSE320507": "analyses/pbmc/GSE320507_lr_sh/lr_rank.tsv.gz", "GSE327907": "analyses/pbmc/GSE327907_lr_sh/lr_rank.tsv.gz", "GSE334840": "analyses/pbmc/GSE334840_lr_sh/lr_rank.tsv.gz"}), 3.0, 1.8), out, "fig5_datasets")
-    save(disease_plot("analyses/pbmc/GSE320507_disease_sh/calibration.tsv", 3.6, 1.8), out, "fig5_disease")
+    save(dataset_plot(dataset_curves({"GSE320507": "analyses/pbmc/GSE320507_lr_hl/lr_rank.tsv.gz", "GSE327907": "analyses/pbmc/GSE327907_lr_hl/lr_rank.tsv.gz", "GSE334840": "analyses/pbmc/GSE334840_lr_hl/lr_rank.tsv.gz"}), 3.0, 1.8), out, "fig5_datasets")
+    save(disease_plot("analyses/pbmc/GSE320507_disease_hl/calibration.tsv", 3.6, 1.8), out, "fig5_disease")
 
 
 if __name__ == "__main__":

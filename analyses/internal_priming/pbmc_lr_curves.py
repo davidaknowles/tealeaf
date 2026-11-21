@@ -1,9 +1,9 @@
 """GSE320507 long-read curve inputs from the filtered ranks of pbmc_lr_filter.py (shrunk-offset evaluation).
-Usage: pbmc_lr_curves.py [depth] (default 200; other depths read and write the _depth<N> files)."""
+Usage: pbmc_lr_curves.py [depth] [filter dir] (default 200; other depths read and write the _depth<N> files)."""
 import sys
 import pandas as pd
-F = "analyses/coverage_null_filter_sh/pbmc"
 DEPTH = int(sys.argv[1]) if len(sys.argv) > 1 else 200
+F = sys.argv[2] if len(sys.argv) > 2 else "analyses/coverage_null_filter_sh/pbmc"
 SUFFIX = "" if DEPTH == 200 else f"_depth{DEPTH}"
 r = pd.read_csv(f"{F}/lr_ranks{SUFFIX}.tsv.gz", sep="\t", low_memory=False)
 r = r.loc[r.table.eq("filtered") & r["rank"].le(DEPTH)].copy()
