@@ -5322,3 +5322,18 @@ Decision (user): default to the hierarchical rule (`build_splice_blocks(anchor_r
 Assembly fixed twice (`assemble_localrule.py`): the fill of old ids for "new" blocks overwrote the local-rule ids in the hierarchical match (new blocks contributed no tests); the guard now requires each matched source to contribute tests over all models (brain local-rule new blocks are all terminal). Tests per source over all models: brain 1,451,389 current / 131,450 local / 48,574 new; GSE320507 3,385,582 / 543,456 / 363,214 (with donor-group models).
 
 Filtered, comparator universes (current -> hierarchical): brain LeafCutter 182 -> 183 / 169, MAJIQ 196 -> 197 / 15, SUPPA2 105 -> 104, SUPPA2-PA 124 -> 127, rMATS 139 -> 137 / 4, scQuint 170 -> 178 / 123; long reads A40 38 -> 37, A100 .947 -> .936 (95 -> 92 agree), A200 188 -> 180; evaluable 35,218 -> 39,671. GSE320507 LeafCutter 64 -> 63 / 126, MAJIQ 67 / 26, SUPPA2 54 -> 52, SUPPA2-PA 51, rMATS 59 / 133, scQuint 53 -> 55 / 67; long reads A100 .988 -> .994 (99 agree), top 200 197 -> 199; evaluable 44,650 -> 61,438. Own-gene replication GSE320507 65 -> 66, GSE327907 5 -> 7, GSE334840 0. Permutation FDR (GSE320507, Tealeaf / comparator): LeafCutter 179 -> 186 / 136, scQuint 181 -> 184 / 175, rMATS 216 -> 223 / 701; long-read agreement of Tealeaf's replicated genes .82 / .82 / .80. Dataset table: GSE320507 1,832,626 full tests, 3,104 BH, 1,872 gene-pairs in 459 genes; GSE327907 251,071, 655, 390 in 222; GSE334840 101,655, 20, 12 in 6. Donor groups: random 26 vs 12 .32% at .01, .023% at .001, 0 BH; LTCS vs HC 209 BH, LTCS vs HC+CONV 23.
+
+### 2026-11-20 Paper on the hierarchical rule: text and example figures
+
+- Abstract and Discussion no longer say LeafCutter replicates more genes than Tealeaf in blood. At the permutation FDR (label-swap null), Tealeaf / comparator on GSE320507 is 186 / 136 for LeafCutter, 184 / 175 for scQuint and 223 / 701 for rMATS. With BH, LeafCutter's 126 against Tealeaf's 63 reflects anticonservative LeafCutter p-values under the swap null.
+- Evaluable-test ratio in brain is now 2.8 to 29 times (Tealeaf 39,671 against 1,351 to 13,989 junction-method features).
+- Examples under the hierarchical rule (`analyses/local_anchors/examples_hl.sh`):
+  - Brain: Pkn2 B3, Nfasc B2, Akap9 N2, Dock9 L1. Dock9 L1 is an 8-base terminal microexon block, cortical excitatory 78% against oligodendrocytes 17%.
+  - Donor groups: INPP4B L9 replaces TC2N.
+  - PTPRC L1 (exon 3 to 7, classical monocytes against naive B cells, p=1e-28) is a new Supplementary figure. The block is terminal because two annotated transcripts start inside it.
+- New Supplementary figure of the GSE320507 BH split scatter.
+- `plot_block_examples.py` wraps "Paths a+b" x labels onto two lines.
+- `paper_figures.py`:
+  - Facet spacing in the disease calibration panel.
+  - rMATS label position in the BH scatter.
+- Not rerun on hierarchical blocks: count-null calibration simulations and the Tealeaf coverage-null rates in Fig 3a still use the gene-wide blocks. The test is the same, so these remain valid checks of calibration.

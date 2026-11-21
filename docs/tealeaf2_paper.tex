@@ -41,7 +41,7 @@
 \maketitle
 
 \begin{abstract}
-Combinatorial-indexing single-cell RNA-seq profiles hundreds of thousands of cells from tens of donors in one experiment, and its in-cell reverse transcription with random hexamers alongside poly(dT) covers transcript bodies, so it observes the splice junctions of most expressed genes in every cell type of every donor. Existing methods for differential splicing were designed for bulk or full-length data and use only junction-spanning reads summed over cells. We present Tealeaf, which tests local splice paths, the exon chains that transcripts take through a region bounded by constitutive exons, so that each result names the transcript structures that change, such as a cassette exon or an alternative first exon, rather than a shift among junctions. Tealeaf uses every molecule that overlaps the region through the set of paths it is compatible with, models poly(dT) and random-hexamer molecules in one likelihood with a primer offset estimated without cell-type labels, builds unannotated paths from junction support counted over all cells, and treats donors as replicates with a Beta--logit-normal model with a donor random effect. In a mouse brain dataset of 48 animals, Tealeaf replicates more genes across independent halves of the animals than LeafCutter, MAJIQ, scQuint, rMATS and two forms of SUPPA2, its 100 top-ranked tests agree in direction with single-cell long reads as often as the best comparator's, and it has 2.5 to 26 times as many tests that the long reads can evaluate. A coverage-only null that we apply to every method shows that MAJIQ and rMATS call many tests from expression differences between cell types alone. In three human blood datasets, Tealeaf's top-ranked tests agree with single-cell long reads of a Parse library and its tests between groups of different donors are calibrated, while LeafCutter replicates more genes than Tealeaf in the largest dataset.
+Combinatorial-indexing single-cell RNA-seq profiles hundreds of thousands of cells from tens of donors in one experiment, and its in-cell reverse transcription with random hexamers alongside poly(dT) covers transcript bodies, so it observes the splice junctions of most expressed genes in every cell type of every donor. Existing methods for differential splicing were designed for bulk or full-length data and use only junction-spanning reads summed over cells. We present Tealeaf, which tests local splice paths, the exon chains that transcripts take through a region bounded by constitutive exons, so that each result names the transcript structures that change, such as a cassette exon or an alternative first exon, rather than a shift among junctions. Tealeaf uses every molecule that overlaps the region through the set of paths it is compatible with, models poly(dT) and random-hexamer molecules in one likelihood with a primer offset estimated without cell-type labels, builds unannotated paths from junction support counted over all cells, and treats donors as replicates with a Beta--logit-normal model with a donor random effect. In a mouse brain dataset of 48 animals, Tealeaf replicates more genes across independent halves of the animals than LeafCutter, MAJIQ, scQuint, rMATS and two forms of SUPPA2, its 100 top-ranked tests agree in direction with single-cell long reads as often as the best comparator's, and it has 2.8 to 29 times as many tests that the long reads can evaluate. A coverage-only null that we apply to every method shows that MAJIQ and rMATS call many tests from expression differences between cell types alone. In three human blood datasets, Tealeaf's top-ranked tests agree with single-cell long reads of a Parse library and its tests between groups of different donors are calibrated. At a false discovery rate estimated from a within-donor label-swap null, Tealeaf replicates more genes than LeafCutter and scQuint in the largest blood dataset, whose p-values are anticonservative when splicing differs between donors.
 \end{abstract}
 
 \section{Introduction}
@@ -60,7 +60,7 @@ We present Tealeaf (Testing Exon Alternatives Locally in Exon-Anchored Frames), 
 
 Tealeaf goes from paired FASTQ files to tests in five steps (Fig.~\ref{fig:overview}; Supplementary Fig.~\ref{fig:pipeline}): targeted spliced alignment, blocks and paths, molecule classes, read opportunities and the test.
 
-The unit of test is a \emph{splice block}, a window of one gene bounded by constitutive exons in which transcripts take two or more exon chains, the \emph{paths} (Fig.~\ref{fig:overview}a). A path set represents any local pattern, including several adjacent alternative exons, mutually exclusive exons, combinations of alternative splice sites and alternative first or last exons, in one test, and the paths themselves show which exons and splice sites differ. We take the paths of annotated blocks from the annotation, and we add novel paths (alternative splice sites, new exons and novel first and last exons) and new blocks from unannotated junctions, whose read support we count over all cells and therefore without cell-type labels (Supplementary Fig.~\ref{fig:novel}). In the brain data the block set has 34{,}677 blocks, 11{,}779 of them new, with 21{,}509 novel paths. We call a block \emph{internal} if all its annotated paths share their first and last exon, and \emph{terminal} if they differ at a transcript end (alternative first or last exons, or transcript starts or ends). For reporting, we assign each test an \emph{event class}, such as cassette exon or alternative first exon, from the exon chains of its tested paths (Methods).
+The unit of test is a \emph{splice block}, a window of one gene bounded by exons shared by the transcripts in which they take two or more exon chains, the \emph{paths} (Fig.~\ref{fig:overview}a). We define blocks at two levels: between exons shared by all transcripts of the gene, and between exons shared by the transcripts that span a region, so that an annotated transcript starting or ending inside the gene does not merge the local events downstream of its start into one whole-gene block (Methods). A path set represents any local pattern, including several adjacent alternative exons, mutually exclusive exons, combinations of alternative splice sites and alternative first or last exons, in one test, and the paths themselves show which exons and splice sites differ. We take the paths of annotated blocks from the annotation, and we add novel paths (alternative splice sites, new exons and novel first and last exons) and new blocks from unannotated junctions, whose read support we count over all cells and therefore without cell-type labels (Supplementary Fig.~\ref{fig:novel}). In the brain data the block set has 46{,}609 blocks, 10{,}630 of them new, with 22{,}668 novel paths. We call a block \emph{internal} if all its annotated paths share their first and last exon, and \emph{terminal} if they differ at a transcript end (alternative first or last exons, or transcript starts or ends). For reporting, we assign each test an \emph{event class}, such as cassette exon or alternative first exon, from the exon chains of its tested paths (Methods).
 
 We group reads into molecules by cell barcode and unique molecular identifier (UMI), and assign each molecule that overlaps a block its \emph{class}, the set of paths it is compatible with, from the parts of its reads inside the block window. A read inside an alternative exon is compatible with the paths that include the exon, and a read inside a constitutive exon with all paths (Fig.~\ref{fig:overview}a). For every path and class, the \emph{read opportunities}, the number of read start positions on the path that produce the class, give the class probabilities as a function of path usage, so exon-body and junction reads enter one likelihood in proportion to the information they carry. In terminal blocks, exon-body coverage follows the positional capture of the primers (Fig.~\ref{fig:overview}b), so for these blocks we use only molecules that span a junction distinguishing the paths (the \emph{junction-only} test). Poly(dT) read ends are also spread along transcript bodies, at about the same density per kilobase near the 5$'$ end as in the middle, apart from the last 200 bases (Fig.~\ref{fig:overview}b), because poly(dT) primes at A-rich sequence inside transcripts: 58\% of poly(dT) read ends in transcript bodies lie within 200 bases of an A-run, against 25\% of random-hexamer read ends (Methods). Since this capture depends on the sequence of each path, poly(dT) and random-hexamer molecules of the same row can imply different usage, which the primer offset absorbs.
 
@@ -143,11 +143,11 @@ The comparators are LeafCutter, MAJIQ Heterogen, scQuint, paired rMATS (PAIRADIS
 
 \subsection{Tealeaf replicates more genes in mouse brain}
 
-On each comparator's matched universe Tealeaf replicates more genes than the comparator (Fig.~\ref{fig:brain}a): 182 against 165 for LeafCutter, 205 against 17 for MAJIQ, 192 against 134 for scQuint, 167 against 4 for rMATS, 130 against 8 for SUPPA2 and 138 against 0 for primer-aware SUPPA2. The comparator universes give the same order (Supplementary Table~\ref{tab:results}). The matched universes differ in size from 1{,}509 genes for LeafCutter to 5{,}070 for rMATS, because each method tests the genes where its own features have data in both halves.
+On each comparator's matched universe Tealeaf replicates more genes than the comparator (Fig.~\ref{fig:brain}a): 184 against 165 for LeafCutter, 203 against 17 for MAJIQ, 197 against 134 for scQuint, 169 against 4 for rMATS, 132 against 8 for SUPPA2 and 143 against 0 for primer-aware SUPPA2. The comparator universes give the same order (Supplementary Table~\ref{tab:results}). The matched universes differ in size from 1{,}509 genes for LeafCutter to 5{,}078 for rMATS, because each method tests the genes where its own features have data in both halves.
 
-Tealeaf's 100 top-ranked long-read-evaluable tests agree with the long reads in direction for 95 ($A_{100}=0.947$), MAJIQ's after the filter for 90 ($0.944$), and those of the other comparators for 69 to 90 (Fig.~\ref{fig:brain}b). Agreement holds further down the ranking. At rank 200 Tealeaf agrees for 94\% of its tests against 84 to 86\% for the junction methods and 81\% for rMATS. Tealeaf has 35{,}218 evaluable tests, against 1{,}351 to 13{,}989 features for the junction methods and 2{,}773 to 4{,}491 events for rMATS and SUPPA2 on their 500 top-ranked events per contrast (Fig.~\ref{fig:brain}c).
+Tealeaf's 100 top-ranked long-read-evaluable tests agree with the long reads in direction for 92 ($A_{100}=0.936$), MAJIQ's after the filter for 90 ($0.944$), and those of the other comparators for 69 to 90 (Fig.~\ref{fig:brain}b). Agreement holds further down the ranking. At rank 200 Tealeaf agrees for 90\% of its tests against 84 to 86\% for the junction methods and 81\% for rMATS. Tealeaf has 39{,}671 evaluable tests, against 1{,}351 to 13{,}989 features for the junction methods and 2{,}773 to 4{,}491 events for rMATS and SUPPA2 on their 500 top-ranked events per contrast (Fig.~\ref{fig:brain}c).
 
-On the 28 pairs of the long-read cell types, the contrasts every method tests, Tealeaf makes 3{,}633 discoveries (BH-adjusted $p\le0.05$ within method) in 3{,}028 gene--cell-type pairs, scQuint 2{,}205 pairs, LeafCutter 1{,}634, SUPPA2 1{,}221, primer-aware SUPPA2 412, MAJIQ 263 and rMATS 164 (Fig.~\ref{fig:brain}d). Tealeaf discovers 1{,}022 cassette exons, SUPPA2 1{,}123 and rMATS 166, and 1{,}480 of Tealeaf's discoveries are alternative first or last exons, which the brain event sets of SUPPA2 and rMATS do not contain. Over all 190 pairs, Tealeaf has 9{,}013 gene--cell-type pairs with a discovery, scQuint 8{,}742, LeafCutter 4{,}717 and SUPPA2 3{,}658 (Supplementary Fig.~\ref{fig:discoveries-all}). By event class, long-read agreement of Tealeaf's evaluable discoveries is 0.83 to 0.90 for the common classes, and 6{,}994 of its 10{,}830 full-data discoveries retain an unannotated path (Supplementary Table~\ref{tab:events}).
+On the 28 pairs of the long-read cell types, the contrasts every method tests, Tealeaf makes 4{,}510 discoveries (BH-adjusted $p\le0.05$ within method) in 3{,}322 gene--cell-type pairs, scQuint 2{,}205 pairs, LeafCutter 1{,}634, SUPPA2 1{,}221, primer-aware SUPPA2 412, MAJIQ 263 and rMATS 164 (Fig.~\ref{fig:brain}d). Tealeaf discovers 1{,}091 cassette exons, SUPPA2 1{,}123 and rMATS 166, and 2{,}101 of Tealeaf's discoveries are alternative first or last exons, which the brain event sets of SUPPA2 and rMATS do not contain. Over all 190 pairs, Tealeaf has 10{,}078 gene--cell-type pairs with a discovery, scQuint 8{,}742, LeafCutter 4{,}717 and SUPPA2 3{,}658 (Supplementary Fig.~\ref{fig:discoveries-all}). By event class, long-read agreement of Tealeaf's evaluable discoveries is 0.84 to 0.88 for the common classes, and 7{,}698 of its 13{,}805 full-data discoveries retain an unannotated path (Supplementary Table~\ref{tab:events}).
 
 \begin{figure}[tbp]
 \centering
@@ -176,15 +176,15 @@ The filter keeps a test unless the null calls it, so it removes coverage-driven 
 
 \subsection{Examples in mouse brain}
 
-We show the full-data tests with the largest effect among those evaluable in the long reads, selected without regard to long-read agreement ($p<10^{-8}$, at least 50 long-read UMIs per cell type, at most four paths, one per gene, at least one internal and one terminal block), which all agree with the long reads in direction (Fig.~\ref{fig:examples}; Supplementary Figs.~\ref{fig:nfasc}--\ref{fig:usage}). In \emph{Pkn2}, astrocytes include a cassette exon in 68\% of molecules and cortical excitatory neurons in 27\% (means over 13 animals with both cell types); the long reads show inclusion in 100\% and 87\% of transcripts that span the block. The direction agrees, but cortical neurons skip the exon in 73\% of Parse molecules and 13\% of long-read transcripts. In \emph{Mctp1}, a terminal block with two first exons tens of kilobases apart, dentate gyrus granule neurons use the upstream first exon in 74\% of junction-spanning molecules and medium spiny neurons in 15\% (long-read shares 33\% and 18\%). The other two examples are a short cassette exon in \emph{Nfasc} and a 54-base cassette exon in \emph{Akap9} that is absent from the basic annotation, so the block is built from unannotated junctions (Methods, Section~\ref{sec:novel}). Most Parse molecules in this block are compatible only with the precursor. Of the molecules compatible with a single mature path, all 19 in medium spiny neurons skip the exon and 14 of 15 in oligodendrocytes include it, and the fitted skipping shares are 62\% and 35\% (means over 15 animals with both cell types). The long reads, assigned to the comprehensive annotation, in which one transcript contains the exon, give skipping shares of 76\% and 36\%.
+We show the full-data tests with the largest effect among those evaluable in the long reads, selected without regard to long-read agreement ($p<10^{-8}$, at least 50 long-read UMIs per cell type, at most four paths, one per gene, at least one internal and one terminal block), which all agree with the long reads in direction (Fig.~\ref{fig:examples}; Supplementary Figs.~\ref{fig:nfasc}--\ref{fig:usage}). In \emph{Pkn2}, astrocytes include a cassette exon in 68\% of molecules and cortical excitatory neurons in 27\% (means over 13 animals with both cell types); the long reads show inclusion in 100\% and 87\% of transcripts that span the block. The direction agrees, but cortical neurons skip the exon in 73\% of Parse molecules and 13\% of long-read transcripts. In \emph{Dock9}, a local block holds an 8-base microexon between exons shared by the transcripts that span it; the block is terminal because annotated transcripts end inside it, so the test uses junction-spanning molecules. Cortical excitatory neurons include the microexon in 78\% of these molecules and oligodendrocytes in 17\% (means over 16 animals with both cell types), and the long reads agree in direction, with inclusion in 97\% and 92\% of transcripts. The other two examples are a short cassette exon in \emph{Nfasc} and a 54-base cassette exon in \emph{Akap9} that is absent from the basic annotation, so the block is built from unannotated junctions (Methods, Section~\ref{sec:novel}). Most Parse molecules in this block are compatible only with the precursor. Of the molecules compatible with a single mature path, all 19 in medium spiny neurons skip the exon and 14 of 15 in oligodendrocytes include it, and the fitted skipping shares are 62\% and 35\% (means over 15 animals with both cell types). The long reads, assigned to the comprehensive annotation, in which one transcript contains the exon, give skipping shares of 76\% and 36\%.
 
 \begin{figure}[p]
 \centering
 \begin{minipage}{\textwidth}\raggedright\panel{a}\\\centering\includegraphics[width=0.86\textwidth,height=0.27\textheight,keepaspectratio]{figures/paper/sashimi_Pkn2_B3.pdf}\end{minipage}\\[2pt]
 \begin{minipage}[t]{0.49\textwidth}\vspace{0pt}\raggedright\panel{b}\\\includegraphics[width=\textwidth,height=0.22\textheight,keepaspectratio]{figures/paper/usage_nopaths_Pkn2_B3.pdf}\end{minipage}\hfill
-\begin{minipage}[t]{0.49\textwidth}\vspace{0pt}\raggedright\panel{d}\\\includegraphics[width=\textwidth,height=0.22\textheight,keepaspectratio]{figures/paper/usage_nopaths_Mctp1_B1.pdf}\end{minipage}\\[2pt]
-\begin{minipage}{\textwidth}\raggedright\panel{c}\\\centering\includegraphics[width=0.86\textwidth,height=0.27\textheight,keepaspectratio]{figures/paper/sashimi_Mctp1_B1.pdf}\end{minipage}
-\caption{Examples in mouse brain. \textbf{a}, Sashimi plot of \emph{Pkn2} block 3, a cassette exon included by path 2, in astrocytes and cortical excitatory neurons: Parse coverage from UMI-deduplicated alignments by primer, per 1{,}000 half-cells of the primer (each nucleus has one barcode per primer, a half-cell), and long-read coverage implied by the UMI counts of annotated transcripts, per million long-read UMIs of the cell type. Arcs are junctions labelled with their coverage, and long introns are shortened; below are the block's paths and the gene's annotated transcripts. \textbf{b}, Path usage of each animal in the Parse data with the mean over animals (left) and the transcript share of each path in the two long-read replicates (right), paths numbered as in \textbf{a}. \textbf{c},\textbf{d}, As \textbf{a},\textbf{b} for \emph{Mctp1} block 1, an alternative first exon in a terminal block, in dentate gyrus granule neurons and medium spiny neurons; paths 2 and 3 share their junctions and are merged in the junction-only test. Whole-gene views are in Supplementary Fig.~\ref{fig:gene-views}.}
+\begin{minipage}[t]{0.49\textwidth}\vspace{0pt}\raggedright\panel{d}\\\includegraphics[width=\textwidth,height=0.22\textheight,keepaspectratio]{figures/paper/usage_nopaths_Dock9_L1.pdf}\end{minipage}\\[2pt]
+\begin{minipage}{\textwidth}\raggedright\panel{c}\\\centering\includegraphics[width=0.86\textwidth,height=0.27\textheight,keepaspectratio]{figures/paper/sashimi_Dock9_L1.pdf}\end{minipage}
+\caption{Examples in mouse brain. \textbf{a}, Sashimi plot of \emph{Pkn2} block 3, a cassette exon included by path 2, in astrocytes and cortical excitatory neurons: Parse coverage from UMI-deduplicated alignments by primer, per 1{,}000 half-cells of the primer (each nucleus has one barcode per primer, a half-cell), and long-read coverage implied by the UMI counts of annotated transcripts, per million long-read UMIs of the cell type. Arcs are junctions labelled with their coverage, and long introns are shortened; below are the block's paths and the gene's annotated transcripts. \textbf{b}, Path usage of each animal in the Parse data with the mean over animals (left) and the transcript share of each path in the two long-read replicates (right), paths numbered as in \textbf{a}. \textbf{c},\textbf{d}, As \textbf{a},\textbf{b} for \emph{Dock9} local block 1, an 8-base microexon (in paths 4 and 5) in a terminal block, in cortical excitatory neurons and oligodendrocytes; paths with the same junctions are merged in the junction-only test. Whole-gene views are in Supplementary Fig.~\ref{fig:gene-views}.}
 \label{fig:examples}
 \end{figure}
 
@@ -192,13 +192,15 @@ We show the full-data tests with the largest effect among those evaluable in the
 
 We processed three public Parse datasets of peripheral blood mononuclear cells (PBMCs) with the same pipeline, the GRCh38 genome and the GENCODE v49 basic annotation \cite{frankish2023}: GSE320507 \cite{ray2026}, 38 donors with long-term COVID-19 syndrome (long COVID, LTCS; 26), after recovery from COVID-19 (CONV, 5) and healthy controls (HC, 7), and two stimulation series of 12 \cite{wood2026} and 8 donors \cite{benavides2026}, of which we use only the unstimulated or vehicle-control cells for cell-type contrasts. We labelled cell types with CellTypist \cite{dominguezconde2022} (19, 10 and 8 types). Long-read directions come from a public PacBio Kinnex library made from a Parse PBMC library of other donors, for which we called cell barcodes, UMIs and the reverse-transcription primer from the reads (93\% of 148 million reads assigned to a cell; Methods).
 
-In GSE320507, with 19 donors per half, 65 genes replicate between halves on the keys Tealeaf tests in both, and 94\% of the genes discovered in one half have $p\le0.05$ in the other (Supplementary Table~\ref{tab:pbmc}). Most replicated genes separate monocytes from lymphocytes. With 6 donors per half GSE327907 replicates 5 genes, and GSE334840, with 4 donors per half and 66-base reads, almost none. Of the 100 top-ranked long-read-evaluable tests, 99, 96 and 83 agree with the long reads in the three datasets (Fig.~\ref{fig:blood}c; Supplementary Table~\ref{tab:pbmc-lr}). Tests in blood reject less often than tests in brain at the same coverage, 2.4\% at $p<0.01$ in GSE320507 against 8.9\% in brain for rows with a median of 20 to 50 molecules, consistent with smaller splicing differences between blood cell types than between neuronal and glial cell types.
+In GSE320507, with 19 donors per half, 66 genes replicate between halves on the keys Tealeaf tests in both, and 92\% of the genes discovered in one half have $p\le0.05$ in the other (Supplementary Table~\ref{tab:pbmc}). Most replicated genes separate monocytes from lymphocytes. With 6 donors per half GSE327907 replicates 7 genes, and GSE334840, with 4 donors per half and 66-base reads, none. Of the 100 top-ranked long-read-evaluable tests, 99, 98 and 90 agree with the long reads in the three datasets (Fig.~\ref{fig:blood}c; Supplementary Table~\ref{tab:pbmc-lr}). Tests in blood reject less often than tests in brain at the same coverage, 2.3\% at $p<0.01$ in GSE320507 against 9.1\% in brain for rows with a median of 20 to 50 molecules, consistent with smaller splicing differences between blood cell types than between neuronal and glial cell types.
 
-We ran the six comparators on GSE320507 as on the brain data, with the same coverage-only filter. In blood, LeafCutter replicates more genes than Tealeaf on its universe of 3{,}588 genes (126 against 64; Fig.~\ref{fig:blood}a), its top-ranked intron clusters agree with the long reads as often ($A_{100}$ 0.991 against 0.988; Fig.~\ref{fig:blood}b) and hold their agreement further down the ranking (476 against 439 of the 500 top-ranked agree, 856 against 801 of the 1{,}000 top-ranked), and it has more evaluable tests (59{,}097 against 44{,}650). scQuint replicates about as many genes as Tealeaf (67 against 53), with $A_{100}=1.000$ over 19{,}875 evaluable tests, but falls off faster (710 of its 1{,}000 top-ranked agree). MAJIQ, after the removal of 96\% of its recomputed edges, replicates 26 genes against 67, and 751 of its 1{,}000 top-ranked features agree. rMATS replicates 133 genes against 59, but 64 of its 100 top-ranked events agree with the long reads, so most of its replicated genes are not supported by the long reads. SUPPA2 and primer-aware SUPPA2 replicate no genes and their top-ranked events agree at about chance, although SUPPA2 makes 65{,}091 discoveries on the 144 pairs every method tests, against 1{,}894 for Tealeaf (Supplementary Fig.~\ref{fig:discoveries-pbmc}).
+We ran the six comparators on GSE320507 as on the brain data, with the same coverage-only filter. In blood, the p-values of the comparators that model pseudobulks as independent samples are not calibrated when splicing differs between donors. With each donor's two cell-type labels exchanged at random, a within-donor label-swap null that keeps donor-to-donor differences but removes the average cell-type effect (Methods), LeafCutter rejects 2.0 to 2.6\% of its tests at $p<0.01$ in pairs of abundant cell types and scQuint 1.5 to 1.7\%, while Tealeaf rejects 0.4 to 0.6\% and rMATS 0.1 to 0.5\%. Comparing gene counts at a nominal BH level therefore credits anticonservative methods. We instead compare replication at a false discovery rate of 5\% estimated from each method's own label-swap null, applied to both halves with the same swaps for every method (Fig.~\ref{fig:blood}a). Tealeaf replicates 186 genes on LeafCutter's universe of 3{,}588 genes against 136 for LeafCutter, 184 against 175 for scQuint on its universe, and 223 against 701 for rMATS; with BH on each method's p-values, LeafCutter replicates 126 genes and Tealeaf 63 (Supplementary Fig.~\ref{fig:split-bh-pbmc}, Supplementary Table~\ref{tab:pbmc-results}). LeafCutter's top-ranked intron clusters agree with the long reads as often as Tealeaf's tests ($A_{100}$ 0.991 against 0.994; Fig.~\ref{fig:blood}b), and further down the ranking the two are close (476 and 469 of the 500 top-ranked agree, 856 and 871 of the 1{,}000 top-ranked), with 59{,}097 and 61{,}438 evaluable tests. scQuint falls off faster (710 of its 1{,}000 top-ranked agree), and MAJIQ, after the removal of 96\% of its recomputed edges, agrees for 751. rMATS replicates the most genes, but 64 of its 100 top-ranked events agree with the long reads, and of its replicated genes 62\% agree in direction against 80 to 82\% for Tealeaf's and 92\% for LeafCutter's. Its replicated genes mostly change usage little in the long reads (median shift 3 percentage points, against 10 to 13 for Tealeaf), a range in which the long-read direction is uncertain for every method, and its strongest disagreeing events are mutually exclusive exon pairs built from exons that occur together in one transcript (Supplementary Note~\ref{sec:rmats-lr}). SUPPA2 and primer-aware SUPPA2 replicate no genes and their top-ranked events agree at about chance, although SUPPA2 makes 65{,}091 discoveries on the 144 pairs every method tests, against 2{,}497 for Tealeaf (Supplementary Fig.~\ref{fig:discoveries-pbmc}).
+
+\emph{PTPRC} (CD45) gives a known example. Its cassette exons 4, 5 and 6 (the A, B and C exons) are spliced in combinations that differ between immune cell types. Junction counts from exon 3 to exons 4, 5 and 7 give the same ordering of cell types in the Parse short reads and in the long reads, with exon 4 used most in B cells and NK cells and least in regulatory T cells and MAIT cells (Supplementary Table~\ref{tab:ptprc}). rMATS represents the choice as pairs of mutually exclusive exons, although the exons occur together in one transcript, and 7 of its 24 strongest such events with a long-read effect agree in direction. Annotated transcripts of \emph{PTPRC} that start downstream of exon 9 prevent any gene-wide anchor between exons 3 and 7, so the gene-wide block spans the gene; the local block between exons 3 and 7 tests the combinations directly (Supplementary Fig.~\ref{fig:ptprc}). Two annotated transcripts start inside this block, so it is a terminal block and its test uses junction-spanning molecules. It has 84 discoveries among 163 cell-type pairs (classical monocytes against naive B cells, $p=1\times10^{-28}$), and 54 of the 56 that the long reads can evaluate agree in direction.
 
 \subsection{Tests between groups of donors}
 
-GSE320507 also allows tests between disease groups within a cell type, where the two levels are different donors. Each cell type has four contrasts, LTCS against HC, LTCS against CONV, CONV against HC, and LTCS against HC and CONV pooled, and a fifth contrast compares two sets of 26 and 12 donors drawn at random, which has no group effect. The random contrast rejects below the nominal rate at $p<0.01$ and $p<0.001$ and has no discoveries (Fig.~\ref{fig:blood}d), so the test is not anticonservative with 12 donors in the smaller group. LTCS against HC gives 199 discoveries in 140 genes, mostly in naive and central-memory helper T cells and classical monocytes. The CONV donors share these differences. Of the 199 tests, 194 are also tested between CONV and HC, 59\% with $p<0.05$. Of the 148 tested with the same paths in both contrasts, 99\% change path usage in the same direction relative to HC (positive inner product of the two effect vectors), while LTCS against CONV has $p<0.05$ for 9\% (4\% for the random contrast). The differences therefore separate healthy donors from all donors after COVID-19, not long COVID from recovery, and may reflect other differences between the donor groups, such as age or time of sampling, which are not available. Fig.~\ref{fig:blood}e shows the discovery with the largest effect under the selection rule of Methods, a 69-base cassette exon of \emph{ANKRD12} in classical monocytes, included in 42\% of HC and 75\% of LTCS molecules; the other three examples are in Supplementary Figs.~\ref{fig:tcerg1}--\ref{fig:tc2n}.
+GSE320507 also allows tests between disease groups within a cell type, where the two levels are different donors. Each cell type has four contrasts, LTCS against HC, LTCS against CONV, CONV against HC, and LTCS against HC and CONV pooled, and a fifth contrast compares two sets of 26 and 12 donors drawn at random, which has no group effect. The random contrast rejects below the nominal rate at $p<0.01$ and $p<0.001$ and has no discoveries (Fig.~\ref{fig:blood}d), so the test is not anticonservative with 12 donors in the smaller group. LTCS against HC gives 209 discoveries in 146 genes, mostly in naive and central-memory helper T cells and classical monocytes. The CONV donors share these differences. Of the 209 tests, 204 are also tested between CONV and HC, 59\% with $p<0.05$. Of the 148 tested with the same paths in both contrasts, 99\% change path usage in the same direction relative to HC (positive inner product of the two effect vectors), while LTCS against CONV has $p<0.05$ for 11\% (2\% for the random contrast). The differences therefore separate healthy donors from all donors after COVID-19, not long COVID from recovery, and may reflect other differences between the donor groups, such as age or time of sampling, which are not available. Fig.~\ref{fig:blood}e shows the discovery with the largest effect under the selection rule of Methods, a 69-base cassette exon of \emph{ANKRD12} in classical monocytes, included in 42\% of HC and 75\% of LTCS molecules; the other three examples are in Supplementary Figs.~\ref{fig:tcerg1}--\ref{fig:inpp4b}.
 
 \begin{figure}[p]
 \centering
@@ -207,17 +209,17 @@ GSE320507 also allows tests between disease groups within a cell type, where the
 \begin{minipage}[t]{0.45\textwidth}\vspace{0pt}\raggedright\panel{c}\\\includegraphics[width=\textwidth]{figures/paper/fig5_datasets.pdf}\end{minipage}\hfill
 \begin{minipage}[t]{0.54\textwidth}\vspace{0pt}\raggedright\panel{d}\\\includegraphics[width=\textwidth]{figures/paper/fig5_disease.pdf}\end{minipage}\\[4pt]
 \begin{minipage}[t]{\textwidth}\vspace{0pt}\raggedright\panel{e}\\\centering\includegraphics[width=0.86\textwidth,height=0.25\textheight,keepaspectratio]{figures/paper/sashimi_ltcs_ANKRD12_B2.pdf}\end{minipage}
-\caption{Human blood. \textbf{a}, Replicated genes in GSE320507 on each comparator's universe, as in Fig.~\ref{fig:brain}a. \textbf{b}, Cumulative agreement with the directions of the Kinnex Parse long reads in GSE320507, as in Fig.~\ref{fig:brain}b, over the 1{,}000 top-ranked evaluable tests or features. \textbf{c}, Tealeaf cumulative agreement in the three PBMC datasets. \textbf{d}, Fraction of tests with $p<0.001$ and $p<0.01$ for disease-group contrasts within cell types in GSE320507, with the number of BH discoveries within each contrast; Random compares two sets of 26 and 12 donors drawn without regard to group. Dashed lines are the nominal rates. \textbf{e}, \emph{ANKRD12} block 2 in classical monocytes of HC (7 donors) and LTCS (26 donors): Parse coverage by primer per 1{,}000 half-cells (cell barcodes of one primer), with the block's paths and the gene's annotated transcripts; the long-read library has no disease groups. Tests called by the coverage-only null are removed in \textbf{a} and \textbf{b} for every method except SUPPA2.}
+\caption{Human blood. \textbf{a}, Replicated genes in GSE320507 of Tealeaf and each comparator on the comparator's universe (number of genes under the name), at a false discovery rate of 5\% estimated from each method's within-donor label-swap null (Methods); BH counts are in Supplementary Table~\ref{tab:pbmc-results}. \textbf{b}, Cumulative agreement with the directions of the Kinnex Parse long reads in GSE320507, as in Fig.~\ref{fig:brain}b, over the 1{,}000 top-ranked evaluable tests or features. \textbf{c}, Tealeaf cumulative agreement in the three PBMC datasets. \textbf{d}, Fraction of tests with $p<0.001$ and $p<0.01$ for disease-group contrasts within cell types in GSE320507, with the number of BH discoveries within each contrast; Random compares two sets of 26 and 12 donors drawn without regard to group. Dashed lines are the nominal rates. \textbf{e}, \emph{ANKRD12} block 2 in classical monocytes of HC (7 donors) and LTCS (26 donors): Parse coverage by primer per 1{,}000 half-cells (cell barcodes of one primer), with the block's paths and the gene's annotated transcripts; the long-read library has no disease groups. Tests called by the coverage-only null are removed in \textbf{a} and \textbf{b} for every method except SUPPA2, in \textbf{a} also from the label-swap fits.}
 \label{fig:blood}
 \end{figure}
 
 \section{Discussion}
 
-Split-pool single-cell RNA-seq with random-hexamer priming observes splice junctions in transcript bodies across many cell types and donors. Tealeaf uses these data by testing local splice paths with every molecule that overlaps a block, both primers in one likelihood and donors as replicates. In mouse brain it replicates more genes across halves of the animals than six comparators, on each comparator's own universe, most narrowly LeafCutter (182 against 165 genes), and its top-ranked directions agree with long reads as often as the best comparator's, over 2.5 to 26 times as many evaluable tests. Path tests cover alternative first and last exons and unannotated paths in the same framework as cassette exons, and these make up much of its discoveries. Each test names the exon chains that change and their event class, which makes a discovery easier to interpret and to annotate than a change among the junctions of a cluster.
+Split-pool single-cell RNA-seq with random-hexamer priming observes splice junctions in transcript bodies across many cell types and donors. Tealeaf uses these data by testing local splice paths with every molecule that overlaps a block, both primers in one likelihood and donors as replicates. In mouse brain it replicates more genes across halves of the animals than six comparators, on each comparator's own universe, most narrowly LeafCutter (184 against 165 genes), and its top-ranked directions agree with long reads as often as the best comparator's, over 2.8 to 29 times as many evaluable tests. Path tests cover alternative first and last exons and unannotated paths in the same framework as cassette exons, and these make up much of its discoveries. Each test names the exon chains that change and their event class, which makes a discovery easier to interpret and to annotate than a change among the junctions of a cluster.
 
 Split replication rewards a test that responds to expression rather than splicing, because expression differences between cell types are shared by all donors and replicate across halves. Long-read direction is less affected, since such tests agree with the long reads at random, but it covers few genes. The coverage-only null addresses this for every method in the same way. It shows that most MAJIQ and many rMATS calls in these data arise from coverage alone, which a per-sample PSI estimate with a prior, or a test with too small a variance, does not separate from splicing. The filter removes such tests but cannot correct a test whose null distribution is too wide, and rMATS keeps more replicated genes than Tealeaf in blood with long-read agreement near 0.6. A comparison of splicing methods on single-cell data needs such a null, and replication alone is not sufficient.
 
-In blood, LeafCutter replicates more genes than Tealeaf in the largest dataset, with as many long-read-evaluable tests and the same long-read agreement, and scQuint matches Tealeaf. Splicing differences between blood cell types are smaller than between neural cell types, and most of Tealeaf's discoveries in blood are at transcript ends, where it uses junction-spanning molecules only. Where a junction method performs as well, a Tealeaf test still states which exon chains change, including unannotated ones and alternative transcript ends, which a junction cluster leaves to annotation after the test. With few donors per half, as in the two stimulation series, few genes replicate for any test.
+In blood, LeafCutter and scQuint reject too many tests under a within-donor label-swap null, and with BH on their p-values LeafCutter replicates twice as many genes as Tealeaf. At a false discovery rate estimated from each method's own swap null, Tealeaf replicates more genes than LeafCutter (186 against 136) and scQuint (184 against 175) in the largest dataset, and LeafCutter's top-ranked clusters agree with the long reads as often as Tealeaf's tests over as many evaluable tests. A comparison of methods on single-cell data with donors as replicates needs a null that keeps donor-to-donor differences, since a method that treats pseudobulks as independent samples gains discoveries when splicing varies between donors. Splicing differences between blood cell types are smaller than between neural cell types, and most of Tealeaf's discoveries in blood are at transcript ends, where it uses junction-spanning molecules only. Where a junction method performs as well, a Tealeaf test still states which exon chains change, including unannotated ones and alternative transcript ends, which a junction cluster leaves to annotation after the test. With few donors per half, as in the two stimulation series, few genes replicate for any test.
 
 The evaluation has limits. The long-read data come from other animals or donors and cover eight brain and up to fourteen blood cell types, and the comparison is by direction only. Long reads from the same samples, with the same cell-type labels, would allow comparing effect sizes. We test intron retention separately, and with these data the test is underpowered (Supplementary Note~\ref{sec:ir}). The disease contrasts in GSE320507 separate healthy donors from donors after COVID-19 and cannot be attributed to disease with the available sample information. Tealeaf's tests are calibrated in simulations on the real designs and in random contrasts between groups of donors, so they can be used for cohort designs in which donors, not cells, are the replicates.
 
@@ -289,7 +291,9 @@ Within each (half-cell barcode, locus), we join UMIs at Hamming distance 1 trans
 \subsubsection{Annotated blocks}
 \label{sec:blocks}
 
-Annotated splice blocks are local regions between constitutive exonic anchors in the annotation. We collapse transcripts of a gene that take the same exon chain through the region into one path, and a block has the paths of all annotated transcripts that traverse it. Each path is the chain left anchor exon, internal exons, right anchor exon, with exons that touch merged into one, so transcripts whose chains differ only by an exon boundary inside a continuous exonic interval share a path. Every block also carries the precursor path, the single exon $W_b$, which is compatible with reads without a junction inside the window (intronic or exon-body reads). A path whose chain is the whole window duplicates the precursor path, and we remove it. We use blocks of the target genes with 2 to 30 annotated paths.
+Annotated splice blocks are regions between exonic anchors of the annotation, taken at two levels. A \emph{gene-wide anchor} is an interval that lies inside an exon of every annotated transcript of the gene. A \emph{local anchor} is an interval that lies inside an exon of every transcript whose span (first exon start to last exon end) contains it, and of at least two transcripts; a transcript that starts after or ends before an interval does not prevent it from being an anchor. Every gene-wide anchor is a local anchor. Gene-wide blocks lie between consecutive gene-wide anchors, with the gene ends as pseudo-anchors, and a gene without a gene-wide anchor has one whole-gene block; local blocks lie between consecutive local anchors and from each gene end to the nearest local anchor. We use every gene-wide block and every local block whose paths differ from those of all gene-wide blocks, so a block can lie inside another. A gene-wide block tests differences that span the gene, such as an alternative first exon combined with a downstream cassette exon, and a local block tests the event inside it, such as the cassette exons 4 to 6 of \emph{PTPRC} that a transcript starting downstream would otherwise merge into a whole-gene block.
+
+We collapse transcripts that take the same exon chain through a block into one path, and a block has the paths of all annotated transcripts that overlap it, clipped to it. Each path is the chain left anchor exon, internal exons, right anchor exon, with exons that touch merged into one, so transcripts whose chains differ only by an exon boundary inside a continuous exonic interval share a path; a transcript that starts or ends inside a local block contributes a path with its own first or last exon. Every block also carries the precursor path, the single exon $W_b$, which is compatible with reads without a junction inside the window (intronic or exon-body reads). A path whose chain is the whole window duplicates the precursor path, and we remove it. We use blocks of the target genes with 2 to 30 annotated paths.
 
 A block is \emph{internal} if all its annotated paths start with the same exon and end with the same exon, and \emph{terminal} otherwise (alternative first or last exons, transcript starts or ends). We decide the structure from the annotated paths only, so adding novel paths does not change it.
 
@@ -317,9 +321,9 @@ We build novel paths from the second-pass junction support. For a block $b$, let
 \end{algorithmic}
 \end{algorithm}
 
-\paragraph{New blocks.} Novel junctions inside a gene that lie in no annotated block window, for example a junction that skips an exon constitutive in the annotation, define new blocks. We use such a junction if it satisfies the support criteria above, with $R^\star$ the largest read count of the annotated junctions overlapping it, and cluster used junctions with overlapping introns. For a cluster with first donor $d$ and last acceptor $a$, each annotated transcript gives the segment of its exon chain from the exon to which $d$ attaches to the exon to which $a$ attaches; if only one end attaches, the segment starts at the last exon ending before $d$ or ends at the first exon starting after $a$, which allows novel first and last exons. We clip segments to their shared extent; distinct clipped segments are the annotated paths of the new block, and Algorithm~\ref{alg:novel} adds its novel paths. We keep a new block if it has at least one novel path.
+\paragraph{New blocks.} Novel junctions inside a gene that lie in no gene-wide block window, for example a junction that skips an exon constitutive in the annotation, define new blocks. We use such a junction if it satisfies the support criteria above, with $R^\star$ the largest read count of the annotated junctions overlapping it, and cluster used junctions with overlapping introns. For a cluster with first donor $d$ and last acceptor $a$, each annotated transcript gives the segment of its exon chain from the exon to which $d$ attaches to the exon to which $a$ attaches; if only one end attaches, the segment starts at the last exon ending before $d$ or ends at the first exon starting after $a$, which allows novel first and last exons. We clip segments to their shared extent; distinct clipped segments are the annotated paths of the new block, and Algorithm~\ref{alg:novel} adds its novel paths. We keep a new block if it has at least one novel path.
 
-\paragraph{Block set.} On the second pass the block set has 34{,}677 blocks, 22{,}898 annotated and 11{,}779 new, with 21{,}509 novel paths.
+\paragraph{Block set.} On the second pass the block set has 46{,}609 blocks: 22{,}856 gene-wide and 13{,}123 local annotated blocks, and 10{,}630 new blocks, with 22{,}668 novel paths. A new block whose paths repeat those of an earlier block is not added.
 
 \subsection{Molecule classes}
 \label{sec:classes}
@@ -417,6 +421,13 @@ We run the comparators on donor--cell-type pseudobulks. We align the reads to th
 
 We recompute each method's tests on counts with the coverage of the data and no difference between the two cell types. For a test of a contrast, every sample (a subject--cell-type row for Tealeaf, a pseudobulk for the comparators) keeps its total count on the tested feature, and we redraw the counts of the feature's components from proportions pooled over the samples of both cell types. For Tealeaf the components are the compatibility classes of the block, which we redraw with each row's molecule total per primer from one set of path shares without subject or row variation, and we refit the test with the model and settings used on the data (a failed fit has $p=1$). For LeafCutter and scQuint we redraw the junction counts of an intron cluster or intron group from a multinomial distribution and run the method with the settings used on the data on the redrawn features. For rMATS we redraw the inclusion count $I_s\in\mathbb N_0$ of an event in sample $s$ as $\mathrm{Binomial}(I_s+S_s,f_0)$, with $S_s\in\mathbb N_0$ the skipping count and $f_0=\sum_s I_s/\sum_s(I_s+S_s)$, and rerun PAIRADISE. Supplementary Note~\ref{sec:majiq-null} describes the null for MAJIQ. In each run of a method (on the full data and on each half), we recompute the tests with $p<0.01$ on the data on three draws and remove a test when the median of its three null p-values is below 0.05. We keep tests with $p\ge0.01$. We do not recompute SUPPA2 and primer-aware SUPPA2; they replicate 0 to 8 genes, so removal would not change the comparison. For a test with null p-values $p^0_1,p^0_2,p^0_3$, we remove the test when $\mathrm{median}(p^0_1,p^0_2,p^0_3)<0.05$, which for a calibrated test removes $3(0.05)^2(0.95)+(0.05)^3\approx0.7\%$ of the recomputed tests at random. We apply removal in every run separately, the full data for long-read direction and discoveries and each half for split replication, and form the universes after removal.
 
+\subsection{Label-swap null and permutation false discovery rate}
+\label{sec:label-swap}
+
+In a cell-type contrast each donor contributes a sample of both cell types. The within-donor label-swap null exchanges the two cell-type labels of each donor independently with probability $1/2$, which removes the average difference between the cell types but keeps each donor's samples, their coverage and the variation between donors; it is the sign-flip permutation of a paired design. For a contrast of GSE320507 we draw the swaps once per (cell-type pair, donor) and use the same swaps in both halves and for every method. We refit Tealeaf, LeafCutter, scQuint and paired rMATS on both halves for all 171 cell-type pairs with two independent draws, and apply the coverage-only filter to each swapped fit by the same rule as to the real fits.
+
+For a method and a half $k$, let $s_{gk}$ be the gene statistic of the split benchmark, the Simes combination over cell-type pairs of the Simes combinations of the gene's tests in each pair (keys without a test count as 1), and $r_g=\max(s_{g0},s_{g1})$ the replication statistic of gene $g$, the quantity to which the BH procedure of the split benchmark is applied. With $r^\ast_g$ the same statistic from the swapped fits over the same keys, the estimated false discovery rate at threshold $t$ is \[\widehat{\mathrm{FDR}}(t)=\frac{\#\{g:r^\ast_g\le t\}}{\#\{g:r_g\le t\}},\] averaged over the two draws, and a method replicates the genes with $r_g\le t$ for the largest $t$ with $\widehat{\mathrm{FDR}}(t)\le0.05$. The statistics only rank genes, so the procedure holds each method to the same estimated false discovery rate whether or not its p-values are calibrated. Because all genes enter the null count, the estimate is conservative when some genes differ between the cell types. The procedure removes replication of genes without an average cell-type effect; it does not remove differences that are the same in every donor but do not reflect splicing, which the coverage-only filter and the long-read comparison address.
+
 \subsection{Human blood data}
 \label{sec:pbmc}
 
@@ -438,7 +449,7 @@ We assign each test an event class from the exon chains of its retained paths. I
 
 \subsection{Examples}
 
-Brain examples are the full-data tests with the largest effect among those evaluable in the long-read data, selected without regard to long-read agreement. Candidates have $p<10^{-8}$, at least 50 long-read UMIs per cell type and at most four paths; we take one per gene, rank by the norm of the fitted path-usage difference and require at least one internal and one terminal block among the examples. Disease-contrast examples are LTCS against HC discoveries with at most four paths, a median of at least 50 gene molecules per donor row and a block window of at most 20~kb, one per gene, ranked by the same norm. The window limit keeps the block view readable; without it the first choice is a terminal block of \emph{RNF213} spanning 79~kb and 52 exons. The path usage of each row is the molecule-share composition estimated by the EM algorithm of the share screen with primers pooled. We draw sashimi plots with ggsashimi \cite{garridomartin2018} from UMI-deduplicated alignments of the targeted aligner.
+Brain examples are the full-data tests with the largest effect among those evaluable in the long-read data, selected without regard to long-read agreement. Candidates have $p<10^{-8}$, at least 50 long-read UMIs per cell type and at most four paths; we take one per gene, rank by the norm of the fitted path-usage difference and require at least one internal and one terminal block among the examples. Disease-contrast examples are LTCS against HC discoveries with at most four paths, a median of at least 50 gene molecules per donor row and a block window of at most 20~kb, one per gene, ranked by the same norm. The window limit keeps the block view readable. The \emph{PTPRC} example is the local block between exons 3 and 7 in its cell-type pair with the smallest p-value. The path usage of each row is the molecule-share composition estimated by the EM algorithm of the share screen with primers pooled. We draw sashimi plots with ggsashimi \cite{garridomartin2018} from UMI-deduplicated alignments of the targeted aligner.
 
 \subsection{Implementation}
 
@@ -540,10 +551,27 @@ Tealeaf, the aligner and the evaluation scripts are available at the project rep
 
 \begin{figure}[p]
 \centering
+\includegraphics[width=0.6\textwidth]{figures/paper/figS_split_bh_pbmc.pdf}
+\caption{GSE320507 replicated genes of Tealeaf and each comparator on the comparator's universe with BH on each method's p-values, as in Fig.~\ref{fig:blood}a. LeafCutter and scQuint reject more tests than expected under the within-donor label-swap null, which inflates their counts at a nominal BH level.}
+\label{fig:split-bh-pbmc}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\makebox[\textwidth][c]{\includegraphics[width=0.86\textwidth,height=0.42\textheight,keepaspectratio]{figures/paper/sashimi_PTPRC_L1.pdf}}\\
+(a)\\[4pt]
+\includegraphics[width=0.45\textwidth]{figures/paper/usage_PTPRC_L1.pdf}\\
+(b)
+\caption{\emph{PTPRC} local block 1, between exons 3 and 7, in classical monocytes against naive B cells of GSE320507. Path 2 includes exons 4, 5 and 6, path 3 exon 4, path 4 exon 5 and path 5 none of them; paths 1 and 6 start inside the block. (a) Coverage and junctions as in Fig.~\ref{fig:blood}e. (b) Path usage per donor as in Fig.~\ref{fig:examples}.}
+\label{fig:ptprc}
+\end{figure}
+
+\begin{figure}[p]
+\centering
 \panel{a}\\\includegraphics[width=0.86\textwidth,height=0.28\textheight,keepaspectratio]{figures/paper/sashimi_Pkn2_B3_gene.pdf}\\[4pt]
-\panel{b}\\\includegraphics[width=0.86\textwidth,height=0.28\textheight,keepaspectratio]{figures/paper/sashimi_Mctp1_B1_gene.pdf}\\[4pt]
+\panel{b}\\\includegraphics[width=0.86\textwidth,height=0.28\textheight,keepaspectratio]{figures/paper/sashimi_Dock9_L1_gene.pdf}\\[4pt]
 \panel{c}\\\includegraphics[width=0.86\textwidth,height=0.28\textheight,keepaspectratio]{figures/paper/sashimi_ltcs_ANKRD12_B2_gene.pdf}
-\caption{Whole-gene sashimi views of the examples of Figs.~\ref{fig:examples} and \ref{fig:blood}: \textbf{a}, \emph{Pkn2}; \textbf{b}, \emph{Mctp1}; \textbf{c}, \emph{ANKRD12}. Tracks as in the block views; junction labels are omitted, and the block's paths mark the block.}
+\caption{Whole-gene sashimi views of the examples of Figs.~\ref{fig:examples} and \ref{fig:blood}: \textbf{a}, \emph{Pkn2}; \textbf{b}, \emph{Dock9}; \textbf{c}, \emph{ANKRD12}. Tracks as in the block views; junction labels are omitted, and the block's paths mark the block.}
 \label{fig:gene-views}
 \end{figure}
 
@@ -572,8 +600,8 @@ Tealeaf, the aligner and the evaluation scripts are available at the project rep
 \begin{minipage}[t]{0.49\textwidth}\centering\includegraphics[width=\textwidth]{figures/paper/usage_Pkn2_B3.pdf}\\(a)\end{minipage}\hfill
 \begin{minipage}[t]{0.49\textwidth}\centering\includegraphics[width=\textwidth]{figures/paper/usage_Nfasc_B2.pdf}\\(b)\end{minipage}\\[6pt]
 \begin{minipage}[t]{0.49\textwidth}\centering\includegraphics[width=\textwidth]{figures/paper/usage_Akap9_N2.pdf}\\(c)\end{minipage}\hfill
-\begin{minipage}[t]{0.49\textwidth}\centering\includegraphics[width=\textwidth]{figures/paper/usage_Mctp1_B1.pdf}\\(d)\end{minipage}\\[6pt]
-\caption{Path usage in the four examples: (a) Pkn2, (b) Nfasc, (c) Akap9, (d) Mctp1. In each panel, top, the tested paths, numbered as in the sashimi plots (introns longer than 300 bases shortened; merged paths are drawn by their first member); bottom left, the path usage of each subject in the Parse data with the mean over subjects (bars); bottom right, the transcript share of each path in the two long-read replicates.}
+\begin{minipage}[t]{0.49\textwidth}\centering\includegraphics[width=\textwidth]{figures/paper/usage_Dock9_L1.pdf}\\(d)\end{minipage}\\[6pt]
+\caption{Path usage in the four examples: (a) Pkn2, (b) Nfasc, (c) Akap9, (d) Dock9. In each panel, top, the tested paths, numbered as in the sashimi plots (introns longer than 300 bases shortened; merged paths are drawn by their first member); bottom left, the path usage of each subject in the Parse data with the mean over subjects (bars); bottom right, the transcript share of each path in the two long-read replicates.}
 \label{fig:usage}
 \end{figure}
 
@@ -597,12 +625,12 @@ Tealeaf, the aligner and the evaluation scripts are available at the project rep
 \end{figure}
 \begin{figure}[p]
 \centering
-\makebox[\textwidth][c]{\includegraphics[width=0.86\textwidth,height=0.42\textheight,keepaspectratio]{figures/paper/sashimi_ltcs_TC2N_N3_gene.pdf}}\\
+\makebox[\textwidth][c]{\includegraphics[width=0.86\textwidth,height=0.42\textheight,keepaspectratio]{figures/paper/sashimi_ltcs_INPP4B_L9_gene.pdf}}\\
 (a)\\[4pt]
-\makebox[\textwidth][c]{\includegraphics[width=0.86\textwidth,height=0.42\textheight,keepaspectratio]{figures/paper/sashimi_ltcs_TC2N_N3.pdf}}\\
+\makebox[\textwidth][c]{\includegraphics[width=0.86\textwidth,height=0.42\textheight,keepaspectratio]{figures/paper/sashimi_ltcs_INPP4B_L9.pdf}}\\
 (b)
-\caption{TC2N novel block 3 in naive and central-memory helper T cells, HC against LTCS donors. Panels as in Fig.~\ref{fig:blood}e, with the whole gene in (a).}
-\label{fig:tc2n}
+\caption{\emph{INPP4B} local block 9 in naive and central-memory helper T cells, HC against LTCS donors: path 2, which includes a 28-base exon, carries 13\% of HC and 49\% of LTCS molecules. Panels as in Fig.~\ref{fig:blood}e, with the whole gene in (a).}
+\label{fig:inpp4b}
 \end{figure}
 
 \clearpage
@@ -617,19 +645,19 @@ Tealeaf, the aligner and the evaluation scripts are available at the project rep
  & LeafCutter & MAJIQ & SUPPA2 & SUPPA2-PA & rMATS & scQuint\\
 \midrule
 \multicolumn{7}{l}{\emph{Matched universe}}\\
-Genes & 1{,}509 & 2{,}758 & 3{,}411 & 3{,}072 & 5{,}070 & 3{,}603\\
-Tealeaf replicated & 182 & 205 & 130 & 138 & 167 & 192\\
+Genes & 1{,}509 & 2{,}764 & 3{,}424 & 3{,}083 & 5{,}078 & 3{,}609\\
+Tealeaf replicated & 184 & 203 & 132 & 143 & 169 & 197\\
 Comparator replicated & 165 & 17 & 8 & 0 & 4 & 134\\
 \midrule
 \multicolumn{7}{l}{\emph{Comparator universe}}\\
 Genes & 1{,}561 & 2{,}996 & 5{,}068 & 3{,}901 & 6{,}838 & 4{,}220\\
-Tealeaf replicated & 182 & 196 & 105 & 124 & 139 & 170\\
+Tealeaf replicated & 183 & 197 & 104 & 127 & 137 & 178\\
 Comparator replicated & 169 & 15 & 0 & 0 & 4 & 123\\
 \midrule
 Comparator $A_{100}$ & .936 & .944 & .797 & .622 & .898 & .912\\
 \bottomrule
 \end{tabular}
-\caption{Replicated genes on each comparator's matched and comparator universes, and long-read direction. SUPPA2-PA is primer-aware SUPPA2. Tests called by the coverage-only null are removed for Tealeaf and every comparator except SUPPA2 and SUPPA2-PA (Section~\ref{sec:coverage-null}; Supplementary Note~\ref{sec:unfiltered} gives the results without removal). Tealeaf has $A_{100}=0.947$ (95 of its 100 top-ranked evaluable tests agree with long reads; $A_{40}=0.965$, $A_{200}=0.943$).}
+\caption{Replicated genes on each comparator's matched and comparator universes, and long-read direction. SUPPA2-PA is primer-aware SUPPA2. Tests called by the coverage-only null are removed for Tealeaf and every comparator except SUPPA2 and SUPPA2-PA (Section~\ref{sec:coverage-null}; Supplementary Note~\ref{sec:unfiltered} gives the results without removal). Tealeaf has $A_{100}=0.936$ (92 of its 100 top-ranked evaluable tests agree with long reads; $A_{40}=0.966$, $A_{200}=0.921$).}
 \label{tab:results}
 \end{table}
 
@@ -641,19 +669,19 @@ Comparator $A_{100}$ & .936 & .944 & .797 & .622 & .898 & .912\\
 \toprule
 Event class & Tests & Discoveries & Novel path & LR agreement & Top 100\\
 \midrule
-cassette exon & 217{,}758 & 3{,}549 & 1{,}553 & 0.89 (456) & 35/36\\
-alternative first exon & 101{,}666 & 2{,}872 & 2{,}234 & 0.90 (146) & 23/23\\
-compound internal & 104{,}884 & 1{,}642 & 1{,}252 & 0.84 (75) & 1/1\\
-alternative last exon & 57{,}878 & 934 & 644 & 0.85 (74) & 21/25\\
-alternative first and last exons & 24{,}646 & 920 & 776 & 0.83 (48) & 9/9\\
-alternative acceptor & 100{,}863 & 323 & 259 & 0.79 (38) & 2/2\\
-alternative transcript end & 9{,}055 & 156 & 38 & 1.00 (11) & 1/1\\
-alternative donor & 57{,}294 & 114 & 92 & 0.50 (12) & 0/0\\
-multi-exon skipping & 8{,}988 & 105 & 56 & 0.91 (22) & 3/3\\
-mutually exclusive exons & 2{,}701 & 86 & 12 & 0.82 (11) & 0/0\\
-complex internal & 4{,}982 & 59 & 57 & 1.00 (3) & 0/0\\
-alternative transcript start & 2{,}994 & 57 & 8 & 1.00 (2) & 0/0\\
-retained intron & 1{,}244 & 13 & 13 & -- (0) & 0/0\\
+alternative first exon & 126{,}353 & 4{,}222 & 2{,}958 & 0.86 (283) & 16/17\\
+cassette exon & 199{,}774 & 4{,}001 & 1{,}152 & 0.88 (515) & 30/31\\
+compound internal & 107{,}196 & 1{,}773 & 1{,}259 & 0.85 (93) & 2/2\\
+alternative last exon & 67{,}509 & 1{,}427 & 819 & 0.85 (152) & 25/31\\
+alternative first and last exons & 28{,}967 & 1{,}078 & 915 & 0.84 (49) & 8/8\\
+alternative acceptor & 105{,}247 & 364 & 278 & 0.79 (43) & 1/1\\
+alternative transcript end & 13{,}175 & 347 & 63 & 0.98 (42) & 6/6\\
+multi-exon skipping & 9{,}874 & 209 & 59 & 0.80 (40) & 4/4\\
+alternative donor & 61{,}171 & 139 & 103 & 0.44 (16) & 0/0\\
+mutually exclusive exons & 3{,}080 & 96 & 14 & 0.82 (11) & 0/0\\
+alternative transcript start & 7{,}044 & 79 & 10 & 0.78 (9) & 0/0\\
+complex internal & 4{,}908 & 58 & 56 & 1.00 (3) & 0/0\\
+retained intron & 1{,}306 & 12 & 12 & -- (0) & 0/0\\
 \bottomrule
 \end{tabular}
 \caption{Full-data tests by event class. Novel path counts discoveries that retain an unannotated path. LR agreement (long-read agreement) is the fraction of long-read-evaluable discoveries whose direction agrees with the long reads (number evaluable in parentheses); Top 100 gives agreeing over all tests of the class among the 100 top-ranked long-read-evaluable tests.}
@@ -673,13 +701,13 @@ Cell types & 19 & 10 & 8\\
 Read 1 length & 136 & 150 & 66\\
 Read pairs (billions) & 1.84 & 11.7 & 2.52\\
 \midrule
-Full-data tests & 1{,}504{,}546 & 200{,}346 & 80{,}470\\
-Discoveries & 2{,}335 & 475 & 15\\
-Gene--pair discoveries & 1{,}819 & 372 & 13\\
+Full-data tests & 1{,}832{,}626 & 251{,}071 & 101{,}655\\
+Discoveries & 3{,}104 & 655 & 20\\
+Gene--pair discoveries & 1{,}872 & 390 & 12\\
 \midrule
-Genes tested in both halves & 10{,}079 & 8{,}640 & 5{,}211\\
-Discoveries, half 1 / half 2 & 130 / 91 & 15 / 28 & 0 / 0\\
-Replicated genes & 65 & 5 & 0\\
+Genes tested in both halves & 10{,}192 & 8{,}725 & 5{,}286\\
+Discoveries, half 1 / half 2 & 134 / 90 & 13 / 27 & 0 / 0\\
+Replicated genes & 66 & 7 & 0\\
 \bottomrule
 \end{tabular}
 \caption{Cell-type contrasts in three PBMC datasets. Cells are those of the contrasts (unstimulated or control cells for GSE327907 and GSE334840); read pairs are for all cells of the dataset. Discoveries are tests with BH-adjusted $p\le0.05$, and gene--pair discoveries (gene, cell-type pair) keys with Simes-combined adjusted $p\le0.05$. Half discoveries and replicated genes are gene-level, on the genes tested in both halves.}
@@ -693,15 +721,15 @@ Replicated genes & 65 & 5 & 0\\
 \toprule
  & GSE320507 & GSE327907 & GSE334840\\
 \midrule
-Long-read cell types (pairs) & 14 (91) & 7 (20) & 7 (20)\\
-Evaluable tests & 44{,}661 & 17{,}588 & 12{,}012\\
-Agreeing, top 40 & 39 & 38 & 36\\
-Agreeing, top 100 & 99 & 96 & 83\\
-Agreeing, top 200 & 197 & 177 & 155\\
-$A_{100}$ & 0.988 & 0.967 & 0.886\\
-Evaluable discoveries & 505 & 138 & 6\\
+Long-read cell types (pairs) & 14 (91) & 7 (21) & 7 (21)\\
+Evaluable tests & 61{,}457 & 24{,}174 & 16{,}090\\
+Agreeing, top 40 & 40 & 39 & 38\\
+Agreeing, top 100 & 99 & 98 & 90\\
+Agreeing, top 200 & 199 & 187 & 162\\
+$A_{100}$ & 0.994 & 0.984 & 0.939\\
+Evaluable discoveries & 870 & 236 & 12\\
 Agreement of discoveries & 0.88 & 0.94 & 1.00\\
-Agreement of all evaluable tests & 0.54 & 0.53 & 0.53\\
+Agreement of all evaluable tests & 0.54 & 0.54 & 0.53\\
 \bottomrule
 \end{tabular}
 \caption{Long-read direction of full-data cell-type tests in three PBMC datasets, against molecules of a Parse PBMC long-read library. Long-read cell types and pairs are those with at least one evaluable test. Agreeing gives the number of the $r$ top-ranked evaluable tests whose direction agrees with the long reads.}
@@ -717,19 +745,23 @@ Agreement of all evaluable tests & 0.54 & 0.53 & 0.53\\
  & LeafCutter & MAJIQ & SUPPA2 & SUPPA2-PA & rMATS & scQuint\\
 \midrule
 \multicolumn{7}{l}{\emph{Matched universe}}\\
-Genes & 3{,}461 & 3{,}411 & 8{,}478 & 8{,}405 & 8{,}829 & 6{,}034\\
-Tealeaf replicated & 64 & 68 & 57 & 57 & 64 & 57\\
-Comparator replicated & 120 & 23 & 0 & 0 & 131 & 66\\
+Genes & 3{,}505 & 3{,}460 & 8{,}577 & 8{,}502 & 8{,}917 & 6{,}104\\
+Tealeaf replicated, BH & 63 & 67 & 55 & 54 & 66 & 56\\
+Comparator replicated, BH & 120 & 25 & 0 & 0 & 135 & 66\\
+Tealeaf replicated, permutation FDR & 186 & -- & -- & -- & 230 & 184\\
+Comparator replicated, permutation FDR & 131 & -- & -- & -- & 688 & 176\\
 \midrule
 \multicolumn{7}{l}{\emph{Comparator universe}}\\
 Genes & 3{,}588 & 3{,}618 & 10{,}577 & 10{,}569 & 10{,}179 & 6{,}402\\
-Tealeaf replicated & 64 & 67 & 54 & 51 & 59 & 53\\
-Comparator replicated & 126 & 26 & 0 & 0 & 133 & 67\\
+Tealeaf replicated, BH & 63 & 67 & 52 & 51 & 59 & 55\\
+Comparator replicated, BH & 126 & 26 & 0 & 0 & 133 & 67\\
+Tealeaf replicated, permutation FDR & 186 & -- & -- & -- & 223 & 184\\
+Comparator replicated, permutation FDR & 136 & -- & -- & -- & 701 & 175\\
 \midrule
 Comparator $A_{100}$ & .991 & 1.000 & .555 & .460 & .575 & 1.000\\
 \bottomrule
 \end{tabular}
-\caption{GSE320507 cell-type contrasts: replicated genes on each comparator's matched and comparator universes, and long-read direction against the Kinnex library, as in Supplementary Table~\ref{tab:results}. Tests called by the coverage-only null are removed for Tealeaf and every comparator except SUPPA2 and SUPPA2-PA. Tealeaf has $A_{100}=0.988$ (99 of its 100 top-ranked evaluable tests agree; $A_{40}=0.992$, $A_{200}=0.989$).}
+\caption{GSE320507 cell-type contrasts: replicated genes on each comparator's matched and comparator universes, and long-read direction against the Kinnex library, as in Supplementary Table~\ref{tab:results}. Replicated genes are counted with BH on each method's p-values and, for the methods with a label-swap null, at a permutation false discovery rate of 5\% (Methods). Tests called by the coverage-only null are removed for Tealeaf and every comparator except SUPPA2 and SUPPA2-PA. Tealeaf has $A_{100}=0.994$ (99 of its 100 top-ranked evaluable tests agree; $A_{40}=1.000$, $A_{200}=0.994$).}
 \label{tab:pbmc-results}
 \end{table}
 
@@ -740,11 +772,11 @@ Comparator $A_{100}$ & .991 & 1.000 & .555 & .460 & .575 & 1.000\\
 \toprule
 Contrast & Tests & $p<0.01$ & $p<0.001$ & Discoveries\\
 \midrule
-Random 26 vs 12 & 182{,}434 & 0.34\% & 0.025\% & 0\\
-CONV vs HC & 62{,}155 & 0.56\% & 0.051\% & 0\\
-LTCS vs CONV & 66{,}481 & 0.45\% & 0.032\% & 0\\
-LTCS vs HC & 148{,}293 & 1.57\% & 0.441\% & 199\\
-LTCS vs HC and CONV & 182{,}408 & 1.07\% & 0.229\% & 22\\
+Random 26 vs 12 & 226{,}283 & 0.32\% & 0.023\% & 0\\
+CONV vs HC & 75{,}239 & 0.50\% & 0.041\% & 0\\
+LTCS vs CONV & 80{,}219 & 0.43\% & 0.035\% & 0\\
+LTCS vs HC & 182{,}718 & 1.50\% & 0.419\% & 209\\
+LTCS vs HC and CONV & 226{,}436 & 1.03\% & 0.215\% & 23\\
 \bottomrule
 \end{tabular}
 \caption{Disease-group contrasts within cell types in GSE320507, full data. Tests that do not converge enter with $p=1$; discoveries are BH-adjusted $p\le0.05$ within each contrast.}
@@ -758,7 +790,7 @@ LTCS vs HC and CONV & 182{,}408 & 1.07\% & 0.229\% & 22\\
 \toprule
 Method & Full data & Half 1 & Half 2\\
 \midrule
-Tealeaf & 147 / 24{,}176 & 65 / 10{,}540 & 50 / 9{,}687\\
+Tealeaf & 171 / 28{,}383 & 76 / 12{,}465 & 52 / 11{,}419\\
 LeafCutter & 45 / 8{,}648 & 28 / 4{,}445 & 26 / 3{,}513\\
 scQuint & 248 / 29{,}391 & 110 / 13{,}606 & 103 / 13{,}129\\
 rMATS & 1{,}435 / 17{,}114 & 1{,}598 / 12{,}836 & 1{,}126 / 10{,}738\\
@@ -767,6 +799,30 @@ MAJIQ & 4{,}199 / 6{,}158 & 5{,}932 / 13{,}765 & 13{,}625 / 21{,}434\\
 \end{tabular}
 \caption{Brain tests removed by the coverage-only null over tests recomputed ($p<0.01$ on the data). MAJIQ counts are connections (edges) of local splice variants.}
 \label{tab:coverage-removed}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+Cell type & Exon 4 (A) & Exon 5 (B) & Exon 7 (none) & Junctions\\
+\midrule
+Naive B & 0.91 / 0.78 & 0.07 / 0.15 & 0.02 / 0.07 & 811 / 614\\
+Memory B & 0.95 / 0.86 & 0.02 / 0.09 & 0.03 / 0.05 & 680 / 43\\
+CD16+ NK & 0.91 / 0.69 & 0.09 / 0.28 & 0.01 / 0.03 & 1{,}658 / 235\\
+NK & 0.81 / 0.56 & 0.18 / 0.36 & 0.01 / 0.09 & 191 / 360\\
+Classical monocytes & 0.51 / 0.38 & 0.32 / 0.38 & 0.17 / 0.24 & 2{,}648 / 2{,}614\\
+Non-classical monocytes & 0.74 / 0.51 & 0.23 / 0.44 & 0.03 / 0.05 & 724 / 433\\
+Tcm/naive helper T & 0.68 / 0.46 & 0.18 / 0.35 & 0.14 / 0.18 & 5{,}813 / 2{,}617\\
+Tem/Temra cytotoxic T & 0.59 / 0.48 & 0.30 / 0.39 & 0.11 / 0.14 & 897 / 170\\
+Tem/Trm cytotoxic T & 0.51 / 0.31 & 0.31 / 0.50 & 0.18 / 0.19 & 709 / 54\\
+Regulatory T & 0.36 / 0.05 & 0.19 / 0.23 & 0.45 / 0.72 & 121 / 40\\
+MAIT & 0.40 / 0.16 & 0.33 / 0.55 & 0.26 / 0.29 & 163 / 75\\
+\bottomrule
+\end{tabular}
+\caption{\emph{PTPRC} (CD45) in GSE320507: share of the junctions leaving exon 3 that go to exon 4, exon 5 or exon 7 (skipping exons 4 to 6), from STARsolo junction counts pooled over the pseudobulks of each cell type (short reads) and from Kinnex long-read molecules (long reads), as short / long; Junctions gives the counts. Exon 3 to exon 6 junctions are under 0.5\% in both. Long reads give lower exon 4 shares throughout, but the same ordering of cell types.}
+\label{tab:ptprc}
 \end{table}
 
 \clearpage
@@ -854,10 +910,17 @@ The count models of the other junction methods and of Tealeaf do not show this d
 
 Most rMATS calls in GSE320507 are mutually exclusive exons (83 to 87\% of the BH calls in each half), and 96\% of the called pairs have both exons in one annotated transcript, so the event compares junctions of different isoforms. With every event's inclusion count redrawn as in Section~\ref{sec:coverage-null}, pooled over all pseudobulks, PAIRADISE on four whole half-1 contrasts makes about as many BH calls of mutually exclusive exons as on the data (594 to 2{,}256 against 637 to 2{,}267) and more of skipped exons (40 to 180 against 17 to 79), and rejects 10 to 13\% of skipped-exon and 40 to 51\% of mutually-exclusive-exon tests at 0.05. Applied per test in the GSE320507 halves, the null removes 24 to 27\% of the recomputed rMATS tests, at similar rates in every event type, against 0.4 to 0.8\% for Tealeaf, LeafCutter and scQuint, whose replicated genes change by at most two (Tealeaf / comparator on the comparator universes, 67 / 126 for LeafCutter and 54 / 67 for scQuint). rMATS replicates 184 genes without removal and 133 after (Tealeaf 60 on both). In brain, rMATS replicates 4 genes with or without removal.
 
+\subsection{Long-read direction of rMATS events in blood}
+\label{sec:rmats-lr}
+
+In GSE320507 the long reads agree with rMATS's evaluable full-data events in 67\% of skipped-exon events, 81\% of the 95 strongest plus-strand skipped exons, and 36\% of mutually exclusive exon events. On the plus strand only 2 of the 34 strongest mutually exclusive exon events agree; 48\% of these events have no long-read difference, counted as disagreement. Of the 24 strongest plus-strand mutually exclusive exon events with a long-read difference, 23 are in \emph{PTPRC}, whose exons 4 to 6 are cassette exons that occur together in one transcript. A median of 26\% of the junction reads of these events join the two exons, from molecules that the long-read classification places in neither form but whose outer junctions count toward both rMATS forms, and 13\% are on the junctions specific to one form. The direction of the form-specific junctions agrees with the long reads in 17 of 21 events, and rMATS's direction in 7 of 24.
+
+Skipped-exon events, which make up most of rMATS's replicated genes, follow the short-read junctions: rMATS's direction equals the direction of the junction count ratio pooled over pseudobulks (inclusion junctions against the skipping junction) in 95\% of evaluable tests, and both agree with the long reads equally often. Agreement depends on the size of the long-read difference for every method, from 62\% when the long-read share changes by at most 2 percentage points to 92\% above 20 points, and rises with long-read depth. The best-ranked evaluable event of rMATS's replicated genes has a median long-read change of 3 percentage points, against 10 to 13 for Tealeaf and 17 for LeafCutter, and within bands of long-read change rMATS agrees about as often as the other methods (81\% between 10 and 20 points, 86\% above 20). rMATS fitted to junction reads only replicates 670 genes at permutation FDR 0.05 against 793 with junction and exon-body reads (without the coverage-only filter), and setting $p=1$ for tests that change usage by less than 10 percentage points leaves 667. rMATS's excess replication thus comes mostly from small usage differences that are consistent across donors and present in the short-read junctions, but whose direction the long-read library resolves poorly.
+
 \subsection{Results without the coverage-only filter}
 \label{sec:unfiltered}
 
-Without removal the split replication of Supplementary Table~\ref{tab:results} is, for Tealeaf / comparator on the matched universe, 182 / 165 for LeafCutter, 206 / 27 for MAJIQ (2{,}764 genes) and 192 / 135 for scQuint, and on the comparator universe 182 / 169, 197 / 28 (3{,}003 genes) and 170 / 124; the SUPPA2, primer-aware SUPPA2 and rMATS columns are unchanged. Long-read agreement without removal is $A_{100}=0.938$ for MAJIQ (85 of 100 agree, 150 of 200) and 0.914 for scQuint (90 of 100), with 1{,}565 and 8{,}497 evaluable features; Tealeaf (35{,}233 evaluable), LeafCutter and rMATS have the same $A_{100}$. On the 28 long-read pairs, Tealeaf has 3{,}663 discoveries in 3{,}045 gene--cell-type pairs, scQuint 2{,}234 pairs and MAJIQ 873; over all pairs, Tealeaf has 10{,}830 discoveries in 9{,}085 pairs, scQuint 8{,}835, MAJIQ 2{,}189 (on 170 pairs) and rMATS 570. The event classes of Table~\ref{tab:events} and the calibration of Section~\ref{sec:calibration} use the Tealeaf tests without removal.
+Without removal the split replication of Supplementary Table~\ref{tab:results} is, for Tealeaf / comparator on the matched universe, 184 / 165 for LeafCutter, 204 / 27 for MAJIQ (2{,}770 genes) and 197 / 135 for scQuint, and on the comparator universe 183 / 169, 198 / 28 (3{,}003 genes) and 178 / 124; the SUPPA2, primer-aware SUPPA2 and rMATS columns are unchanged. Long-read agreement without removal is $A_{100}=0.938$ for MAJIQ (85 of 100 agree, 150 of 200) and 0.914 for scQuint (90 of 100), with 1{,}565 and 8{,}497 evaluable features; Tealeaf (39{,}688 evaluable), LeafCutter and rMATS have the same $A_{100}$. On the 28 long-read pairs, Tealeaf has 4{,}548 discoveries in 3{,}342 gene--cell-type pairs, scQuint 2{,}234 pairs and MAJIQ 873; over all pairs, Tealeaf has 13{,}805 discoveries in 10{,}142 pairs, scQuint 8{,}835, MAJIQ 2{,}189 (on 170 pairs) and rMATS 570. The event classes of Table~\ref{tab:events} and the calibration of Section~\ref{sec:calibration} use the Tealeaf tests without removal.
 
 
 \end{document}

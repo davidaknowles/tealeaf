@@ -338,7 +338,7 @@ def disease_plot(path, width, height):
             + p9.facet_wrap("~level", scales="free_x") + p9.coord_flip()
             + p9.scale_y_continuous(expand=(0, 0, 0.3, 0), breaks=breaks_extended(n=3), labels=lambda values: [f"{100 * v:g}%" for v in values])
             + p9.labs(x="", y="Fraction of tests")
-            + theme(width, height) + p9.theme(panel_grid_major_y=p9.element_blank()))
+            + theme(width, height) + p9.theme(panel_grid_major_y=p9.element_blank(), panel_spacing_x=0.06))
 
 
 def main():
@@ -364,7 +364,7 @@ def main():
     save(removed_plot(removed_table({"Brain": brain / "removed_tests.tsv", "GSE320507": pbmc / "removed_tests.tsv"}), 2.3, 2.3), out, "fig4_removed")
     save(rmats_null_plot("analyses/pbmc/GSE320507_comparators/coverage_null/rmats_null_vs_real_4contrasts.tsv", 2.2, 2.0), out, "fig4_rmats")
 
-    pbmc_labels = {"MAJIQ": ("MAJIQ", 0.06, 0.08), "LeafCutter": ("LeafCutter", -0.08, 0.12), "rMATS": ("rMATS", 0.04, -0.14), "scQuint": ("scQuint", 0.08, -0.08), "SUPPA2, SUPPA2-PA": ("SUPPA2", 0.02, 0.22)}
+    pbmc_labels = {"MAJIQ": ("MAJIQ", 0.06, 0.08), "LeafCutter": ("LeafCutter", -0.08, 0.12), "rMATS": ("rMATS", -0.02, -0.2), "scQuint": ("scQuint", 0.08, -0.08), "SUPPA2, SUPPA2-PA": ("SUPPA2", 0.02, 0.22)}
     save(perm_bar_plot(perm_split_both("analyses/label_swap_null/perm171/perm_fdr_split_hier_filtered.tsv"), 2.8, 2.4), out, "fig5_split")
     save(split_scatter(split_both(pbmc / "split_filtered/split_metrics.tsv"), 2.5, 2.6, pbmc_labels), out, "figS_split_bh_pbmc")
     save(lr_plot(lr_curves(pbmc / "tealeaf_lr_rank_filtered_depth1000.tsv.gz", pbmc / "sign_agreement_by_rank_filtered_depth1000.tsv", 1000), 3.3, 2.0), out, "fig5_lr")

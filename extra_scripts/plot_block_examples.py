@@ -41,11 +41,12 @@ def figure(example, parse, long_read, exons, base=11, names=None, size=None, str
     parse = parse.assign(cell_type=pd.Categorical(parse.cell_type, categories=shown), path_label=pd.Categorical(parse.path_label, categories=paths))
     means = parse.groupby(["cell_type", "path_label"], observed=True).proportion.mean().reset_index()
     dodge = p9.position_dodge(width=0.6)
+    wrap = p9.scale_x_discrete(labels=lambda labels: [label.replace("Paths ", "Paths\n", 1) for label in labels])
     parse_plot = (p9.ggplot(parse, p9.aes("path_label", "proportion", color="cell_type"))
                   + p9.geom_point(position=p9.position_jitterdodge(jitter_width=0.15, dodge_width=0.6, random_state=1), alpha=0.6, size=base / 11 * 1.5, stroke=0)
                   + p9.geom_point(data=means, position=dodge, shape="_", size=base / 11 * 12, stroke=base / 11 * 1.2)
                   + p9.scale_color_manual(values=TYPES, name="")
-                  + p9.scale_y_continuous(limits=(0, 1))
+                  + p9.scale_y_continuous(limits=(0, 1)) + wrap
                   + p9.labs(x="", y="Path usage", color="", title="Parse, per subject (bar: mean)")
                   + theme(base) + p9.theme(legend_position="bottom", legend_direction="vertical"))
     long_read = long_read.assign(cell_type=pd.Categorical(long_read.cell_type, categories=shown), path_label=pd.Categorical(long_read.path_label, categories=paths), replicate=long_read.replicate.astype(str))
@@ -53,7 +54,7 @@ def figure(example, parse, long_read, exons, base=11, names=None, size=None, str
                  + p9.geom_point(position=dodge, size=base / 11 * 3)
                  + p9.scale_color_manual(values=TYPES, guide=None)
                  + p9.scale_shape_manual(values=["o", "^"], name="Long-read replicate")
-                 + p9.scale_y_continuous(limits=(0, 1))
+                 + p9.scale_y_continuous(limits=(0, 1)) + wrap
                  + p9.labs(x="", y="Transcript share", title=f"Long reads ({'agrees' if example.long_read_agrees else 'disagrees'})")
                  + theme(base) + p9.theme(legend_position="bottom", legend_direction="vertical"))
     composed = structure / (parse_plot | long_plot) if structure_panel else parse_plot | long_plot
